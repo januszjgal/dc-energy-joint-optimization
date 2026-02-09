@@ -17,7 +17,8 @@ class RoundRobinPolicy:
     name = "Round Robin"
 
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
-        return np.ones(env.n_dc, dtype=np.float32) / env.n_dc
+        # Equal logits → uniform softmax fractions
+        return np.zeros(env.n_dc, dtype=np.float32)
 
 
 class CheapestFirstPolicy:
@@ -28,7 +29,8 @@ class CheapestFirstPolicy:
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
         t = env.step_index
         prices = [site.get_price(t) for site in env.sites]
-        action = np.zeros(env.n_dc, dtype=np.float32)
+        # Large logit at cheapest DC so softmax concentrates allocation there
+        action = np.full(env.n_dc, -1.0, dtype=np.float32)
         action[int(np.argmin(prices))] = 1.0
         return action
 
@@ -41,7 +43,8 @@ class FollowTheSunPolicy:
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
         t = env.step_index
         solar = [site.get_solar_fraction(t) for site in env.sites]
-        action = np.zeros(env.n_dc, dtype=np.float32)
+        # Large logit at sunniest DC
+        action = np.full(env.n_dc, -1.0, dtype=np.float32)
         action[int(np.argmax(solar))] = 1.0
         return action
 
@@ -61,8 +64,15 @@ class LocalOnlyPolicy:
         )
         total = demands.sum()
         if total > 0:
-            return demands / total
-        return np.ones(env.n_dc, dtype=np.float32) / env.n_dc
+            # Convert desired fractions to log-space (inverse of softmax)
+            fracs = demands / total
+            fracs = np.clip(fracs, 1e-6, None)
+            logits = np.log(fracs)
+            # Center within [-1, 1]
+            logits = logits - logits.mean()
+            logits = np.clip(logits, -1.0, 1.0)
+            return logits.astype(np.float32)
+        return np.zeros(env.n_dc, dtype=np.float32)
 
 
 class RandomPolicy:
@@ -74,8 +84,8 @@ class RandomPolicy:
         self.rng = np.random.default_rng(seed)
 
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
-        raw = self.rng.random(env.n_dc).astype(np.float32)
-        return raw / raw.sum()
+        # Random logits in [-1, 1]
+        return self.rng.uniform(-1.0, 1.0, size=env.n_dc).astype(np.float32)
 
 
 ALL_BASELINES = [
