@@ -44,7 +44,7 @@ class DataCenterSite:
 
     @property
     def num_timesteps(self) -> int:
-        return len(self.workload)
+        return min(len(self.workload), len(self.solar), len(self.price))
 
     def get_local_demand(self, t: int) -> float:
         """Return the natural workload demand at timestep t."""

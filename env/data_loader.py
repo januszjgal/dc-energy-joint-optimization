@@ -55,6 +55,12 @@ def load_scenario(config_path: Path) -> tuple[list[DataCenterSite], PowerModel]:
         solar = load_csv_values(root_dir / site_cfg["solar"], "solar_fraction")
         price = load_csv_values(root_dir / site_cfg["price"], "price_usd_kwh")
 
+        # Truncate all arrays to the shortest one for this site
+        min_len = min(len(workload), len(solar), len(price))
+        workload = workload[:min_len]
+        solar = solar[:min_len]
+        price = price[:min_len]
+
         site = DataCenterSite(
             name=site_cfg["name"],
             workload=workload,
