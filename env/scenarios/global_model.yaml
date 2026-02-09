@@ -1,0 +1,33 @@
+# Global Model: 4 data centers across 3 continents
+# Tests unconstrained routing with maximum solar/timezone diversity (16-hour spread)
+
+power_model: data/power_model_params.json
+
+sites:
+  - name: Global-US-West
+    cell: data/cells/cell_a.csv
+    solar: data/solar/the_dalles_or.csv
+    price: data/prices/caiso.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
+
+  - name: Global-US-Central
+    cell: data/cells/cell_b.csv
+    solar: data/solar/council_bluffs_ia.csv
+    price: data/prices/miso.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
+
+  - name: Global-EU
+    cell: data/cells/cell_c.csv
+    solar: data/solar/eemshaven_nl.csv
+    price: data/prices/entso_e_nl.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
+
+  - name: Global-Asia
+    cell: data/cells/cell_d.csv
+    solar: data/solar/singapore.csv
+    price: data/prices/ema_singapore.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
