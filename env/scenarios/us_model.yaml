@@ -1,0 +1,33 @@
+# US Model: 4 data centers within the United States
+# Tests optimization under data sovereignty constraints (3-hour timezone spread)
+
+power_model: data/power_model_params.json
+
+sites:
+  - name: US-West
+    cell: data/cells/cell_a.csv
+    solar: data/solar/the_dalles_or.csv
+    price: data/prices/caiso.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
+
+  - name: US-Central
+    cell: data/cells/cell_b.csv
+    solar: data/solar/council_bluffs_ia.csv
+    price: data/prices/miso.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
+
+  - name: US-Southeast-1
+    cell: data/cells/cell_c.csv
+    solar: data/solar/douglas_county_ga.csv
+    price: data/prices/southern_co.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
+
+  - name: US-Southeast-2
+    cell: data/cells/cell_d.csv
+    solar: data/solar/berkeley_county_sc.csv
+    price: data/prices/duke_carolinas.csv
+    solar_capacity_mw: 50.0
+    rated_power_mw: 100.0
