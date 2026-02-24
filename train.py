@@ -2,7 +2,7 @@
 
 Usage:
     python train.py --scenario env/scenarios/us_model.yaml --timesteps 200000
-    python train.py --scenario env/scenarios/global_model.yaml --timesteps 200000
+    python train.py --scenario env/scenarios/us_model.yaml --batch-mode --timesteps 200000
 """
 
 from __future__ import annotations
@@ -19,13 +19,36 @@ from env.data_loader import load_scenario
 from env.multi_dc_env import MultiDCEnv
 
 
-def make_env(scenario_path: Path, max_steps: int | None = None) -> MultiDCEnv:
+def make_env(
+    scenario_path: Path,
+    max_steps: int | None = None,
+    batch_enabled: bool = False,
+    flexibility_factor: float = 1.0,
+    deadline_penalty_weight: float = 2.0,
+    urgency_horizon_steps: int = 12,
+) -> MultiDCEnv:
     """Create a MultiDCEnv from a scenario config."""
-    sites, power_model = load_scenario(scenario_path)
+    sites, power_model, batch_config = load_scenario(
+        scenario_path, batch_enabled=batch_enabled
+    )
+
+    # Merge YAML batch config with CLI overrides (CLI takes precedence)
+    ff = flexibility_factor
+    dp = deadline_penalty_weight
+    uh = urgency_horizon_steps
+    if batch_enabled and batch_config:
+        ff = batch_config.get("flexibility_factor", ff)
+        dp = batch_config.get("deadline_penalty_weight", dp)
+        uh = batch_config.get("urgency_horizon_steps", uh)
+
     return MultiDCEnv(
         sites=sites,
         power_model=power_model,
         max_steps=max_steps,
+        batch_enabled=batch_enabled,
+        flexibility_factor=ff,
+        deadline_penalty_weight=dp,
+        urgency_horizon_steps=uh,
     )
 
 
@@ -91,17 +114,49 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Run SB3 env checker before training",
     )
+    # Batch scheduling arguments
+    parser.add_argument(
+        "--batch-mode",
+        action="store_true",
+        help="Enable batch scheduling (temporal + spatial optimization)",
+    )
+    parser.add_argument(
+        "--flexibility-factor",
+        type=float,
+        default=1.0,
+        help="Deadline flexibility factor (default: 1.0). Higher = more slack.",
+    )
+    parser.add_argument(
+        "--deadline-penalty",
+        type=float,
+        default=2.0,
+        help="Penalty weight for batch deadline violations (default: 2.0)",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
+    if args.batch_mode:
+        scenario_name += "_batch"
     print(f"=== Training PPO on scenario: {scenario_name} ===")
 
     # Create environment
-    env = make_env(args.scenario, args.max_steps)
+    env = make_env(
+        args.scenario,
+        args.max_steps,
+        batch_enabled=args.batch_mode,
+        flexibility_factor=args.flexibility_factor,
+        deadline_penalty_weight=args.deadline_penalty,
+    )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
     print(f"Number of DCs: {env.n_dc}")
     print(f"Max steps per episode: {env.max_steps}")
+    if args.batch_mode:
+        for site in env.sites:
+            print(
+                f"  {site.name}: batch_fraction={site.batch_fraction:.3f}, "
+                f"mean_dur={site.batch_mean_duration_sec:.0f}s"
+            )
 
     if args.check_env:
         print("Running environment check...")
@@ -118,7 +173,7 @@ def main(argv: list[str] | None = None) -> None:
         policy_kwargs=dict(net_arch=args.net_arch),
         verbose=1,
         seed=args.seed,
-        tensorboard_log=None,  # Set to f"./tb_logs/{scenario_name}" if tensorboard is installed
+        tensorboard_log=None,
     )
 
     print(f"\nTraining for {args.timesteps} timesteps...")

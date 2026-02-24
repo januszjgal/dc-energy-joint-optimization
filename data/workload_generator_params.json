@@ -1,0 +1,132 @@
+{
+  "description": "Workload generator parameters fitted to Google ClusterData2019. Distributions fitted via MLE with KS-test selection. Following Da Costa et al. (2016) and Grange et al. (2018) methodology.",
+  "primary_cell": "a",
+  "inter_arrival": {
+    "distribution": "expon",
+    "params": [
+      5e-06,
+      26.183250458357357
+    ],
+    "ks_statistic": 0.2987916241759439,
+    "ks_pvalue": 0.0,
+    "name": "inter_arrival_sec",
+    "n_samples": 102311,
+    "mean": 26.18325545835736,
+    "median": 7.581608,
+    "std": 40.94655533413778,
+    "p5": 1.4e-05,
+    "p25": 0.27374,
+    "p75": 35.817152,
+    "p95": 113.85315349999999
+  },
+  "duration": {
+    "distribution": "expon",
+    "params": [
+      4.079896,
+      2101.427890661834
+    ],
+    "ks_statistic": 0.5344716216892896,
+    "ks_pvalue": 0.0,
+    "name": "duration_sec",
+    "n_samples": 102364,
+    "mean": 2105.5077866618344,
+    "median": 106.8217515,
+    "std": 22907.731473356915,
+    "p5": 15.6915987,
+    "p25": 44.64156025,
+    "p75": 610.90578925,
+    "p95": 3193.4840513999984
+  },
+  "cpu_request": {
+    "distribution": "expon",
+    "params": [
+      8.106231689453125e-05,
+      0.00953809530842178
+    ],
+    "ks_statistic": 0.12318246264817664,
+    "ks_pvalue": 0.0,
+    "name": "cpu_request",
+    "n_samples": 102046,
+    "mean": 0.00961915762531631,
+    "median": 0.0059890747070312,
+    "std": 0.012228774646313532,
+    "p5": 0.0016727447509765,
+    "p25": 0.0036087036132812,
+    "p75": 0.0097198486328125,
+    "p95": 0.03240966796875
+  },
+  "memory_request": {
+    "distribution": "expon",
+    "params": [
+      0.000126838684082,
+      0.006668239318335782
+    ],
+    "ks_statistic": 0.18369621832031913,
+    "ks_pvalue": 0.0,
+    "name": "memory_request",
+    "n_samples": 102122,
+    "mean": 0.006795078002417782,
+    "median": 0.0046539306640625,
+    "std": 0.009778934728436236,
+    "p5": 0.0010929107666015,
+    "p25": 0.0021400451660156,
+    "p75": 0.0065078735351562,
+    "p95": 0.021820068359375
+  },
+  "tasks_per_job": {
+    "distribution": "expon",
+    "params": [
+      1.0,
+      6.580487280684616
+    ],
+    "ks_statistic": 0.9755382751748661,
+    "ks_pvalue": 0.0,
+    "name": "tasks_per_job",
+    "n_samples": 102364,
+    "mean": 7.580487280684616,
+    "median": 1.0,
+    "std": 122.03130733450182,
+    "p5": 1.0,
+    "p25": 1.0,
+    "p75": 1.0,
+    "p95": 1.0
+  },
+  "workload_mix": {
+    "total_jobs": 4763884,
+    "batch_count": 205060,
+    "service_count": 4558824,
+    "batch_fraction": 0.04304470889719397
+  },
+  "deadline_model": {
+    "description": "deadline = submit_time + duration * (1 + flexibility_factor)",
+    "flexibility_factors": [
+      0.5,
+      1.0,
+      2.0,
+      4.0
+    ],
+    "note": "Grange et al. sweep these values; higher = more scheduling slack"
+  },
+  "cross_validation": {
+    "a": {
+      "batch_fraction": 0.04304470889719397,
+      "mean_duration": 2105.5077866618344,
+      "mean_inter_arrival": 26.18325545835736
+    },
+    "b": {
+      "batch_fraction": 0.48353333371739554,
+      "mean_duration": 4790.407922858309,
+      "mean_inter_arrival": 16.148690040878208
+    },
+    "c": {
+      "batch_fraction": 0.12954991391787776,
+      "mean_duration": 5714.449692784431,
+      "mean_inter_arrival": 6.033384345850592
+    },
+    "d": {
+      "batch_fraction": 0.20146474134305342,
+      "mean_duration": 3625.8817601775777,
+      "mean_inter_arrival": 18.44731212936413
+    }
+  }
+}
