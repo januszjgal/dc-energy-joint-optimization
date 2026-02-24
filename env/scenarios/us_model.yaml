@@ -3,6 +3,11 @@
 
 power_model: data/power_model_params.json
 
+batch:
+  flexibility_factor: 1.0
+  deadline_penalty_weight: 2.0
+  urgency_horizon_steps: 12
+
 sites:
   - name: US-West
     cell: data/cells/cell_a.csv
@@ -10,6 +15,7 @@ sites:
     price: data/prices/caiso.csv
     solar_capacity_mw: 50.0
     rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_a.json
 
   - name: US-Central
     cell: data/cells/cell_b.csv
@@ -17,6 +23,7 @@ sites:
     price: data/prices/miso.csv
     solar_capacity_mw: 50.0
     rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_b.json
 
   - name: US-Southeast-1
     cell: data/cells/cell_c.csv
@@ -24,6 +31,7 @@ sites:
     price: data/prices/southern_co.csv
     solar_capacity_mw: 50.0
     rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_c.json
 
   - name: US-Southeast-2
     cell: data/cells/cell_d.csv
@@ -31,3 +39,4 @@ sites:
     price: data/prices/duke_carolinas.csv
     solar_capacity_mw: 50.0
     rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_d.json
