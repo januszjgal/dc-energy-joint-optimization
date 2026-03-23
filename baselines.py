@@ -169,6 +169,71 @@ class DeferToSunPolicy:
         return _with_drain(routing, drain, env)
 
 
+class GreenSlotPolicy:
+    """GreenSlot-inspired lookahead scheduling (Goiri et al. 2011).
+
+    Looks ahead N timesteps to find the DC with the highest predicted solar
+    availability for spatial routing.  For temporal scheduling (batch drain),
+    drains aggressively when the current solar fraction at a DC is above the
+    average over the lookahead window, and defers when below average.
+
+    This approximates GreenSlot's core idea: schedule batch workloads into
+    future "green slots" where renewable energy is abundant.
+    """
+
+    name = "GreenSlot"
+
+    def __init__(self, lookahead: int = 36):
+        """Args:
+            lookahead: Number of future timesteps to consider (default: 36 = 3 hours).
+        """
+        self.lookahead = lookahead
+
+    def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
+        t = env.step_index
+        N = env.n_dc
+
+        # Compute average solar over the lookahead window for each DC
+        avg_solar = np.zeros(N, dtype=np.float32)
+        current_solar = np.zeros(N, dtype=np.float32)
+        for i, site in enumerate(env.sites):
+            current_solar[i] = site.get_solar_fraction(t)
+            total = current_solar[i]
+            count = 1
+            for dt in range(1, self.lookahead + 1):
+                future_t = t + dt
+                if future_t < site.num_timesteps:
+                    total += site.get_solar_fraction(future_t)
+                    count += 1
+            avg_solar[i] = total / count
+
+        # Spatial routing: weighted toward DCs with highest lookahead solar
+        if avg_solar.max() > 0:
+            # Use log-proportional routing (softmax-compatible)
+            weights = avg_solar / avg_solar.sum()
+            weights = np.clip(weights, 1e-6, None)
+            routing = np.log(weights).astype(np.float32)
+            routing = routing - routing.mean()
+            routing = np.clip(routing, -1.0, 1.0)
+        else:
+            routing = np.zeros(N, dtype=np.float32)
+
+        # Temporal scheduling: drain when current solar > lookahead average
+        # (i.e., this is a "green slot"), defer when below average
+        drain = np.zeros(N, dtype=np.float32)
+        for i in range(N):
+            if avg_solar[i] > 1e-6:
+                # Ratio > 1 means current is better than average → drain now
+                ratio = current_solar[i] / avg_solar[i]
+                # Map to sigmoid input: ratio=2 → +3, ratio=0.5 → -3
+                drain[i] = np.clip((ratio - 1.0) * 3.0, -3.0, 3.0)
+            else:
+                # No solar expected → drain immediately (no point waiting)
+                drain[i] = 3.0
+
+        return _with_drain(routing, drain, env)
+
+
 ALL_BASELINES = [
     RoundRobinPolicy,
     CheapestFirstPolicy,
@@ -177,4 +242,5 @@ ALL_BASELINES = [
     RandomPolicy,
     DrainImmediatelyPolicy,
     DeferToSunPolicy,
+    GreenSlotPolicy,
 ]
