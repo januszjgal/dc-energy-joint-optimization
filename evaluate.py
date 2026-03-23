@@ -373,7 +373,7 @@ def main(argv: list[str] | None = None) -> None:
     # 3. PPO allocation heatmap
     n_dc = len(dc_names)
     fractions_matrix = np.array(
-        [h["fractions"] for h in ppo_history]
+        [h["fractions"] for h in rl_history]
     )  # (T, n_dc)
     fig, ax = plt.subplots(figsize=(12, 4))
     im = ax.imshow(
@@ -402,7 +402,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.batch_mode:
         # Batch pool size over time
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
-        pool_sizes = [h.get("total_batch_pool", 0) for h in ppo_history]
+        pool_sizes = [h.get("total_batch_pool", 0) for h in rl_history]
         ax1.plot(pool_sizes, label="Total Batch Pool", color="tab:blue")
         ax1.set_ylabel("Batch Pool Size (norm CPU)")
         ax1.set_title(f"Batch Pool Evolution: {scenario_name}")
@@ -411,7 +411,7 @@ def main(argv: list[str] | None = None) -> None:
 
         for i in range(n_dc):
             drain_rates = [
-                h["per_dc"][i].get("drain_rate", 0) for h in ppo_history
+                h["per_dc"][i].get("drain_rate", 0) for h in rl_history
             ]
             ax2.plot(drain_rates, label=dc_names[i], alpha=0.7)
         ax2.set_xlabel("Timestep")
@@ -428,7 +428,7 @@ def main(argv: list[str] | None = None) -> None:
 
         # Drain rate heatmap
         drain_matrix = np.array(
-            [h.get("drain_rates", [0] * n_dc) for h in ppo_history]
+            [h.get("drain_rates", [0] * n_dc) for h in rl_history]
         )
         fig, ax = plt.subplots(figsize=(12, 4))
         im = ax.imshow(
