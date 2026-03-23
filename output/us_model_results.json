@@ -1,35 +1,35 @@
 {
   "PPO": {
-    "reward": -6338061.55392174,
+    "reward": -3930491.0333912577,
     "summary": {
-      "total_cost": 6338378.619700333,
-      "avg_renewable_frac": 0.1777872482750459,
-      "total_grid_mw_steps": 2111661.36694627,
+      "total_cost": 3931338.6767945504,
+      "avg_renewable_frac": 0.4752962898046265,
+      "total_grid_mw_steps": 1346687.643301826,
       "per_dc_energy_cost": {
-        "US-West": 1737504.558712777,
-        "US-Central": 1777379.007506014,
-        "US-Southeast-1": 1384126.9739359599,
-        "US-Southeast-2": 1394918.166960039
+        "US-West": 1249627.9295312907,
+        "US-Central": 1100914.931386778,
+        "US-Southeast-1": 753844.7595199607,
+        "US-Southeast-2": 825146.0105859399
       },
       "per_dc_avg_backlog": {
         "US-West": 0.0,
-        "US-Central": 3.3232337172848667,
+        "US-Central": 0.1349516482061381,
         "US-Southeast-1": 0.0,
         "US-Southeast-2": 0.0
       }
     }
   },
   "Round Robin": {
-    "reward": -6476910.9485175,
+    "reward": -3929310.4202567795,
     "summary": {
-      "total_cost": 6477228.531152203,
-      "avg_renewable_frac": 0.17807706329818052,
-      "total_grid_mw_steps": 2111895.9480944388,
+      "total_cost": 3930168.9539699554,
+      "avg_renewable_frac": 0.4814027772913844,
+      "total_grid_mw_steps": 1331164.5779207905,
       "per_dc_energy_cost": {
-        "US-West": 2084185.943236256,
-        "US-Central": 1341595.1385547374,
-        "US-Southeast-1": 1604941.259850691,
-        "US-Southeast-2": 1446506.1895105187
+        "US-West": 1216497.2830534773,
+        "US-Central": 850457.363042836,
+        "US-Southeast-1": 985140.1080379604,
+        "US-Southeast-2": 878074.1998356818
       },
       "per_dc_avg_backlog": {
         "US-West": 0.0,
@@ -40,16 +40,16 @@
     }
   },
   "Cheapest Price First": {
-    "reward": -37107042.30925179,
+    "reward": -35010191.15199064,
     "summary": {
-      "total_cost": 37107389.94157575,
-      "avg_renewable_frac": 0.19492672641591618,
-      "total_grid_mw_steps": 1892210.0321135009,
+      "total_cost": 35011042.715808935,
+      "avg_renewable_frac": 0.4774945712329686,
+      "total_grid_mw_steps": 1227692.9037903398,
       "per_dc_energy_cost": {
-        "US-West": 1552912.673969242,
-        "US-Central": 1782993.1538689954,
-        "US-Southeast-1": 1188854.2160824065,
-        "US-Southeast-2": 1074986.3424367232
+        "US-West": 926294.7941264326,
+        "US-Central": 1146558.244091751,
+        "US-Southeast-1": 754784.7447172565,
+        "US-Southeast-2": 675761.377655114
       },
       "per_dc_avg_backlog": {
         "US-West": 0.0,
@@ -60,16 +60,16 @@
     }
   },
   "Follow the Sun": {
-    "reward": -12358243.310459873,
+    "reward": -9543442.142236976,
     "summary": {
-      "total_cost": 12358547.569898687,
-      "avg_renewable_frac": 0.1706063916060089,
-      "total_grid_mw_steps": 2088048.7630877667,
+      "total_cost": 9544312.596368326,
+      "avg_renewable_frac": 0.4880868741529822,
+      "total_grid_mw_steps": 1241468.1072221668,
       "per_dc_energy_cost": {
-        "US-West": 2639703.493127927,
-        "US-Central": 1104410.0272738659,
-        "US-Southeast-1": 1391127.1179506665,
-        "US-Southeast-2": 1469291.1050325087
+        "US-West": 1536059.3773634897,
+        "US-Central": 665319.9901624215,
+        "US-Southeast-1": 771782.45137273,
+        "US-Southeast-2": 817134.9509559651
       },
       "per_dc_avg_backlog": {
         "US-West": 408.34577848019785,
@@ -80,16 +80,16 @@
     }
   },
   "Local Only (No Routing)": {
-    "reward": -6484932.769034049,
+    "reward": -3940018.3295157123,
     "summary": {
-      "total_cost": 6485250.351668732,
-      "avg_renewable_frac": 0.17807706329818052,
-      "total_grid_mw_steps": 2111895.9480944388,
+      "total_cost": 3940875.9065038017,
+      "avg_renewable_frac": 0.4808663159794771,
+      "total_grid_mw_steps": 1332548.0828794339,
       "per_dc_energy_cost": {
-        "US-West": 2107823.4871238843,
-        "US-Central": 1334705.3612125989,
-        "US-Southeast-1": 1607402.1709746965,
-        "US-Southeast-2": 1435319.332357553
+        "US-West": 1238523.2558124969,
+        "US-Central": 846728.846670733,
+        "US-Southeast-1": 984062.337919502,
+        "US-Southeast-2": 871561.46610107
       },
       "per_dc_avg_backlog": {
         "US-West": 0.0,
@@ -100,16 +100,16 @@
     }
   },
   "Random": {
-    "reward": -6476736.155220197,
+    "reward": -3942144.5790986987,
     "summary": {
-      "total_cost": 6477053.891061134,
-      "avg_renewable_frac": 0.1781629701411188,
-      "total_grid_mw_steps": 2111895.9480944388,
+      "total_cost": 3943000.395331092,
+      "avg_renewable_frac": 0.4798790132949614,
+      "total_grid_mw_steps": 1335133.4297740443,
       "per_dc_energy_cost": {
-        "US-West": 2079245.7194610822,
-        "US-Central": 1342478.923789418,
-        "US-Southeast-1": 1606148.8061919992,
-        "US-Southeast-2": 1448158.2210776547
+        "US-West": 1217687.4586784313,
+        "US-Central": 853788.3796241628,
+        "US-Southeast-1": 989021.8095980681,
+        "US-Southeast-2": 881480.5268894498
       },
       "per_dc_avg_backlog": {
         "US-West": 0.021621808346457008,
@@ -120,16 +120,16 @@
     }
   },
   "Drain Immediately": {
-    "reward": -6476910.9485175,
+    "reward": -3929310.4202567795,
     "summary": {
-      "total_cost": 6477228.531152203,
-      "avg_renewable_frac": 0.17807706329818052,
-      "total_grid_mw_steps": 2111895.9480944388,
+      "total_cost": 3930168.9539699554,
+      "avg_renewable_frac": 0.4814027772913844,
+      "total_grid_mw_steps": 1331164.5779207905,
       "per_dc_energy_cost": {
-        "US-West": 2084185.943236256,
-        "US-Central": 1341595.1385547374,
-        "US-Southeast-1": 1604941.259850691,
-        "US-Southeast-2": 1446506.1895105187
+        "US-West": 1216497.2830534773,
+        "US-Central": 850457.363042836,
+        "US-Southeast-1": 985140.1080379604,
+        "US-Southeast-2": 878074.1998356818
       },
       "per_dc_avg_backlog": {
         "US-West": 0.0,
@@ -140,22 +140,42 @@
     }
   },
   "Defer to Sun": {
-    "reward": -6476910.9485175,
+    "reward": -3929310.4202567795,
     "summary": {
-      "total_cost": 6477228.531152203,
-      "avg_renewable_frac": 0.17807706329818052,
-      "total_grid_mw_steps": 2111895.9480944388,
+      "total_cost": 3930168.9539699554,
+      "avg_renewable_frac": 0.4814027772913844,
+      "total_grid_mw_steps": 1331164.5779207905,
       "per_dc_energy_cost": {
-        "US-West": 2084185.943236256,
-        "US-Central": 1341595.1385547374,
-        "US-Southeast-1": 1604941.259850691,
-        "US-Southeast-2": 1446506.1895105187
+        "US-West": 1216497.2830534773,
+        "US-Central": 850457.363042836,
+        "US-Southeast-1": 985140.1080379604,
+        "US-Southeast-2": 878074.1998356818
       },
       "per_dc_avg_backlog": {
         "US-West": 0.0,
         "US-Central": 0.0,
         "US-Southeast-1": 0.0,
         "US-Southeast-2": 0.0
+      }
+    }
+  },
+  "GreenSlot": {
+    "reward": -3908505.3329033935,
+    "summary": {
+      "total_cost": 3909396.15693537,
+      "avg_renewable_frac": 0.49950882129607704,
+      "total_grid_mw_steps": 1286338.0041407337,
+      "per_dc_energy_cost": {
+        "US-West": 1216499.832331208,
+        "US-Central": 800127.0340002485,
+        "US-Southeast-1": 937768.9679240413,
+        "US-Southeast-2": 858094.4298735869
+      },
+      "per_dc_avg_backlog": {
+        "US-West": 4.512659961604343,
+        "US-Central": 0.0008972922310972019,
+        "US-Southeast-1": 0.008474301661797863,
+        "US-Southeast-2": 2.7229979990080526
       }
     }
   }
