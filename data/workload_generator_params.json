@@ -1,5 +1,5 @@
 {
-  "description": "Workload generator parameters fitted to Google ClusterData2019. Distributions fitted via MLE with KS-test selection. Following Da Costa et al. (2016) and Grange et al. (2018) methodology.",
+  "description": "Workload generator parameters fitted to Google ClusterData2019. Distributions fitted via MLE on 200k batch jobs per cell. Following Da Costa et al. (2016) and Grange et al. (2018) methodology.",
   "primary_cell": "a",
   "inter_arrival": {
     "distribution": "expon",
@@ -109,24 +109,28 @@
   },
   "cross_validation": {
     "a": {
-      "batch_fraction": 0.04304470889719397,
-      "mean_duration": 2105.5077866618344,
-      "mean_inter_arrival": 26.18325545835736
+      "batch_fraction": 0.04304,
+      "mean_duration": 11043.576667093406,
+      "duration_distribution": "weibull_min",
+      "inter_arrival_distribution": "expon"
     },
     "b": {
-      "batch_fraction": 0.48353333371739554,
-      "mean_duration": 4790.407922858309,
-      "mean_inter_arrival": 16.148690040878208
+      "batch_fraction": 0.48353,
+      "mean_duration": 12726.605469269367,
+      "duration_distribution": "lognorm",
+      "inter_arrival_distribution": "gamma"
     },
     "c": {
-      "batch_fraction": 0.12954991391787776,
-      "mean_duration": 5714.449692784431,
-      "mean_inter_arrival": 6.033384345850592
+      "batch_fraction": 0.12955,
+      "mean_duration": 15159.857493709593,
+      "duration_distribution": "lognorm",
+      "inter_arrival_distribution": "gamma"
     },
     "d": {
-      "batch_fraction": 0.20146474134305342,
-      "mean_duration": 3625.8817601775777,
-      "mean_inter_arrival": 18.44731212936413
+      "batch_fraction": 0.20146,
+      "mean_duration": 14917.275307737285,
+      "duration_distribution": "lognorm",
+      "inter_arrival_distribution": "gamma"
     }
   }
 }

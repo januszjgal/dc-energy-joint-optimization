@@ -25,16 +25,27 @@ from env.dc_site import DataCenterSite
 from env.power_model import PowerModel
 
 
+INTERVAL_HOURS = 5.0 / 60.0  # 5-minute intervals
+
+
 class MultiDCEnv(gym.Env):
     """Gymnasium environment for multi-DC workload routing.
 
-    **Legacy mode** (batch_enabled=False):
+    **Legacy mode** (batch_enabled=False, memory_enabled=False):
         Observation: 5*N + 2
         Action:      N  (spatial routing only)
 
-    **Batch mode** (batch_enabled=True):
+    **Legacy + memory** (batch_enabled=False, memory_enabled=True):
+        Observation: 6*N + 2
+        Action:      N
+
+    **Batch mode** (batch_enabled=True, memory_enabled=False):
         Observation: 7*N + 3
         Action:      2*N (spatial routing + temporal drain rates)
+
+    **Batch + memory** (batch_enabled=True, memory_enabled=True):
+        Observation: 9*N + 3
+        Action:      2*N
     """
 
     metadata = {"render_modes": []}
@@ -54,6 +65,8 @@ class MultiDCEnv(gym.Env):
         deadline_penalty_weight: float = 2.0,
         urgency_horizon_steps: int = 12,
         interval_seconds: int = 300,
+        # Memory constraint
+        memory_enabled: bool = False,
     ):
         super().__init__()
 
@@ -78,6 +91,9 @@ class MultiDCEnv(gym.Env):
         self.urgency_horizon_steps = urgency_horizon_steps
         self.interval_seconds = interval_seconds
 
+        # Memory
+        self.memory_enabled = memory_enabled
+
         # Precompute per-site deadline offsets (in timesteps)
         self._deadline_offsets: list[int] = []
         if self.batch_enabled:
@@ -93,11 +109,13 @@ class MultiDCEnv(gym.Env):
                 self._deadline_offsets.append(offset)
 
         # Observation & action spaces
+        mem_dims = 2 if memory_enabled else 0  # memory_load + memory_backlog (batch) or memory_load (legacy)
         if self.batch_enabled:
-            obs_dim = 7 * self.n_dc + 3
+            obs_dim = (7 + mem_dims) * self.n_dc + 3
             action_dim = 2 * self.n_dc
         else:
-            obs_dim = 5 * self.n_dc + 2
+            mem_dims_legacy = 1 if memory_enabled else 0
+            obs_dim = (5 + mem_dims_legacy) * self.n_dc + 2
             action_dim = self.n_dc
 
         self.observation_space = spaces.Box(
@@ -118,8 +136,9 @@ class MultiDCEnv(gym.Env):
     ) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         self.step_index = 0
-        for site in self.sites:
-            site.reset()
+        for i, site in enumerate(self.sites):
+            site_seed = seed + i if seed is not None else None
+            site.reset(seed=site_seed)
         return self._get_obs(), {}
 
     # ------------------------------------------------------------------
@@ -161,8 +180,15 @@ class MultiDCEnv(gym.Env):
             assigned = fractions[i] * total_demand
             total_to_serve = assigned + site.backlog
 
-            # Serve what we can (up to capacity)
+            # Serve what we can (up to CPU capacity)
             served = min(total_to_serve, site.capacity)
+
+            # Memory constraint: check if memory would be exceeded
+            if self.memory_enabled:
+                mem_required = served * site.memory_cpu_ratio
+                if mem_required > site.memory_capacity:
+                    served = site.memory_capacity / site.memory_cpu_ratio
+
             new_backlog = total_to_serve - served
 
             # Power consumption
@@ -171,16 +197,13 @@ class MultiDCEnv(gym.Env):
 
             # Solar supply
             solar_mw = site.solar_capacity_mw * site.get_solar_fraction(t)
-
-            # Grid power (what we need from the grid)
-            grid_mw = max(0.0, power_mw - solar_mw)
             renewable_used = min(power_mw, solar_mw)
+            grid_mw = max(0.0, power_mw - renewable_used)
 
             # Energy cost for this 5-min interval
-            interval_hours = 5.0 / 60.0  # 5 minutes in hours
-            energy_cost = site.get_price(t) * grid_mw * 1000.0 * interval_hours
+            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS
 
-            # Backlog penalty
+            # Backlog penalty (CPU)
             backlog_cost = self.backlog_weight * new_backlog
 
             # Capacity violation penalty
@@ -193,6 +216,8 @@ class MultiDCEnv(gym.Env):
             # Update site state
             site.backlog = new_backlog
             site.current_load = served
+            if self.memory_enabled:
+                site.current_memory_load = served * site.memory_cpu_ratio
 
             total_cost += dc_cost
             total_renewable_used += renewable_used
@@ -295,7 +320,12 @@ class MultiDCEnv(gym.Env):
             total_work = service_to_serve + batch_work
 
             # Serve up to capacity — service gets priority
-            served = min(total_work, site.capacity)
+            max_serve = site.capacity
+            if self.memory_enabled:
+                mem_limit = site.memory_capacity / site.memory_cpu_ratio
+                max_serve = min(max_serve, mem_limit)
+
+            served = min(total_work, max_serve)
             service_served = min(service_to_serve, served)
             batch_served = served - service_served
             new_backlog = service_to_serve - service_served
@@ -311,14 +341,11 @@ class MultiDCEnv(gym.Env):
 
             # Solar supply
             solar_mw = site.solar_capacity_mw * site.get_solar_fraction(t)
-
-            # Grid power
-            grid_mw = max(0.0, power_mw - solar_mw)
             renewable_used = min(power_mw, solar_mw)
+            grid_mw = max(0.0, power_mw - renewable_used)
 
             # Energy cost for this 5-min interval
-            interval_hours = 5.0 / 60.0
-            energy_cost = site.get_price(t) * grid_mw * 1000.0 * interval_hours
+            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS
 
             # Service backlog penalty
             backlog_cost = self.backlog_weight * new_backlog
@@ -336,6 +363,8 @@ class MultiDCEnv(gym.Env):
             # Update site state
             site.backlog = new_backlog
             site.current_load = served
+            if self.memory_enabled:
+                site.current_memory_load = served * site.memory_cpu_ratio
 
             total_cost += dc_cost
             total_renewable_used += renewable_used
@@ -413,17 +442,19 @@ class MultiDCEnv(gym.Env):
                 urgency = site.batch_pool.urgency(
                     t, self.urgency_horizon_steps
                 )
-                obs_parts.extend(
-                    [
-                        svc,
-                        pool_size,
-                        urgency,
-                        site.backlog,
-                        site.get_price(t),
-                        site.get_solar_fraction(t),
-                        site.current_load,
-                    ]
-                )
+                per_dc = [
+                    svc,
+                    pool_size,
+                    urgency,
+                    site.backlog,
+                    site.get_price(t),
+                    site.get_solar_fraction(t),
+                    site.current_load,
+                ]
+                if self.memory_enabled:
+                    per_dc.append(site.current_memory_load)
+                    per_dc.append(site.memory_backlog)
+                obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_service, total_batch_pool, hour_of_day])
         else:
@@ -431,15 +462,16 @@ class MultiDCEnv(gym.Env):
             for site in self.sites:
                 demand = site.get_local_demand(t)
                 total_demand += demand
-                obs_parts.extend(
-                    [
-                        demand,
-                        site.backlog,
-                        site.get_price(t),
-                        site.get_solar_fraction(t),
-                        site.current_load,
-                    ]
-                )
+                per_dc = [
+                    demand,
+                    site.backlog,
+                    site.get_price(t),
+                    site.get_solar_fraction(t),
+                    site.current_load,
+                ]
+                if self.memory_enabled:
+                    per_dc.append(site.current_memory_load)
+                obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_demand, hour_of_day])
 

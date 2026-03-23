@@ -26,10 +26,16 @@ def make_env(
     flexibility_factor: float = 1.0,
     deadline_penalty_weight: float = 2.0,
     urgency_horizon_steps: int = 12,
+    memory_enabled: bool = False,
+    dynamic_arrivals: bool = True,
+    seed: int = 42,
 ) -> MultiDCEnv:
     """Create a MultiDCEnv from a scenario config."""
     sites, power_model, batch_config = load_scenario(
-        scenario_path, batch_enabled=batch_enabled
+        scenario_path,
+        batch_enabled=batch_enabled,
+        dynamic_arrivals=dynamic_arrivals,
+        seed=seed,
     )
 
     # Merge YAML batch config with CLI overrides (CLI takes precedence)
@@ -49,6 +55,7 @@ def make_env(
         flexibility_factor=ff,
         deadline_penalty_weight=dp,
         urgency_horizon_steps=uh,
+        memory_enabled=memory_enabled,
     )
 
 
@@ -132,6 +139,16 @@ def main(argv: list[str] | None = None) -> None:
         default=2.0,
         help="Penalty weight for batch deadline violations (default: 2.0)",
     )
+    parser.add_argument(
+        "--memory",
+        action="store_true",
+        help="Enable memory as a constraint dimension",
+    )
+    parser.add_argument(
+        "--no-dynamic-arrivals",
+        action="store_true",
+        help="Disable dynamic batch arrivals (use static fraction split)",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -146,6 +163,9 @@ def main(argv: list[str] | None = None) -> None:
         batch_enabled=args.batch_mode,
         flexibility_factor=args.flexibility_factor,
         deadline_penalty_weight=args.deadline_penalty,
+        memory_enabled=args.memory,
+        dynamic_arrivals=not args.no_dynamic_arrivals,
+        seed=args.seed,
     )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")

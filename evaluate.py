@@ -18,7 +18,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from stable_baselines3 import PPO
+from stable_baselines3 import DQN, PPO
 
 from baselines import ALL_BASELINES
 from env.data_loader import load_scenario
@@ -119,10 +119,16 @@ def _make_env(
     batch_enabled: bool = False,
     flexibility_factor: float = 1.0,
     deadline_penalty_weight: float = 2.0,
+    memory_enabled: bool = False,
+    dynamic_arrivals: bool = True,
+    seed: int = 42,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
     sites, power_model, batch_config = load_scenario(
-        scenario_path, batch_enabled=batch_enabled
+        scenario_path,
+        batch_enabled=batch_enabled,
+        dynamic_arrivals=dynamic_arrivals,
+        seed=seed,
     )
     ff = batch_config.get("flexibility_factor", flexibility_factor)
     dp = batch_config.get("deadline_penalty_weight", deadline_penalty_weight)
@@ -134,6 +140,7 @@ def _make_env(
         flexibility_factor=ff,
         deadline_penalty_weight=dp,
         urgency_horizon_steps=uh,
+        memory_enabled=memory_enabled,
     )
 
 
@@ -168,6 +175,29 @@ def main(argv: list[str] | None = None) -> None:
         default=2.0,
         help="Deadline violation penalty weight (default: 2.0)",
     )
+    parser.add_argument(
+        "--memory",
+        action="store_true",
+        help="Enable memory as a constraint dimension",
+    )
+    parser.add_argument(
+        "--no-dynamic-arrivals",
+        action="store_true",
+        help="Disable dynamic batch arrivals (use static fraction split)",
+    )
+    parser.add_argument(
+        "--algorithm",
+        type=str,
+        default="ppo",
+        choices=["ppo", "dqn"],
+        help="RL algorithm used for the trained model (default: ppo)",
+    )
+    parser.add_argument(
+        "--dqn-model",
+        type=Path,
+        default=None,
+        help="Path to a second (DQN) model for comparison",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -175,26 +205,57 @@ def main(argv: list[str] | None = None) -> None:
         scenario_name += "_batch"
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load trained model
-    print(f"Loading model from {args.model}...")
-    ppo_model = PPO.load(args.model)
+    results: dict[str, Any] = {}
 
-    # Evaluate PPO
-    print("Evaluating PPO agent...")
+    # Load primary trained model
+    print(f"Loading {args.algorithm.upper()} model from {args.model}...")
+    if args.algorithm == "dqn":
+        from env.discrete_wrapper import DiscretizedMultiDCEnv
+
+        rl_model = DQN.load(args.model)
+        rl_label = "DQN"
+    else:
+        rl_model = PPO.load(args.model)
+        rl_label = "PPO"
+
+    # Evaluate primary model
+    print(f"Evaluating {rl_label} agent...")
     env = _make_env(
         args.scenario,
         batch_enabled=args.batch_mode,
         flexibility_factor=args.flexibility_factor,
         deadline_penalty_weight=args.deadline_penalty,
+        memory_enabled=args.memory,
+        dynamic_arrivals=not args.no_dynamic_arrivals,
     )
-    ppo_reward, ppo_history = run_episode(env, ppo_model.predict, is_sb3=True)
-    ppo_summary = compute_summary(ppo_history, batch_enabled=args.batch_mode)
-    print(f"  PPO total cost: {ppo_summary['total_cost']:.2f}")
+    if args.algorithm == "dqn":
+        env = DiscretizedMultiDCEnv(env)
+    rl_reward, rl_history = run_episode(env, rl_model.predict, is_sb3=True)
+    rl_summary = compute_summary(rl_history, batch_enabled=args.batch_mode)
+    print(f"  {rl_label} total cost: {rl_summary['total_cost']:.2f}")
+    results[rl_label] = {"reward": rl_reward, "summary": rl_summary, "history": rl_history}
 
-    # Evaluate baselines
-    results = {
-        "PPO": {"reward": ppo_reward, "summary": ppo_summary, "history": ppo_history}
-    }
+    # Optionally load a second model (e.g., DQN for comparison)
+    if args.dqn_model is not None and args.algorithm != "dqn":
+        from env.discrete_wrapper import DiscretizedMultiDCEnv
+
+        print(f"Loading DQN model from {args.dqn_model}...")
+        dqn_model = DQN.load(args.dqn_model)
+        env2 = _make_env(
+            args.scenario,
+            batch_enabled=args.batch_mode,
+            flexibility_factor=args.flexibility_factor,
+            deadline_penalty_weight=args.deadline_penalty,
+            memory_enabled=args.memory,
+            dynamic_arrivals=not args.no_dynamic_arrivals,
+        )
+        env2 = DiscretizedMultiDCEnv(env2)
+        dqn_reward, dqn_history = run_episode(env2, dqn_model.predict, is_sb3=True)
+        dqn_summary = compute_summary(dqn_history, batch_enabled=args.batch_mode)
+        print(f"  DQN total cost: {dqn_summary['total_cost']:.2f}")
+        results["DQN"] = {"reward": dqn_reward, "summary": dqn_summary, "history": dqn_history}
+
+    ppo_summary = rl_summary  # for dc_names later
 
     for baseline_cls in ALL_BASELINES:
         baseline = baseline_cls()
