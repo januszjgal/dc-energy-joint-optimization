@@ -122,6 +122,7 @@ def _make_env(
     memory_enabled: bool = False,
     dynamic_arrivals: bool = True,
     seed: int = 42,
+    duck_curve_weight: float = 0.0,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
     sites, power_model, batch_config = load_scenario(
@@ -141,6 +142,7 @@ def _make_env(
         deadline_penalty_weight=dp,
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
+        duck_curve_weight=duck_curve_weight,
     )
 
 
@@ -198,6 +200,12 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help="Path to a second (DQN) model for comparison",
     )
+    parser.add_argument(
+        "--duck-curve-weight",
+        type=float,
+        default=0.0,
+        help="Duck curve stress weight (must match value used during training)",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -227,6 +235,7 @@ def main(argv: list[str] | None = None) -> None:
         deadline_penalty_weight=args.deadline_penalty,
         memory_enabled=args.memory,
         dynamic_arrivals=not args.no_dynamic_arrivals,
+        duck_curve_weight=args.duck_curve_weight,
     )
     if args.algorithm == "dqn":
         env = DiscretizedMultiDCEnv(env)
@@ -248,6 +257,7 @@ def main(argv: list[str] | None = None) -> None:
             deadline_penalty_weight=args.deadline_penalty,
             memory_enabled=args.memory,
             dynamic_arrivals=not args.no_dynamic_arrivals,
+            duck_curve_weight=args.duck_curve_weight,
         )
         env2 = DiscretizedMultiDCEnv(env2)
         dqn_reward, dqn_history = run_episode(env2, dqn_model.predict, is_sb3=True)
@@ -265,6 +275,7 @@ def main(argv: list[str] | None = None) -> None:
             batch_enabled=args.batch_mode,
             flexibility_factor=args.flexibility_factor,
             deadline_penalty_weight=args.deadline_penalty,
+            duck_curve_weight=args.duck_curve_weight,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
         summary = compute_summary(history, batch_enabled=args.batch_mode)

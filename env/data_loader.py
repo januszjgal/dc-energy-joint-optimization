@@ -22,6 +22,27 @@ def load_csv_values(path: Path, value_col: str) -> np.ndarray:
     return df[value_col].values.astype(np.float32)
 
 
+def compute_duck_score(price: np.ndarray, window: int = 288) -> np.ndarray:
+    """Compute rolling 24-hour z-score of price as a duck curve stress signal.
+
+    A positive score means the current price is above the recent 24-hour average
+    (the grid is relatively stressed — this is the "duck curve peak").
+    A negative score means the grid is off-peak.
+
+    Args:
+        price: Electricity price timeseries ($/kWh).
+        window: Rolling window size in timesteps (default: 288 = 24 hours at 5-min).
+
+    Returns:
+        Duck score array, clipped to [-3, 3].
+    """
+    s = pd.Series(price.astype(np.float64))
+    roll_mean = s.rolling(window, center=True, min_periods=1).mean()
+    roll_std = s.rolling(window, center=True, min_periods=1).std().fillna(1.0)
+    score = (s - roll_mean) / (roll_std + 1e-6)
+    return np.clip(score.values, -3.0, 3.0).astype(np.float32)
+
+
 def _load_machine_fleet(path: Path) -> dict[str, float]:
     """Load machine fleet data and return aggregate stats."""
     df = pd.read_csv(path)
@@ -83,6 +104,9 @@ def load_scenario(
         solar = solar[:min_len]
         price = price[:min_len]
 
+        # Precompute duck curve stress score from price (rolling 24h z-score)
+        duck_score = compute_duck_score(price)
+
         # Load machine fleet data if available
         machines_path = site_cfg.get("machines")
         fleet = None
@@ -109,6 +133,7 @@ def load_scenario(
             "workload": workload,
             "solar": solar,
             "price": price,
+            "duck_score": duck_score,
             "batch_fraction": batch_fraction,
             "batch_mean_duration_sec": batch_mean_duration_sec,
             "memory_cpu_ratio": memory_cpu_ratio,
@@ -145,6 +170,7 @@ def load_scenario(
             workload=sd["workload"],
             solar=sd["solar"],
             price=sd["price"],
+            duck_score=sd["duck_score"],
             solar_capacity_mw=site_cfg.get("solar_capacity_mw", 50.0),
             rated_power_mw=site_cfg.get("rated_power_mw", 100.0),
             capacity=capacity,
