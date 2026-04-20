@@ -38,6 +38,7 @@ class DataCenterSite:
     workload: np.ndarray  # shape: (T,)
     solar: np.ndarray  # shape: (T,)
     price: np.ndarray  # shape: (T,)
+    duck_score: np.ndarray = field(default_factory=lambda: np.zeros(0))  # shape: (T,)
     solar_capacity_mw: float = 50.0
     rated_power_mw: float = 100.0
     capacity: float = 1.0
@@ -106,3 +107,14 @@ class DataCenterSite:
     def get_price(self, t: int) -> float:
         """Return electricity price at timestep t."""
         return float(self.price[t])
+
+    def get_duck_score(self, t: int) -> float:
+        """Return duck curve stress score at timestep t.
+
+        Positive = grid more stressed than recent average (expensive to draw grid power).
+        Negative = grid less stressed than average (cheap/off-peak).
+        Range: approximately [-3, 3] (clipped z-score).
+        """
+        if len(self.duck_score) == 0 or t >= len(self.duck_score):
+            return 0.0
+        return float(self.duck_score[t])

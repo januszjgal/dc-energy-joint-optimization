@@ -32,19 +32,19 @@ class MultiDCEnv(gym.Env):
     """Gymnasium environment for multi-DC workload routing.
 
     **Legacy mode** (batch_enabled=False, memory_enabled=False):
-        Observation: 5*N + 2
+        Observation: 5*N + 2  (+1*N if duck_curve_weight > 0)
         Action:      N  (spatial routing only)
 
     **Legacy + memory** (batch_enabled=False, memory_enabled=True):
-        Observation: 6*N + 2
+        Observation: 6*N + 2  (+1*N if duck_curve_weight > 0)
         Action:      N
 
     **Batch mode** (batch_enabled=True, memory_enabled=False):
-        Observation: 7*N + 3
+        Observation: 7*N + 3  (+1*N if duck_curve_weight > 0)
         Action:      2*N (spatial routing + temporal drain rates)
 
     **Batch + memory** (batch_enabled=True, memory_enabled=True):
-        Observation: 9*N + 3
+        Observation: 9*N + 3  (+1*N if duck_curve_weight > 0)
         Action:      2*N
     """
 
@@ -67,6 +67,8 @@ class MultiDCEnv(gym.Env):
         interval_seconds: int = 300,
         # Memory constraint
         memory_enabled: bool = False,
+        # Duck curve stress weighting
+        duck_curve_weight: float = 0.0,
     ):
         super().__init__()
 
@@ -94,6 +96,9 @@ class MultiDCEnv(gym.Env):
         # Memory
         self.memory_enabled = memory_enabled
 
+        # Duck curve
+        self.duck_curve_weight = duck_curve_weight
+
         # Precompute per-site deadline offsets (in timesteps)
         self._deadline_offsets: list[int] = []
         if self.batch_enabled:
@@ -110,12 +115,13 @@ class MultiDCEnv(gym.Env):
 
         # Observation & action spaces
         mem_dims = 2 if memory_enabled else 0  # memory_load + memory_backlog (batch) or memory_load (legacy)
+        duck_dims = 1 if duck_curve_weight > 0 else 0  # duck_score per DC
         if self.batch_enabled:
-            obs_dim = (7 + mem_dims) * self.n_dc + 3
+            obs_dim = (7 + mem_dims + duck_dims) * self.n_dc + 3
             action_dim = 2 * self.n_dc
         else:
             mem_dims_legacy = 1 if memory_enabled else 0
-            obs_dim = (5 + mem_dims_legacy) * self.n_dc + 2
+            obs_dim = (5 + mem_dims_legacy + duck_dims) * self.n_dc + 2
             action_dim = self.n_dc
 
         self.observation_space = spaces.Box(
@@ -201,7 +207,9 @@ class MultiDCEnv(gym.Env):
             grid_mw = max(0.0, power_mw - renewable_used)
 
             # Energy cost for this 5-min interval
-            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS
+            # Duck curve weight amplifies cost during peak grid stress periods
+            duck_multiplier = 1.0 + self.duck_curve_weight * site.get_duck_score(t)
+            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS * duck_multiplier
 
             # Backlog penalty (CPU)
             backlog_cost = self.backlog_weight * new_backlog
@@ -345,7 +353,9 @@ class MultiDCEnv(gym.Env):
             grid_mw = max(0.0, power_mw - renewable_used)
 
             # Energy cost for this 5-min interval
-            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS
+            # Duck curve weight amplifies cost during peak grid stress periods
+            duck_multiplier = 1.0 + self.duck_curve_weight * site.get_duck_score(t)
+            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS * duck_multiplier
 
             # Service backlog penalty
             backlog_cost = self.backlog_weight * new_backlog
@@ -454,6 +464,8 @@ class MultiDCEnv(gym.Env):
                 if self.memory_enabled:
                     per_dc.append(site.current_memory_load)
                     per_dc.append(site.memory_backlog)
+                if self.duck_curve_weight > 0:
+                    per_dc.append(site.get_duck_score(t))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_service, total_batch_pool, hour_of_day])
@@ -471,6 +483,8 @@ class MultiDCEnv(gym.Env):
                 ]
                 if self.memory_enabled:
                     per_dc.append(site.current_memory_load)
+                if self.duck_curve_weight > 0:
+                    per_dc.append(site.get_duck_score(t))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_demand, hour_of_day])

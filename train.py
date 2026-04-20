@@ -29,6 +29,7 @@ def make_env(
     memory_enabled: bool = False,
     dynamic_arrivals: bool = True,
     seed: int = 42,
+    duck_curve_weight: float = 0.0,
 ) -> MultiDCEnv:
     """Create a MultiDCEnv from a scenario config."""
     sites, power_model, batch_config = load_scenario(
@@ -56,6 +57,7 @@ def make_env(
         deadline_penalty_weight=dp,
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
+        duck_curve_weight=duck_curve_weight,
     )
 
 
@@ -149,6 +151,14 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Disable dynamic batch arrivals (use static fraction split)",
     )
+    parser.add_argument(
+        "--duck-curve-weight",
+        type=float,
+        default=0.0,
+        help="Duck curve stress weight (0=disabled, 0.3=moderate). Amplifies energy "
+             "cost during peak grid stress periods to encourage load-shifting away from "
+             "high duck-curve regions like California during evening ramp (default: 0.0)",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -166,6 +176,7 @@ def main(argv: list[str] | None = None) -> None:
         memory_enabled=args.memory,
         dynamic_arrivals=not args.no_dynamic_arrivals,
         seed=args.seed,
+        duck_curve_weight=args.duck_curve_weight,
     )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
