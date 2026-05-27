@@ -78,25 +78,25 @@ def main() -> None:
     plt.close(fig)
     print(f"Saved to {out_path}")
 
-    # Renewable fraction comparison
-    us_renew = [us_results[p]["summary"]["avg_renewable_frac"] * 100 for p in policies]
-    global_renew = [global_results[p]["summary"]["avg_renewable_frac"] * 100 for p in policies]
+    # Peak-penalty comparison (replaces the old renewable-fraction plot)
+    us_peak = [us_results[p]["summary"].get("total_peak_penalty", 0) for p in policies]
+    global_peak = [global_results[p]["summary"].get("total_peak_penalty", 0) for p in policies]
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.bar(x - width / 2, us_renew, width, label="US Model", color="steelblue")
-    ax.bar(x + width / 2, global_renew, width, label="Global Model", color="coral")
-    ax.set_ylabel("Average Renewable Utilization (%)")
-    ax.set_title("US Model vs Global Model: Renewable Utilization by Policy")
+    ax.bar(x - width / 2, us_peak, width, label="US Model", color="steelblue")
+    ax.bar(x + width / 2, global_peak, width, label="Global Model", color="coral")
+    ax.set_ylabel("Total Peak Penalty (∝ Σ grid_mw² × net_demand)")
+    ax.set_title("US vs Global: Peak-Contribution Penalty by Policy")
     ax.set_xticks(x)
     ax.set_xticklabels(policies, rotation=15, ha="right")
     ax.legend()
     ax.grid(True, alpha=0.3, axis="y")
 
     fig.tight_layout()
-    renew_path = OUTPUT_DIR / "us_vs_global_renewable.png"
-    fig.savefig(renew_path, dpi=150)
+    peak_path = OUTPUT_DIR / "us_vs_global_peak_penalty.png"
+    fig.savefig(peak_path, dpi=150)
     plt.close(fig)
-    print(f"Saved to {renew_path}")
+    print(f"Saved to {peak_path}")
 
 
 if __name__ == "__main__":

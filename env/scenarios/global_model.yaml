@@ -1,6 +1,8 @@
-# Global Model: 4 data centers across 3 continents
-# Tests unconstrained routing with maximum solar/timezone diversity (16-hour spread)
-# Solar scaled to ~60-70% RES potential with battery storage
+# Global Model: 4 data centers across 3 continents (~16-hour timezone spread).
+# DCs are pure grid-connected loads — no on-site solar. Reward combines
+# operator cost with a peak-contribution penalty (see us_model.yaml for details).
+# NL net demand is from ENTSO-E-style synthesis; Singapore is approximated
+# (EMA does not publish renewable-decomposed demand).
 
 power_model: data/power_model_params.json
 
@@ -14,8 +16,8 @@ sites:
     cell: data/cells/cell_a.csv
     solar: data/solar/the_dalles_or.csv
     price: data/prices/caiso.csv
+    net_demand: data/net_demand/caiso.csv
     machines: data/machines/machines_a.csv
-    solar_capacity_mw: 300.0
     rated_power_mw: 100.0
     batch_distributions: data/jobs/batch_distributions_a.json
 
@@ -23,8 +25,8 @@ sites:
     cell: data/cells/cell_b.csv
     solar: data/solar/council_bluffs_ia.csv
     price: data/prices/miso.csv
+    net_demand: data/net_demand/miso.csv
     machines: data/machines/machines_b.csv
-    solar_capacity_mw: 300.0
     rated_power_mw: 100.0
     batch_distributions: data/jobs/batch_distributions_b.json
 
@@ -32,8 +34,8 @@ sites:
     cell: data/cells/cell_c.csv
     solar: data/solar/eemshaven_nl.csv
     price: data/prices/entso_e_nl.csv
+    net_demand: data/net_demand/entso_e_nl.csv
     machines: data/machines/machines_c.csv
-    solar_capacity_mw: 300.0
     rated_power_mw: 100.0
     batch_distributions: data/jobs/batch_distributions_c.json
 
@@ -41,7 +43,7 @@ sites:
     cell: data/cells/cell_d.csv
     solar: data/solar/singapore.csv
     price: data/prices/ema_singapore.csv
+    net_demand: data/net_demand/ema_singapore.csv
     machines: data/machines/machines_d.csv
-    solar_capacity_mw: 300.0
     rated_power_mw: 100.0
     batch_distributions: data/jobs/batch_distributions_d.json

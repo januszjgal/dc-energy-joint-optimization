@@ -58,32 +58,47 @@ def run_episode(
 def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
     """Compute summary metrics from episode history."""
     total_cost = sum(h["total_cost"] for h in history)
-    avg_renewable = np.mean([h["renewable_frac"] for h in history])
+    total_energy_cost = sum(h.get("total_energy_cost", 0.0) for h in history)
+    total_peak_penalty = sum(h.get("total_peak_penalty", 0.0) for h in history)
+    total_grid_mw = sum(h.get("total_grid_mw", 0.0) for h in history)
 
-    # Per-DC metrics
+    # Peak-weighted grid consumption: how much load was drawn at the
+    # duck-curve neck (averaged net demand across DCs, weighted by grid_mw).
+    # Quantifies a policy's contribution to grid stress without baking in
+    # the α weight, making it directly comparable across calibrations.
     n_dc = len(history[0]["per_dc"])
+    nd_weighted_load = 0.0
+    for h in history:
+        for dc in h["per_dc"]:
+            nd_weighted_load += dc.get("grid_mw", 0.0) * dc.get("net_demand", 0.0)
+
     dc_costs = {
         history[0]["per_dc"][i]["name"]: sum(
             h["per_dc"][i]["energy_cost"] for h in history
         )
         for i in range(n_dc)
     }
-    dc_backlogs = {
-        history[0]["per_dc"][i]["name"]: np.mean(
-            [h["per_dc"][i]["backlog"] for h in history]
+    dc_peak = {
+        history[0]["per_dc"][i]["name"]: sum(
+            h["per_dc"][i].get("peak_penalty", 0.0) for h in history
         )
         for i in range(n_dc)
     }
-
-    total_grid = sum(
-        sum(h["per_dc"][i]["grid_mw"] for h in history) for i in range(n_dc)
-    )
+    dc_backlogs = {
+        history[0]["per_dc"][i]["name"]: float(np.mean(
+            [h["per_dc"][i]["backlog"] for h in history]
+        ))
+        for i in range(n_dc)
+    }
 
     summary: dict[str, Any] = {
-        "total_cost": total_cost,
-        "avg_renewable_frac": avg_renewable,
-        "total_grid_mw_steps": total_grid,
+        "total_cost": float(total_cost),
+        "total_energy_cost": float(total_energy_cost),
+        "total_peak_penalty": float(total_peak_penalty),
+        "total_grid_mw_steps": float(total_grid_mw),
+        "nd_weighted_load": float(nd_weighted_load),
         "per_dc_energy_cost": dc_costs,
+        "per_dc_peak_penalty": dc_peak,
         "per_dc_avg_backlog": dc_backlogs,
     }
 
@@ -122,7 +137,7 @@ def _make_env(
     memory_enabled: bool = False,
     dynamic_arrivals: bool = True,
     seed: int = 42,
-    duck_curve_weight: float = 0.0,
+    peak_penalty_weight: float = 0.0,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
     sites, power_model, batch_config = load_scenario(
@@ -142,7 +157,7 @@ def _make_env(
         deadline_penalty_weight=dp,
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
-        duck_curve_weight=duck_curve_weight,
+        peak_penalty_weight=peak_penalty_weight,
     )
 
 
@@ -201,10 +216,10 @@ def main(argv: list[str] | None = None) -> None:
         help="Path to a second (DQN) model for comparison",
     )
     parser.add_argument(
-        "--duck-curve-weight",
+        "--peak-penalty-weight",
         type=float,
         default=0.0,
-        help="Duck curve stress weight (must match value used during training)",
+        help="Peak-contribution penalty weight α (must match training value)",
     )
     args = parser.parse_args(argv)
 
@@ -235,7 +250,7 @@ def main(argv: list[str] | None = None) -> None:
         deadline_penalty_weight=args.deadline_penalty,
         memory_enabled=args.memory,
         dynamic_arrivals=not args.no_dynamic_arrivals,
-        duck_curve_weight=args.duck_curve_weight,
+        peak_penalty_weight=args.peak_penalty_weight,
     )
     if args.algorithm == "dqn":
         env = DiscretizedMultiDCEnv(env)
@@ -257,7 +272,7 @@ def main(argv: list[str] | None = None) -> None:
             deadline_penalty_weight=args.deadline_penalty,
             memory_enabled=args.memory,
             dynamic_arrivals=not args.no_dynamic_arrivals,
-            duck_curve_weight=args.duck_curve_weight,
+            peak_penalty_weight=args.peak_penalty_weight,
         )
         env2 = DiscretizedMultiDCEnv(env2)
         dqn_reward, dqn_history = run_episode(env2, dqn_model.predict, is_sb3=True)
@@ -275,7 +290,7 @@ def main(argv: list[str] | None = None) -> None:
             batch_enabled=args.batch_mode,
             flexibility_factor=args.flexibility_factor,
             deadline_penalty_weight=args.deadline_penalty,
-            duck_curve_weight=args.duck_curve_weight,
+            peak_penalty_weight=args.peak_penalty_weight,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
         summary = compute_summary(history, batch_enabled=args.batch_mode)
@@ -298,15 +313,17 @@ def main(argv: list[str] | None = None) -> None:
     if args.batch_mode:
         report_lines.extend(
             [
-                "| Policy | Total Cost | Avg Renewable % | Batch Expired | Deadline Cost | Avg Pool Size |",
-                "| --- | --- | --- | --- | --- | --- |",
+                "| Policy | Total Cost | Energy Cost | Peak Penalty | ND-weighted Load | Batch Expired | Deadline Cost | Avg Pool Size |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
         for name, data in results.items():
             s = data["summary"]
             report_lines.append(
                 f"| {name} | {s['total_cost']:.2f} | "
-                f"{s['avg_renewable_frac']*100:.1f}% | "
+                f"{s.get('total_energy_cost', 0):.2f} | "
+                f"{s.get('total_peak_penalty', 0):.2f} | "
+                f"{s.get('nd_weighted_load', 0):.0f} | "
                 f"{s.get('total_batch_expired', 0):.4f} | "
                 f"{s.get('total_deadline_cost', 0):.2f} | "
                 f"{s.get('avg_batch_pool_size', 0):.4f} |"
@@ -314,15 +331,17 @@ def main(argv: list[str] | None = None) -> None:
     else:
         report_lines.extend(
             [
-                "| Policy | Total Cost | Avg Renewable % | Total Grid (MW-steps) |",
-                "| --- | --- | --- | --- |",
+                "| Policy | Total Cost | Energy Cost | Peak Penalty | ND-weighted Load | Total Grid (MW-steps) |",
+                "| --- | --- | --- | --- | --- | --- |",
             ]
         )
         for name, data in results.items():
             s = data["summary"]
             report_lines.append(
                 f"| {name} | {s['total_cost']:.2f} | "
-                f"{s['avg_renewable_frac']*100:.1f}% | "
+                f"{s.get('total_energy_cost', 0):.2f} | "
+                f"{s.get('total_peak_penalty', 0):.2f} | "
+                f"{s.get('nd_weighted_load', 0):.0f} | "
                 f"{s['total_grid_mw_steps']:.2f} |"
             )
 
@@ -361,23 +380,30 @@ def main(argv: list[str] | None = None) -> None:
     fig.savefig(cost_path, dpi=150)
     plt.close(fig)
 
-    # 2. Renewable utilization over time
+    # 2. Per-policy load draw weighted by current grid net demand.
+    # A policy that successfully smooths demand keeps this line low when
+    # the duck-curve neck (net demand) is high.
     fig, ax = plt.subplots(figsize=(12, 5))
     for name, data in results.items():
-        renew = [h["renewable_frac"] for h in data["history"]]
-        window = 12  # 1-hour window
-        smoothed = pd.Series(renew).rolling(window, min_periods=1).mean()
+        nd_weighted = []
+        for h in data["history"]:
+            total = 0.0
+            for dc in h["per_dc"]:
+                total += dc.get("grid_mw", 0.0) * dc.get("net_demand", 0.0)
+            nd_weighted.append(total)
+        window = 12  # 1-hour smoothing
+        smoothed = pd.Series(nd_weighted).rolling(window, min_periods=1).mean()
         ax.plot(
             smoothed,
             label=name,
-            linewidth=1.5 if name == "PPO" else 0.8,
+            linewidth=1.5 if name in ("PPO", "DQN") else 0.8,
         )
     ax.set_xlabel("Timestep")
-    ax.set_ylabel("Renewable Fraction")
-    ax.set_title(f"Renewable Utilization: {scenario_name}")
+    ax.set_ylabel("Σ grid_mw × net_demand_norm (smoothed)")
+    ax.set_title(f"DC Contribution to Grid Stress: {scenario_name}")
     ax.legend()
     fig.tight_layout()
-    renew_path = args.output_dir / f"{scenario_name}_renewable.png"
+    renew_path = args.output_dir / f"{scenario_name}_peak_contribution.png"
     fig.savefig(renew_path, dpi=150)
     plt.close(fig)
 
@@ -405,7 +431,7 @@ def main(argv: list[str] | None = None) -> None:
 
     plot_refs = [
         f"![Cumulative Cost]({cost_path.name})\n",
-        f"![Renewable Utilization]({renew_path.name})\n",
+        f"![Peak Contribution]({renew_path.name})\n",
         f"![Allocation Heatmap]({heatmap_path.name})\n",
     ]
 

@@ -1,15 +1,19 @@
-"""Multi-DC Gymnasium environment for geo-distributed energy optimization.
+"""Multi-DC Gymnasium environment for grid-aware workload routing.
 
-The agent receives incoming VM demand each timestep and decides how to
-distribute it across N data centers.  Each DC has local solar availability,
-electricity prices, and a power model.  The goal is to minimize total grid
-energy cost while maintaining service quality (low backlog).
+Each DC is a pure grid-connected load (no on-site solar self-consumption).
+The agent decides how to distribute incoming demand spatially across DCs
+and, in batch mode, when to drain deferrable batch pools.
 
-When *batch_enabled* is True the environment splits each DC's demand into
-an immediate service component and a deferrable batch component.  The agent
-then controls both **spatial routing** (which DC) and **temporal scheduling**
-(when to drain the batch pool) to align batch execution with renewable
-availability and low prices.
+The reward combines two objectives:
+
+  1. **Energy cost**:    price[t] × grid_mw × Δt    (operator cost)
+  2. **Peak penalty**:   α × grid_mw² × net_demand_normalized[t]
+                                              (grid demand smoothing)
+
+The peak penalty is quadratic in load (so concentrating draw is penalized
+more than spreading it out) and scaled by current grid net demand (so the
+penalty only bites near the duck-curve neck — late-night consumption is
+essentially free).
 """
 
 from __future__ import annotations
@@ -31,21 +35,9 @@ INTERVAL_HOURS = 5.0 / 60.0  # 5-minute intervals
 class MultiDCEnv(gym.Env):
     """Gymnasium environment for multi-DC workload routing.
 
-    **Legacy mode** (batch_enabled=False, memory_enabled=False):
-        Observation: 5*N + 2  (+1*N if duck_curve_weight > 0)
-        Action:      N  (spatial routing only)
-
-    **Legacy + memory** (batch_enabled=False, memory_enabled=True):
-        Observation: 6*N + 2  (+1*N if duck_curve_weight > 0)
-        Action:      N
-
-    **Batch mode** (batch_enabled=True, memory_enabled=False):
-        Observation: 7*N + 3  (+1*N if duck_curve_weight > 0)
-        Action:      2*N (spatial routing + temporal drain rates)
-
-    **Batch + memory** (batch_enabled=True, memory_enabled=True):
-        Observation: 9*N + 3  (+1*N if duck_curve_weight > 0)
-        Action:      2*N
+    Observation dimensions (with memory_enabled adding 1 dim/DC legacy or 2 dims/DC batch):
+        Legacy: 6*N + 2
+        Batch:  8*N + 3
     """
 
     metadata = {"render_modes": []}
@@ -57,9 +49,9 @@ class MultiDCEnv(gym.Env):
         max_steps: int | None = None,
         backlog_weight: float = 1.5,
         capacity_penalty_weight: float = 5.0,
-        renewable_bonus_weight: float = 0.2,
+        peak_penalty_weight: float = 0.0,
         steps_per_day: int = 288,
-        # Batch scheduling parameters
+        # Batch scheduling
         batch_enabled: bool = False,
         flexibility_factor: float = 1.0,
         deadline_penalty_weight: float = 2.0,
@@ -67,8 +59,6 @@ class MultiDCEnv(gym.Env):
         interval_seconds: int = 300,
         # Memory constraint
         memory_enabled: bool = False,
-        # Duck curve stress weighting
-        duck_curve_weight: float = 0.0,
     ):
         super().__init__()
 
@@ -76,30 +66,23 @@ class MultiDCEnv(gym.Env):
         self.power_model = power_model
         self.n_dc = len(sites)
 
-        # Determine episode length
         min_timesteps = min(s.num_timesteps for s in sites)
         self.max_steps = max_steps if max_steps else min_timesteps
 
-        # Reward weights
         self.backlog_weight = backlog_weight
         self.capacity_penalty_weight = capacity_penalty_weight
-        self.renewable_bonus_weight = renewable_bonus_weight
+        self.peak_penalty_weight = peak_penalty_weight
         self.steps_per_day = steps_per_day
 
-        # Batch parameters
         self.batch_enabled = batch_enabled
         self.flexibility_factor = flexibility_factor
         self.deadline_penalty_weight = deadline_penalty_weight
         self.urgency_horizon_steps = urgency_horizon_steps
         self.interval_seconds = interval_seconds
 
-        # Memory
         self.memory_enabled = memory_enabled
 
-        # Duck curve
-        self.duck_curve_weight = duck_curve_weight
-
-        # Precompute per-site deadline offsets (in timesteps)
+        # Per-site deadline offsets (timesteps)
         self._deadline_offsets: list[int] = []
         if self.batch_enabled:
             for site in self.sites:
@@ -114,14 +97,13 @@ class MultiDCEnv(gym.Env):
                 self._deadline_offsets.append(offset)
 
         # Observation & action spaces
-        mem_dims = 2 if memory_enabled else 0  # memory_load + memory_backlog (batch) or memory_load (legacy)
-        duck_dims = 1 if duck_curve_weight > 0 else 0  # duck_score per DC
         if self.batch_enabled:
-            obs_dim = (7 + mem_dims + duck_dims) * self.n_dc + 3
+            mem_dims = 2 if memory_enabled else 0
+            obs_dim = (8 + mem_dims) * self.n_dc + 3
             action_dim = 2 * self.n_dc
         else:
-            mem_dims_legacy = 1 if memory_enabled else 0
-            obs_dim = (5 + mem_dims_legacy + duck_dims) * self.n_dc + 2
+            mem_dims = 1 if memory_enabled else 0
+            obs_dim = (6 + mem_dims) * self.n_dc + 2
             action_dim = self.n_dc
 
         self.observation_space = spaces.Box(
@@ -159,7 +141,38 @@ class MultiDCEnv(gym.Env):
         return self._step_legacy(action)
 
     # ------------------------------------------------------------------
-    # Legacy step (unchanged logic)
+    # Per-DC cost (shared)
+    # ------------------------------------------------------------------
+
+    def _compute_dc_cost(
+        self,
+        site: DataCenterSite,
+        served: float,
+        new_backlog: float,
+        t: int,
+    ) -> tuple[float, float, float, float, float]:
+        """Compute energy + peak + backlog + capacity costs for one DC.
+
+        Returns (dc_cost, energy_cost, peak_penalty, grid_mw, net_demand).
+        """
+        power_util = self.power_model.compute(served)
+        power_mw = power_util * site.rated_power_mw
+        grid_mw = power_mw  # no on-site solar; full draw from grid
+
+        price = site.get_price(t)
+        nd = site.get_net_demand(t)
+
+        energy_cost = price * grid_mw * 1000.0 * INTERVAL_HOURS
+        peak_penalty = self.peak_penalty_weight * (grid_mw * grid_mw) * nd
+
+        backlog_cost = self.backlog_weight * new_backlog
+        cap_penalty = self.capacity_penalty_weight * max(0.0, served - site.capacity)
+
+        dc_cost = energy_cost + peak_penalty + backlog_cost + cap_penalty
+        return dc_cost, energy_cost, peak_penalty, grid_mw, nd
+
+    # ------------------------------------------------------------------
+    # Legacy step (spatial routing only)
     # ------------------------------------------------------------------
 
     def _step_legacy(
@@ -167,29 +180,24 @@ class MultiDCEnv(gym.Env):
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         t = self.step_index
 
-        # Convert [-1, 1] actions to allocation fractions via softmax
+        # Softmax routing
         action = np.asarray(action, dtype=np.float64)
-        exp_a = np.exp(action - action.max())  # numerically stable softmax
+        exp_a = np.exp(action - action.max())
         fractions = exp_a / exp_a.sum()
 
-        # Total incoming demand = sum of all cells' demand at this timestep
         total_demand = sum(s.get_local_demand(t) for s in self.sites)
 
-        # Distribute demand + process backlogs
         total_cost = 0.0
-        total_renewable_used = 0.0
-        total_power = 0.0
+        total_energy = 0.0
+        total_peak = 0.0
+        total_grid_mw = 0.0
         info_per_dc = []
 
         for i, site in enumerate(self.sites):
-            # Demand assigned to this DC
             assigned = fractions[i] * total_demand
             total_to_serve = assigned + site.backlog
 
-            # Serve what we can (up to CPU capacity)
             served = min(total_to_serve, site.capacity)
-
-            # Memory constraint: check if memory would be exceeded
             if self.memory_enabled:
                 mem_required = served * site.memory_cpu_ratio
                 if mem_required > site.memory_capacity:
@@ -197,39 +205,19 @@ class MultiDCEnv(gym.Env):
 
             new_backlog = total_to_serve - served
 
-            # Power consumption
-            power_util = self.power_model.compute(served)
-            power_mw = power_util * site.rated_power_mw
-
-            # Solar supply
-            solar_mw = site.solar_capacity_mw * site.get_solar_fraction(t)
-            renewable_used = min(power_mw, solar_mw)
-            grid_mw = max(0.0, power_mw - renewable_used)
-
-            # Energy cost for this 5-min interval
-            # Duck curve weight amplifies cost during peak grid stress periods
-            duck_multiplier = 1.0 + self.duck_curve_weight * site.get_duck_score(t)
-            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS * duck_multiplier
-
-            # Backlog penalty (CPU)
-            backlog_cost = self.backlog_weight * new_backlog
-
-            # Capacity violation penalty
-            cap_penalty = self.capacity_penalty_weight * max(
-                0.0, served - site.capacity
+            dc_cost, energy, peak, grid_mw, nd = self._compute_dc_cost(
+                site, served, new_backlog, t
             )
 
-            dc_cost = energy_cost + backlog_cost + cap_penalty
-
-            # Update site state
             site.backlog = new_backlog
             site.current_load = served
             if self.memory_enabled:
                 site.current_memory_load = served * site.memory_cpu_ratio
 
             total_cost += dc_cost
-            total_renewable_used += renewable_used
-            total_power += power_mw
+            total_energy += energy
+            total_peak += peak
+            total_grid_mw += grid_mw
 
             info_per_dc.append(
                 {
@@ -238,18 +226,13 @@ class MultiDCEnv(gym.Env):
                     "served": float(served),
                     "backlog": float(new_backlog),
                     "grid_mw": float(grid_mw),
-                    "solar_mw": float(solar_mw),
-                    "energy_cost": float(energy_cost),
+                    "net_demand": float(nd),
+                    "energy_cost": float(energy),
+                    "peak_penalty": float(peak),
                 }
             )
 
-        # Renewable bonus
-        renewable_frac = (
-            total_renewable_used / total_power if total_power > 0 else 0.0
-        )
-        renewable_bonus = self.renewable_bonus_weight * renewable_frac
-
-        reward = -total_cost + renewable_bonus
+        reward = -total_cost
 
         self.step_index += 1
         terminated = self.step_index >= self.max_steps
@@ -259,7 +242,9 @@ class MultiDCEnv(gym.Env):
             "total_demand": float(total_demand),
             "fractions": fractions.tolist(),
             "total_cost": float(total_cost),
-            "renewable_frac": float(renewable_frac),
+            "total_energy_cost": float(total_energy),
+            "total_peak_penalty": float(total_peak),
+            "total_grid_mw": float(total_grid_mw),
             "per_dc": info_per_dc,
         }
 
@@ -272,7 +257,7 @@ class MultiDCEnv(gym.Env):
         return obs, float(reward), terminated, truncated, info
 
     # ------------------------------------------------------------------
-    # Batch step (temporal + spatial scheduling)
+    # Batch step (spatial + temporal)
     # ------------------------------------------------------------------
 
     def _step_batch(
@@ -282,52 +267,45 @@ class MultiDCEnv(gym.Env):
         N = self.n_dc
         action = np.asarray(action, dtype=np.float64)
 
-        # Parse action: first N = spatial routing, last N = batch drain rates
         routing_logits = action[:N]
         drain_logits = action[N:]
 
-        # Spatial routing via softmax
         exp_a = np.exp(routing_logits - routing_logits.max())
         fractions = exp_a / exp_a.sum()
 
-        # Batch drain rates via sigmoid: map [-1, 1] -> (0, 1)
         drain_rates = 1.0 / (1.0 + np.exp(-drain_logits))
 
-        # --- Phase 1: Inject new batch demand into pools ---
+        # Phase 1: inject new batch demand
         for i, site in enumerate(self.sites):
             new_batch = site.get_batch_demand(t)
             if new_batch > 0:
                 site.batch_pool.add(new_batch, t + self._deadline_offsets[i])
 
-        # --- Phase 2: Expire overdue batch entries (deadline violations) ---
-        expired_per_dc = []
-        for site in self.sites:
-            expired_per_dc.append(site.batch_pool.expire(t))
+        # Phase 2: expire overdue entries
+        expired_per_dc = [site.batch_pool.expire(t) for site in self.sites]
 
-        # --- Phase 3: Drain batch pools ---
-        batch_drained = []
-        for i, site in enumerate(self.sites):
-            batch_drained.append(site.batch_pool.drain(drain_rates[i]))
+        # Phase 3: drain pools
+        batch_drained = [
+            site.batch_pool.drain(drain_rates[i]) for i, site in enumerate(self.sites)
+        ]
 
-        # --- Phase 4: Route service demand spatially ---
+        # Phase 4: route service demand
         total_service = sum(s.get_service_demand(t) for s in self.sites)
 
-        # --- Phase 5: Per-DC cost computation ---
+        # Phase 5: per-DC cost
         total_cost = 0.0
-        total_renewable_used = 0.0
-        total_power = 0.0
+        total_energy = 0.0
+        total_peak = 0.0
+        total_grid_mw = 0.0
         info_per_dc = []
 
         for i, site in enumerate(self.sites):
-            # Service demand assigned to this DC
             service_assigned = fractions[i] * total_service
             service_to_serve = service_assigned + site.backlog
 
-            # Total work this timestep: service + batch drained
             batch_work = batch_drained[i]
             total_work = service_to_serve + batch_work
 
-            # Serve up to capacity — service gets priority
             max_serve = site.capacity
             if self.memory_enabled:
                 mem_limit = site.memory_capacity / site.memory_cpu_ratio
@@ -338,47 +316,26 @@ class MultiDCEnv(gym.Env):
             batch_served = served - service_served
             new_backlog = service_to_serve - service_served
 
-            # Return unserved batch to pool (preserving urgency via near deadline)
+            # Return unserved batch to pool (preserving urgency)
             batch_unserved = batch_work - batch_served
             if batch_unserved > 1e-9:
                 site.batch_pool.add(batch_unserved, t + 1)
 
-            # Power consumption (on total served work)
-            power_util = self.power_model.compute(served)
-            power_mw = power_util * site.rated_power_mw
-
-            # Solar supply
-            solar_mw = site.solar_capacity_mw * site.get_solar_fraction(t)
-            renewable_used = min(power_mw, solar_mw)
-            grid_mw = max(0.0, power_mw - renewable_used)
-
-            # Energy cost for this 5-min interval
-            # Duck curve weight amplifies cost during peak grid stress periods
-            duck_multiplier = 1.0 + self.duck_curve_weight * site.get_duck_score(t)
-            energy_cost = site.get_price(t) * grid_mw * 1000.0 * INTERVAL_HOURS * duck_multiplier
-
-            # Service backlog penalty
-            backlog_cost = self.backlog_weight * new_backlog
-
-            # Capacity violation penalty
-            cap_penalty = self.capacity_penalty_weight * max(
-                0.0, served - site.capacity
+            dc_cost, energy, peak, grid_mw, nd = self._compute_dc_cost(
+                site, served, new_backlog, t
             )
-
-            # Deadline violation penalty
             deadline_cost = self.deadline_penalty_weight * expired_per_dc[i]
+            dc_cost += deadline_cost
 
-            dc_cost = energy_cost + backlog_cost + cap_penalty + deadline_cost
-
-            # Update site state
             site.backlog = new_backlog
             site.current_load = served
             if self.memory_enabled:
                 site.current_memory_load = served * site.memory_cpu_ratio
 
             total_cost += dc_cost
-            total_renewable_used += renewable_used
-            total_power += power_mw
+            total_energy += energy
+            total_peak += peak
+            total_grid_mw += grid_mw
 
             info_per_dc.append(
                 {
@@ -393,19 +350,14 @@ class MultiDCEnv(gym.Env):
                     "batch_expired": float(expired_per_dc[i]),
                     "drain_rate": float(drain_rates[i]),
                     "grid_mw": float(grid_mw),
-                    "solar_mw": float(solar_mw),
-                    "energy_cost": float(energy_cost),
+                    "net_demand": float(nd),
+                    "energy_cost": float(energy),
+                    "peak_penalty": float(peak),
                     "deadline_cost": float(deadline_cost),
                 }
             )
 
-        # Renewable bonus
-        renewable_frac = (
-            total_renewable_used / total_power if total_power > 0 else 0.0
-        )
-        renewable_bonus = self.renewable_bonus_weight * renewable_frac
-
-        reward = -total_cost + renewable_bonus
+        reward = -total_cost
 
         self.step_index += 1
         terminated = self.step_index >= self.max_steps
@@ -420,7 +372,9 @@ class MultiDCEnv(gym.Env):
             "fractions": fractions.tolist(),
             "drain_rates": drain_rates.tolist(),
             "total_cost": float(total_cost),
-            "renewable_frac": float(renewable_frac),
+            "total_energy_cost": float(total_energy),
+            "total_peak_penalty": float(total_peak),
+            "total_grid_mw": float(total_grid_mw),
             "per_dc": info_per_dc,
         }
 
@@ -437,7 +391,6 @@ class MultiDCEnv(gym.Env):
     # ------------------------------------------------------------------
 
     def _get_obs(self) -> np.ndarray:
-        """Build observation vector."""
         t = self.step_index
         obs_parts: list[float] = []
 
@@ -449,23 +402,20 @@ class MultiDCEnv(gym.Env):
                 total_service += svc
                 pool_size = site.batch_pool.total_demand
                 total_batch_pool += pool_size
-                urgency = site.batch_pool.urgency(
-                    t, self.urgency_horizon_steps
-                )
+                urgency = site.batch_pool.urgency(t, self.urgency_horizon_steps)
                 per_dc = [
                     svc,
                     pool_size,
                     urgency,
                     site.backlog,
                     site.get_price(t),
+                    site.get_net_demand(t),
                     site.get_solar_fraction(t),
                     site.current_load,
                 ]
                 if self.memory_enabled:
                     per_dc.append(site.current_memory_load)
                     per_dc.append(site.memory_backlog)
-                if self.duck_curve_weight > 0:
-                    per_dc.append(site.get_duck_score(t))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_service, total_batch_pool, hour_of_day])
@@ -478,13 +428,12 @@ class MultiDCEnv(gym.Env):
                     demand,
                     site.backlog,
                     site.get_price(t),
+                    site.get_net_demand(t),
                     site.get_solar_fraction(t),
                     site.current_load,
                 ]
                 if self.memory_enabled:
                     per_dc.append(site.current_memory_load)
-                if self.duck_curve_weight > 0:
-                    per_dc.append(site.get_duck_score(t))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_demand, hour_of_day])
