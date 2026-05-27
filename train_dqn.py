@@ -31,6 +31,7 @@ def make_env(
     dynamic_arrivals: bool = True,
     seed: int = 42,
     granularity: int = 5,
+    peak_penalty_weight: float = 0.0,
 ) -> DiscretizedMultiDCEnv:
     """Create a discretized MultiDCEnv from a scenario config."""
     sites, power_model, batch_config = load_scenario(
@@ -57,6 +58,7 @@ def make_env(
         deadline_penalty_weight=dp,
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
+        peak_penalty_weight=peak_penalty_weight,
     )
 
     return DiscretizedMultiDCEnv(base_env, granularity=granularity)
@@ -130,6 +132,12 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Disable dynamic batch arrivals",
     )
+    parser.add_argument(
+        "--peak-penalty-weight",
+        type=float,
+        default=0.0,
+        help="Weight on peak-contribution penalty (default: 0.0)",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -147,6 +155,7 @@ def main(argv: list[str] | None = None) -> None:
         dynamic_arrivals=not args.no_dynamic_arrivals,
         seed=args.seed,
         granularity=args.granularity,
+        peak_penalty_weight=args.peak_penalty_weight,
     )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space} ({env.n_actions} discrete actions)")

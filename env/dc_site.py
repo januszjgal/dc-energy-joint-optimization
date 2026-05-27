@@ -1,4 +1,10 @@
-"""Data center site: holds timeseries data and mutable state for one DC."""
+"""Data center site: holds timeseries data and mutable state for one DC.
+
+Each DC is a pure grid-connected load — no on-site solar self-consumption.
+Solar irradiance is retained only as a *forecast feature* for the agent,
+since high midday solar in a solar-heavy region predicts a steep evening
+ramp in regional grid net demand.
+"""
 
 from __future__ import annotations
 
@@ -16,9 +22,10 @@ class DataCenterSite:
     Attributes:
         name: Human-readable identifier (e.g., "US-West")
         workload: Normalized CPU demand timeseries [0, 1]
-        solar: Solar capacity factor timeseries [0, 1]
+        solar: Solar capacity factor timeseries [0, 1] (forecast feature only)
         price: Electricity price timeseries ($/kWh)
-        solar_capacity_mw: Installed solar capacity in MW
+        net_demand: Regional grid net demand, normalized to [0, 1] by
+            region historical peak. Drives the peak-contribution penalty.
         rated_power_mw: Total DC rated power capacity in MW
         capacity: Max normalized CPU utilization (from fleet data or 1.0)
         memory_capacity: Normalized memory capacity (from fleet data or 1.0)
@@ -38,8 +45,7 @@ class DataCenterSite:
     workload: np.ndarray  # shape: (T,)
     solar: np.ndarray  # shape: (T,)
     price: np.ndarray  # shape: (T,)
-    duck_score: np.ndarray = field(default_factory=lambda: np.zeros(0))  # shape: (T,)
-    solar_capacity_mw: float = 50.0
+    net_demand: np.ndarray  # shape: (T,), normalized to [0, 1]
     rated_power_mw: float = 100.0
     capacity: float = 1.0
     memory_capacity: float = 1.0
@@ -74,47 +80,39 @@ class DataCenterSite:
 
     @property
     def num_timesteps(self) -> int:
-        return min(len(self.workload), len(self.solar), len(self.price))
+        return min(
+            len(self.workload),
+            len(self.solar),
+            len(self.price),
+            len(self.net_demand),
+        )
 
     def get_local_demand(self, t: int) -> float:
-        """Return the natural workload demand at timestep t."""
         return float(self.workload[t])
 
     def get_service_demand(self, t: int) -> float:
-        """Return the immediate (non-deferrable) demand at timestep t."""
         return float(self.workload[t]) * (1.0 - self.batch_fraction)
 
     def get_batch_demand(self, t: int) -> float:
-        """Return the deferrable batch CPU demand arriving at timestep t."""
         if self.batch_generator is not None:
             return self.batch_generator.get_batch_cpu_demand(t)
         return float(self.workload[t]) * self.batch_fraction
 
     def get_batch_memory_demand(self, t: int) -> float:
-        """Return the deferrable batch memory demand at timestep t."""
         if self.batch_generator is not None:
             return self.batch_generator.get_batch_memory_demand(t)
         return self.get_batch_demand(t) * self.memory_cpu_ratio
 
     def get_memory_demand(self, t: int) -> float:
-        """Return the service memory demand at timestep t."""
         return self.get_service_demand(t) * self.memory_cpu_ratio
 
     def get_solar_fraction(self, t: int) -> float:
-        """Return solar availability fraction at timestep t."""
+        """Solar capacity factor at t. A forecast feature, not a supply."""
         return float(self.solar[t])
 
     def get_price(self, t: int) -> float:
-        """Return electricity price at timestep t."""
         return float(self.price[t])
 
-    def get_duck_score(self, t: int) -> float:
-        """Return duck curve stress score at timestep t.
-
-        Positive = grid more stressed than recent average (expensive to draw grid power).
-        Negative = grid less stressed than average (cheap/off-peak).
-        Range: approximately [-3, 3] (clipped z-score).
-        """
-        if len(self.duck_score) == 0 or t >= len(self.duck_score):
-            return 0.0
-        return float(self.duck_score[t])
+    def get_net_demand(self, t: int) -> float:
+        """Regional grid net demand at t, normalized to [0, 1] by region peak."""
+        return float(self.net_demand[t])

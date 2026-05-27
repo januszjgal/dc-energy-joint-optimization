@@ -22,27 +22,6 @@ def load_csv_values(path: Path, value_col: str) -> np.ndarray:
     return df[value_col].values.astype(np.float32)
 
 
-def compute_duck_score(price: np.ndarray, window: int = 288) -> np.ndarray:
-    """Compute rolling 24-hour z-score of price as a duck curve stress signal.
-
-    A positive score means the current price is above the recent 24-hour average
-    (the grid is relatively stressed — this is the "duck curve peak").
-    A negative score means the grid is off-peak.
-
-    Args:
-        price: Electricity price timeseries ($/kWh).
-        window: Rolling window size in timesteps (default: 288 = 24 hours at 5-min).
-
-    Returns:
-        Duck score array, clipped to [-3, 3].
-    """
-    s = pd.Series(price.astype(np.float64))
-    roll_mean = s.rolling(window, center=True, min_periods=1).mean()
-    roll_std = s.rolling(window, center=True, min_periods=1).std().fillna(1.0)
-    score = (s - roll_mean) / (roll_std + 1e-6)
-    return np.clip(score.values, -3.0, 3.0).astype(np.float32)
-
-
 def _load_machine_fleet(path: Path) -> dict[str, float]:
     """Load machine fleet data and return aggregate stats."""
     df = pd.read_csv(path)
@@ -79,17 +58,16 @@ def load_scenario(
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    # Load power model
+    # Power model
     pm_path = config.get("power_model", "default")
     if pm_path == "default":
         power_model = PowerModel.default()
     else:
         power_model = PowerModel.from_json(root_dir / pm_path)
 
-    # Batch config section (used only when batch_enabled)
     batch_config: dict[str, Any] = config.get("batch", {}) if batch_enabled else {}
 
-    # First pass: load all sites and collect fleet data for normalization
+    # First pass: load timeseries and fleet info
     raw_fleet_data: list[dict[str, float] | None] = []
     sites_data: list[dict[str, Any]] = []
 
@@ -97,17 +75,18 @@ def load_scenario(
         workload = load_csv_values(root_dir / site_cfg["cell"], "cpu_demand_norm")
         solar = load_csv_values(root_dir / site_cfg["solar"], "solar_fraction")
         price = load_csv_values(root_dir / site_cfg["price"], "price_usd_kwh")
+        net_demand = load_csv_values(
+            root_dir / site_cfg["net_demand"], "net_demand_normalized"
+        )
 
-        # Truncate all arrays to the shortest one for this site
-        min_len = min(len(workload), len(solar), len(price))
+        # Truncate to the shortest series
+        min_len = min(len(workload), len(solar), len(price), len(net_demand))
         workload = workload[:min_len]
         solar = solar[:min_len]
         price = price[:min_len]
+        net_demand = net_demand[:min_len]
 
-        # Precompute duck curve stress score from price (rolling 24h z-score)
-        duck_score = compute_duck_score(price)
-
-        # Load machine fleet data if available
+        # Optional machine fleet for capacity calibration
         machines_path = site_cfg.get("machines")
         fleet = None
         if machines_path:
@@ -128,20 +107,22 @@ def load_scenario(
                 memory_cpu_ratio = cell_cfg_obj.memory_cpu_ratio
 
         raw_fleet_data.append(fleet)
-        sites_data.append({
-            "site_cfg": site_cfg,
-            "workload": workload,
-            "solar": solar,
-            "price": price,
-            "duck_score": duck_score,
-            "batch_fraction": batch_fraction,
-            "batch_mean_duration_sec": batch_mean_duration_sec,
-            "memory_cpu_ratio": memory_cpu_ratio,
-            "cell_cfg_obj": cell_cfg_obj,
-            "fleet": fleet,
-        })
+        sites_data.append(
+            {
+                "site_cfg": site_cfg,
+                "workload": workload,
+                "solar": solar,
+                "price": price,
+                "net_demand": net_demand,
+                "batch_fraction": batch_fraction,
+                "batch_mean_duration_sec": batch_mean_duration_sec,
+                "memory_cpu_ratio": memory_cpu_ratio,
+                "cell_cfg_obj": cell_cfg_obj,
+                "fleet": fleet,
+            }
+        )
 
-    # Normalize fleet capacities: largest DC maps to 1.0
+    # Normalize fleet capacities so the largest DC maps to 1.0
     max_cpu = max(
         (f["cpu_total"] for f in raw_fleet_data if f is not None),
         default=0,
@@ -151,13 +132,12 @@ def load_scenario(
         default=0,
     )
 
-    # Second pass: build DataCenterSite objects
+    # Second pass: build sites
     sites = []
     for i, sd in enumerate(sites_data):
         site_cfg = sd["site_cfg"]
         fleet = sd["fleet"]
 
-        # CPU and memory capacity (normalized)
         if fleet and max_cpu > 0:
             capacity = fleet["cpu_total"] / max_cpu
             memory_capacity = fleet["memory_total"] / max_mem if max_mem > 0 else 1.0
@@ -170,21 +150,18 @@ def load_scenario(
             workload=sd["workload"],
             solar=sd["solar"],
             price=sd["price"],
-            duck_score=sd["duck_score"],
-            solar_capacity_mw=site_cfg.get("solar_capacity_mw", 50.0),
+            net_demand=sd["net_demand"],
             rated_power_mw=site_cfg.get("rated_power_mw", 100.0),
             capacity=capacity,
             memory_capacity=memory_capacity,
             memory_cpu_ratio=sd["memory_cpu_ratio"],
             batch_fraction=sd["batch_fraction"],
             batch_mean_duration_sec=sd["batch_mean_duration_sec"],
-            # Fleet info
             fleet_cpu_total=fleet["cpu_total"] if fleet else 0.0,
             fleet_memory_total=fleet["memory_total"] if fleet else 0.0,
             fleet_machine_count=fleet["machine_count"] if fleet else 0,
         )
 
-        # Create batch arrival generator if enabled
         cell_cfg_obj = sd["cell_cfg_obj"]
         if (
             batch_enabled
@@ -192,11 +169,7 @@ def load_scenario(
             and cell_cfg_obj is not None
             and cell_cfg_obj.dist_config is not None
         ):
-            # Compute expected total batch demand from static split
-            # (used to normalize the generated arrivals to the right scale)
-            target_total = float(
-                sd["workload"].sum() * sd["batch_fraction"]
-            )
+            target_total = float(sd["workload"].sum() * sd["batch_fraction"])
             site.batch_generator = BatchArrivalGenerator(
                 dist_config=cell_cfg_obj.dist_config,
                 interval_seconds=batch_config.get("interval_seconds", 300),

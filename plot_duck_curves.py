@@ -1,8 +1,10 @@
-"""Plot duck curves (average daily price patterns) per region.
+"""Plot regional duck curves from EIA-930 net demand data.
 
-Shows how grid stress varies throughout the day in each region,
-illustrating why CAISO (California) presents the strongest duck curve
-and why routing workloads away from CA during the evening ramp is valuable.
+Visualizes the actual grid duck curve in each region: the daily profile of
+net demand (total load minus utility-scale solar + wind), normalized to
+[0, 1] by regional peak. The duck-curve neck — when solar drops off and
+residential load ramps up in the evening — is the period when DC load
+contributes most to grid stress.
 
 Usage:
     python plot_duck_curves.py
@@ -17,150 +19,132 @@ import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 
-# ── Data files ──────────────────────────────────────────────────────────────
-PRICE_FILES = {
-    "CAISO (US-West / California)": "data/prices/caiso.csv",
-    "MISO (US-Central / Iowa)": "data/prices/miso.csv",
-    "Southern Co (US-SE-1 / Georgia)": "data/prices/southern_co.csv",
-    "Duke Carolinas (US-SE-2 / SC)": "data/prices/duke_carolinas.csv",
+NET_DEMAND_FILES = {
+    "CAISO (US-West / California)": "data/net_demand/caiso.csv",
+    "MISO (US-Central / Iowa)": "data/net_demand/miso.csv",
+    "Southern Co (US-SE-1 / Georgia)": "data/net_demand/southern_co.csv",
+    "Duke Carolinas (US-SE-2 / SC)": "data/net_demand/duke_carolinas.csv",
 }
 
 GLOBAL_FILES = {
-    "ENTSO-E NL (Global-EU / Netherlands)": "data/prices/entso_e_nl.csv",
-    "EMA Singapore (Global-Asia)": "data/prices/ema_singapore.csv",
+    "ENTSO-E NL (Global-EU)": "data/net_demand/entso_e_nl.csv",
+    "EMA Singapore (Global-Asia)": "data/net_demand/ema_singapore.csv",
 }
 
-STEPS_PER_DAY = 288   # 5-min intervals × 24h
+PRICE_FILES = {
+    "CAISO": "data/prices/caiso.csv",
+    "MISO": "data/prices/miso.csv",
+    "Southern Co": "data/prices/southern_co.csv",
+    "Duke Carolinas": "data/prices/duke_carolinas.csv",
+}
+
+STEPS_PER_DAY = 288
 ROOT = Path(__file__).resolve().parent
 
 
-def compute_duck_score(price: np.ndarray, window: int = 288) -> np.ndarray:
-    s = pd.Series(price.astype(np.float64))
-    roll_mean = s.rolling(window, center=True, min_periods=1).mean()
-    roll_std  = s.rolling(window, center=True, min_periods=1).std().fillna(1.0)
-    score = (s - roll_mean) / (roll_std + 1e-6)
-    return np.clip(score.values, -3.0, 3.0).astype(np.float32)
-
-
-def load_daily_profiles(files: dict[str, str]) -> dict[str, dict]:
+def load_daily_profiles(files: dict[str, str], col: str) -> dict[str, dict]:
+    """Compute mean / p25 / p75 daily profiles for each region."""
     profiles = {}
     for label, path in files.items():
         df = pd.read_csv(ROOT / path)
-        price = df["price_usd_kwh"].values.astype(np.float64)
-        duck  = compute_duck_score(price.astype(np.float32))
-
-        n_days = len(price) // STEPS_PER_DAY
-        price_mat = price[: n_days * STEPS_PER_DAY].reshape(n_days, STEPS_PER_DAY)
-        duck_mat  = duck[: n_days * STEPS_PER_DAY].reshape(n_days, STEPS_PER_DAY)
-
+        values = df[col].values.astype(np.float64)
+        n_days = len(values) // STEPS_PER_DAY
+        mat = values[: n_days * STEPS_PER_DAY].reshape(n_days, STEPS_PER_DAY)
         profiles[label] = {
-            "price_mean": price_mat.mean(axis=0),
-            "price_p25":  np.percentile(price_mat, 25, axis=0),
-            "price_p75":  np.percentile(price_mat, 75, axis=0),
-            "duck_mean":  duck_mat.mean(axis=0),
-            "duck_p25":   np.percentile(duck_mat, 25, axis=0),
-            "duck_p75":   np.percentile(duck_mat, 75, axis=0),
-            "price_raw":  price,
+            "mean": mat.mean(axis=0),
+            "p25": np.percentile(mat, 25, axis=0),
+            "p75": np.percentile(mat, 75, axis=0),
         }
     return profiles
 
 
-def make_figure(us_profiles: dict, global_profiles: dict, out_path: Path) -> None:
+def make_figure(
+    nd_us: dict, nd_global: dict, price_us: dict, out_path: Path
+) -> None:
     hours = np.linspace(0, 24, STEPS_PER_DAY, endpoint=False)
 
-    # ── colour palette ───────────────────────────────────────────────────────
     us_colors = ["#e6194b", "#3cb44b", "#4363d8", "#f58231"]
     gl_colors = ["#911eb4", "#42d4f4"]
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle(
-        "Regional Duck Curves: Average Daily Grid Stress by Location\n"
-        "(Duck score = rolling 24-h price z-score; positive = grid stressed above average)",
-        fontsize=13, fontweight="bold", y=1.01,
+        "Regional Duck Curves: Average Daily Grid Net Demand by Location\n"
+        "(EIA-930 hourly data, May 2019, normalized [0,1] by regional peak)",
+        fontsize=13,
+        fontweight="bold",
+        y=1.01,
     )
 
-    # ── Panel A: Raw price curves (US) ───────────────────────────────────────
+    # Panel A: US net demand profiles
     ax = axes[0, 0]
-    for (label, data), color in zip(us_profiles.items(), us_colors):
+    for (label, data), color in zip(nd_us.items(), us_colors):
         short = label.split("(")[0].strip()
-        ax.plot(hours, data["price_mean"] * 1000, color=color, lw=2, label=short)
+        ax.plot(hours, data["mean"], color=color, lw=2, label=short)
         ax.fill_between(
-            hours,
-            data["price_p25"] * 1000,
-            data["price_p75"] * 1000,
-            color=color, alpha=0.15,
+            hours, data["p25"], data["p75"], color=color, alpha=0.15
         )
-    ax.set_title("A  –  US Regions: Raw Electricity Price", fontweight="bold")
+    ax.axvspan(17, 21, color="red", alpha=0.07)
+    ax.set_title("A  –  US Regions: Grid Net Demand (normalized)", fontweight="bold")
+    ax.set_ylabel("Net Demand (fraction of peak)")
+    ax.set_xlabel("Hour of Day")
+    ax.set_xlim(0, 24)
+    ax.set_ylim(0, 1.05)
+    ax.xaxis.set_major_locator(mticker.MultipleLocator(4))
+    ax.legend(fontsize=8, loc="lower right")
+    ax.grid(True, alpha=0.3)
+
+    # Panel B: US price profiles for context
+    ax = axes[0, 1]
+    for (label, path), color in zip(PRICE_FILES.items(), us_colors):
+        df = pd.read_csv(ROOT / path)
+        price = df["price_usd_kwh"].values.astype(np.float64)
+        n_days = len(price) // STEPS_PER_DAY
+        mat = price[: n_days * STEPS_PER_DAY].reshape(n_days, STEPS_PER_DAY)
+        ax.plot(hours, mat.mean(axis=0) * 1000, color=color, lw=2, label=label)
+    ax.axvspan(17, 21, color="red", alpha=0.07)
+    ax.set_title("B  –  US Regions: Wholesale Price for Context", fontweight="bold")
     ax.set_ylabel("Price ($/MWh)")
     ax.set_xlabel("Hour of Day")
     ax.set_xlim(0, 24)
     ax.xaxis.set_major_locator(mticker.MultipleLocator(4))
     ax.legend(fontsize=8, loc="upper left")
     ax.grid(True, alpha=0.3)
-    ax.axvspan(17, 21, color="red", alpha=0.07, label="CA evening ramp")
 
-    # ── Panel B: Duck score curves (US) ─────────────────────────────────────
-    ax = axes[0, 1]
-    for (label, data), color in zip(us_profiles.items(), us_colors):
-        short = label.split("(")[0].strip()
-        ax.plot(hours, data["duck_mean"], color=color, lw=2, label=short)
-        ax.fill_between(
-            hours,
-            data["duck_p25"],
-            data["duck_p75"],
-            color=color, alpha=0.15,
-        )
-    ax.axhline(0, color="black", lw=0.8, ls="--")
-    ax.axvspan(17, 21, color="red", alpha=0.07)
-    ax.set_title("B  –  US Regions: Duck Curve Stress Score", fontweight="bold")
-    ax.set_ylabel("Duck Score (z-score, clipped ±3)")
-    ax.set_xlabel("Hour of Day")
-    ax.set_xlim(0, 24)
-    ax.xaxis.set_major_locator(mticker.MultipleLocator(4))
-    ax.legend(fontsize=8, loc="upper left")
-    ax.grid(True, alpha=0.3)
-    ax.annotate(
-        "CA evening ramp\n(17:00–21:00)",
-        xy=(19, 1.4), xytext=(21, 1.8),
-        arrowprops=dict(arrowstyle="->", color="red"),
-        color="red", fontsize=8,
-    )
-
-    # ── Panel C: Duck score (global) ─────────────────────────────────────────
+    # Panel C: All regions net demand
     ax = axes[1, 0]
-    all_global = {**us_profiles, **global_profiles}
-    all_colors  = us_colors + gl_colors
-    for (label, data), color in zip(all_global.items(), all_colors):
+    all_regions = {**nd_us, **nd_global}
+    all_colors = us_colors + gl_colors
+    for (label, data), color in zip(all_regions.items(), all_colors):
         short = label.split("(")[0].strip()
-        ax.plot(hours, data["duck_mean"], color=color, lw=2, label=short)
-    ax.axhline(0, color="black", lw=0.8, ls="--")
-    ax.set_title("C  –  All Regions: Duck Score Comparison", fontweight="bold")
-    ax.set_ylabel("Duck Score (z-score, clipped ±3)")
+        ax.plot(hours, data["mean"], color=color, lw=2, label=short)
+    ax.set_title("C  –  All Regions: Net Demand Comparison", fontweight="bold")
+    ax.set_ylabel("Net Demand (fraction of peak)")
     ax.set_xlabel("Hour of Day")
     ax.set_xlim(0, 24)
+    ax.set_ylim(0, 1.05)
     ax.xaxis.set_major_locator(mticker.MultipleLocator(4))
-    ax.legend(fontsize=7.5, loc="upper left")
+    ax.legend(fontsize=7.5, loc="lower right")
     ax.grid(True, alpha=0.3)
 
-    # ── Panel D: Peak stress hour heatmap ────────────────────────────────────
+    # Panel D: Heatmap
     ax = axes[1, 1]
-    all_labels = list(all_global.keys())
-    short_labels = [l.split("(")[0].strip() for l in all_labels]
-    duck_matrix = np.array([all_global[l]["duck_mean"] for l in all_labels])
+    short_labels = [l.split("(")[0].strip() for l in all_regions.keys()]
+    nd_matrix = np.array([data["mean"] for data in all_regions.values()])
 
     im = ax.imshow(
-        duck_matrix,
+        nd_matrix,
         aspect="auto",
-        extent=[0, 24, len(all_labels) - 0.5, -0.5],
+        extent=[0, 24, len(short_labels) - 0.5, -0.5],
         cmap="RdYlGn_r",
-        vmin=-1.5, vmax=1.5,
+        vmin=0.3,
+        vmax=1.0,
     )
     ax.set_yticks(range(len(short_labels)))
     ax.set_yticklabels(short_labels, fontsize=8)
     ax.set_xlabel("Hour of Day")
     ax.xaxis.set_major_locator(mticker.MultipleLocator(4))
-    ax.set_title("D  –  Duck Score Heatmap by Region & Hour", fontweight="bold")
-    fig.colorbar(im, ax=ax, label="Duck Score", fraction=0.046, pad=0.04)
+    ax.set_title("D  –  Net Demand Heatmap by Region & Hour", fontweight="bold")
+    fig.colorbar(im, ax=ax, label="Net Demand (norm)", fraction=0.046, pad=0.04)
     ax.axvline(17, color="red", lw=1.2, ls="--", alpha=0.7)
     ax.axvline(21, color="red", lw=1.2, ls="--", alpha=0.7)
 
@@ -170,21 +154,26 @@ def make_figure(us_profiles: dict, global_profiles: dict, out_path: Path) -> Non
 
 
 if __name__ == "__main__":
-    print("Loading price data...")
-    us_profiles     = load_daily_profiles(PRICE_FILES)
-    global_profiles = load_daily_profiles(GLOBAL_FILES)
+    print("Loading net demand data...")
+    nd_us = load_daily_profiles(NET_DEMAND_FILES, "net_demand_normalized")
+    nd_global = load_daily_profiles(GLOBAL_FILES, "net_demand_normalized")
+    price_us = load_daily_profiles(PRICE_FILES, "price_usd_kwh")
 
     out = ROOT / "output" / "duck_curves.png"
     out.parent.mkdir(exist_ok=True)
-    make_figure(us_profiles, global_profiles, out)
+    make_figure(nd_us, nd_global, price_us, out)
 
-    # Print summary stats
-    print("\nPeak duck score hour per region:")
-    all_profiles = {**us_profiles, **global_profiles}
+    print("\nNet demand peak hour per region:")
+    all_profiles = {**nd_us, **nd_global}
     for label, data in all_profiles.items():
-        peak_step = int(np.argmax(data["duck_mean"]))
+        peak_step = int(np.argmax(data["mean"]))
         peak_hour = peak_step / STEPS_PER_DAY * 24
-        peak_score = data["duck_mean"][peak_step]
-        amplitude = data["duck_mean"].max() - data["duck_mean"].min()
-        print(f"  {label.split('(')[0].strip():<35} peak={peak_hour:.1f}h  "
-              f"score={peak_score:+.2f}  amplitude={amplitude:.2f}")
+        trough_step = int(np.argmin(data["mean"]))
+        trough_hour = trough_step / STEPS_PER_DAY * 24
+        amp = data["mean"].max() - data["mean"].min()
+        print(
+            f"  {label.split('(')[0].strip():<32} "
+            f"peak={peak_hour:5.1f}h  "
+            f"trough={trough_hour:5.1f}h  "
+            f"amplitude={amp:.2f}"
+        )

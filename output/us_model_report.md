@@ -2,36 +2,38 @@
 
 ## Summary
 
-| Policy | Total Cost | Avg Renewable % | Total Grid (MW-steps) |
-| --- | --- | --- | --- |
-| PPO | 3931338.68 | 47.5% | 1346687.64 |
-| Round Robin | 3930168.95 | 48.1% | 1331164.58 |
-| Cheapest Price First | 35011042.72 | 47.7% | 1227692.90 |
-| Follow the Sun | 9544312.60 | 48.8% | 1241468.11 |
-| Local Only (No Routing) | 3940875.91 | 48.1% | 1332548.08 |
-| Random | 3943000.40 | 48.0% | 1335133.43 |
-| Drain Immediately | 3930168.95 | 48.1% | 1331164.58 |
-| Defer to Sun | 3930168.95 | 48.1% | 1331164.58 |
-| GreenSlot | 3909396.16 | 50.0% | 1286338.00 |
+| Policy | Total Cost | Energy Cost | Peak Penalty | ND-weighted Load | Total Grid (MW-steps) |
+| --- | --- | --- | --- | --- | --- |
+| PPO | 10097586.60 | 7844162.39 | 1885276.54 | 1721236 | 2567935.27 |
+| DQN | 9842805.73 | 7909957.04 | 1931809.00 | 1733322 | 2570402.73 |
+| Round Robin | 9842773.42 | 7979247.21 | 1863526.21 | 1723187 | 2570402.73 |
+| Cheapest Price First | 40302131.66 | 7101765.07 | 1692723.04 | 1599584 | 2350716.82 |
+| Avoid the Ramp | 16580284.33 | 7981741.43 | 1832226.38 | 1672948 | 2530799.09 |
+| Local Only (No Routing) | 9854608.70 | 7987269.03 | 1867339.67 | 1724368 | 2570402.73 |
+| Random | 9881611.55 | 7978050.35 | 1902538.98 | 1723286 | 2570402.73 |
+| Drain Immediately | 9842773.42 | 7979247.21 | 1863526.21 | 1723187 | 2570402.73 |
+| Defer to Low Net Demand | 9842773.42 | 7979247.21 | 1863526.21 | 1723187 | 2570402.73 |
+| Trough-Slot Lookahead | 9939815.04 | 8035871.76 | 1820927.40 | 1691662 | 2569062.08 |
 
 ## Per-DC Energy Cost Breakdown
 
 | Policy | US-West | US-Central | US-Southeast-1 | US-Southeast-2 |
 | --- | --- | --- | --- | --- |
-| PPO | 1249627.93 | 1100914.93 | 753844.76 | 825146.01 |
-| Round Robin | 1216497.28 | 850457.36 | 985140.11 | 878074.20 |
-| Cheapest Price First | 926294.79 | 1146558.24 | 754784.74 | 675761.38 |
-| Follow the Sun | 1536059.38 | 665319.99 | 771782.45 | 817134.95 |
-| Local Only (No Routing) | 1238523.26 | 846728.85 | 984062.34 | 871561.47 |
-| Random | 1217687.46 | 853788.38 | 989021.81 | 881480.53 |
-| Drain Immediately | 1216497.28 | 850457.36 | 985140.11 | 878074.20 |
-| Defer to Sun | 1216497.28 | 850457.36 | 985140.11 | 878074.20 |
-| GreenSlot | 1216499.83 | 800127.03 | 937768.97 | 858094.43 |
+| PPO | 2175361.23 | 1595039.99 | 1944155.29 | 2129605.88 |
+| DQN | 2201966.02 | 1672836.63 | 2496402.77 | 1538751.62 |
+| Round Robin | 2572203.65 | 1596224.44 | 2013160.01 | 1797659.11 |
+| Cheapest Price First | 2040930.38 | 2037622.46 | 1597072.97 | 1426139.26 |
+| Avoid the Ramp | 2936734.17 | 1267479.72 | 1649037.08 | 2128490.45 |
+| Local Only (No Routing) | 2595841.19 | 1589334.66 | 2015620.92 | 1786472.25 |
+| Random | 2567263.42 | 1597108.23 | 2014367.56 | 1799311.14 |
+| Drain Immediately | 2572203.65 | 1596224.44 | 2013160.01 | 1797659.11 |
+| Defer to Low Net Demand | 2572203.65 | 1596224.44 | 2013160.01 | 1797659.11 |
+| Trough-Slot Lookahead | 2742224.27 | 1458653.39 | 1982053.85 | 1852940.25 |
 
 ## Plots
 
 ![Cumulative Cost](us_model_cumulative_cost.png)
 
-![Renewable Utilization](us_model_renewable.png)
+![Peak Contribution](us_model_peak_contribution.png)
 
 ![Allocation Heatmap](us_model_allocation_heatmap.png)
