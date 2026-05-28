@@ -216,6 +216,16 @@ Global (×3):
 | 33 | Total batch pool size |
 | 34 | Hour of day |
 
+**Optional augmentations** (used by the burst-aware experiments in §7.6):
+
+| Flag | Adds per DC | Adds globally | Total batch-mode obs dim |
+|---|---|---|---|
+| `memory_enabled=True` | `current_memory_load`, `memory_backlog` (+2) | — | 43 |
+| `burst_aware=True` | `burst_severity = current_batch_arrival / rolling_24h_mean` (+1) | — | 36 (or 44 with memory) |
+| both | (+3) | — | **47** |
+
+Burst severity is clipped to [0, 10] for numerical stability; 1.0 indicates "this arrival is average," 2+ indicates an active burst. Memory is enabled but does not bind in our env (verified — total cost unchanged vs disabled).
+
 ### 3.5 Action Space
 
 **Legacy mode**: `N = 4` continuous actions ∈ [-1, 1]
@@ -556,6 +566,66 @@ PPO reduces US-West cost (the highest-stress region, CAISO duck curve) by **14%*
 
 The Global-Asia DC (Singapore) is the most expensive region (high EMA prices). PPO reduces Global-Asia cost by **19%** vs Round Robin by deferring Singapore-bound work and rerouting it to cheaper grids during their slack hours. Avoid the Ramp pushes too aggressively to Global-US-Central, raising the duck-curve cost at Global-US-West.
 
+### 7.6 Burst-Aware Augmentation (Heavy-Tail Follow-Up)
+
+Tirmazi et al. (2020) document that the 2019 trace exhibits an extreme long tail at the job level: "the top 1% of jobs (resource hogs) consume over 99% of all resources" with squared coefficients of variation >23,000 (§7 of that paper). The intra-cluster scheduling implication is "insulate the mice from the hogs"; for our cell-aggregate routing problem, the same heavy-tail manifests as **bursty aggregate batch arrivals** — a small fraction of timesteps deliver a large fraction of new batch CPU demand. Our heavy-tailed distribution fits (Weibull, log-normal; §2.2) preserve this burstiness into the per-step cell-aggregate arrivals our env exposes.
+
+This sub-section reports two diagnostic experiments on whether burst handling is a high-leverage optimization axis we should target explicitly.
+
+#### Step 1 — Are bursts where the optimization signal lives?
+
+Define a **burst timestep** as any step in the top 5% by aggregate batch CPU arrival across all DCs (446 of 8,917 timesteps per episode; arrival magnitude ~2.5× the non-burst mean). Per-policy cost decomposition on US batch and Global batch (full results in `output/burst_analysis.json`):
+
+| Metric | US batch | Global batch |
+|---|---|---|
+| Burst share of total cost (Round Robin) | 5.3% | 5.3% |
+| Burst $/step premium vs non-burst (Round Robin) | +6.5% | +5.7% |
+| PPO total advantage vs Round Robin | +3.19% | +6.76% |
+| PPO **burst-window** advantage vs Round Robin | **+6.37%** | **+8.86%** |
+| PPO **off-burst** advantage vs Round Robin | +3.01% | +6.65% |
+| DQN-routing-grid total / burst-window adv | +1.34% / **+4.33%** | +0.57% / +1.64% |
+| DQN-flatidx total / burst-window adv | −0.49% / −1.15% | +5.23% / **+6.75%** |
+
+**Findings**:
+
+1. **Bursts do not dominate raw cost.** The pool-with-deadline mechanic smears arrival spikes across multiple subsequent drain steps, so the 5% of timesteps with the largest arrivals account for ~5.3% of total cost — only a slight premium over their share-of-timesteps baseline.
+2. **But the RL optimization signal *does* concentrate in burst windows.** Every RL agent's advantage-over-Round-Robin is larger in burst windows than off-burst — for PPO, the burst-window advantage is **2.1× the off-burst advantage in US batch** and **1.3× in Global batch**. So the policies aren't winning by averaging gains over uniform conditions; they're winning by making their best decisions during the high-arrival moments.
+3. **PPO already learned burst-aware spatial routing implicitly** (no explicit burst signal in the observation). Quantified via three behavior metrics — HHI of routing fractions (spatial concentration), `Σ fraction_i × net_demand_i` (net-demand-weighted routing target), and mean drain rate:
+
+   | PPO metric (US batch) | Burst | Non-burst |
+   |---|---|---|
+   | HHI (spatial concentration) | 0.316 | 0.308 |
+   | ND-weighted routing target (lower = route to slack grids) | **0.662** | **0.693** |
+   | Mean drain rate | 0.460 | 0.461 |
+
+   Spatial routing differs during bursts (more concentrated toward lower-net-demand DCs). **Temporal behavior (drain rate) is essentially identical** burst vs non-burst — the unused lever.
+
+#### Step 2 — Does an explicit burst signal help?
+
+We added a per-DC `burst_severity = current_batch_arrival / rolling_24h_mean_arrival` observation feature (clipped to [0, 10]) and retrained PPO + DQN-flatidx on US batch and Global batch. We also enabled the `memory_enabled` flag in these runs (memory does not bind in our env — verified by [scripts/check_memory_binding.py](scripts/check_memory_binding.py) showing 0.0000% cost diff with memory on vs off — so this adds observation dimensionality without changing dynamics).
+
+| Variant | US batch | Global batch | Total improvement |
+|---|---|---|---|
+| PPO baseline | $9.47M | $13.20M | — |
+| **PPO + burst + memory** | **$9.41M** | **$13.04M** | **+0.7% US, +1.2% Global** |
+| DQN-flatidx baseline | $9.83M | $13.42M | — |
+| DQN-flatidx + burst + memory | $9.79M | $14.18M | +0.4% US, **−5.4% Global** |
+
+**Findings**:
+
+1. **PPO benefits modestly from the explicit burst signal** (+0.7–1.2% total cost reduction). The improvement is **proportionally larger in burst windows** (+1.3% burst $/step in US, +1.7% in Global) than off-burst (+0.7%, +1.2%), consistent with the prediction.
+2. **The improvement mechanism is NOT what we predicted.** Drain rate differentiation between burst and non-burst remains essentially zero even with the explicit signal (PPO-burst delta = −0.0018 vs baseline's −0.0009). What changed: PPO-burst+mem learned a **more spatially concentrated** policy (HHI 0.358 vs 0.316 in US burst windows) and a **slightly more aggressive overall drain rate** (0.477 vs 0.461 in US). The agent did not learn to vary drain timing based on burst presence; it learned a uniformly tighter policy that happens to perform better during bursts.
+3. **DQN-flatidx is hit-or-miss** with burst awareness: small +0.4% improvement on US, but a **−5.4% regression on Global**. Likely cause: the 47-dim augmented observation (vs 35 baseline) is harder for DQN with only 48 actions to map into Q-values in the same training budget. PPO scales better with input dimensionality on our env.
+
+#### Takeaway
+
+The burst-aware augmentation is **a modest positive result for PPO with a negative result for DQN-flatidx in geo-distributed settings**. The deeper finding from these two experiments is structural: **temporal scheduling (drain timing) is the lever PPO appears unable to differentiate by arrival magnitude**, even when given the explicit signal. The Step 1 spatial-routing differentiation that PPO learned implicitly extends and slightly amplifies with the burst signal, but no agent we trained learned to vary drain timing based on burst severity. This suggests one of:
+- The current pool-with-deadline mechanic already absorbs bursts well enough that differentiated drain timing has limited additional value
+- The deadline penalty weight is calibrated such that holding longer during bursts isn't favorable
+- A different reward structure (e.g., explicit reward for "uniform-load drain") would be needed to elicit differentiated temporal behavior
+
+For the thesis story, the contribution is honest: we identified the burst-window concentration of the optimization signal (a non-trivial finding tied to Tirmazi's heavy-tail observation), tested an explicit intervention, and report that PPO improves modestly via spatial-routing tightening — not via the differentiated temporal behavior we hypothesized.
+
 ---
 
 ## 8. Comparison with Related Work
@@ -814,6 +884,20 @@ python train_dqn.py --scenario env/scenarios/us_model.yaml --batch-mode \
     --action-scheme cfws-style
 # or train all 4 flatidx configs at once:
 python scripts/run_cfws_dqn_sweep.py --timesteps 500000 --alpha 0.015
+
+# Burst-aware + memory PPO / DQN-flatidx variants (§7.6)
+python train.py --scenario env/scenarios/us_model.yaml --batch-mode \
+    --timesteps 500000 --peak-penalty-weight 0.015 \
+    --burst-aware --memory
+python train_dqn.py --scenario env/scenarios/us_model.yaml --batch-mode \
+    --timesteps 500000 --peak-penalty-weight 0.015 \
+    --action-scheme cfws-style --burst-aware --memory
+# or all 4 burst-aware configs at once:
+python scripts/run_burst_sweep.py --timesteps 500000 --alpha 0.015
+
+# Burst-window diagnostic analysis (§7.6)
+python scripts/analyze_burst_routing.py
+python scripts/analyze_burst_drain_diff.py
 ```
 
 ---
@@ -835,3 +919,5 @@ python scripts/run_cfws_dqn_sweep.py --timesteps 500000 --alpha 0.015
 7. **Concentration heuristics fail without temporal slack.** Avoid-the-Ramp and Cheapest-Price-First collapse in legacy mode (8× and 4× worse than Round Robin respectively) from capacity violations. In batch mode the deferral pool absorbs the shock — Avoid-the-Ramp becomes the 2nd-best Global policy. This is a generalizable design insight: spatial concentration strategies need temporal flexibility to be safe.
 
 8. **The new formulation produces meaningful policy spread.** The old on-site-solar formulation flattened all reasonable legacy policies to within 1%. The new objective shows 3–7% spreads across policies and configurations, with clearly differentiated rankings — the optimization surface is meaningfully exposed rather than smothered by surplus solar.
+
+9. **The RL optimization signal concentrates in burst windows; the heavy tail is real but doesn't dominate cost.** Tirmazi's per-job long-tail (top 1% jobs = 99% of resources) manifests in our cell-aggregate setting as bursty batch arrivals. Burst timesteps (top 5% by arrival magnitude) don't drive disproportionate raw cost — the pool-with-deadline mechanic smears burst cost across drain steps — but the RL agents' advantage over Round Robin is **substantially larger in burst windows** (PPO: 2.1× larger in US batch, 1.3× in Global batch). PPO learned implicit burst-aware spatial routing without an explicit signal; it does not differentiate temporal (drain) behavior burst vs non-burst even when given an explicit `burst_severity` observation feature (§7.6). The Step 2 burst-aware augmentation improves PPO cost by 0.7–1.2% via a tighter spatial policy, not via differentiated temporal scheduling — an honest result with a different mechanism than predicted.

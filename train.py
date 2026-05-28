@@ -30,6 +30,7 @@ def make_env(
     dynamic_arrivals: bool = True,
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
+    burst_aware: bool = False,
 ) -> MultiDCEnv:
     """Create a MultiDCEnv from a scenario config."""
     sites, power_model, batch_config = load_scenario(
@@ -58,6 +59,7 @@ def make_env(
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
+        burst_aware=burst_aware,
     )
 
 
@@ -159,11 +161,19 @@ def main(argv: list[str] | None = None) -> None:
              "α × grid_mw² × net_demand_normalized[t]. Penalizes load "
              "concentrated during peak grid stress (default: 0.0 = disabled)",
     )
+    parser.add_argument(
+        "--burst-aware",
+        action="store_true",
+        help="Augment observation with per-DC burst_severity = current_arrival / "
+             "rolling_24h_mean_arrival (batch mode only). Adds 1 dim per DC.",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
     if args.batch_mode:
         scenario_name += "_batch"
+    if args.burst_aware:
+        scenario_name += "_burst"
     print(f"=== Training PPO on scenario: {scenario_name} ===")
 
     # Create environment
@@ -177,6 +187,7 @@ def main(argv: list[str] | None = None) -> None:
         dynamic_arrivals=not args.no_dynamic_arrivals,
         seed=args.seed,
         peak_penalty_weight=args.peak_penalty_weight,
+        burst_aware=args.burst_aware,
     )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
