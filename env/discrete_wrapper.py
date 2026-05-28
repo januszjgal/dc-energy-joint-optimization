@@ -1,11 +1,12 @@
 """Discrete action wrapper for DQN training on the MultiDCEnv.
 
-DQN requires a discrete (Discrete) action space.  This wrapper maps a
-finite set of pre-defined allocation strategies to the continuous action
-space of MultiDCEnv.
+DQN requires a discrete action space. This wrapper maps a finite set of
+canonical routing allocations to the continuous action space of MultiDCEnv,
+giving DQN a 253 × 3 = 759 action grid (routing × drain) in batch mode.
 
-Following the CFWS (Zhao et al. 2024) methodology, we discretize the
-routing decision into a set of canonical allocations.
+This is a generic discretization, not CFWS's flattened-index VM-migration
+scheme — CFWS operates at per-PM granularity over `R × n × m` migration
+decisions (see thesis_overview.md §8.5 for the distinction).
 """
 
 from __future__ import annotations

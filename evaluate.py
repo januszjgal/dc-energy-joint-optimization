@@ -213,7 +213,13 @@ def main(argv: list[str] | None = None) -> None:
         "--dqn-model",
         type=Path,
         default=None,
-        help="Path to a second (DQN) model for comparison",
+        help="Path to a second (DQN routing-grid) model for comparison",
+    )
+    parser.add_argument(
+        "--dqn-flatidx-model",
+        type=Path,
+        default=None,
+        help="Path to a third (DQN CFWS-style flattened-index) model for comparison",
     )
     parser.add_argument(
         "--peak-penalty-weight",
@@ -259,11 +265,11 @@ def main(argv: list[str] | None = None) -> None:
     print(f"  {rl_label} total cost: {rl_summary['total_cost']:.2f}")
     results[rl_label] = {"reward": rl_reward, "summary": rl_summary, "history": rl_history}
 
-    # Optionally load a second model (e.g., DQN for comparison)
+    # Optionally load a second model (DQN routing-grid for comparison)
     if args.dqn_model is not None and args.algorithm != "dqn":
         from env.discrete_wrapper import DiscretizedMultiDCEnv
 
-        print(f"Loading DQN model from {args.dqn_model}...")
+        print(f"Loading DQN (routing-grid) model from {args.dqn_model}...")
         dqn_model = DQN.load(args.dqn_model)
         env2 = _make_env(
             args.scenario,
@@ -279,6 +285,29 @@ def main(argv: list[str] | None = None) -> None:
         dqn_summary = compute_summary(dqn_history, batch_enabled=args.batch_mode)
         print(f"  DQN total cost: {dqn_summary['total_cost']:.2f}")
         results["DQN"] = {"reward": dqn_reward, "summary": dqn_summary, "history": dqn_history}
+
+    # Optionally load a third model (CFWS-style flattened-index DQN)
+    if args.dqn_flatidx_model is not None:
+        from env.cfws_style_wrapper import CFWSStyleDiscretizedEnv
+
+        print(f"Loading DQN (CFWS flat-index) model from {args.dqn_flatidx_model}...")
+        dqn_flat = DQN.load(args.dqn_flatidx_model)
+        env3 = _make_env(
+            args.scenario,
+            batch_enabled=args.batch_mode,
+            flexibility_factor=args.flexibility_factor,
+            deadline_penalty_weight=args.deadline_penalty,
+            memory_enabled=args.memory,
+            dynamic_arrivals=not args.no_dynamic_arrivals,
+            peak_penalty_weight=args.peak_penalty_weight,
+        )
+        env3 = CFWSStyleDiscretizedEnv(env3)
+        df_reward, df_history = run_episode(env3, dqn_flat.predict, is_sb3=True)
+        df_summary = compute_summary(df_history, batch_enabled=args.batch_mode)
+        print(f"  DQN-flatidx total cost: {df_summary['total_cost']:.2f}")
+        results["DQN-flatidx"] = {
+            "reward": df_reward, "summary": df_summary, "history": df_history,
+        }
 
     ppo_summary = rl_summary  # for dc_names later
 
