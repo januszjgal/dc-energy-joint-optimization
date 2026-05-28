@@ -55,6 +55,34 @@
       }
     }
   },
+  "DQN-flatidx": {
+    "reward": -10865115.791828379,
+    "summary": {
+      "total_cost": 10865115.791828351,
+      "total_energy_cost": 7787560.606403161,
+      "total_peak_penalty": 1880160.7623159841,
+      "total_grid_mw_steps": 2558206.6034522112,
+      "nd_weighted_load": 1716066.9552703807,
+      "per_dc_energy_cost": {
+        "US-West": 2053870.947889827,
+        "US-Central": 1596224.4438497329,
+        "US-Southeast-1": 2013160.015289127,
+        "US-Southeast-2": 2124305.199374474
+      },
+      "per_dc_peak_penalty": {
+        "US-West": 278584.65129995823,
+        "US-Central": 518881.1871210889,
+        "US-Southeast-1": 467795.79085630324,
+        "US-Southeast-2": 614899.1330386339
+      },
+      "per_dc_avg_backlog": {
+        "US-West": 0.0,
+        "US-Central": 0.0,
+        "US-Southeast-1": 0.0,
+        "US-Southeast-2": 89.5214700840497
+      }
+    }
+  },
   "Round Robin": {
     "reward": -9842773.419984447,
     "summary": {

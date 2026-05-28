@@ -1,11 +1,24 @@
 """Train a DQN agent on the Multi-DC environment using Stable-Baselines3.
 
-Following the CFWS (Zhao et al. 2024) methodology, this uses a Deep
-Q-Network with a discretized action space.
+Two discretization schemes are supported via --action-scheme:
+
+  routing-grid (default):
+      Stock SB3 DQN over a 759-action routing-fraction grid (4 DCs × 5
+      levels deduped to 253 routing actions × 3 drain levels). See
+      env/discrete_wrapper.py.
+
+  cfws-style:
+      48-action CFWS-style flattened-index scheme adapted to our env
+      (Zhao et al. 2025, IEEE TSC 10(1)). Each action decodes to
+      (src_dc, dst_dc, drain_level) via division/modulo; src==dst means
+      "uniform allocation", else "migrate 15% from src to dst". See
+      env/cfws_style_wrapper.py and thesis_overview.md §8.6.
 
 Usage:
     python train_dqn.py --scenario env/scenarios/us_model.yaml --timesteps 500000
     python train_dqn.py --scenario env/scenarios/us_model.yaml --batch-mode --timesteps 500000
+    python train_dqn.py --scenario env/scenarios/us_model.yaml --batch-mode \
+        --action-scheme cfws-style --timesteps 500000
 """
 
 from __future__ import annotations
@@ -13,8 +26,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import gymnasium as gym
 from stable_baselines3 import DQN
 
+from env.cfws_style_wrapper import CFWSStyleDiscretizedEnv
 from env.data_loader import load_scenario
 from env.discrete_wrapper import DiscretizedMultiDCEnv
 from env.multi_dc_env import MultiDCEnv
@@ -32,8 +47,14 @@ def make_env(
     seed: int = 42,
     granularity: int = 5,
     peak_penalty_weight: float = 0.0,
-) -> DiscretizedMultiDCEnv:
-    """Create a discretized MultiDCEnv from a scenario config."""
+    action_scheme: str = "routing-grid",
+) -> gym.Wrapper:
+    """Create a discretized MultiDCEnv from a scenario config.
+
+    action_scheme:
+      'routing-grid'  -> DiscretizedMultiDCEnv (759 actions)
+      'cfws-style'    -> CFWSStyleDiscretizedEnv (48 actions)
+    """
     sites, power_model, batch_config = load_scenario(
         scenario_path,
         batch_enabled=batch_enabled,
@@ -61,7 +82,11 @@ def make_env(
         peak_penalty_weight=peak_penalty_weight,
     )
 
-    return DiscretizedMultiDCEnv(base_env, granularity=granularity)
+    if action_scheme == "cfws-style":
+        return CFWSStyleDiscretizedEnv(base_env)
+    if action_scheme == "routing-grid":
+        return DiscretizedMultiDCEnv(base_env, granularity=granularity)
+    raise ValueError(f"unknown action_scheme: {action_scheme}")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -138,11 +163,20 @@ def main(argv: list[str] | None = None) -> None:
         default=0.0,
         help="Weight on peak-contribution penalty (default: 0.0)",
     )
+    parser.add_argument(
+        "--action-scheme",
+        choices=["routing-grid", "cfws-style"],
+        default="routing-grid",
+        help="Action discretization: routing-grid (759 actions, default) or "
+             "cfws-style (48-action flattened-index, CFWS Zhao 2025 analog).",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
     if args.batch_mode:
         scenario_name += "_batch"
+    if args.action_scheme == "cfws-style":
+        scenario_name += "_flatidx"
     print(f"=== Training DQN on scenario: {scenario_name} ===")
 
     env = make_env(
@@ -156,9 +190,12 @@ def main(argv: list[str] | None = None) -> None:
         seed=args.seed,
         granularity=args.granularity,
         peak_penalty_weight=args.peak_penalty_weight,
+        action_scheme=args.action_scheme,
     )
+    n_actions = getattr(env, "n_actions", env.action_space.n)
     print(f"Observation space: {env.observation_space}")
-    print(f"Action space: {env.action_space} ({env.n_actions} discrete actions)")
+    print(f"Action space: {env.action_space} ({n_actions} discrete actions)")
+    print(f"Action scheme: {args.action_scheme}")
     print(f"Number of DCs: {env.env.n_dc}")
     print(f"Max steps per episode: {env.env.max_steps}")
 

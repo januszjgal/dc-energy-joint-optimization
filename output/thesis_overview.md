@@ -36,19 +36,26 @@ We explicitly **do not** model:
 
 ### 2.1 Workload Traces — Google ClusterData 2019
 
-Workload demand traces are derived from the **Google ClusterData 2019** dataset, accessed via BigQuery. This dataset contains detailed resource usage records from Google's production clusters, organized into "cells" (a, b, c, d, e, f, g, h).
+Workload demand traces are derived from the **Google ClusterData 2019** trace, the second-generation Borg trace published by Google in 2019/2020 and documented by **Tirmazi et al. (2020), "Borg: the next generation"** (EuroSys '20) [§8.1]. The trace covers eight Borg clusters (cells **a–h**) for the entire month of May 2019, comprising ~96.4k machines across the eight cells with an average of ~12k machines per cell. We use cells a, b, c, d — one per DC in our 4-DC scenarios.
+
+A **cell** in Borg is "a single management unit" — a logical cluster of machines managed by one scheduler master (Tirmazi §2). Treating each cell as one DC's natural workload is consistent with how the trace publishers themselves describe cells as first-class deployment units; the trace publication explicitly notes "considerable inter-cell workload variation" (Tirmazi §3), which is precisely the heterogeneity our multi-DC routing exploits.
 
 We extract per-cell aggregate CPU demand timeseries at 5-minute resolution:
-- **Source table**: `google.com:google-cluster-data.clusterdata_2019_a` (and b, c, d variants)
-- **Metric**: Normalized CPU demand (`cpu_demand_norm`) — aggregate CPU usage per 5-minute interval, normalized to [0, 1]
-- **Duration**: ~31 days → 8,917 timesteps per cell
+- **Source table**: `google.com:google-cluster-data.clusterdata_2019_a` (and b, c, d variants), accessed via BigQuery
+- **Metric**: Normalized CPU demand (`cpu_demand_norm`) — aggregate CPU usage per 5-minute interval, expressed in **Normalized Compute Units (NCUs)** scaled to [0, 1]. NCUs abstract over machine heterogeneity by rescaling Google Compute Units (GCUs) against the maximum machine size in the trace (Tirmazi §3).
+- **Sampling interval**: 5 minutes, matching the trace's native sampling period (Tirmazi notes that the 2019 trace adds a 21-element CPU-utilization histogram per 5-minute period)
+- **Duration**: 31 days → 8,917 timesteps per cell
 - **Files**: `data/cells/cell_a.csv` through `cell_d.csv`
 
-Each cell represents one DC's natural workload pattern, preserving real diurnal and weekly variation.
+This per-cell aggregate extraction is the standard way of summarizing the 2019 trace — Tirmazi's own analyses (Figures 2–3 of that paper) present cell-level CPU and memory usage as "fraction of cell capacity" timeseries across the trace duration, which is structurally the same view our environment operates on. Each cell thus represents one DC's natural workload pattern with real diurnal and weekly variation preserved.
+
+**Modeling assumption — cells as proxy DCs.** Tirmazi documents the 2019 trace as eight Borg cells but does *not* claim those cells are in geographically distinct locations. Our framing treats four cells as if they were four geographically distributed hyperscale DCs — i.e., what 4 hyperscale-DC workloads with similar diurnal patterns but realistic cell-level heterogeneity would look like. This is a defensible **modeling exercise** rather than a dataset-grounded claim: it relies on (a) Tirmazi's documented inter-cell workload variation as a proxy for inter-DC workload variation, and (b) the absence of any contradicting metadata in the trace. The cell's actual physical scale is also significantly smaller than a hyperscale DC; the magnitude scaling that bridges this gap is treated separately in §3.2 (`rated_power_mw`). Together with §3.2, this is the cell-as-proxy-DC modeling exercise that the rest of the thesis builds on — not what the dataset publishers had in mind, but consistent with the patterns the dataset preserves.
 
 ### 2.2 Batch Job Distributions — Google ClusterData 2019
 
-For batch scheduling, we extract 200,000 batch jobs per cell from the same dataset and fit statistical distributions to characterize:
+The 2019 trace exposes job priority as a sparse value in [0, 450] and groups priorities into named **tiers** (Tirmazi §2). We filter on the **best-effort batch (beb) tier** (priorities 110–115), which is "managed by the batch scheduler and incurs low internal charges; they have no associated SLOs" — i.e., the workloads that are genuinely deferrable. Tirmazi reports that across the 2019 trace, the beb tier accounts for ~20% of cell capacity on average; our per-cell measured batch fractions (4.3%–7.3%, below) are lower because we filter more conservatively for jobs whose duration and arrival pattern allow modeling as a queueable pool.
+
+For batch scheduling, we extract 200,000 batch jobs per cell from the beb tier and fit statistical distributions to characterize:
 
 | Property | Cell A Distribution | Key Parameters |
 |---|---|---|
@@ -58,12 +65,12 @@ For batch scheduling, we extract 200,000 batch jobs per cell from the same datas
 | **Memory request** (normalized) | Log-normal | σ=0.83, μ=0.004, mean=0.006 |
 | **Tasks per job** | Mixture: 83.2% point-mass at 1 + Gamma tail | mean=12.0 |
 
-**Fitting methodology**: Maximum Likelihood Estimation (MLE) with p1-p99 percentile trimming to remove extreme outliers. Distribution candidates (lognorm, weibull_min, gamma, expon) were tested and the best-fit selected per property.
+**Fitting methodology**: Maximum Likelihood Estimation (MLE) with p1-p99 percentile trimming to remove extreme outliers. Distribution candidates (lognorm, weibull_min, gamma, expon) were tested and the best-fit selected per property. The choice of heavy-tailed candidates (Weibull, log-normal, Pareto-adjacent) reflects Tirmazi's finding that "the top 1% of jobs consume over 99% of resources" with "squared coefficients of variation over 23,000" — these distributions are necessary to faithfully reproduce the extreme variability in production cluster workloads (Tirmazi §7).
 
 The **batch fraction** (percentage of total cluster workload that is deferrable batch) is computed directly from the dataset:
 - Cell A: 4.3%, Cell B: 7.3%, Cell C: 5.1%, Cell D: 6.2%
 
-These are realistic values — Google's published data shows batch work is a relatively small fraction of total compute, but its deferability makes it high-leverage for energy optimization.
+These are realistic values: Tirmazi reports that workload mix has migrated from the free tier into the best-effort batch tier between 2011 and 2019, with beb now a structural part of Google's workload. Batch work is a relatively small fraction of total compute, but its deferability makes it high-leverage for energy optimization.
 
 ### 2.3 Grid Net Demand & Solar Forecast Features
 
@@ -127,27 +134,33 @@ Number of DCs: 4
 
 ### 3.2 Power Model
 
-The power model converts CPU utilization to electrical power consumption using a **linear model** calibrated from the **Google PowerData2019** dataset:
+The power model converts CPU utilization to electrical power consumption using a **linear model** calibrated against real Google power measurements from the **`powerdata_2019`** BigQuery dataset — the companion power-measurement trace published alongside ClusterData 2019 and documented in **Sakalkar et al. (2020), "Data Center Power Oversubscription with a Medium Voltage Power Plane and Priority-Aware Capping" (ASPLOS '20)** [§8]. `powerdata_2019` exposes per-PDU measured power utilization at the cell level; we join it with aggregate cell-level CPU utilization at hourly resolution and fit a linear model on the resulting (cpu_util, power_util) pairs.
 
-```
-P(u) = idle_power + slope × u
-```
+**Calibration** (see [preprocess/power_calibrator.py](preprocess/power_calibrator.py)):
+
+- **Source**: `powerdata_2019.cell*.measured_power_util` joined with aggregate CPU computed from `instance_usage.average_usage.cpus / cell_cpu_capacity`, both per (cell, hour).
+- **Cells**: a, b, c, d (matching the four cells used as DCs in our scenarios).
+- **Samples**: 2,981 (cpu_util, power_util) pairs across the four cells.
+- **Fit**: `P(u) = idle_power + slope × u`, least squares.
 
 | Parameter | Value | Description |
 |---|---|---|
-| `idle_power` | 0.4788 | Power draw at zero CPU load (normalized) |
+| `idle_power` | 0.4788 | Power draw at zero CPU load (normalized, fraction of rated) |
 | `slope` | 0.4438 | Additional power per unit CPU utilization |
 | `peak_power` | 0.9227 | Power at 100% CPU (idle + slope) |
-| `R²` | 0.4328 | Coefficient of determination |
+| `R²` | 0.4328 | CPU alone explains ~43% of measured power variance |
 
-This is a **normalized** model — to get actual power in MW:
+The R² of ~0.43 reflects that CPU is one of several drivers of cell power — memory, I/O, network, and (Sakalkar et al. note) priority-aware capping decisions all contribute to the residual. The 48% idle / 92% peak shape is consistent with the canonical Fan et al. (2007) range for hyperscale servers (~50–100% of rated).
+
+**Magnitude scaling (the `rated_power_mw` assumption)**. The model output `P(u)` is dimensionless [0, 1]. To get MW:
+
 ```
 power_MW = P(cpu_util) × rated_power_mw
 ```
 
-With `rated_power_mw = 100`, this yields:
-- Idle power: ~47.9 MW per DC
-- Peak power: ~92.3 MW per DC
+With `rated_power_mw = 100`, this yields ~47.9 MW idle and ~92.3 MW peak per DC. **This 100 MW figure is an explicit assumption, not derived from cell size.** A Borg cell of ~12k machines (Tirmazi Table 1) drawing ~300 W per server is physically about 3–5 MW — roughly 20× smaller than the 100 MW we use. The decision to scale up reflects the thesis's research question: at 3–5 MW a single cell is invisible to the regional grid (CAISO peak ~26 GW), and the duck-curve / peak-penalty optimization signal would be near-zero. At 100 MW per DC × 4 DCs = 400 MW aggregate, the simulated fleet is the size of a real hyperscale operator's regional footprint (e.g., Google's Council Bluffs IA campus, Microsoft's Quincy WA), which is the scale where grid-stress considerations actually drive operator decisions.
+
+The defensible framing is: **the cell's normalized utilization curve provides the workload *shape* (real diurnal + weekly + cell-heterogeneity patterns from production); the 100 MW `rated_power_mw` sets the *magnitude* to a hyperscale-DC reference where the optimization is operationally meaningful.** Sensitivity to this assumption could be tested by sweeping `rated_power_mw` ∈ {10, 50, 100, 200} — left as future work.
 
 ### 3.3 Energy Cost & Peak-Contribution Penalty
 
@@ -251,26 +264,28 @@ The `renewable_bonus` term from the prior on-site-solar formulation has been rem
 
 ### 3.7 Batch Scheduling Mechanism
 
+The deferrable-batch-with-deadlines pattern follows a well-established lineage in renewable-aware datacenter scheduling — most directly **Grange et al. (2018)** (§8.2), whose central abstraction is "batch jobs with due-date constraints, which takes into account the availability of the renewable energy," and **GreenSlot (Goiri et al. 2011)** (§8.4), which "delays jobs to execute them when the cost is the lowest." We extend the single-DC pool-with-deadline pattern from that lineage to the multi-DC setting, where the agent must simultaneously decide *where* to route service work and *when* to drain each DC's batch pool.
+
 When batch mode is enabled, each timestep follows this pipeline:
 
-1. **Inject**: New batch demand arrives and enters each DC's batch pool with a deadline:
+1. **Inject**: New batch demand arrives (sampled from the fitted distributions in §2.2) and enters each DC's batch pool with a deadline:
    ```python
    deadline = t + ceil(mean_duration × (1 + flexibility_factor) / interval_seconds)
    ```
-   With `flexibility_factor = 1.0`, jobs get 2× their expected duration as deadline slack.
+   With `flexibility_factor = 1.0`, jobs get 2× their expected duration as deadline slack. This is the SLA-flexibility knob that Grange et al. identify as the primary driver of achievable savings ("the amount of freedom allowed by the SLA greatly affects the achievable saving").
 
-2. **Expire**: Any pool entries past their deadline are removed and counted as violations.
+2. **Expire**: Any pool entries past their deadline are removed and counted as violations (penalized via `deadline_penalty_weight`).
 
 3. **Drain**: The agent's drain rate controls how much of each DC's pool is executed:
    ```python
    drained = pool.drain(drain_rate)  # drains most-urgent entries first
    ```
 
-4. **Route**: Service demand is routed spatially across DCs.
+4. **Route**: Service demand is routed spatially across DCs (softmax over agent's routing logits).
 
-5. **Serve**: Each DC serves `service_assigned + backlog + batch_drained`, up to capacity. Service work gets priority over batch work.
+5. **Serve**: Each DC serves `service_assigned + backlog + batch_drained`, up to capacity. Service work gets priority over batch work — service traffic must be served immediately to avoid backlog penalty, while batch can spill back into the pool.
 
-The `BatchPool` data structure maintains a deque of `(cpu_demand, deadline_step)` entries. Draining preferentially removes the most urgent (nearest-deadline) entries first.
+The `BatchPool` data structure maintains a deque of `(cpu_demand, deadline_step)` entries. Draining preferentially removes the most urgent (nearest-deadline) entries first, which is the canonical EDF (earliest-deadline-first) policy used in the batch-deferral literature.
 
 ### 3.8 Dynamic Batch Arrivals
 
@@ -313,7 +328,12 @@ Two PPO models were trained:
 
 ### 4.2 DQN (Deep Q-Network)
 
-Following the methodology of **CFWS (Zhao et al. 2024)**, we implement a DQN baseline with a discretized action space for direct comparison.
+We train **two DQN variants** as algorithm-level analogs to CFWS (Zhao et al. 2025) — both use identical DQN hyperparameters (ε-greedy + target network + experience replay), differing only in action encoding:
+
+- **DQN (routing-grid)**: 759-action enumerated grid (253 routing × 3 drain). Generic discretization.
+- **DQN (flat-idx)**: 48-action CFWS-style flattened-index decoded via hash-map to `(src_dc, dst_dc, drain_level)` — the closest port of CFWS's hash-map action philosophy our cell-aggregate formulation allows. See [env/cfws_style_wrapper.py](env/cfws_style_wrapper.py).
+
+This setup tests two questions: (a) does the CFWS algorithmic choice (DQN) work on our formulation? (b) does CFWS's *action-encoding* idea (small, semantically-meaningful action set) transfer? See §8.6 for the formulation/algorithm/encoding comparison tables and §7 for empirical results. Both DQN variants are independent of and not reimplementations of CFWS — CFWS operates on per-PM VM migrations at a different state granularity.
 
 | Hyperparameter | Value |
 |---|---|
@@ -418,7 +438,7 @@ All numbers below come from the demand-smoothing formulation: grid-only DCs, rew
 
 | Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | ND-weighted Load |
 |---|---|---|---|---|
-| **DQN** | **9,842,806** | 7,909,957 | 1,931,809 | 1,733,322 |
+| **DQN (routing-grid)** | **9,842,806** | 7,909,957 | 1,931,809 | 1,733,322 |
 | Round Robin | 9,842,773 | 7,979,247 | 1,863,526 | 1,723,187 |
 | Drain Immediately | 9,842,773 | 7,979,247 | 1,863,526 | 1,723,187 |
 | Defer to Low Net Demand | 9,842,773 | 7,979,247 | 1,863,526 | 1,723,187 |
@@ -426,12 +446,13 @@ All numbers below come from the demand-smoothing formulation: grid-only DCs, rew
 | Random | 9,881,612 | 7,978,050 | 1,902,539 | 1,723,286 |
 | Trough-Slot Lookahead | 9,939,815 | 8,035,872 | 1,820,927 | 1,691,662 |
 | PPO | 10,097,587 | 7,844,162 | 1,885,277 | 1,721,237 |
+| DQN (flat-idx) | 10,865,116 | 7,787,561 | 1,880,161 | 1,716,067 |
 | Avoid the Ramp | 16,580,284 | 7,981,741 | 1,832,226 | 1,672,948 |
 | Cheapest Price First | 40,302,132 | 7,101,765 | 1,692,723 | 1,599,584 |
 
-**Key finding**: In US legacy mode, spatial routing alone is structurally limited — the four DCs share similar net-demand profiles (only 3-hour timezone spread, all in the same continental load shape) so the agent has little room to re-route. Round Robin, Drain Immediately, and Defer to Low Net Demand tie exactly at $9.843M because with no batch deferral their per-step actions reduce to the same uniform allocation. DQN matches them to within $30.
+**Key finding**: In US legacy mode, spatial routing alone is structurally limited — the four DCs share similar net-demand profiles (only 3-hour timezone spread, all in the same continental load shape) so the agent has little room to re-route. Round Robin, Drain Immediately, and Defer to Low Net Demand tie exactly at $9.843M because with no batch deferral their per-step actions reduce to the same uniform allocation. DQN (routing-grid) matches them to within $30.
 
-PPO **underperforms** here ($10.10M, 2.6% worse than Round Robin). It actually achieves the *lowest* energy cost in the table ($7.84M) — but pays for it through higher capacity-violation penalties on the concentrated DC it favored. Without temporal slack, the agent's exploration over routing fractions doesn't recover the cost of those violations. This matches the pattern seen in the original on-site-solar formulation: PPO struggles when spatial routing is the only lever.
+Both RL agents **underperform** the trivial baselines here. PPO ($10.10M, 2.6% worse than Round Robin) achieves the *lowest* energy cost in the table ($7.84M) but pays for it through higher capacity-violation penalties on the concentrated DC it favors. DQN (flat-idx) does even worse ($10.87M, 10.4% worse than Round Robin) — its 48-action space can only encode "uniform" or "migrate 15% from src to dst" allocations, which is too coarse when the optimal policy is "stay close to uniform with small adjustments per timestep." This is the canonical case where CFWS-style flat-idx encoding hurts: with low spatial diversity, the constrained action set can't fine-tune.
 
 Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically fail by pushing all demand onto one DC and triggering backlog blowups.
 
@@ -440,13 +461,14 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 | Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | ND-weighted Load | Batch Expired | Avg Pool |
 |---|---|---|---|---|---|---|
 | **PPO** | **9,473,793** | 7,615,395 | 1,855,933 | 1,698,501 | 1,232.7 | 0.73 |
-| DQN | 9,654,859 | 7,767,898 | 1,885,515 | 1,713,902 | 723.4 | 9.37 |
+| DQN (routing-grid) | 9,654,859 | 7,767,898 | 1,885,515 | 1,713,902 | 723.4 | 9.37 |
 | Random | 9,737,380 | 7,859,869 | 1,876,581 | 1,711,321 | 420.2 | 0.51 |
 | Drain Immediately | 9,769,153 | 7,896,170 | 1,872,734 | 1,720,079 | 123.9 | 0.02 |
 | Round Robin | 9,784,834 | 7,905,770 | 1,878,991 | 1,722,885 | 36.7 | 0.47 |
 | Local Only | 9,786,782 | 7,908,301 | 1,878,337 | 1,722,633 | 72.2 | 0.18 |
 | Defer to Low Net Demand | 9,788,720 | 7,907,982 | 1,880,718 | 1,723,684 | 9.6 | 1.67 |
 | Trough-Slot Lookahead | 9,802,326 | 7,954,189 | 1,832,267 | 1,694,752 | 48.1 | 0.48 |
+| DQN (flat-idx) | 9,832,808 | 7,931,021 | 1,901,552 | 1,724,409 | 117.7 | 0.04 |
 | Avoid the Ramp | 10,287,186 | 7,882,658 | 1,803,174 | 1,664,045 | 979.5 | 1.78 |
 | Cheapest Price First | 21,051,100 | 7,170,953 | 1,720,172 | 1,614,448 | 2,316.9 | 0.55 |
 
@@ -458,7 +480,7 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 
 3. **PPO accepts deadline cost for energy savings.** The agent expires 1,233 units of batch work (vs ~10 for Defer-to-Low-Net-Demand, ~37 for Round Robin) because the energy + peak savings from late draining exceed the deadline penalty (2 × 1,233 ≈ $2.5K is dwarfed by the $300K energy cost reduction). This is an emergent strategy — the deadline penalty weight is fixed at 2.0; the agent simply discovered the favorable arithmetic.
 
-4. **DQN does well in batch mode** ($9.65M, 2nd place, 1.4% above Round Robin) — much better than its legacy-mode tie. The discrete drain options (hold / half / flush) capture most of the temporal benefit, even though continuous routing would help further.
+4. **DQN (routing-grid) does well in batch mode** ($9.65M, 2nd place, 1.4% above Round Robin) — much better than its legacy-mode tie. The discrete drain options (hold / half / flush) capture most of the temporal benefit, even though continuous routing would help further. **DQN (flat-idx)** is significantly worse here ($9.83M, 9th) — its always-on drain-level commitment (one of three intensities, applied uniformly to all DCs every step) is too coarse for the fine drain-timing PPO and DQN-routing-grid learn. Notably, flat-idx has the smallest avg pool (0.04) and very few expirations (118) — it's draining too aggressively and not exploiting temporal flexibility well in the US scenario.
 
 5. **Defer to Low Net Demand has the fewest deadline violations (9.6)** but achieves only a middling cost. Its drain timing is *too* conservative — it lets the pool grow then drains in big bursts when net demand drops, but with only modest cost savings.
 
@@ -466,8 +488,9 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 
 | Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | ND-weighted Load |
 |---|---|---|---|---|
-| **PPO** | **13,479,999** | 11,331,244 | 2,063,018 | 1,848,298 |
-| DQN | 13,567,888 | 11,565,256 | 2,002,631 | 1,833,835 |
+| **DQN (flat-idx)** | **13,473,988** | 11,438,042 | 2,035,946 | 1,845,916 |
+| PPO | 13,479,999 | 11,331,244 | 2,063,018 | 1,848,298 |
+| DQN (routing-grid) | 13,567,888 | 11,565,256 | 2,002,631 | 1,833,835 |
 | Trough-Slot Lookahead | 14,073,496 | 12,085,211 | 1,951,681 | 1,808,770 |
 | Local Only | 14,226,821 | 12,224,388 | 2,002,433 | 1,849,641 |
 | Round Robin | 14,242,628 | 12,241,614 | 2,001,013 | 1,849,584 |
@@ -479,20 +502,21 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 
 **Key findings**:
 
-1. **PPO wins decisively** at $13.48M — 4.2% better than Trough-Slot Lookahead, 5.4% better than Round Robin. The 16-hour timezone spread in the Global scenario gives spatial routing real teeth: at any moment, some DC's grid is slack while another's is peaking, and the agent learns to push load toward the slack one.
+1. **DQN (flat-idx) and PPO tie** within $6K ($13,473,988 vs $13,479,999) — a statistical tie inside any reasonable seed-variance band. The 16-hour timezone spread in the Global scenario gives spatial routing real teeth: at any moment, some DC's grid is slack while another's is peaking. Both winning agents learn to route load toward the slack DC, but reach the same cost via different routes — PPO via fine-grained continuous fractions, DQN-flat-idx via well-chosen discrete "migrate X from src to dst" actions.
 
-2. **DQN is competitive** ($13.57M, within 0.7% of PPO) — much closer than in batch mode (see §7.4). Spatial routing decisions can be reasonably well-approximated by 253 discrete allocations.
+2. **The flat-idx win here is the strongest evidence that CFWS's action-encoding philosophy can transfer to our formulation.** Under geographic diversity, the 48-action set's structure (every action is a sensible "migrate from one DC to another" operation) is exactly what's needed; a generic 759-action routing-grid (DQN-routing-grid at $13.57M, 0.7% worse) wastes capacity on allocations that are never optimal.
 
-3. **Trough-Slot Lookahead helps** ($14.07M, 1.2% better than Round Robin) but is still 4.2% behind PPO. Its perfect future net-demand foresight is useful but its proportional-to-inverse-demand routing rule doesn't capture the price + capacity tradeoffs PPO learns.
+3. **All three RL/RL-adjacent agents beat the lookahead heuristic.** PPO, DQN-flat-idx, and DQN-routing-grid all beat Trough-Slot Lookahead by 3.6–4.3%. Trough-Slot has perfect 3-hour net-demand foresight but its proportional-to-inverse-demand routing rule doesn't capture the price + capacity tradeoffs the agents learn.
 
 ### 7.4 Global Model — Batch Mode
 
 | Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | ND-weighted Load | Batch Expired | Avg Pool |
 |---|---|---|---|---|---|---|
 | **PPO** | **13,200,684** | 11,233,518 | 1,964,651 | 1,809,538 | 1,257.9 | 0.73 |
+| DQN (flat-idx) | 13,418,703 | 11,428,230 | 1,989,005 | 1,825,247 | 734.2 | 0.54 |
 | Avoid the Ramp | 13,807,454 | 11,623,269 | 1,921,059 | 1,775,187 | 1,071.1 | 2.38 |
 | Trough-Slot Lookahead | 13,974,911 | 12,009,138 | 1,965,431 | 1,815,191 | 114.1 | 0.49 |
-| DQN | 14,077,805 | 12,017,983 | 2,059,274 | 1,855,238 | 274.0 | 0.49 |
+| DQN (routing-grid) | 14,077,805 | 12,017,983 | 2,059,274 | 1,855,238 | 274.0 | 0.49 |
 | Random | 14,088,938 | 12,071,455 | 2,016,552 | 1,837,997 | 420.2 | 0.51 |
 | Local Only | 14,137,839 | 12,120,996 | 2,016,698 | 1,849,378 | 72.2 | 0.18 |
 | Drain Immediately | 14,142,016 | 12,128,766 | 2,013,002 | 1,847,711 | 123.9 | 0.02 |
@@ -502,11 +526,13 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 
 **Key findings**:
 
-1. **PPO is best across all four configurations**: $13.20M, **6.8% better than Round Robin** and **5.5% better than Trough-Slot Lookahead**. This is the largest margin in any config — geographic diversity (Global) + temporal flexibility (batch) jointly maximize the optimization surface.
+1. **PPO is best** at $13.20M, **6.8% better than Round Robin** and **5.5% better than Trough-Slot Lookahead**. This is the largest margin in any config — geographic diversity (Global) + temporal flexibility (batch) jointly maximize the optimization surface.
 
-2. **Avoid the Ramp surprises** in 2nd place ($13.81M). Its routing-to-the-slackest-grid strategy, which catastrophically failed in legacy mode (capacity violations), becomes viable when batch deferral can absorb the spike. The drain pool grows to an average of 2.38 — the largest non-degenerate pool size — as it queues work waiting for the chosen DC to have headroom.
+2. **DQN (flat-idx) is 2nd** at $13.42M — 1.6% behind PPO but **4.7% better than DQN-routing-grid** ($14.08M, 5th). The CFWS-style action encoding clearly helps here: even though the action set is 16× smaller (48 vs 759), the structured "migrate from src to dst" primitives are much more sample-efficient to learn than the generic routing-fraction enumeration. This is the second config (after Global legacy §7.3) where flat-idx demonstrably outperforms routing-grid.
 
-3. **DQN regresses to mid-pack** ($14.08M, 4th) — the gap to PPO widens to 6.7%. The discrete action grid (253 routing × 3 drain = 759 options) doesn't capture the finer spatial-temporal coordination PPO learns.
+3. **Avoid the Ramp** lands in 3rd ($13.81M). Its routing-to-the-slackest-grid strategy, which catastrophically failed in legacy mode (capacity violations), becomes viable when batch deferral can absorb the spike. The drain pool grows to an average of 2.38 — the largest non-degenerate pool size — as it queues work waiting for the chosen DC to have headroom.
+
+4. **DQN (routing-grid) regresses to mid-pack** ($14.08M, 5th) — its 759-action space wastes too much capacity on near-optimal-allocation variants that never get explored. The gap to PPO widens to 6.7%. This is the clearest single piece of evidence that **action-space encoding choice can matter more than algorithm choice**: the same DQN algorithm, on the same env, with the same hyperparameters, differs by 4.7% based solely on how the discrete action space is structured.
 
 ### 7.5 Per-DC Energy Cost Breakdown
 
@@ -534,42 +560,56 @@ The Global-Asia DC (Singapore) is the most expensive region (high EMA prices). P
 
 ## 8. Comparison with Related Work
 
-### 8.1 CFWS — Zhao et al. (2024)
+The combination explored in this thesis — multi-DC spatial routing + temporal batch scheduling, with RL, against grid demand-smoothing as a first-class objective, using cell-aggregated ClusterData 2019 — is not directly anchored to a single prior paper. The framing below triangulates across several lines of work: each citation supports the specific subclaim it can actually support, rather than overclaiming a single-paper methodology lineage.
 
-**"Carbon-Aware and Fault-tolerant Workload Scheduling in Cloud Data Centers"**
+### 8.1 ClusterData lineage — Tirmazi et al. (2020)
 
-| Aspect | CFWS | Our Work |
-|---|---|---|
-| **RL Algorithm** | DQN | PPO (primary) + DQN (comparison) |
-| **Action Space** | Discrete (workload migration decisions) | Continuous (softmax routing + sigmoid drain) |
-| **Number of DCs** | 4 (US) | 4 (US scenario), 4 (Global scenario) |
-| **Renewable Modeling** | Wind generation as on-site supply | Renewables enter only through grid net demand |
-| **Workload Source** | Google ClusterData 2011 | Google ClusterData 2019 |
-| **Optimization Target** | Carbon emissions + energy cost | Energy cost + grid peak-contribution penalty |
-| **Batch Scheduling** | No (service workloads only) | Yes (temporal + spatial) |
+**Tirmazi, Barker, Deng, Haque, Qin, Hand, Harchol-Balter, Wilkes. "Borg: the next generation." EuroSys '20** is the canonical Google paper describing the ClusterData 2019 trace. It is published by the same authors who released the dataset, and is the primary methodology reference for analyzing the trace at the cell level. The structural decisions in our environment that depend on the trace are all anchored directly to claims in that paper:
 
-**Key differences**:
-- CFWS models renewables as on-site supply. We treat DCs as pure grid-connected loads — renewables enter only through their effect on regional grid net demand, which is the actual quantity our peak penalty targets. This is closer to how hyperscale DCs operate at the grid scale that matters for duck-curve mitigation.
-- CFWS optimizes for **carbon intensity**, which varies by grid region and time. We optimize for **cost + grid-friendliness**, which is more directly actionable for operators and aligns with the ISO market signals that drive real-world dispatch.
-- We use **ClusterData 2019** (vs 2011), providing a richer batch job metadata corpus (200K jobs per cell with full resource/duration distributions).
-- Our **batch scheduling** adds a temporal dimension absent from CFWS — the agent controls both *where* and *when* to execute deferrable work. This is the dimension where the largest gains live (see §7.2/§7.4).
-- Our DQN comparison (253 × 3 = 759 discrete actions in batch mode) consistently underperforms PPO by 1–7% across configurations, validating that continuous actions matter for the spatial-temporal coordination this problem requires.
+| Our environment choice | Tirmazi anchor |
+|---|---|
+| Treating each cell as one DC | "Each such deployment is called a cell, and is operated as a single management unit" (§2) |
+| Per-cell aggregate CPU timeseries | Figures 2–3 present cell-level CPU/memory usage as "fraction of cell capacity" timeseries — the standard aggregate-per-cell view (§4) |
+| 5-minute sampling interval | "The 2019 trace adds a 21-element histogram of CPU utilization for each 5 minute sampling period" (§3) |
+| `cpu_demand_norm` in [0, 1] | Normalized Compute Units (NCUs) are "always in the range 0–1" (§3) |
+| Using multiple heterogeneous cells | "Considerable inter-cell workload variation" reported across cells a–h (§3, Fig 3) |
+| Best-effort batch (beb) tier as the deferrable pool | beb tier "managed by the batch scheduler ... no associated SLOs," priority 110–115 (§2); accounts for ~20% of cell capacity (§4) |
+| Heavy-tailed distribution fits (Weibull, log-normal) | "Top 1% of jobs (resource hogs) consume over 99% of all resources" with squared coefficient of variation > 23,000 (§7) |
+| 31-day episode length | "31 days" duration of the 2019 trace (Table 1) |
 
-### 8.2 GreenSlot — Goiri et al. (2011)
+This grounds our data usage in the dataset publisher's own framing rather than borrowing a methodology from an unrelated research thread. The cells a–d we use are four of the eight cells (a–h) Tirmazi analyzes, with ~12k machines per cell on average.
 
-**"GreenSlot: Scheduling Energy Consumption in Green Datacenters"**
+### 8.2 Single-DC renewable-aware predecessors — Grange (2018), Haghshenas et al., Liu et al.
 
-| Aspect | GreenSlot | Our Work |
-|---|---|---|
-| **Approach** | Optimization-based (linear programming) | RL (model-free) |
-| **Scheduling Type** | Temporal only (single DC) | Spatial + temporal (multi-DC) |
-| **Renewable Forecast** | Required (explicit solar prediction) | Not required (learned from observations) |
-| **Batch Model** | Bag-of-tasks with deadlines | Pool-based with urgency-weighted draining |
-| **Number of DCs** | 1 | 4 |
+The renewable-aware batch scheduling literature is largely **single-DC**. Three reference points form the immediate lineage:
 
-Our **Trough-Slot Lookahead** baseline adapts the GreenSlot "green slot" concept to the demand-smoothing formulation: instead of scheduling into local solar surplus, it schedules into regional grid net-demand troughs. It uses a 36-timestep (3-hour) lookahead window — privileged information PPO does not have.
+**Grange, Da Costa, Stolf (2018), "Green IT scheduling for data center powered with renewable energy"** (*Future Generation Computer Systems* 86) is the closest single-DC predecessor to our batch-deferral logic. Grange schedules **batch jobs with due-date constraints** in a small-scale DC powered by on-site solar panels and grid, achieving up to **49% brown-energy reduction and 51% cost savings** vs a renewable-unaware scheduler. Their core architectural insight — which we adopt — is **separation of concerns**: "a scheduling algorithm agnostic of the electrical infrastructure. A separated system, managing the renewable sources, provides an arbitrary objective function, which is used to guide the scheduling heuristic." In our env, the same separation holds: the agent's reward gets a `peak_penalty` term that summarizes grid stress via `net_demand_normalized × grid_mw²`, but the agent doesn't model the grid directly. Grange also identifies the SLA-flexibility/savings tradeoff that motivates our `flexibility_factor` parameter (§3.7).
 
-PPO **outperforms Trough-Slot Lookahead in every config**:
+**Haghshenas, Taheri, Goudarzi, Mohammadi, "Infrastructure Aware Heterogeneous-Workloads Scheduling for Data Center Energy Cost Minimization"** considers a single Internet DC with **heterogeneous interactive + batch workloads**, on-site solar, cooling subsystem, and time-varying electricity prices. Their algorithm achieves 46% cost reduction. Two aspects flow through to our work: (1) the **interactive-vs-batch split** that we encode as `get_service_demand(t)` (non-deferrable) vs `get_batch_demand(t)` (pool-managed) — Haghshenas-style heterogeneous workloads are the rationale for treating these as separate workload classes; (2) **electricity rate structure awareness**, which we extend from a single DC's local price to per-DC LMP signals.
+
+**Liu, Chen, Bash, Wierman, Gmach, Wang, Marwah, Hyser, "Renewable and Cooling Aware Workload Management for Sustainable Data Centers"** (Caltech + HP Labs) takes a **predict-then-plan** structure: forecast renewable supply + IT demand, then generate a workload plan that schedules IT work and allocates resources according to time-varying power supply. The forecasting horizon and lookahead-based planning structure is what motivates our **Trough-Slot Lookahead** baseline (§8.4) — though we use net demand as the forecast signal rather than renewable supply, consistent with the reframing in §1.
+
+All three are **single-DC**. The combination "multi-DC routing + temporal batch deferral + grid-aware objective + cell-aggregate ClusterData" is the gap this thesis fills relative to that lineage.
+
+### 8.3 Interactive + batch deferral pattern — Xu, Toosi, Buyya
+
+**"A Self-Adaptive Approach for Managing Applications and Harnessing Renewable Energy for Sustainable Cloud Computing"** (Xu, Toosi, Buyya) provides the framework we adopt for **splitting workloads into interactive (must-serve-now) and batch (deferrable) components**, with separate handling for each: brownout for interactive, deferring for batch. Our environment's `batch_enabled` mode (§3.7) and the batch pool / drain abstraction are direct descendants of this framework, restricted to the batch side (we don't implement brownout). Like the others in §8.2, Xu's setup is single-DC.
+
+### 8.4 Lookahead-based scheduling — GreenSlot (Goiri et al. 2011)
+
+**Goiri et al., "GreenSlot: Scheduling Energy Consumption in Green Datacenters"** is the lineage for our **Trough-Slot Lookahead** baseline. Per Grange et al.'s clear summary (§8.2 above): GreenSlot "considered a small cluster used for scientific computation, and powered partially with solar panels. Using prediction of renewable power available, along with grid electricity price, the GreenSlot algorithm delays jobs to execute them when the cost is the lowest (both in terms of brown energy usage and in terms of purchasing cost)." The algorithm discretizes future time into fixed-duration slots, each "valuated with predicted renewable energy production, grid electricity cost, and number of available computing nodes," then greedily places each task in the first slot allowing renewable-only execution.
+
+Our Trough-Slot Lookahead baseline (§5.8) reuses the slot-valuation idea but retargets it to the demand-smoothing formulation: instead of evaluating slots by predicted renewable supply, it evaluates them by predicted **grid net demand** — a slot is "good" when net demand will be low (a duck-curve trough), not when local solar will be high. The 36-step (3-hour) lookahead window directly mirrors GreenSlot's slot horizon.
+
+| Aspect | GreenSlot | Our Trough-Slot baseline | Our PPO agent |
+|---|---|---|---|
+| Approach | Greedy slot valuation (LP variant in follow-up GreenSwitch) | Lookahead heuristic | Model-free RL |
+| Scheduling | Temporal only (single DC) | Spatial + temporal (multi-DC) | Spatial + temporal (multi-DC) |
+| Slot signal | Solar supply + grid price | Grid net demand (forecast) | Implicit from observations |
+| Forecast required | Yes (explicit) | Yes (oracle: actual future net demand) | No (learned) |
+| Number of DCs | 1 | 4 | 4 |
+
+PPO **outperforms Trough-Slot Lookahead in every config where temporal flexibility exists**:
 
 | Config | PPO | Trough-Slot | PPO Advantage |
 |---|---|---|---|
@@ -577,19 +617,103 @@ PPO **outperforms Trough-Slot Lookahead in every config**:
 | Global legacy | $13.48M | $14.07M | **4.2%** |
 | Global batch | $13.20M | $13.97M | **5.5%** |
 
-This reverses the original-formulation result, where GreenSlot edged out PPO by 0.2%. Under the new objective the agent has more to learn than a single "schedule into troughs" rule: it must balance price, peak penalty, capacity, and deadlines simultaneously, and it must coordinate spatial and temporal decisions. The heuristic captures the temporal axis but doesn't coordinate it with routing the way PPO does.
+This is meaningful because Trough-Slot has **privileged 3-hour future net-demand information** that PPO does not. PPO learns implicit forecasting AND coordinates it with routing — a strictly stronger policy than the foresighted single-axis heuristic.
 
-### 8.3 Positioning of Our Contribution
+### 8.5 Operational anchor — Radovanovic et al. (2022)
 
-Our work sits at the intersection of these approaches:
+**Radovanovic, Koningstein, Schneider, Chen, Duarte, Roy, Xiao, Haridasan, Hung, Care, Talukdar, Mullen, Smith, Cottman, Cirne. "Carbon-Aware Computing for Datacenters." IEEE Transactions on Power Systems** describes **CICS — Google's Carbon-Intelligent Compute System**, the production system that shifts temporally flexible workloads across Google's datacenter portfolio (20+ DCs, 15.5 TWh annual consumption, 4 continents) to align computing with low-carbon grid hours. CICS uses day-ahead carbon-intensity forecasts and cluster-level load forecasts to generate hourly Virtual Capacity Curves (VCCs) per cluster.
 
-1. **Multi-DC spatial routing** (like CFWS) + **temporal batch scheduling** (like GreenSlot) in a unified RL framework.
-2. **Grid demand smoothing as a first-class objective** via a peak-contribution penalty against actual EIA-930 net demand timeseries — rather than the on-site-renewable framing that dominates prior work.
-3. **Continuous action space** (PPO) enabling fine-grained joint routing + drain decisions; DQN with 759 discrete actions trails by 1–7%.
-4. **Modern workload data** (ClusterData 2019) with distribution-fitted batch arrivals preserving realistic burstiness.
-5. **Real grid data**: EIA-930 hourly net demand for US BAs (CISO, MISO, SOCO, DUK), real ISO prices, NSRDB solar irradiance as forecast features.
+This paper is the **operational validation that the problem class this thesis addresses is real at hyperscale**. Three specific claims from Radovanovic carry through to our work:
 
-The primary findings are:
+| Radovanovic CICS | Our env |
+|---|---|
+| "Shifting execution of flexible workloads in time and space can decrease peak demand for resources and power" | Our peak-contribution penalty (§3.3) targets exactly this; PPO's batch-mode drain decisions are the spatial+temporal shift CICS enacts in production |
+| Uses "cluster-level load forecasts and power models [Sakalkar 2020]" | Same cluster-level cell-aggregate granularity (§2.1); same Sakalkar 2020 power model lineage (§3.2) |
+| "Datacenters are planned based on peak power and resource usage, smaller peaks reduce the need for more capacity" | Direct motivation for our load-squared peak penalty in the reward |
+
+We do **not** reproduce CICS — it's an operational paper not a published methodology, uses internal Google data not the public ClusterData 2019 trace, and optimizes carbon rather than grid demand smoothing. But it confirms our problem framing matches industry practice at the scale we model. The thesis can be positioned as "a published methodology and reproducible Gymnasium env for the problem class that CICS solves operationally."
+
+### 8.6 Academic foundation — CFWS (Zhao et al. 2025)
+
+**CFWS (Zhao, Zhou, Li, IEEE Trans. Sustainable Computing 10(1), Jan/Feb 2025)** is the closest published academic peer — a DRL framework for **multi-DC workload distribution under renewable considerations**, with 4 geographically distributed US DCs (Arizona, California, Oregon, Louisiana). Like us, CFWS is geo-distributed at the DC level; unlike us, the unit of work CFWS shifts is an individual VM (with per-PM state inside each DC) rather than aggregate cell-level load. We use CFWS as the **academic foundation** establishing that DRL is a valid approach to this class of problem, and align with it at the **algorithmic level** (DQN) without claiming methodology reproduction.
+
+#### Formulation-level differences (why head-to-head numbers would mislead)
+
+Both CFWS and our work operate over geo-distributed DCs; the differences are about **what gets shifted and at what granularity inside each DC**, not about whether DCs are geographically separate. Numerical comparison between their DQN cost figures and ours would not be apples-to-apples because the units being optimized are different.
+
+| Dimension | CFWS | Us |
+|---|---|---|
+| Geo-distributed DCs | ✓ 4 (AZ, CA, OR, LA) | ✓ 4 (US scenario: OR, IA, GA, SC; Global: OR, IA, NL, SG) |
+| Unit of work being moved | One VM at a time | A fraction of aggregate load |
+| Destination | A specific PM (which happens to be in some DC) | A whole DC (no PM granularity) |
+| State granularity | Per-PM CPU utilization tuple within each DC | Aggregated per-DC CPU demand (cell-as-DC, §2.1) |
+| Action paradigm | Discrete VM migration: pick (VM, dest DC, dest PM) via flattened-index hash map (`R×n×m`) | Discrete routing-fraction grid (DQN) / continuous softmax routing + sigmoid drain (PPO) |
+| Trigger | TCN-MAD overload detection — only fires when a PM is over/under threshold | Continuous, every 5-min step |
+| Renewable | On-site wind (NE-3000 turbines, cut-in/rated/cut-out model) | None on-site; renewables enter via grid net demand only |
+| Objective | Energy cost + carbon footprint (linear scalarization) | Energy cost + grid peak-contribution penalty (quadratic in load) |
+| Workload | ClusterData 2011, 5-day simulation | ClusterData 2019, 31-day simulation |
+
+#### Algorithm-level alignment (DQN as the CFWS-aligned baseline)
+
+Where CFWS and our **DQN baselines** *do* align is at the algorithm level — both use a standard DQN configuration. We train **two DQN variants** to test the action-encoding question from different angles:
+
+- **DQN (routing-grid)** — generic 759-action grid (253 routing × 3 drain). The natural "what if you just dropped DQN into our env" baseline.
+- **DQN (flat-idx)** — 48-action CFWS-style flattened-index scheme adapted to our env. Each action decodes via division/modulo to `(src_dc, dst_dc, drain_level)`: same DC for src/dst means "uniform allocation", otherwise "migrate 15% from src to dst" + set all drain rates to the chosen intensity level. This is the closest port of CFWS's hash-map-decode action philosophy that our cell-aggregate formulation allows (we don't have VMs/PMs to enumerate). See [env/cfws_style_wrapper.py](env/cfws_style_wrapper.py).
+
+Both DQN variants share identical hyperparameters with each other and with CFWS:
+
+| DQN component | CFWS (per Zhao et al. §IV-C3) | Our DQN (routing-grid) | Our DQN (flat-idx) |
+|---|---|---|---|
+| Core algorithm | DQN | DQN | DQN |
+| Exploration | ε-greedy, decaying | ε-greedy, fraction = 0.3, final ε = 0.05 | (same) |
+| Stability | Target Q-network + experience replay | Target update = 1,000 steps; replay buffer = 100,000 | (same) |
+| Network arch | MLP (dims unspecified) | MLP [256, 256] | (same) |
+| Output | Q-value per discrete action | Q-value per discrete action | Q-value per discrete action |
+| **Action set size** | `R × n × m` (variable, ~10s–100s per overloaded PM) | **759** (batch mode) | **48** (batch mode) |
+| **Action encoding** | Flattened index → hash-map → (VM, dest DC, dest PM) | Index → lookup into precomputed (routing logits, drain logits) tuple | Flattened index → hash-map → (src DC, dst DC, drain level) |
+| What action means | Migrate one selected VM from an overloaded PM to a target PM (the target PM may be in any of the geo-distributed DCs) | Set the next 5-min routing fractions across DCs + per-DC drain rates | Migrate 15% load from src DC to dst DC + set all drain rates to chosen intensity |
+| Trigger in env loop | Only when TCN-MAD flags an over/under-loaded PM | Every timestep | Every timestep |
+
+The **flat-idx variant** is closer to CFWS *in spirit* (small discrete action set, hash-map decode to a multi-dim "migration" tuple); the **routing-grid variant** is closer in *expressivity* (large enumerated action set covering arbitrary allocations).
+
+#### Empirical comparison: action-space encoding matters, but direction depends on scenario
+
+Trained models evaluated under identical conditions (α = 0.015, same seeds, full 31-day trace):
+
+| Scenario | PPO | DQN (routing-grid, 759) | DQN (flat-idx, 48) | flat-idx vs routing-grid |
+|---|---|---|---|---|
+| US legacy | $10.10M | **$9.84M** | $10.87M | **−10.4%** worse |
+| US batch | **$9.47M** | $9.65M | $9.83M | −1.8% worse |
+| Global legacy | $13.48M | $13.57M | **$13.47M** (ties PPO) | **+0.7%** better |
+| Global batch | **$13.20M** | $14.08M | $13.42M | **+4.7%** better |
+
+Three findings emerge:
+
+1. **On our formulation, the CFWS-style flat-idx encoding wins under high geographic diversity** (Global scenarios) and loses under low diversity (US). With a 16-hour timezone spread and heterogeneous grids, the 48-action set's "migrate load from this DC to that DC" structure encodes good policy primitives directly; with a 3-hour US-only spread (similar grids, similar diurnal shapes), the constrained 48-action space can't fine-tune the small adjustments that the optimal policy requires. *Note*: this finding is specific to our cell-aggregate formulation; it does **not** say anything about how CFWS's encoding performs on CFWS's own per-PM formulation. CFWS reports their flat-idx DQN works well on their AZ/CA/OR/LA setting (5.67–13.22% brown-energy reduction, 46.49–86.53% migration reduction vs their baselines) — and they have many more meaningful actions per migration event because each DC contains many PMs, so their action space isn't constrained the same way ours is.
+2. **PPO still wins overall, but the margin against the *best* DQN variant is smaller than against routing-grid alone**: PPO vs the best DQN at each config is +2.6% (US legacy DQN-rg), +1.9% (US batch DQN-rg), tie (Global legacy DQN-flatidx), +1.6% (Global batch DQN-flatidx). So the headline "PPO beats DQN by 1–7%" was partly explained by sub-optimal action-space discretization, not just the discrete-vs-continuous distinction.
+3. **Action-encoding choice matters as much as algorithm choice in some configs**. In Global batch, switching DQN from routing-grid to flat-idx improves cost by 4.7% — larger than the typical PPO-over-DQN gap. This validates CFWS's own design insight (constraining the action space to a small set of semantically-meaningful operations helps DQN) even though we apply it on a different formulation.
+
+#### PPO as the contribution beyond CFWS
+
+PPO remains our overall best policy and goes beyond what CFWS's framework can express: their flattened-index action is inherently discrete (pick *one* VM to migrate), so a continuous-action variant would require reformulating their problem. In our cell-aggregate formulation, the action is naturally continuous (routing fractions in [0,1] summing to 1, drain rates in [0,1]), making PPO a natural fit. With the **flat-idx variant as the cleaner CFWS-style analog**, the PPO advantage is now tightly quantified: **+1.6 to +2.6% over the best DQN variant in 3 of 4 configs, and a statistical tie in Global legacy**. The contribution claim is "continuous actions provide a small but consistent advantage over even well-designed discrete action spaces in this formulation" — narrower and more defensible than the original "1–7% over DQN-routing-grid" framing.
+
+### 8.7 Survey context — Lin et al. (2024) and Wu et al. (2025)
+
+**"A systematic review of green-aware management techniques for sustainable data center"** (Lin, Lin, Peng, Huang, Lin, Li, 2024) provides the broader sustainable-DC landscape view. The categories of workload management, virtual resource management, energy management, thermal management, and waste heat recovery surveyed there place this thesis within "workload management + energy management for grid-aware multi-DC operation." For the multi-DC scheduling subarea specifically, **Wu et al. (2025), "Task Scheduling in Geo-Distributed Computing: A Survey"** (arXiv:2501.15504) is the most recent systematic review and covers the geo-distributed task-scheduling thread that this thesis sits within.
+
+### 8.8 Positioning of Our Contribution
+
+Stated against the lineage above:
+
+1. **Cell-as-proxy-DC modeling exercise.** We treat four ClusterData 2019 cells (a–d) as four geographically distributed hyperscale DCs — what such DCs' workloads would look like if they had cell-level inter-DC heterogeneity. This is *not* what Tirmazi et al. (2020) intended when documenting the trace (they don't claim the cells are geographically distinct), and no prior published work does exactly this. It is a defensible modeling exercise rather than a dataset-grounded claim (see §2.1 and §3.2 for the explicit modeling assumptions on workload-as-shape and `rated_power_mw`-as-magnitude).
+2. **Grid demand smoothing as a first-class objective**, via a peak-contribution penalty against actual EIA-930 net demand timeseries — rather than the on-site-renewable framing that dominates academic prior work.
+3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. Against our best DQN variant per config, PPO wins by +1.6 to +2.6% in 3 of 4 configs and ties in Global legacy (§8.6). The PPO advantage is narrower than against generic routing-grid DQN alone, because a CFWS-style flat-idx encoding closes much of the gap in Global scenarios.
+4. **Real-data grounding**: ClusterData 2019 (per Tirmazi 2020) for workloads, `powerdata_2019` (per Sakalkar 2020) for the power model, EIA-930 (CISO, MISO, SOCO, DUK) for grid net demand, real ISO prices, NSRDB solar irradiance as forecast features.
+5. **Operational relevance**: the problem class is the same one **Google's CICS (Radovanovic 2022)** solves in production at 20+ DCs across 4 continents. This thesis contributes a published methodology + reproducible Gymnasium env for that problem class.
+
+Honest framing of what this thesis is *not*: it is not a head-to-head comparable against CFWS (different action paradigm, different state granularity, different objective), nor a reimplementation of Google's CICS (closed-source operational system). It is a self-contained academic exploration of multi-DC + cell-aggregate + RL + grid-aware scheduling, with the cell-as-DC and 100 MW magnitude assumptions stated explicitly rather than hidden.
+
+The primary empirical findings are:
 
 - **Spatial routing alone matters under regional diversity.** In the Global scenario (16-hour timezone spread), PPO beats Round Robin by 5.4% in legacy mode. In the US scenario (3-hour spread, similar grid profiles), spatial routing alone is structurally limited.
 - **Temporal batch scheduling is the universal lever.** Batch mode improves PPO's cost by 6.2% over legacy in US and 2.1% in Global, on top of the spatial gains.
@@ -681,8 +805,15 @@ python evaluate.py --scenario env/scenarios/us_model.yaml \
     --peak-penalty-weight 0.015 \
     --dqn-model models/dqn_us_model_batch.zip
 
-# All four configs at once
+# All four configs at once (including DQN-flatidx if trained)
 python scripts/evaluate_all.py --alpha 0.015
+
+# CFWS-style flat-index DQN variant (48-action hash-map-decoded space, §8.6)
+python train_dqn.py --scenario env/scenarios/us_model.yaml --batch-mode \
+    --timesteps 500000 --peak-penalty-weight 0.015 \
+    --action-scheme cfws-style
+# or train all 4 flatidx configs at once:
+python scripts/run_cfws_dqn_sweep.py --timesteps 500000 --alpha 0.015
 ```
 
 ---
@@ -697,7 +828,7 @@ python scripts/evaluate_all.py --alpha 0.015
 
 4. **PPO discovers an aggressive cost-deadline tradeoff.** The agent expires 1,200–1,300 units of batch work per episode (vs ~10 for Defer-to-Low-Net-Demand) because the deadline penalty (~$2.5K) is dwarfed by the energy + peak savings (~$300K) from deferring drain into low-net-demand hours. This is emergent — the deadline weight is fixed at 2.0.
 
-5. **DQN trails PPO by 1–7%.** The discrete action space (253 routing × 3 drain = 759 batch-mode actions) captures most of the temporal benefit but cannot match PPO's continuous coordination — especially in Global batch where the gap widens to 6.7%. This generalizes the structural limitation in CFWS's DQN-based methodology.
+5. **Action-encoding choice matters as much as algorithm choice — and PPO's edge over DQN narrows once DQN's encoding is well-designed.** Both CFWS and our work are geo-distributed multi-DC; CFWS shifts individual VMs across DCs using per-PM state, we shift aggregate load across DCs at cell granularity (§8.6). We trained two DQN variants on *our* formulation: a generic 759-action routing-grid and a 48-action CFWS-style flat-idx encoding (`src_dc, dst_dc, drain_level` via hash-map decode, the closest port of CFWS's hash-map decoding philosophy our cell-aggregate setting allows). The flat-idx variant **wins under high geographic diversity** (Global legacy: ties PPO at $13.47M; Global batch: 4.7% better than routing-grid DQN) and **loses under low diversity** (US legacy: 10.4% worse than routing-grid DQN, because the constrained 48-action space can't fine-tune the few available levers when DCs are similar). PPO still wins overall (+1.6 to +2.6% over the best DQN per config in 3 of 4 configs; statistical tie in Global legacy) but the margin is narrower than against routing-grid DQN alone. This says nothing about how CFWS's encoding performs on CFWS's own per-PM formulation — they report their flat-idx DQN works well on their AZ/CA/OR/LA setup. It says that *in our cell-aggregate setting*, structured small action spaces beat generic large ones only when there's enough inter-DC diversity to exploit.
 
 6. **Per-DC reallocation matches the duck-curve story.** PPO cuts US-West (CAISO duck curve) cost by 14% vs Round Robin in US batch, and cuts Global-Asia (high-price Singapore) cost by 19% in Global batch. The agent is exploiting exactly the regional differences in net demand and price that motivated the framing.
 

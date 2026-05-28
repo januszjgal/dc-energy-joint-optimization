@@ -73,6 +73,43 @@
       }
     }
   },
+  "DQN-flatidx": {
+    "reward": -13418703.309996746,
+    "summary": {
+      "total_cost": 13418703.309996787,
+      "total_energy_cost": 11428230.230687192,
+      "total_peak_penalty": 1989004.65380142,
+      "total_grid_mw_steps": 2537813.822870181,
+      "nd_weighted_load": 1825247.3394553803,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2427003.2052800846,
+        "Global-US-Central": 1909809.5992519858,
+        "Global-EU": 2410080.807981181,
+        "Global-Asia": 4681336.61817394
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 389170.3620369144,
+        "Global-US-Central": 743765.1677086253,
+        "Global-EU": 479412.60876480787,
+        "Global-Asia": 376656.5152910724
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 734.2127540874882,
+      "total_deadline_cost": 1468.4255081749764,
+      "avg_batch_pool_size": 0.5448017279759682,
+      "avg_drain_rates": {
+        "Global-US-West": 0.5,
+        "Global-US-Central": 0.5,
+        "Global-EU": 0.5,
+        "Global-Asia": 0.5
+      }
+    }
+  },
   "Round Robin": {
     "reward": -14157556.084737584,
     "summary": {
