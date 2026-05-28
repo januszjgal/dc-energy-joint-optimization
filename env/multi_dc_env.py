@@ -59,6 +59,11 @@ class MultiDCEnv(gym.Env):
         interval_seconds: int = 300,
         # Memory constraint
         memory_enabled: bool = False,
+        # Burst-aware augmentation: add per-DC burst_severity feature to
+        # observation (= current batch arrival / rolling 24h mean arrival).
+        # Motivated by the burst-window analysis showing the optimization
+        # signal concentrates in high-arrival periods (§7-burst).
+        burst_aware: bool = False,
     ):
         super().__init__()
 
@@ -81,6 +86,7 @@ class MultiDCEnv(gym.Env):
         self.interval_seconds = interval_seconds
 
         self.memory_enabled = memory_enabled
+        self.burst_aware = burst_aware and batch_enabled  # only meaningful in batch mode
 
         # Per-site deadline offsets (timesteps)
         self._deadline_offsets: list[int] = []
@@ -99,7 +105,8 @@ class MultiDCEnv(gym.Env):
         # Observation & action spaces
         if self.batch_enabled:
             mem_dims = 2 if memory_enabled else 0
-            obs_dim = (8 + mem_dims) * self.n_dc + 3
+            burst_dims = 1 if self.burst_aware else 0
+            obs_dim = (8 + mem_dims + burst_dims) * self.n_dc + 3
             action_dim = 2 * self.n_dc
         else:
             mem_dims = 1 if memory_enabled else 0
@@ -280,6 +287,9 @@ class MultiDCEnv(gym.Env):
             new_batch = site.get_batch_demand(t)
             if new_batch > 0:
                 site.batch_pool.add(new_batch, t + self._deadline_offsets[i])
+            # Track arrival in rolling buffer for burst-severity observation
+            if self.burst_aware:
+                site.record_arrival(t)
 
         # Phase 2: expire overdue entries
         expired_per_dc = [site.batch_pool.expire(t) for site in self.sites]
@@ -416,6 +426,8 @@ class MultiDCEnv(gym.Env):
                 if self.memory_enabled:
                     per_dc.append(site.current_memory_load)
                     per_dc.append(site.memory_backlog)
+                if self.burst_aware:
+                    per_dc.append(site.get_burst_severity(t))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_service, total_batch_pool, hour_of_day])

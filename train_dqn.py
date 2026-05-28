@@ -48,6 +48,7 @@ def make_env(
     granularity: int = 5,
     peak_penalty_weight: float = 0.0,
     action_scheme: str = "routing-grid",
+    burst_aware: bool = False,
 ) -> gym.Wrapper:
     """Create a discretized MultiDCEnv from a scenario config.
 
@@ -80,6 +81,7 @@ def make_env(
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
+        burst_aware=burst_aware,
     )
 
     if action_scheme == "cfws-style":
@@ -170,6 +172,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Action discretization: routing-grid (759 actions, default) or "
              "cfws-style (48-action flattened-index, CFWS Zhao 2025 analog).",
     )
+    parser.add_argument(
+        "--burst-aware",
+        action="store_true",
+        help="Augment observation with per-DC burst_severity = current_arrival / "
+             "rolling_24h_mean_arrival (batch mode only). Adds 1 dim per DC.",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -177,6 +185,8 @@ def main(argv: list[str] | None = None) -> None:
         scenario_name += "_batch"
     if args.action_scheme == "cfws-style":
         scenario_name += "_flatidx"
+    if args.burst_aware:
+        scenario_name += "_burst"
     print(f"=== Training DQN on scenario: {scenario_name} ===")
 
     env = make_env(
@@ -191,6 +201,7 @@ def main(argv: list[str] | None = None) -> None:
         granularity=args.granularity,
         peak_penalty_weight=args.peak_penalty_weight,
         action_scheme=args.action_scheme,
+        burst_aware=args.burst_aware,
     )
     n_actions = getattr(env, "n_actions", env.action_space.n)
     print(f"Observation space: {env.observation_space}")

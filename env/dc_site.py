@@ -68,6 +68,13 @@ class DataCenterSite:
         default=None, init=False, repr=False
     )
 
+    # Rolling history of recent batch arrivals (24h window at 5-min resolution
+    # = 288 steps). Used by the burst-aware observation augmentation (§7-burst).
+    _arrival_history: np.ndarray = field(default=None, init=False, repr=False)
+    _arrival_pos: int = field(default=0, init=False, repr=False)
+    _arrival_count: int = field(default=0, init=False, repr=False)
+    _arrival_sum: float = field(default=0.0, init=False, repr=False)
+
     def reset(self, seed: int | None = None) -> None:
         """Reset mutable state for a new episode."""
         self.backlog = 0.0
@@ -77,6 +84,11 @@ class DataCenterSite:
         self.batch_pool.reset()
         if self.batch_generator is not None:
             self.batch_generator.reset(seed=seed)
+        # Reset rolling-arrival buffer (24h = 288 5-min steps)
+        self._arrival_history = np.zeros(288, dtype=np.float32)
+        self._arrival_pos = 0
+        self._arrival_count = 0
+        self._arrival_sum = 0.0
 
     @property
     def num_timesteps(self) -> int:
@@ -116,3 +128,40 @@ class DataCenterSite:
     def get_net_demand(self, t: int) -> float:
         """Regional grid net demand at t, normalized to [0, 1] by region peak."""
         return float(self.net_demand[t])
+
+    def record_arrival(self, t: int) -> None:
+        """Append the current timestep's batch arrival into the rolling buffer.
+
+        Called once per env step (immediately after `get_batch_demand(t)` is
+        injected into the pool). The buffer is a 288-step (24h) circular
+        buffer used by `get_burst_severity` to express the agent's current
+        arrival as a multiple of recent average load.
+        """
+        if self._arrival_history is None:
+            return  # reset() not yet called; should never happen
+        arrival = self.get_batch_demand(t)
+        window = self._arrival_history.shape[0]
+        if self._arrival_count >= window:
+            self._arrival_sum -= float(self._arrival_history[self._arrival_pos])
+        self._arrival_history[self._arrival_pos] = arrival
+        self._arrival_sum += arrival
+        self._arrival_pos = (self._arrival_pos + 1) % window
+        self._arrival_count = min(self._arrival_count + 1, window)
+
+    def get_burst_severity(self, t: int) -> float:
+        """Return current arrival / rolling 24h mean arrival.
+
+        Semantics: 1.0 = average arrival, 2.0 = twice the recent mean
+        (a moderate burst), 5+ = extreme burst. Clipped to [0, 10] for
+        numerical stability in observations.
+
+        Falls back to 1.0 (neutral signal) when the rolling buffer has not
+        accumulated enough history or recent mean is effectively zero.
+        """
+        if self._arrival_history is None or self._arrival_count == 0:
+            return 1.0
+        mean = self._arrival_sum / self._arrival_count
+        if mean < 1e-9:
+            return 1.0
+        current = self.get_batch_demand(t)
+        return float(min(10.0, current / mean))

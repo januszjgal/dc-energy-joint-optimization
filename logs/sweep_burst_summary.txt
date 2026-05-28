@@ -1,0 +1,11 @@
+# Burst-aware (+ memory) sweep summary
+# timesteps = 500000
+# alpha = 0.015
+# total elapsed: 66.8 min (1.11 h)
+
+label                                    status    elapsed (min)
+----------------------------------------------------------------
+ppo_us_batch_burst                       OK                 15.2
+ppo_global_batch_burst                   OK                 15.3
+dqn_us_batch_flatidx_burst               OK                 17.5
+dqn_global_batch_flatidx_burst           OK                 18.7

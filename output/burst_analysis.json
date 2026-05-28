@@ -1,0 +1,186 @@
+{
+  "US batch": {
+    "scenario": "US batch",
+    "burst_percentile": 95,
+    "n_burst": 446,
+    "n_total": 8917,
+    "arrival_ratio": 2.5399013392257395,
+    "per_policy": {
+      "Round Robin": {
+        "total": 9785321.740821557,
+        "burst_total": 519581.4129183674,
+        "nonburst_total": 9265740.327903189,
+        "burst_share": 0.05309804078805327,
+        "burst_per_step": 1164.9807464537387,
+        "nonburst_per_step": 1093.8189502895984
+      },
+      "PPO": {
+        "total": 9473550.835394215,
+        "burst_total": 486476.1426153459,
+        "nonburst_total": 8987074.692778869,
+        "burst_share": 0.051350982442382447,
+        "burst_per_step": 1090.753682994049,
+        "nonburst_per_step": 1060.9225230526347
+      },
+      "PPO-burst+mem": {
+        "total": 9408155.450309783,
+        "burst_total": 480311.84218827536,
+        "nonburst_total": 8927843.608121507,
+        "burst_share": 0.05105271109997019,
+        "burst_per_step": 1076.9323815880614,
+        "nonburst_per_step": 1053.9303043467721
+      },
+      "DQN-routing-grid": {
+        "total": 9654152.819555156,
+        "burst_total": 497106.8998877838,
+        "nonburst_total": 9157045.91966737,
+        "burst_share": 0.051491509320306106,
+        "burst_per_step": 1114.5894616318024,
+        "nonburst_per_step": 1080.9875952859604
+      },
+      "DQN-flatidx": {
+        "total": 9832960.512110602,
+        "burst_total": 525563.482845673,
+        "nonburst_total": 9307397.029264929,
+        "burst_share": 0.05344916032138759,
+        "burst_per_step": 1178.393459295231,
+        "nonburst_per_step": 1098.7365162631247
+      },
+      "DQN-flatidx-burst+mem": {
+        "total": 9790766.013319902,
+        "burst_total": 510096.5400383224,
+        "nonburst_total": 9280669.473281577,
+        "burst_share": 0.05209975801120757,
+        "burst_per_step": 1143.7142153325615,
+        "nonburst_per_step": 1095.5813331698237
+      }
+    },
+    "advantage_vs_round_robin": {
+      "PPO": {
+        "total": 0.031861078632368665,
+        "burst": 0.06371527056188747,
+        "nonburst": 0.03007483754807331
+      },
+      "PPO-burst+mem": {
+        "total": 0.03854408679669103,
+        "burst": 0.07557924466451574,
+        "nonburst": 0.03646732023820344
+      },
+      "DQN-routing-grid": {
+        "total": 0.013404661056692909,
+        "burst": 0.04325503659638152,
+        "nonburst": 0.011730785062958356
+      },
+      "DQN-flatidx": {
+        "total": -0.004868390897185291,
+        "burst": -0.011513248508459287,
+        "nonburst": -0.004495776903686218
+      },
+      "DQN-flatidx-burst+mem": {
+        "total": -0.0005563713327516926,
+        "burst": 0.01825483484247582,
+        "nonburst": -0.00161121991876135
+      }
+    },
+    "ppo_behavior": {
+      "hhi_burst": 0.3156082110062418,
+      "hhi_nonburst": 0.3077626119889716,
+      "nd_weighted_burst": 0.6615731652276386,
+      "nd_weighted_nonburst": 0.6926592209786714,
+      "drain_burst": 0.4600099660143704,
+      "drain_nonburst": 0.4608885514264692
+    }
+  },
+  "Global batch": {
+    "scenario": "Global batch",
+    "burst_percentile": 95,
+    "n_burst": 446,
+    "n_total": 8917,
+    "arrival_ratio": 2.5399013392257395,
+    "per_policy": {
+      "Round Robin": {
+        "total": 14157771.469433818,
+        "burst_total": 746738.7276635913,
+        "nonburst_total": 13411032.741770227,
+        "burst_share": 0.05274408682720841,
+        "burst_per_step": 1674.302079963209,
+        "nonburst_per_step": 1583.1699612525354
+      },
+      "PPO": {
+        "total": 13200214.801261635,
+        "burst_total": 680591.5712060917,
+        "nonburst_total": 12519623.230055545,
+        "burst_share": 0.051559128503048515,
+        "burst_per_step": 1525.9900699688153,
+        "nonburst_per_step": 1477.9392315022483
+      },
+      "PPO-burst+mem": {
+        "total": 13043859.528743763,
+        "burst_total": 668810.4462474666,
+        "nonburst_total": 12375049.082496297,
+        "burst_share": 0.05127396877999643,
+        "burst_per_step": 1499.574991586248,
+        "nonburst_per_step": 1460.8722798366541
+      },
+      "DQN-routing-grid": {
+        "total": 14077508.301457299,
+        "burst_total": 734462.1949028961,
+        "nonburst_total": 13343046.106554404,
+        "burst_share": 0.05217274102597153,
+        "burst_per_step": 1646.7762217553723,
+        "nonburst_per_step": 1575.1441514053126
+      },
+      "DQN-flatidx": {
+        "total": 13418016.908348141,
+        "burst_total": 696367.1364911704,
+        "nonburst_total": 12721649.771856971,
+        "burst_share": 0.05189791764667693,
+        "burst_per_step": 1561.3612925810996,
+        "nonburst_per_step": 1501.7884277956523
+      },
+      "DQN-flatidx-burst+mem": {
+        "total": 14177510.15716472,
+        "burst_total": 753015.6920931236,
+        "nonburst_total": 13424494.465071596,
+        "burst_share": 0.05311339464726681,
+        "burst_per_step": 1688.3759912401874,
+        "nonburst_per_step": 1584.7591152250734
+      }
+    },
+    "advantage_vs_round_robin": {
+      "PPO": {
+        "total": 0.06763470297846784,
+        "burst": 0.08858139267058232,
+        "nonburst": 0.06646837189042741
+      },
+      "PPO-burst+mem": {
+        "total": 0.07867848009094908,
+        "burst": 0.10435816240567564,
+        "nonburst": 0.07724861158881806
+      },
+      "DQN-routing-grid": {
+        "total": 0.005669195053035341,
+        "burst": 0.016440198299485863,
+        "nonburst": 0.005069455613516722
+      },
+      "DQN-flatidx": {
+        "total": 0.05225077708612429,
+        "burst": 0.06745544232053463,
+        "nonburst": 0.051404167239566326
+      },
+      "DQN-flatidx-burst+mem": {
+        "total": -0.0013941945435069361,
+        "burst": -0.008405837539954341,
+        "nonburst": -0.0010037797655538972
+      }
+    },
+    "ppo_behavior": {
+      "hhi_burst": 0.32736072536554295,
+      "hhi_nonburst": 0.323130461529386,
+      "nd_weighted_burst": 0.7079320778416788,
+      "nd_weighted_nonburst": 0.7175751184959074,
+      "drain_burst": 0.455092477428715,
+      "drain_nonburst": 0.4564365638192623
+    }
+  }
+}
