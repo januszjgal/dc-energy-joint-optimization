@@ -504,31 +504,32 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 
 ### 7.2 US Model — Batch Mode (Spatial + Temporal)
 
+Run with the calibrated `deadline_penalty_weight = 250` (§7.8).
+
 | Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | ND-weighted Load | Batch Expired | Avg Pool |
 |---|---|---|---|---|---|---|
-| **PPO** | **9,473,793** | 7,615,395 | 1,855,933 | 1,698,501 | 1,232.7 | 0.73 |
-| DQN (routing-grid) | 9,654,859 | 7,767,898 | 1,885,515 | 1,713,902 | 723.4 | 9.37 |
-| Random | 9,737,380 | 7,859,869 | 1,876,581 | 1,711,321 | 420.2 | 0.51 |
-| Drain Immediately | 9,769,153 | 7,896,170 | 1,872,734 | 1,720,079 | 123.9 | 0.02 |
-| Round Robin | 9,784,834 | 7,905,770 | 1,878,991 | 1,722,885 | 36.7 | 0.47 |
-| Local Only | 9,786,782 | 7,908,301 | 1,878,337 | 1,722,633 | 72.2 | 0.18 |
-| Defer to Low Net Demand | 9,788,720 | 7,907,982 | 1,880,718 | 1,723,684 | 9.6 | 1.67 |
-| Trough-Slot Lookahead | 9,802,326 | 7,954,189 | 1,832,267 | 1,694,752 | 48.1 | 0.48 |
-| DQN (flat-idx) | 9,832,808 | 7,931,021 | 1,901,552 | 1,724,409 | 117.7 | 0.04 |
-| Avoid the Ramp | 10,287,186 | 7,882,658 | 1,803,174 | 1,664,045 | 979.5 | 1.78 |
-| Cheapest Price First | 21,051,100 | 7,170,953 | 1,720,172 | 1,614,448 | 2,316.9 | 0.55 |
+| **PPO** | **9,975,114** | 7,554,692 | 1,719,534 | 1,641,603 | 2,804 | 1.40 |
+| Defer to Low Net Demand | 9,993,387 | 7,583,739 | 1,703,775 | 1,637,060 | 2,823 | 3.27 |
+| DQN (routing-grid) | 9,997,085 | 7,140,220 | 1,592,896 | 1,579,613 | 5,056 | 9.45 |
+| Round Robin | 10,006,942 | 7,576,297 | 1,707,796 | 1,636,550 | 2,891 | 1.34 |
+| Trough-Slot Lookahead | 10,024,073 | 7,551,603 | 1,639,692 | 1,598,416 | 3,331 | 1.43 |
+| Random | 10,039,999 | 7,513,320 | 1,690,884 | 1,622,873 | 3,343 | 1.39 |
+| Local Only | 10,064,149 | 7,451,005 | 1,651,865 | 1,609,136 | 3,845 | 0.80 |
+| Cheapest Price First | 10,076,771 | 7,013,525 | 1,657,654 | 1,578,385 | 5,622 | 1.54 |
+| DQN (flat-idx) | 10,090,407 | 7,229,653 | 1,560,502 | 1,563,648 | 5,201 | 9.47 |
+| Drain Immediately | 10,120,638 | 7,280,894 | 1,577,120 | 1,572,744 | 5,050 | 0.57 |
+| Status Quo (no optimization) | 10,127,636 | 7,284,546 | 1,578,422 | 1,573,224 | 5,059 | 0.57 |
+| Avoid the Ramp | 10,234,914 | 7,172,335 | 1,449,439 | 1,488,550 | 6,434 | 3.68 |
 
 **Key findings**:
 
-1. **PPO is best, beating Trough-Slot Lookahead by 3.4%** ($9.47M vs $9.80M). This is the inverse of the original-formulation result, where GreenSlot edged out PPO by 0.2%. The new objective gives PPO room to learn more sophisticated strategies than the foresighted heuristic — Trough-Slot has perfect 3-hour net-demand lookahead but its routing-by-inverse-demand pattern leaves performance on the table.
+1. **PPO wins — narrowly, and for the right reason.** PPO is 1st ($9.98M), but the top of the table is a tight cluster: +0.2% over the best DQN, +0.3% over Round Robin, +0.5% over the foresighted Trough-Slot oracle. PPO wins by **completing its committed work** — it expires the fewest units (2,804) of any policy. This is the inverse of the mis-calibrated `w=2` run, where dumping batch won (§7.8).
 
-2. **Temporal scheduling unlocks the gains.** Batch mode lowers PPO's cost from $10.10M (legacy) to $9.47M, a **6.2% reduction**. The lever isn't routing — it's *when* to execute deferrable work.
+2. **Aggressive-expiry policies sink to the bottom.** Status Quo, Drain-Immediately, Cheapest-First, and Avoid-the-Ramp — the "winners" before recalibration — are now the *most expensive*, expiring 5,000–6,400 units and paying the deadline penalty. Avoid-the-Ramp is last.
 
-3. **PPO accepts deadline cost for energy savings.** The agent expires 1,233 units of batch work (vs ~10 for Defer-to-Low-Net-Demand, ~37 for Round Robin) because the energy + peak savings from late draining exceed the deadline penalty (2 × 1,233 ≈ $2.5K is dwarfed by the $300K energy cost reduction). This is an emergent strategy — the deadline penalty weight is fixed at 2.0; the agent simply discovered the favorable arithmetic.
+3. **The temporal lever is modest, not dramatic.** Batch mode lowers PPO's cost from $10.10M (legacy) to $9.98M — a **1.2% reduction**, not the inflated 6.2% of the mis-calibrated run. Once expiring committed work is properly priced, the deferral gain is real but small under low spatial diversity. It is also *double-edged*: batch mode **raises** cost for naive policies (Status Quo: $9.85M legacy → $10.13M batch) that defer without managing deadlines.
 
-4. **DQN (routing-grid) does well in batch mode** ($9.65M, 2nd place, 1.4% above Round Robin) — much better than its legacy-mode tie. The discrete drain options (hold / half / flush) capture most of the temporal benefit, even though continuous routing would help further. **DQN (flat-idx)** is significantly worse here ($9.83M, 9th) — its always-on drain-level commitment (one of three intensities, applied uniformly to all DCs every step) is too coarse for the fine drain-timing PPO and DQN-routing-grid learn. Notably, flat-idx has the smallest avg pool (0.04) and very few expirations (118) — it's draining too aggressively and not exploiting temporal flexibility well in the US scenario.
-
-5. **Defer to Low Net Demand has the fewest deadline violations (9.6)** but achieves only a middling cost. Its drain timing is *too* conservative — it lets the pool grow then drains in big bursts when net demand drops, but with only modest cost savings.
+4. **DQN (routing-grid) is competitive (3rd) via a different strategy.** It achieves the second-lowest energy cost ($7.14M) by draining aggressively and routing well, but expires 5,056 units, so the deadline penalty pulls it back to ~$10.00M. **DQN (flat-idx)** is mid-pack ($10.09M); its always-on uniform-drain commitment over-expires (5,201). Both also carry large idle pools (~9.5), a sign of jerky hold-then-dump drain timing rather than the smooth scheduling PPO learns.
 
 ### 7.3 Global Model — Legacy Mode
 
@@ -556,53 +557,58 @@ Concentration heuristics (Avoid the Ramp, Cheapest Price First) catastrophically
 
 ### 7.4 Global Model — Batch Mode
 
+Run with the calibrated `deadline_penalty_weight = 250` (§7.8).
+
 | Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | ND-weighted Load | Batch Expired | Avg Pool |
 |---|---|---|---|---|---|---|
-| **PPO** | **13,200,684** | 11,233,518 | 1,964,651 | 1,809,538 | 1,257.9 | 0.73 |
-| DQN (flat-idx) | 13,418,703 | 11,428,230 | 1,989,005 | 1,825,247 | 734.2 | 0.54 |
-| Avoid the Ramp | 13,807,454 | 11,623,269 | 1,921,059 | 1,775,187 | 1,071.1 | 2.38 |
-| Trough-Slot Lookahead | 13,974,911 | 12,009,138 | 1,965,431 | 1,815,191 | 114.1 | 0.49 |
-| DQN (routing-grid) | 14,077,805 | 12,017,983 | 2,059,274 | 1,855,238 | 274.0 | 0.49 |
-| Random | 14,088,938 | 12,071,455 | 2,016,552 | 1,837,997 | 420.2 | 0.51 |
-| Local Only | 14,137,839 | 12,120,996 | 2,016,698 | 1,849,378 | 72.2 | 0.18 |
-| Drain Immediately | 14,142,016 | 12,128,766 | 2,013,002 | 1,847,711 | 123.9 | 0.02 |
-| Round Robin | 14,157,556 | 12,138,313 | 2,019,170 | 1,850,517 | 36.7 | 0.47 |
-| Defer to Low Net Demand | 14,157,372 | 12,137,029 | 2,020,324 | 1,851,042 | 9.6 | 2.26 |
-| Cheapest Price First | 24,689,886 | 10,711,673 | 1,818,238 | 1,721,228 | 2,316.9 | 0.70 |
+| **Cheapest Price First** | **13,517,795** | 10,390,572 | 1,750,579 | 1,681,462 | 5,507 | 1.76 |
+| Avoid the Ramp | 13,808,135 | 10,742,100 | 1,601,776 | 1,616,244 | 5,856 | 4.60 |
+| **PPO** | 13,825,816 | 11,264,455 | 1,834,245 | 1,753,045 | 2,908 | 1.33 |
+| Trough-Slot Lookahead | 14,005,607 | 11,403,912 | 1,758,550 | 1,712,191 | 3,373 | 1.45 |
+| Status Quo (no optimization) | 14,102,545 | 11,144,801 | 1,693,077 | 1,687,778 | 5,059 | 0.57 |
+| Drain Immediately | 14,112,130 | 11,156,406 | 1,693,100 | 1,687,983 | 5,050 | 0.57 |
+| Local Only | 14,131,490 | 11,397,917 | 1,772,294 | 1,726,511 | 3,845 | 0.80 |
+| Random | 14,166,306 | 11,513,985 | 1,816,526 | 1,742,392 | 3,343 | 1.39 |
+| Round Robin | 14,166,563 | 11,609,367 | 1,834,346 | 1,756,916 | 2,891 | 1.34 |
+| Defer to Low Net Demand | 14,177,876 | 11,707,241 | 1,857,837 | 1,770,406 | 2,451 | 4.22 |
+| DQN (routing-grid) | 14,373,836 | 11,580,539 | 1,851,353 | 1,748,775 | 3,768 | 1.44 |
+| DQN (flat-idx) | 14,493,037 | 11,488,471 | 1,722,647 | 1,697,325 | 5,128 | 0.63 |
 
 **Key findings**:
 
-1. **PPO is best** at $13.20M, **6.8% better than Round Robin** and **5.5% better than Trough-Slot Lookahead**. This is the largest margin in any config — geographic diversity (Global) + temporal flexibility (batch) jointly maximize the optimization surface.
+1. **A deadline-violating price-arbitrage heuristic wins on raw cost.** Cheapest-Price-First ($13.52M) routes batch to the cheapest grid and lets 5,507 units expire; even paying ~$1.4M in (calibrated) deadline penalties, the 16-hour price spread — chiefly routing away from high-priced Singapore — nets it ahead. **Batch deferral *rescues* these concentration heuristics** that catastrophically failed in legacy mode (Cheapest was $43.8M in §7.3) — the pool absorbs the capacity shock.
 
-2. **DQN (flat-idx) is 2nd** at $13.42M — 1.6% behind PPO but **4.7% better than DQN-routing-grid** ($14.08M, 5th). The CFWS-style action encoding clearly helps here: even though the action set is 16× smaller (48 vs 759), the structured "migrate from src to dst" primitives are much more sample-efficient to learn than the generic routing-fraction enumeration. This is the second config (after Global legacy §7.3) where flat-idx demonstrably outperforms routing-grid.
+2. **PPO is 3rd on raw cost but the best deadline-respecting policy.** At $13.83M it trails Cheapest by 2.3%, but it expires **2,908 units — about half** of Cheapest's 5,507 — and holds the flattest draw of the competitive policies (load factor 0.766 vs 0.730). PPO buys low cost *without* discarding committed work; the two policies ahead of it buy lower cost *by* discarding it. Which is "better" depends on how binding the deadlines are taken to be — a genuine multi-objective tradeoff, not a clean win.
 
-3. **Avoid the Ramp** lands in 3rd ($13.81M). Its routing-to-the-slackest-grid strategy, which catastrophically failed in legacy mode (capacity violations), becomes viable when batch deferral can absorb the spike. The drain pool grows to an average of 2.38 — the largest non-degenerate pool size — as it queues work waiting for the chosen DC to have headroom.
+3. **Temporal deferral does not help the disciplined policy here.** PPO's Global cost *rises* from $13.48M (legacy) to $13.83M (batch): with the high price diversity already captured by spatial routing, adding the deferrable-batch deadline burden is a net cost for a low-expiry policy. In Global, the temporal lever pays off mainly by *rescuing* otherwise-failing concentration heuristics, not by improving the best routing policy.
 
-4. **DQN (routing-grid) regresses to mid-pack** ($14.08M, 5th) — its 759-action space wastes too much capacity on near-optimal-allocation variants that never get explored. The gap to PPO widens to 6.7%. This is the clearest single piece of evidence that **action-space encoding choice can matter more than algorithm choice**: the same DQN algorithm, on the same env, with the same hyperparameters, differs by 4.7% based solely on how the discrete action space is structured.
+4. **DQN flips to the bottom.** DQN (flat-idx) is **last** ($14.49M, expiring 5,128) and DQN (routing-grid) is 11th — the exact reverse of Global legacy (§7.3), where flat-idx was best. Bolting the discrete uniform-drain commitment onto the flat-idx encoding hurts badly once temporal management matters; the CFWS-style encoding helps for *pure routing* and hurts for *routing + drain*.
 
 ### 7.5 Per-DC Energy Cost Breakdown
 
-**US Batch Mode**:
+**US Batch Mode** (per-DC energy cost):
 
 | Policy | US-West | US-Central | US-Southeast-1 | US-Southeast-2 |
 |---|---|---|---|---|
-| PPO | $2,083,377 | $1,933,461 | $1,839,559 | $1,758,998 |
-| Trough-Slot | $2,561,563 | $1,628,319 | $1,932,417 | $1,831,890 |
-| Round Robin | $2,427,003 | $1,733,599 | $1,956,747 | $1,788,422 |
+| PPO | $2,351,838 | $1,575,406 | $1,922,010 | $1,705,438 |
+| Round Robin | $2,438,136 | $1,521,309 | $1,919,083 | $1,697,768 |
+| Status Quo | $2,356,727 | $1,457,309 | $1,844,973 | $1,625,538 |
 
-PPO reduces US-West cost (the highest-stress region, CAISO duck curve) by **14%** vs Round Robin while accepting slightly higher US-Central cost. It also outperforms Trough-Slot on US-West by 19%.
+PPO trims US-West (the CAISO duck-curve region) by ~3.5% vs Round Robin, shifting a little load to US-Central. But the per-DC reallocation is **modest** in the low-diversity US scenario — Status Quo's local-only split is already close, and PPO's win comes more from low deadline-expiry than from dramatic re-routing.
 
-**Global Batch Mode**:
+**Global Batch Mode** (per-DC energy cost):
 
 | Policy | Global-US-West | Global-US-Central | Global-EU | Global-Asia |
 |---|---|---|---|---|
-| PPO | $2,359,960 | $1,944,207 | $2,398,138 | $4,531,213 |
-| Avoid the Ramp | $2,766,336 | $1,612,884 | $2,424,420 | $4,819,630 |
-| Round Robin | $2,427,003 | $1,733,599 | $2,410,081 | $5,567,631 |
+| PPO | $2,489,265 | $1,619,778 | $2,391,778 | $4,763,633 |
+| Cheapest Price First | $2,026,258 | $2,002,893 | $1,956,022 | $4,405,398 |
+| Round Robin | $2,438,136 | $1,521,309 | $2,364,840 | $5,285,082 |
 
-The Global-Asia DC (Singapore) is the most expensive region (high EMA prices). PPO reduces Global-Asia cost by **19%** vs Round Robin by deferring Singapore-bound work and rerouting it to cheaper grids during their slack hours. Avoid the Ramp pushes too aggressively to Global-US-Central, raising the duck-curve cost at Global-US-West.
+The Global-Asia DC (Singapore, high EMA prices) dominates fleet cost. PPO cuts Global-Asia energy by **~10%** vs Round Robin by deferring and rerouting Singapore-bound work. Cheapest-First cuts it (and EU / US-West) further still by routing even more aggressively to the cheapest grids — but it pays for that with its high deadline-violation count (§7.4), the tradeoff at the heart of the Global-batch result.
 
 ### 7.6 Burst-Aware Augmentation (Heavy-Tail Follow-Up)
+
+> ⚠ **Pending rerun.** The burst experiments in this subsection were run on the *pre-recalibration* models (old batch fraction, `deadline_penalty_weight=2.0`). The qualitative finding — the optimization signal concentrates in burst windows — is expected to survive, but the specific percentages are stale and will be regenerated with the w=250 batch models (§7.8).
 
 Tirmazi et al. (2020) document that the 2019 trace exhibits an extreme long tail at the job level: "the top 1% of jobs (resource hogs) consume over 99% of all resources" with squared coefficients of variation >23,000 (§7 of that paper). The intra-cluster scheduling implication is "insulate the mice from the hogs"; for our cell-aggregate routing problem, the same heavy-tail manifests as **bursty aggregate batch arrivals** — a small fraction of timesteps deliver a large fraction of new batch CPU demand. Our heavy-tailed distribution fits (Weibull, log-normal; §2.2) preserve this burstiness into the per-step cell-aggregate arrivals our env exposes.
 
@@ -670,18 +676,16 @@ The tables above rank policies against each other. This section adds the externa
 
 **Why the comparison is fair despite R²=0.43.** Status Quo and every optimized policy are scored by the **same** power model, so its absolute error (CPU explains ~43% of point-level power variance; §3.2) **cancels in the relative comparison** — a shared bias does not change the *difference* between policies. The reported saving is therefore robust to the power model's noise; R²=0.43 is the honest model fit, not a limitation on this comparison.
 
-**Normalized power metric — load factor.** Beyond cost, every policy reports `load_factor = mean / peak` aggregate grid draw (emitted by `compute_summary`). Higher = flatter draw = better demand smoothing. Status Quo is the peakiest; optimization should raise the load factor by shaving the peak.
+**Normalized power metric — load factor.** Beyond cost, every policy reports `load_factor = mean / peak` aggregate grid draw (emitted by `compute_summary`). Higher = flatter. In batch mode the *peak* is set by non-deferrable **service** demand (≈357.5 MW for every policy), so optimization improves the load factor by **filling the troughs** with deferred batch, not by shaving the peak.
 
-| Policy (US batch) | Total cost | Peak draw | Load factor | Δ cost vs Status Quo |
-|---|---|---|---|---|
-| **Status Quo (no optimization)** | $9.85M | 357.5 MW | 0.806 | reference |
-| Round Robin | $9.84M | 352.7 MW | 0.817 | +0.1% |
-| Trough-Slot Lookahead (oracle) | $9.72M | 344.1 MW | 0.829 | +1.3% |
-| PPO | *(pending retrain)* | — | — | — |
+| Policy (US batch, w=250) | Total cost | Load factor | Δ cost vs Status Quo |
+|---|---|---|---|
+| **PPO** | **$9.98M** | **0.767** | **+1.5%** |
+| Round Robin | $10.01M | 0.766 | +1.2% |
+| Trough-Slot Lookahead (oracle) | $10.02M | 0.760 | +1.0% |
+| Status Quo (no optimization) | $10.13M | 0.736 | reference |
 
-*Baselines computed on the corrected free+beb data ([scripts/refit_freebeb_local.py](scripts/refit_freebeb_local.py)); the PPO row fills in after the retrain+eval rerun. The visual profile is produced by [analysis/plot_power_profile.py](analysis/plot_power_profile.py) → `output/power_profile_comparison.png`.*
-
-Even the foresighted heuristic already shaves the fleet peak by ~13 MW (357.5 → 344.1) and lifts the load factor 0.806 → 0.829. PPO is expected to extend both margins once retrained, since **27–61% of load is now deferrable** (§2.2). "Savings versus the grid-unaware status quo" is the cleanest externally-facing result the thesis can state, and it mirrors exactly what a CICS-style layer contributes on top of Borg.
+PPO saves **1.5% over the grid-unaware status quo** in US batch with the flattest draw (0.767 vs 0.736), and the saving holds across configs — **+2.0% in Global batch, +5.3% in Global legacy** — *except* US legacy, where PPO's over-concentration leaves it ~2.5% *worse* than status quo (§7.1). So "savings versus the grid-unaware status quo" is real wherever there is either spatial diversity or well-managed deferral; it is the cleanest externally-facing result, and it mirrors what a CICS-style layer contributes on top of Borg. The visual profile is produced by [analysis/plot_power_profile.py](analysis/plot_power_profile.py) → `output/power_profile_comparison.png`.
 
 ### 7.8 Calibrating the deadline penalty — a sensitivity lesson
 
@@ -774,15 +778,15 @@ Our Trough-Slot Lookahead baseline (§5.8) reuses the slot-valuation idea but re
 | Forecast required | Yes (explicit) | Yes (oracle: actual future net demand) | No (learned) |
 | Number of DCs | 1 | 4 | 4 |
 
-PPO **outperforms Trough-Slot Lookahead in every config where temporal flexibility exists**:
+PPO **beats Trough-Slot Lookahead in every config where there is spatial diversity or well-managed deferral** (i.e. all but US legacy):
 
 | Config | PPO | Trough-Slot | PPO Advantage |
 |---|---|---|---|
-| US batch | $9.47M | $9.80M | **3.4%** |
-| Global legacy | $13.48M | $14.07M | **4.2%** |
-| Global batch | $13.20M | $13.97M | **5.5%** |
+| US batch | $9.98M | $10.02M | +0.5% |
+| Global legacy | $13.48M | $14.07M | **+4.2%** |
+| Global batch | $13.83M | $14.01M | +1.3% |
 
-This is meaningful because Trough-Slot has **privileged 3-hour future net-demand information** that PPO does not. PPO learns implicit forecasting AND coordinates it with routing — a strictly stronger policy than the foresighted single-axis heuristic.
+This is meaningful because Trough-Slot has **privileged 3-hour future net-demand information** that PPO does not: PPO learns implicit forecasting *and* coordinates it with routing. But under the calibrated deadline penalty the *batch*-mode margins are now slim (+0.5% / +1.3%) — most of PPO's edge over the foresighted heuristic comes from spatial routing (Global legacy, +4.2%), not from temporal scheduling. In US legacy (no temporal flexibility, low diversity) PPO trails Trough-Slot by 1.6%.
 
 ### 8.6 Granularity & operational precedent — Radovanovic et al. (2023)
 
@@ -847,24 +851,24 @@ The **flat-idx variant** is closer to CFWS *in spirit* (small discrete action se
 
 #### Empirical comparison: action-space encoding matters, but direction depends on scenario
 
-Trained models evaluated under identical conditions (α = 0.015, same seeds, full 31-day trace):
+Trained models evaluated under identical conditions (α = 0.015, calibrated deadline penalty w=250, same seeds, full 31-day trace):
 
 | Scenario | PPO | DQN (routing-grid, 759) | DQN (flat-idx, 48) | flat-idx vs routing-grid |
 |---|---|---|---|---|
-| US legacy | $10.10M | **$9.84M** | $10.87M | **−10.4%** worse |
-| US batch | **$9.47M** | $9.65M | $9.83M | −1.8% worse |
-| Global legacy | $13.48M | $13.57M | **$13.47M** (ties PPO) | **+0.7%** better |
-| Global batch | **$13.20M** | $14.08M | $13.42M | **+4.7%** better |
+| US legacy | $10.10M | **$9.84M** | $10.87M | **+10.4%** worse |
+| US batch | **$9.98M** | $10.00M | $10.09M | +0.9% worse |
+| Global legacy | $13.48M | $13.57M | **$13.47M** (ties PPO) | **−0.7%** better |
+| Global batch | $13.83M | $14.37M | $14.49M | +0.8% worse |
 
 Three findings emerge:
 
-1. **On our formulation, the CFWS-style flat-idx encoding wins under high geographic diversity** (Global scenarios) and loses under low diversity (US). With a 16-hour timezone spread and heterogeneous grids, the 48-action set's "migrate load from this DC to that DC" structure encodes good policy primitives directly; with a 3-hour US-only spread (similar grids, similar diurnal shapes), the constrained 48-action space can't fine-tune the small adjustments that the optimal policy requires. *Note*: this finding is specific to our cell-aggregate formulation; it does **not** say anything about how CFWS's encoding performs on CFWS's own per-PM formulation. CFWS reports their flat-idx DQN works well on their AZ/CA/OR/LA setting (5.67–13.22% brown-energy reduction, 46.49–86.53% migration reduction vs their baselines) — and they have many more meaningful actions per migration event because each DC contains many PMs, so their action space isn't constrained the same way ours is.
-2. **PPO still wins overall, but the margin against the *best* DQN variant is smaller than against routing-grid alone**: PPO vs the best DQN at each config is +2.6% (US legacy DQN-rg), +1.9% (US batch DQN-rg), tie (Global legacy DQN-flatidx), +1.6% (Global batch DQN-flatidx). So the headline "PPO beats DQN by 1–7%" was partly explained by sub-optimal action-space discretization, not just the discrete-vs-continuous distinction.
-3. **Action-encoding choice matters as much as algorithm choice in some configs**. In Global batch, switching DQN from routing-grid to flat-idx improves cost by 4.7% — larger than the typical PPO-over-DQN gap. This validates CFWS's own design insight (constraining the action space to a small set of semantically-meaningful operations helps DQN) even though we apply it on a different formulation.
+1. **The flat-idx encoding helps only for *pure* spatial routing under diversity.** It beats routing-grid in exactly one config — Global legacy (−0.7%) — and *loses* in the other three: +10.4% (US legacy), +0.9% (US batch), +0.8% (Global batch). The earlier result that flat-idx *won* Global batch does **not** survive the corrected data + calibrated deadline penalty: once the discrete uniform-drain commitment is bolted onto the small action set, it over-expires (5,128 units, §7.4) and drops to last. So CFWS's encoding philosophy transfers to the *routing* problem it was designed for (Global legacy), but not to the routing+drain action our batch mode adds. *This says nothing about CFWS's own per-PM formulation* — there each migration event exposes many meaningful actions (CFWS reports 5.67–13.22% brown-energy reduction, 46.49–86.53% migration reduction on their AZ/CA/OR/LA setting), so their action space is not constrained the way our cell-aggregate one is.
+2. **PPO is the best RL agent in 2 of 4 configs (US batch, Global batch) and ties for best in Global legacy**, losing only US legacy where DQN-routing-grid edges it (PPO over-concentrates, §7.1). Against the *best* DQN variant per config: −2.6% (US legacy), +0.2% (US batch), tie (Global legacy), +3.8% (Global batch).
+3. **No single discrete encoding dominates.** routing-grid wins US legacy; flat-idx wins Global legacy; both DQN variants fall behind PPO in *both* batch configs. The lesson holds — action-space encoding can matter as much as algorithm choice — but the *direction* is scenario- and mode-dependent, not a clean "structured small action sets win."
 
 #### PPO as the contribution beyond CFWS
 
-PPO remains our overall best policy and goes beyond what CFWS's framework can express: their flattened-index action is inherently discrete (pick *one* VM to migrate), so a continuous-action variant would require reformulating their problem. In our cell-aggregate formulation, the action is naturally continuous (routing fractions in [0,1] summing to 1, drain rates in [0,1]), making PPO a natural fit. With the **flat-idx variant as the cleaner CFWS-style analog**, the PPO advantage is now tightly quantified: **+1.6 to +2.6% over the best DQN variant in 3 of 4 configs, and a statistical tie in Global legacy**. The contribution claim is "continuous actions provide a small but consistent advantage over even well-designed discrete action spaces in this formulation" — narrower and more defensible than the original "1–7% over DQN-routing-grid" framing.
+PPO is the best RL policy in 3 of 4 configs (counting the Global-legacy tie) and the **best deadline-respecting policy in both batch modes** (§7.2, §7.4). Its continuous action space — natural for routing fractions plus drain rates — is something CFWS's discrete one-VM-migration encoding cannot express without reformulation. The honest contribution claim is narrower than "PPO dominates": **continuous actions give PPO the edge under realistic deferral — it wins both batch configs among the RL agents by *completing* committed work — while under pure spatial routing a well-encoded discrete DQN (flat-idx) matches it, and under low diversity (US legacy) PPO's over-concentration costs it.** Where a non-learning heuristic beats PPO on raw cost (Cheapest-First, Global batch), it does so only by violating ~2× more deadlines (§7.4) — so PPO remains the policy of choice whenever the deferral deadlines are taken to be real.
 
 ### 8.8 Survey context — Lin et al. (2024) and Wu et al. (2025)
 
@@ -876,7 +880,7 @@ Stated against the lineage above:
 
 1. **Cell-as-proxy-DC modeling exercise.** We treat four ClusterData 2019 cells (a–d) as four geographically distributed hyperscale DCs — what such DCs' workloads would look like if they had cell-level inter-DC heterogeneity. This is *not* what Tirmazi et al. (2020) intended when documenting the trace (they don't claim the cells are geographically distinct), and no prior published work does exactly this. It is a defensible modeling exercise rather than a dataset-grounded claim (see §2.1 and §3.2 for the explicit modeling assumptions on workload-as-shape and `rated_power_mw`-as-magnitude).
 2. **Grid demand smoothing as a first-class objective**, via a peak-contribution penalty against actual EIA-930 net demand timeseries — rather than the on-site-renewable framing that dominates academic prior work.
-3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. Against our best DQN variant per config, PPO wins by +1.6 to +2.6% in 3 of 4 configs and ties in Global legacy (§8.7). The PPO advantage is narrower than against generic routing-grid DQN alone, because a CFWS-style flat-idx encoding closes much of the gap in Global scenarios.
+3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. PPO is the best RL agent in 3 of 4 configs (US batch +0.2% and Global batch +3.8% over the best DQN; a Global-legacy tie) and the **best deadline-respecting policy in both batch modes** — it loses only US legacy, where it over-concentrates (§7.1, §8.7). A well-encoded discrete DQN (flat-idx) matches it for *pure* spatial routing (Global legacy).
 4. **Real-data grounding**: ClusterData 2019 (per Tirmazi 2020) for workloads, `powerdata_2019` (per Sakalkar 2020) for the power model, EIA-930 (CISO, MISO, SOCO, DUK) for grid net demand, real ISO prices, NSRDB solar irradiance as forecast features.
 5. **Operational relevance**: the problem class is the same one **Google's CICS (Radovanović et al. 2023)** solves in production at 20+ DCs across 4 continents. This thesis contributes a published methodology + reproducible Gymnasium env for that problem class.
 
@@ -884,9 +888,10 @@ Honest framing of what this thesis is *not*: it is not a head-to-head comparable
 
 The primary empirical findings are:
 
-- **Spatial routing alone matters under regional diversity.** In the Global scenario (16-hour timezone spread), PPO beats Round Robin by 5.4% in legacy mode. In the US scenario (3-hour spread, similar grid profiles), spatial routing alone is structurally limited.
-- **Temporal batch scheduling is the universal lever.** Batch mode improves PPO's cost by 6.2% over legacy in US and 2.1% in Global, on top of the spatial gains.
-- **PPO beats the oracle-like Trough-Slot baseline** by 3.4–5.5% in every config where temporal flexibility exists. RL learns implicit forecasting plus coordinated routing — a strictly stronger policy than the lookahead heuristic.
+- **Spatial routing matters under regional diversity.** In Global legacy (16-hour spread), PPO beats Round Robin by **5.4%** and the no-optimization status quo by 5.3%. In US (3-hour spread, similar profiles), spatial routing alone is structurally limited and PPO over-concentrates (it trails the trivial baselines, §7.1).
+- **Temporal deferral is a modest, double-edged lever — not a universal win.** With the *calibrated* deadline penalty (§7.8), batch mode lowers PPO's US cost by only **1.2%** and *raises* its Global cost by **2.6%** (high diversity is already captured by routing). Deferral mainly *rescues* concentration heuristics that fail in legacy mode; for the disciplined policy its value is small and scenario-dependent. (The inflated 6.2% / 2.1% "universal lever" of earlier drafts was an artifact of the mis-calibrated deadline penalty.)
+- **PPO is the best deadline-respecting policy, not a universal cost winner.** It beats the foresighted Trough-Slot oracle by +0.5–4.2% wherever diversity or deferral helps, and beats both DQN variants in batch mode. Where a pure-cost heuristic edges it (Cheapest-First, Global batch), it does so only by violating ~2× more deadlines (§7.4).
+- **A reward-calibration lesson (§7.8):** the deadline penalty must scale with the energy value of deferred work; mis-set, it inverts the entire batch ranking — itself a methodological contribution.
 
 ---
 
@@ -1003,20 +1008,20 @@ python scripts/analyze_burst_drain_diff.py
 
 ## 11. Key Takeaways for Thesis Writing
 
-1. **PPO is best in 3 of 4 configurations.** The exception is US legacy mode, where the agent's tendency to over-concentrate routing on one DC causes capacity-violation penalties that exceed its energy savings. With either geographic diversity (Global) or temporal flexibility (batch), PPO wins decisively.
+1. **No single policy dominates; PPO is the best *deadline-respecting* agent.** PPO is the best RL policy in US batch and Global batch, and ties for best in Global legacy — losing only US legacy, where it over-concentrates routing onto one DC (capacity-violation penalties exceed its energy savings). The honest headline is not "PPO wins everywhere" but "PPO achieves low cost *while completing its committed work*" (takeaways 3–4).
 
-2. **PPO beats the foresighted Trough-Slot Lookahead oracle in every config it wins.** Margins: 3.4% (US batch), 4.2% (Global legacy), 5.5% (Global batch). RL learns implicit net-demand forecasting AND coordinates it with spatial routing — a strictly stronger policy than a foresighted single-axis heuristic.
+2. **PPO beats the foresighted Trough-Slot oracle wherever diversity or deferral helps, but the batch margins are slim.** +0.5% (US batch), +4.2% (Global legacy), +1.3% (Global batch); it trails by 1.6% in US legacy. Most of PPO's edge over the oracle comes from *spatial routing under diversity*, not from temporal scheduling.
 
-3. **Temporal batch scheduling is the universal lever.** Batch mode reduces PPO cost by 6.2% in US and 2.1% in Global vs the corresponding legacy results. Even when routing is structurally limited (US), the agent recovers performance by deciding *when* to execute deferrable work.
+3. **Temporal deferral is a modest, double-edged lever — not the universal win earlier drafts claimed.** With the calibrated deadline penalty (takeaway 4), batch mode lowers PPO's US cost by only **1.2%** and *raises* its Global cost by **2.6%** (high diversity is already captured by routing). Deferral mainly *rescues* concentration heuristics that fail in legacy mode (takeaway 7); for the disciplined policy its value is small and scenario-dependent.
 
-4. **PPO discovers an aggressive cost-deadline tradeoff.** The agent expires 1,200–1,300 units of batch work per episode (vs ~10 for Defer-to-Low-Net-Demand) because the deadline penalty (~$2.5K) is dwarfed by the energy + peak savings (~$300K) from deferring drain into low-net-demand hours. This is emergent — the deadline weight is fixed at 2.0.
+4. **A reward-calibration lesson: the deadline penalty must scale with the value of the deferred work (§7.8).** Set to 2.0 for the old tiny batch fraction, it was ~100× too weak once 27–61% of load became deferrable — expiring a unit cost $2, serving it ~$150 of energy, so the cost-minimal strategy was to *dump* batch, and aggressive-expiry policies beat PPO. Recalibrated to 250 (≈ the energy cost of serving a unit; ranking crossover at w≈183), the optimization correctly rewards completing work, and **PPO becomes the lowest-expiry policy** (~2,800–2,900 units vs ~5,000–6,400 for the dumpers). The entire batch ranking hinges on this one constant.
 
-5. **Action-encoding choice matters as much as algorithm choice — and PPO's edge over DQN narrows once DQN's encoding is well-designed.** Both CFWS and our work are geo-distributed multi-DC; CFWS shifts individual VMs across DCs using per-PM state, we shift aggregate load across DCs at cell granularity (§8.7). We trained two DQN variants on *our* formulation: a generic 759-action routing-grid and a 48-action CFWS-style flat-idx encoding (`src_dc, dst_dc, drain_level` via hash-map decode, the closest port of CFWS's hash-map decoding philosophy our cell-aggregate setting allows). The flat-idx variant **wins under high geographic diversity** (Global legacy: ties PPO at $13.47M; Global batch: 4.7% better than routing-grid DQN) and **loses under low diversity** (US legacy: 10.4% worse than routing-grid DQN, because the constrained 48-action space can't fine-tune the few available levers when DCs are similar). PPO still wins overall (+1.6 to +2.6% over the best DQN per config in 3 of 4 configs; statistical tie in Global legacy) but the margin is narrower than against routing-grid DQN alone. This says nothing about how CFWS's encoding performs on CFWS's own per-PM formulation — they report their flat-idx DQN works well on their AZ/CA/OR/LA setup. It says that *in our cell-aggregate setting*, structured small action spaces beat generic large ones only when there's enough inter-DC diversity to exploit.
+5. **Action-encoding choice matters, but its direction is scenario- and mode-dependent.** Of two DQN variants — 759-action routing-grid and 48-action CFWS-style flat-idx — flat-idx beats routing-grid in exactly one config, **Global legacy** (−0.7%, the *pure-routing* high-diversity case), and loses in the other three (US legacy +10.4%, US batch +0.9%, Global batch +0.8% worse). The earlier "flat-idx wins Global batch" does **not** survive the corrected data: adding the discrete uniform-drain commitment makes it over-expire and finish *last* in Global batch. CFWS's encoding philosophy thus transfers to spatial routing but not to routing+drain — and this says nothing about CFWS's own per-PM formulation, where each migration exposes many actions.
 
-6. **Per-DC reallocation matches the duck-curve story.** PPO cuts US-West (CAISO duck curve) cost by 14% vs Round Robin in US batch, and cuts Global-Asia (high-price Singapore) cost by 19% in Global batch. The agent is exploiting exactly the regional differences in net demand and price that motivated the framing.
+6. **Per-DC reallocation matches the duck-curve story, but modestly.** PPO trims US-West (CAISO) energy ~3.5% vs Round Robin and Global-Asia (Singapore) ~10% — exploiting the regional net-demand/price differences that motivated the framing, though the US effect is small in the low-diversity scenario.
 
-7. **Concentration heuristics fail without temporal slack.** Avoid-the-Ramp and Cheapest-Price-First collapse in legacy mode (8× and 4× worse than Round Robin respectively) from capacity violations. In batch mode the deferral pool absorbs the shock — Avoid-the-Ramp becomes the 2nd-best Global policy. This is a generalizable design insight: spatial concentration strategies need temporal flexibility to be safe.
+7. **Concentration heuristics fail without temporal slack — and can *win* with it.** Avoid-the-Ramp and Cheapest-First collapse in legacy mode (8× / 4× worse than Round Robin) from capacity violations. In batch mode the deferral pool absorbs the shock; in **Global batch, Cheapest-First becomes the cheapest policy overall** — by dumping ~5,500 units to chase the cheapest grid. Under extreme price diversity a deadline-violating concentrator can beat the disciplined agent on raw cost; whether that "wins" depends on how real the deadlines are.
 
-8. **The new formulation produces meaningful policy spread.** The old on-site-solar formulation flattened all reasonable legacy policies to within 1%. The new objective shows 3–7% spreads across policies and configurations, with clearly differentiated rankings — the optimization surface is meaningfully exposed rather than smothered by surplus solar.
+8. **The formulation produces meaningful, well-differentiated policy spread.** Rankings are clearly separated and the tradeoffs (cost vs deadline-violation, routing vs drain) are exposed rather than smothered — the corrected data makes the optimization surface genuinely informative.
 
-9. **The RL optimization signal concentrates in burst windows; the heavy tail is real but doesn't dominate cost.** Tirmazi's per-job long-tail (top 1% jobs = 99% of resources) manifests in our cell-aggregate setting as bursty batch arrivals. Burst timesteps (top 5% by arrival magnitude) don't drive disproportionate raw cost — the pool-with-deadline mechanic smears burst cost across drain steps — but the RL agents' advantage over Round Robin is **substantially larger in burst windows** (PPO: 2.1× larger in US batch, 1.3× in Global batch). PPO learned implicit burst-aware spatial routing without an explicit signal; it does not differentiate temporal (drain) behavior burst vs non-burst even when given an explicit `burst_severity` observation feature (§7.6). The Step 2 burst-aware augmentation improves PPO cost by 0.7–1.2% via a tighter spatial policy, not via differentiated temporal scheduling — an honest result with a different mechanism than predicted.
+9. **(Pending rerun, §7.6)** **The RL optimization signal concentrates in burst windows.** From the *pre-recalibration* burst study (stale numbers, to be regenerated): burst timesteps (top 5% by arrival) don't drive disproportionate raw cost — the pool-with-deadline mechanic smears it across drain steps — but each RL agent's advantage over Round Robin is larger in burst windows, and PPO learns implicit burst-aware spatial routing without an explicit signal. The qualitative finding is expected to hold under w=250; the percentages will be refreshed.
