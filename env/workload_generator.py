@@ -167,6 +167,10 @@ def _sample_from_dist(
         "weibull_min": sp_stats.weibull_min,
         "gamma": sp_stats.gamma,
         "expon": sp_stats.expon,
+        # discrete (count) distributions — used for tasks_per_job
+        "nbinom": sp_stats.nbinom,
+        "poisson": sp_stats.poisson,
+        "geom": sp_stats.geom,
     }
 
     dist_cls = dist_map.get(dist_name)

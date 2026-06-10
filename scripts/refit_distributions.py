@@ -43,7 +43,14 @@ MIN_SAMPLES_MLE = 20
 # Max samples for MLE fitting (subsampling for speed on large datasets)
 MAX_SAMPLES_FIT = 50000
 
-# Original batch fractions (from full Colab extraction counts)
+# Per-cell batch fraction = beb jobs / total jobs.
+# WARNING: these values are STALE — they were computed under the old, incorrect
+# `scheduling_class <= 1 AND priority < 200` classification, which conflates the
+# production tier (priority 200) with batch. The correct definition is the Borg
+# best-effort batch (beb) tier, priority 110-115 (Tirmazi et al. 2020 §2). These
+# MUST be recomputed from the re-extracted beb data (colab_extract_batch_jobs.py
+# now prints the correct beb fraction per cell) before the numbers are trusted.
+# TODO(rerun): replace with beb fractions from the re-extraction.
 BATCH_FRACTIONS = {
     "a": 0.04304,
     "b": 0.48353,

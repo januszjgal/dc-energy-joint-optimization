@@ -112,7 +112,12 @@ class DiscretizedMultiDCEnv(gym.Wrapper):
             drain_idx = min(drain_idx, len(self.drain_actions) - 1)
             routing = self.routing_actions[routing_idx]
             drain = self.drain_actions[drain_idx]
-            return np.concatenate([routing, drain])
+            parts = [routing, drain]
+            if getattr(self.env, "batch_spatial_routing", False):
+                # Route batch like service (ties the two routing heads) so the
+                # discrete action count stays 759 rather than 759 × n_routing.
+                parts.append(routing)
+            return np.concatenate(parts)
         else:
             idx = min(discrete_action, len(self.routing_actions) - 1)
             return self.routing_actions[idx]
