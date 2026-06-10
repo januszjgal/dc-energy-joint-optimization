@@ -8,7 +8,7 @@ power_model: data/power_model_params.json
 
 batch:
   flexibility_factor: 1.0
-  deadline_penalty_weight: 2.0
+  deadline_penalty_weight: 250.0   # calibrated to ~energy cost of serving a unit; see thesis_overview §7.8
   urgency_horizon_steps: 12
 
 sites:

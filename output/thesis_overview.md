@@ -683,6 +683,22 @@ The tables above rank policies against each other. This section adds the externa
 
 Even the foresighted heuristic already shaves the fleet peak by ~13 MW (357.5 → 344.1) and lifts the load factor 0.806 → 0.829. PPO is expected to extend both margins once retrained, since **27–61% of load is now deferrable** (§2.2). "Savings versus the grid-unaware status quo" is the cleanest externally-facing result the thesis can state, and it mirrors exactly what a CICS-style layer contributes on top of Borg.
 
+### 7.8 Calibrating the deadline penalty — a sensitivity lesson
+
+A non-obvious lesson surfaced when the corrected free+beb batch fraction (27–61%; §2.2) replaced the old tiny one. The deadline-violation penalty `deadline_penalty_weight × expired_demand` had been set to **2.0**, calibrated when batch was a negligible slice of load. At the realistic volume that value is **~100× too weak**: expiring a unit of deferred work costs \$2, while *serving* it costs ~\$150 of energy — so the cost-minimal strategy becomes to **dump batch and pay the trivial penalty**. Under that miscalibration, aggressive-expiry policies (Avoid-the-Ramp, Cheapest-First, even immediate-drain Status Quo) *beat* PPO, which conservatively served its committed work — an artifact, not a real ranking.
+
+Because the penalty is linear in expired demand, the cost of any rollout at any weight is recoverable without re-evaluating: `cost(w) = (cost − 2·expired) + w·expired`. Sweeping `w` over the US-batch rollouts inverts the ranking around **w ≈ 183** (where low-expiry policies overtake high-expiry ones):
+
+| Policy (US batch) | expired | cost @ w=2 | cost @ w=250 |
+|---|---|---|---|
+| **PPO** | 3,127 | $9.21M (10th) | **$9.99M (1st)** |
+| Avoid-the-Ramp | 6,434 | $8.64M (1st) | $10.23M (last) |
+| Status Quo | 5,059 | $8.87M | $10.13M |
+
+**The calibration.** A principled value is the **energy cost of serving one unit** of deferred CPU — `slope · rated_power · 1000 · Δt · price ≈ $150` at a typical wholesale price — so that dropping committed work is never cheaper than doing it. We set **`deadline_penalty_weight = 250`** (≈ that energy cost at a moderately high price, comfortably above the empirical $183 crossover). At this value the optimization rewards *completing* deferred work, and PPO's spatial batch routing — which lowers forced expiry by balancing load across DCs (3,127 vs Status Quo's 5,059) — becomes a legitimate advantage rather than a liability.
+
+**The general lesson:** in a deferral-with-deadlines reward, the deadline penalty must **scale with the value of the deferred work** (≈ its energy cost), not be a fixed small constant — otherwise the agent learns to discard work whenever the deferrable fraction is non-trivial. All batch-mode results in this thesis use the recalibrated **`w = 250`**.
+
 ---
 
 ## 8. Comparison with Related Work
