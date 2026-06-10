@@ -1,0 +1,26 @@
+﻿2026-06-10T13:42:16.2515366Z [SID:fb8b1203] [PID:21448] [Info] [Model] model.registry.configuration hasShim=True hasAzure=False defaultProviderRequested=vscode-shim defaultProviderSelected=vscode-shim
+2026-06-10T13:42:16.3363619Z [SID:fb8b1203] [PID:21448] [Info] [Bookshelf] bookshelf.providers.registered providerId=graphrag-zero transport=shell verbCount=6 source=graphrag-zero.json
+2026-06-10T13:42:16.3610313Z [SID:fb8b1203] [PID:21448] [Info] [Bookshelf] bookshelf.providers.registered providerId=soma transport=dll verbCount=5 source=DiscoveryExpress.Sdk.Bookshelf.Providers.Soma.dll
+2026-06-10T13:42:16.3673433Z [SID:fb8b1203] [PID:21448] [Info] [worker] [Providers] Registered graphrag-zero (graphrag-zero) via manifest
+2026-06-10T13:42:16.3680566Z [SID:fb8b1203] [PID:21448] [Info] [worker] [Providers] Registered soma (soma) via manifest
+2026-06-10T13:42:16.6394958Z [SID:fb8b1203] [PID:21448] [Info] [worker] [Worker] Agent execution engine initialized. AdapterCount=1
+2026-06-10T13:42:16.6867404Z [SID:fb8b1203] [PID:21448] [Info] [worker] [Worker] LLM Router v2 enabled: True
+2026-06-10T13:42:16.6921577Z [SID:fb8b1203] [PID:21448] [Debug] [worker] Task list request parsed. component=Tasks operation=ListTasks nestedFilterUsed=False pagingSpecified=True
+2026-06-10T13:42:16.7114238Z [SID:fb8b1203] [PID:21448] [Info] [Agent] agent.execution.reconciled scanned=0 finalized=0 failed=0 stale=0 cleaned=0 ignored=0
+2026-06-10T13:42:16.7136433Z [SID:fb8b1203] [PID:21448] [Info] [ProjectHealth] project.health.completed trigger=startup checkCount=1 errorCount=0
+2026-06-10T13:42:17.8435032Z [SID:fb8b1203] [PID:21448] [Info] [worker] [Purpose] LLM grading evaluator wired via purpose-grading deployment.
+2026-06-10T13:42:17.8707657Z [SID:fb8b1203] [PID:21448] [Info] [worker] [Ring] Current ring resolved: preview (env DISCOVERY_EXPRESS_RING was: preview)
+2026-06-10T13:42:17.8918142Z [SID:fb8b1203] [PID:21448] [Info] [worker] [IconBranding] Apply called. vscodePid=35508 iconPathProvided=True
+2026-06-10T13:42:17.8924935Z [SID:fb8b1203] [PID:21448] [Info] [worker] [IconBranding] Icon file size=372526 bytes
+2026-06-10T13:42:17.9028948Z [SID:fb8b1203] [PID:21448] [Info] [worker] [IconBranding] LoadImage completed. bigHandleValid=True smallHandleValid=True
+2026-06-10T13:42:17.9088024Z [SID:fb8b1203] [PID:21448] [Info] [worker] [IconBranding] Found window for target PID. class=Chrome_WidgetWin_1
+2026-06-10T13:42:17.9098013Z [SID:fb8b1203] [PID:21448] [Info] [worker] [IconBranding] Icon applied to VS Code window.
+2026-06-10T13:42:17.9105791Z [SID:fb8b1203] [PID:21448] [Info] [worker] [IconBranding] Complete. Windows found for PID 35508: 1, icons applied: 1
+2026-06-10T13:42:19.4169264Z [SID:fb8b1203] [PID:21448] [Warning] [worker] [Quantum] wasm-host/ found but not fully provisioned (host.mjs exists: True, node_modules/qsharp-lang exists: False). Run 'npm install' in the wasm-host directory to provision dependencies.
+2026-06-10T13:42:19.4418161Z [SID:fb8b1203] [PID:21448] [Info] [worker] [LocalModels] Preloading local embedding model: model=harrier-oss-v1-270m source=router:harrier-oss-v1-270m tierPref=<none> device=auto
+2026-06-10T13:42:19.4435176Z [SID:fb8b1203] [PID:21448] [Info] [worker] [LocalModels] Loading harrier-oss-v1-270m (640d) in background...
+2026-06-10T13:42:19.7313634Z [SID:fb8b1203] [PID:21448] [Debug] [worker] Task list request parsed. component=Tasks operation=ListTasks nestedFilterUsed=False pagingSpecified=True
+2026-06-10T13:42:19.7588189Z [SID:fb8b1203] [PID:21448] [Debug] [worker] Task list request parsed. component=Tasks operation=ListTasks nestedFilterUsed=False pagingSpecified=True
+2026-06-10T13:47:16.7464704Z [SID:fb8b1203] [PID:21448] [Debug] [worker] Task list request parsed. component=Tasks operation=ListTasks nestedFilterUsed=False pagingSpecified=True
+2026-06-10T13:47:16.7481076Z [SID:fb8b1203] [PID:21448] [Info] [Agent] agent.execution.reconciled scanned=0 finalized=0 failed=0 stale=0 cleaned=0 ignored=0
+2026-06-10T13:47:16.7485953Z [SID:fb8b1203] [PID:21448] [Info] [ProjectHealth] project.health.completed trigger=timer checkCount=1 errorCount=0

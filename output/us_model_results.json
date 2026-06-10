@@ -3,6 +3,9 @@
     "reward": -10097586.598128706,
     "summary": {
       "total_cost": 10097586.59812866,
+      "peak_grid_mw": 297.5341477148797,
+      "mean_grid_mw": 287.98197476287146,
+      "load_factor": 0.9678955406450964,
       "total_energy_cost": 7844162.390485182,
       "total_peak_penalty": 1885276.535945226,
       "total_grid_mw_steps": 2567935.268960525,
@@ -31,6 +34,9 @@
     "reward": -9842805.72874624,
     "summary": {
       "total_cost": 9842805.728746206,
+      "peak_grid_mw": 299.21428442571454,
+      "mean_grid_mw": 288.2586892212198,
+      "load_factor": 0.963385453921353,
       "total_energy_cost": 7909957.036577221,
       "total_peak_penalty": 1931808.9967982266,
       "total_grid_mw_steps": 2570402.7317856173,
@@ -59,6 +65,9 @@
     "reward": -10865115.791828379,
     "summary": {
       "total_cost": 10865115.791828351,
+      "peak_grid_mw": 295.5589030913102,
+      "mean_grid_mw": 286.8909502581823,
+      "load_factor": 0.9706726722069,
       "total_energy_cost": 7787560.606403161,
       "total_peak_penalty": 1880160.7623159841,
       "total_grid_mw_steps": 2558206.6034522112,
@@ -83,10 +92,44 @@
       }
     }
   },
+  "Status Quo (local, no deferral)": {
+    "reward": -9854608.704122297,
+    "summary": {
+      "total_cost": 9854608.704122288,
+      "peak_grid_mw": 302.3093519562902,
+      "mean_grid_mw": 288.25868922121987,
+      "load_factor": 0.953522235934329,
+      "total_energy_cost": 7987269.030864631,
+      "total_peak_penalty": 1867339.6732576573,
+      "total_grid_mw_steps": 2570402.7317856173,
+      "nd_weighted_load": 1724367.716060669,
+      "per_dc_energy_cost": {
+        "US-West": 2595841.1915838784,
+        "US-Central": 1589334.6637678419,
+        "US-Southeast-1": 2015620.9229566122,
+        "US-Southeast-2": 1786472.2525562986
+      },
+      "per_dc_peak_penalty": {
+        "US-West": 447138.1893245522,
+        "US-Central": 514972.8481486829,
+        "US-Southeast-1": 471118.8091534017,
+        "US-Southeast-2": 434109.8266310205
+      },
+      "per_dc_avg_backlog": {
+        "US-West": 0.0,
+        "US-Central": 0.0,
+        "US-Southeast-1": 0.0,
+        "US-Southeast-2": 0.0
+      }
+    }
+  },
   "Round Robin": {
     "reward": -9842773.419984447,
     "summary": {
       "total_cost": 9842773.419984417,
+      "peak_grid_mw": 302.30935195629024,
+      "mean_grid_mw": 288.2586892212198,
+      "load_factor": 0.9535222359343287,
       "total_energy_cost": 7979247.210348101,
       "total_peak_penalty": 1863526.209636315,
       "total_grid_mw_steps": 2570402.7317856173,
@@ -115,6 +158,9 @@
     "reward": -40302131.65979545,
     "summary": {
       "total_cost": 40302131.659795545,
+      "peak_grid_mw": 267.6792827270596,
+      "mean_grid_mw": 263.62193740099576,
+      "load_factor": 0.9848425127087592,
       "total_energy_cost": 7101765.065553266,
       "total_peak_penalty": 1692723.0390238983,
       "total_grid_mw_steps": 2350716.8158046794,
@@ -143,6 +189,9 @@
     "reward": -16580284.329134878,
     "summary": {
       "total_cost": 16580284.32913486,
+      "peak_grid_mw": 323.5547074513525,
+      "mean_grid_mw": 283.8173251543852,
+      "load_factor": 0.8771849663076159,
       "total_energy_cost": 7981741.429124639,
       "total_peak_penalty": 1832226.3761840267,
       "total_grid_mw_steps": 2530799.088401653,
@@ -171,6 +220,9 @@
     "reward": -9854608.704122297,
     "summary": {
       "total_cost": 9854608.704122288,
+      "peak_grid_mw": 302.3093519562902,
+      "mean_grid_mw": 288.25868922121987,
+      "load_factor": 0.953522235934329,
       "total_energy_cost": 7987269.030864631,
       "total_peak_penalty": 1867339.6732576573,
       "total_grid_mw_steps": 2570402.7317856173,
@@ -199,6 +251,9 @@
     "reward": -9881611.550849712,
     "summary": {
       "total_cost": 9881611.55084972,
+      "peak_grid_mw": 324.0342875936586,
+      "mean_grid_mw": 288.2586892212198,
+      "load_factor": 0.8895931704076279,
       "total_energy_cost": 7978050.349716052,
       "total_peak_penalty": 1902538.9805926878,
       "total_grid_mw_steps": 2570402.7317856173,
@@ -227,6 +282,9 @@
     "reward": -9842773.419984447,
     "summary": {
       "total_cost": 9842773.419984417,
+      "peak_grid_mw": 302.30935195629024,
+      "mean_grid_mw": 288.2586892212198,
+      "load_factor": 0.9535222359343287,
       "total_energy_cost": 7979247.210348101,
       "total_peak_penalty": 1863526.209636315,
       "total_grid_mw_steps": 2570402.7317856173,
@@ -255,6 +313,9 @@
     "reward": -9842773.419984447,
     "summary": {
       "total_cost": 9842773.419984417,
+      "peak_grid_mw": 302.30935195629024,
+      "mean_grid_mw": 288.2586892212198,
+      "load_factor": 0.9535222359343287,
       "total_energy_cost": 7979247.210348101,
       "total_peak_penalty": 1863526.209636315,
       "total_grid_mw_steps": 2570402.7317856173,
@@ -283,6 +344,9 @@
     "reward": -9939815.040510833,
     "summary": {
       "total_cost": 9939815.040510833,
+      "peak_grid_mw": 329.19607600940134,
+      "mean_grid_mw": 288.10834141396333,
+      "load_factor": 0.8751876538338064,
       "total_energy_cost": 8035871.757255062,
       "total_peak_penalty": 1820927.401624246,
       "total_grid_mw_steps": 2569062.080388311,
