@@ -57,6 +57,11 @@ class MultiDCEnv(gym.Env):
         deadline_penalty_weight: float = 2.0,
         urgency_horizon_steps: int = 12,
         interval_seconds: int = 300,
+        # Batch spatial routing: give the agent a second routing head that
+        # distributes *drained* batch work across DCs. Deferrable batch has no
+        # latency SLO, so (unlike service) it can be executed at any DC. When
+        # False, drained batch is executed at its home DC (legacy behavior).
+        batch_spatial_routing: bool = True,
         # Memory constraint
         memory_enabled: bool = False,
         # Burst-aware augmentation: add per-DC burst_severity feature to
@@ -84,6 +89,7 @@ class MultiDCEnv(gym.Env):
         self.deadline_penalty_weight = deadline_penalty_weight
         self.urgency_horizon_steps = urgency_horizon_steps
         self.interval_seconds = interval_seconds
+        self.batch_spatial_routing = batch_spatial_routing and batch_enabled
 
         self.memory_enabled = memory_enabled
         self.burst_aware = burst_aware and batch_enabled  # only meaningful in batch mode
@@ -107,7 +113,8 @@ class MultiDCEnv(gym.Env):
             mem_dims = 2 if memory_enabled else 0
             burst_dims = 1 if self.burst_aware else 0
             obs_dim = (8 + mem_dims + burst_dims) * self.n_dc + 3
-            action_dim = 2 * self.n_dc
+            # service routing (N) + drain (N) [+ batch routing (N) if enabled]
+            action_dim = (3 if self.batch_spatial_routing else 2) * self.n_dc
         else:
             mem_dims = 1 if memory_enabled else 0
             obs_dim = (6 + mem_dims) * self.n_dc + 2
@@ -275,14 +282,23 @@ class MultiDCEnv(gym.Env):
         action = np.asarray(action, dtype=np.float64)
 
         routing_logits = action[:N]
-        drain_logits = action[N:]
+        drain_logits = action[N:2 * N]
 
         exp_a = np.exp(routing_logits - routing_logits.max())
         fractions = exp_a / exp_a.sum()
 
         drain_rates = 1.0 / (1.0 + np.exp(-drain_logits))
 
-        # Phase 1: inject new batch demand
+        # Optional independent spatial routing for deferrable batch work.
+        # Batch has no latency SLO, so drained batch may execute at any DC.
+        if self.batch_spatial_routing:
+            batch_logits = action[2 * N:3 * N]
+            exp_b = np.exp(batch_logits - batch_logits.max())
+            batch_fractions = exp_b / exp_b.sum()
+        else:
+            batch_fractions = None
+
+        # Phase 1: inject new batch demand into each DC's local pool
         for i, site in enumerate(self.sites):
             new_batch = site.get_batch_demand(t)
             if new_batch > 0:
@@ -294,15 +310,24 @@ class MultiDCEnv(gym.Env):
         # Phase 2: expire overdue entries
         expired_per_dc = [site.batch_pool.expire(t) for site in self.sites]
 
-        # Phase 3: drain pools
+        # Phase 3: drain pools (work leaves its home pool)
         batch_drained = [
             site.batch_pool.drain(drain_rates[i]) for i, site in enumerate(self.sites)
         ]
 
-        # Phase 4: route service demand
+        # Phase 4: spatially route the drained batch.
+        #   routing on : pool all drained batch and re-split by batch_fractions
+        #   routing off: each DC executes its own drained batch (legacy behavior)
+        if self.batch_spatial_routing:
+            total_drained = float(sum(batch_drained))
+            batch_assigned = [batch_fractions[j] * total_drained for j in range(N)]
+        else:
+            batch_assigned = list(batch_drained)
+
+        # Phase 5: route service demand
         total_service = sum(s.get_service_demand(t) for s in self.sites)
 
-        # Phase 5: per-DC cost
+        # Phase 6: per-DC cost (service served first, then assigned batch)
         total_cost = 0.0
         total_energy = 0.0
         total_peak = 0.0
@@ -313,7 +338,7 @@ class MultiDCEnv(gym.Env):
             service_assigned = fractions[i] * total_service
             service_to_serve = service_assigned + site.backlog
 
-            batch_work = batch_drained[i]
+            batch_work = batch_assigned[i]
             total_work = service_to_serve + batch_work
 
             max_serve = site.capacity
@@ -326,7 +351,8 @@ class MultiDCEnv(gym.Env):
             batch_served = served - service_served
             new_backlog = service_to_serve - service_served
 
-            # Return unserved batch to pool (preserving urgency)
+            # Unserved batch re-queues at THIS DC (its routing destination) for
+            # next step, preserving urgency.
             batch_unserved = batch_work - batch_served
             if batch_unserved > 1e-9:
                 site.batch_pool.add(batch_unserved, t + 1)
@@ -352,7 +378,8 @@ class MultiDCEnv(gym.Env):
                     "name": site.name,
                     "service_assigned": float(service_assigned),
                     "service_served": float(service_served),
-                    "batch_drained": float(batch_work),
+                    "batch_drained": float(batch_drained[i]),  # drained from this DC's pool
+                    "batch_assigned": float(batch_work),        # routed to this DC to execute
                     "batch_served": float(batch_served),
                     "served": float(served),
                     "backlog": float(new_backlog),
@@ -381,6 +408,7 @@ class MultiDCEnv(gym.Env):
             ),
             "fractions": fractions.tolist(),
             "drain_rates": drain_rates.tolist(),
+            "batch_fractions": batch_fractions.tolist() if batch_fractions is not None else None,
             "total_cost": float(total_cost),
             "total_energy_cost": float(total_energy),
             "total_peak_penalty": float(total_peak),

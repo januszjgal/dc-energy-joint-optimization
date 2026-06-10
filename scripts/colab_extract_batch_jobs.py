@@ -30,27 +30,34 @@ CELLS = ["a", "b", "c", "d"]
 def build_query(cell: str) -> str:
     """Build the BigQuery SQL for one cell.
 
-    Extracts batch jobs (scheduling_class 0-1, collection_type 0 = jobs)
-    with their timing, resource requests, and task counts.
+    Extracts deferrable jobs with their timing, resource requests, and task
+    counts. "Deferrable" = the Borg NO-SLO tiers: free (priority <= 99) and
+    best-effort batch / beb (110-115) — both run without SLOs (Tirmazi et al.
+    2020, "Borg: the Next Generation", EuroSys '20, §2). Strict beb alone is a
+    negligible share of these cells' load, so the deferrable class is the union
+    of the two no-SLO tiers. We classify by PRIORITY, not scheduling_class:
+    scheduling_class (latency-sensitivity) is orthogonal to tier, and
+    `scheduling_class <= 1` is dominated by latency-insensitive *production*
+    (priority 200) jobs, which are SLO-bound and must not be deferred.
     Caps at 200k jobs per cell (more than enough for distribution fitting).
     """
     dataset = f"`google.com:google-cluster-data`.clusterdata_2019_{cell}"
 
     return f"""
     WITH batch_jobs AS (
-      -- Get submit and finish times for batch jobs
+      -- Get submit and terminal times for best-effort batch (beb) jobs.
+      -- Event types: 4=EVICT, 5=FAIL, 6=FINISH, 7=KILL, 8=LOST (FINISH is 6).
       SELECT
         collection_id,
         MIN(IF(type = 0, time, NULL)) AS submit_time_us,
-        -- type 4 = FINISH; also capture FAIL(5), CANCEL(6), KILL(8) as end
+        -- Last terminal event (MAX time); MAX(type) prefers FINISH(6) as outcome
         MAX(IF(type IN (4, 5, 6, 7, 8), time, NULL)) AS end_time_us,
-        -- Capture terminal event type
         MAX(IF(type IN (4, 5, 6, 7, 8), type, NULL)) AS terminal_type,
         ANY_VALUE(scheduling_class) AS scheduling_class,
         ANY_VALUE(priority) AS priority
       FROM {dataset}.collection_events
-      WHERE scheduling_class <= 1        -- batch / free tier
-        AND collection_type = 0          -- jobs (not alloc sets)
+      WHERE (priority <= 99 OR priority BETWEEN 110 AND 115)  -- no-SLO tiers: free + beb; Tirmazi 2020 §2
+        AND collection_type = 0            -- jobs (not alloc sets)
       GROUP BY collection_id
       HAVING submit_time_us IS NOT NULL
         AND end_time_us IS NOT NULL

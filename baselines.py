@@ -16,11 +16,26 @@ import numpy as np
 from env.multi_dc_env import MultiDCEnv
 
 
-def _with_drain(routing: np.ndarray, drain: np.ndarray, env: MultiDCEnv) -> np.ndarray:
-    """Append drain logits to routing logits when batch mode is active."""
-    if getattr(env, "batch_enabled", False):
-        return np.concatenate([routing, drain.astype(np.float32)])
-    return routing
+def _with_drain(
+    routing: np.ndarray,
+    drain: np.ndarray,
+    env: MultiDCEnv,
+    batch_routing: np.ndarray | None = None,
+) -> np.ndarray:
+    """Assemble the env action vector for a baseline.
+
+    Legacy mode -> ``routing`` only. Batch mode -> ``[routing, drain]``. With
+    batch spatial routing enabled -> ``[routing, drain, batch_routing]``;
+    ``batch_routing`` defaults to the service ``routing`` (route deferred work
+    the same way as service — e.g. toward the slack/cheap grid).
+    """
+    if not getattr(env, "batch_enabled", False):
+        return routing
+    parts = [routing, drain.astype(np.float32)]
+    if getattr(env, "batch_spatial_routing", False):
+        br = routing if batch_routing is None else batch_routing
+        parts.append(np.asarray(br, dtype=np.float32))
+    return np.concatenate(parts)
 
 
 # ----------------------------------------------------------------------
@@ -110,6 +125,35 @@ class LocalOnlyPolicy:
         return _with_drain(routing, drain, env)
 
 
+class StatusQuoPolicy:
+    """No-optimization reference: serve each cell's own load locally, immediately.
+
+    The closest in-framework stand-in for "the workload run as-is" — no grid-aware
+    routing (each DC serves its own demand) and no temporal deferral (batch drained
+    immediately). This is the counterfactual PPO's savings are measured against: a
+    CICS-style load-shaper switched OFF, leaving Borg's raw aggregate to run where
+    and when it arrived. Scored by the same cost model as every other policy, so the
+    relative comparison is robust to the power model's absolute error.
+    """
+
+    name = "Status Quo (local, no deferral)"
+
+    def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
+        t = env.step_index
+        demands = np.array(
+            [site.get_local_demand(t) for site in env.sites], dtype=np.float32
+        )
+        total = demands.sum()
+        if total > 0:
+            fracs = np.clip(demands / total, 1e-6, None)
+            logits = np.log(fracs)
+            routing = np.clip(logits - logits.mean(), -1.0, 1.0).astype(np.float32)
+        else:
+            routing = np.zeros(env.n_dc, dtype=np.float32)
+        drain = np.full(env.n_dc, 5.0, dtype=np.float32)  # sigmoid(5) ≈ 0.993, immediate
+        return _with_drain(routing, drain, env)
+
+
 class RandomPolicy:
     name = "Random"
 
@@ -118,7 +162,8 @@ class RandomPolicy:
 
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
         if getattr(env, "batch_enabled", False):
-            return self.rng.uniform(-1.0, 1.0, size=2 * env.n_dc).astype(np.float32)
+            mult = 3 if getattr(env, "batch_spatial_routing", False) else 2
+            return self.rng.uniform(-1.0, 1.0, size=mult * env.n_dc).astype(np.float32)
         return self.rng.uniform(-1.0, 1.0, size=env.n_dc).astype(np.float32)
 
 
@@ -224,6 +269,7 @@ class TroughSlotLookaheadPolicy:
 
 
 ALL_BASELINES = [
+    StatusQuoPolicy,
     RoundRobinPolicy,
     CheapestFirstPolicy,
     AvoidTheRampPolicy,

@@ -91,8 +91,19 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         for i in range(n_dc)
     }
 
+    # Normalized power-draw profile (demand-smoothing KPI). load_factor = mean/peak
+    # aggregate grid draw; higher = flatter (less peaky). Status Quo should have the
+    # lowest load_factor; the optimizer should raise it by shaving peaks.
+    agg_grid_mw = [h.get("total_grid_mw", 0.0) for h in history]
+    peak_grid_mw = float(max(agg_grid_mw)) if agg_grid_mw else 0.0
+    mean_grid_mw = float(np.mean(agg_grid_mw)) if agg_grid_mw else 0.0
+    load_factor = mean_grid_mw / peak_grid_mw if peak_grid_mw > 0 else 0.0
+
     summary: dict[str, Any] = {
         "total_cost": float(total_cost),
+        "peak_grid_mw": peak_grid_mw,
+        "mean_grid_mw": mean_grid_mw,
+        "load_factor": load_factor,
         "total_energy_cost": float(total_energy_cost),
         "total_peak_penalty": float(total_peak_penalty),
         "total_grid_mw_steps": float(total_grid_mw),
@@ -138,6 +149,7 @@ def _make_env(
     dynamic_arrivals: bool = True,
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
+    batch_spatial_routing: bool = True,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
     sites, power_model, batch_config = load_scenario(
@@ -158,6 +170,7 @@ def _make_env(
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
+        batch_spatial_routing=batch_spatial_routing,
     )
 
 
@@ -227,6 +240,14 @@ def main(argv: list[str] | None = None) -> None:
         default=0.0,
         help="Peak-contribution penalty weight α (must match training value)",
     )
+    parser.add_argument(
+        "--no-batch-spatial-routing",
+        dest="batch_spatial_routing",
+        action="store_false",
+        help="Disable spatial routing of drained batch work (batch mode only); "
+             "drained batch executes at its home DC. Must match how the model "
+             "was trained (action space differs: 3N with routing, 2N without).",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -257,6 +278,7 @@ def main(argv: list[str] | None = None) -> None:
         memory_enabled=args.memory,
         dynamic_arrivals=not args.no_dynamic_arrivals,
         peak_penalty_weight=args.peak_penalty_weight,
+        batch_spatial_routing=args.batch_spatial_routing,
     )
     if args.algorithm == "dqn":
         env = DiscretizedMultiDCEnv(env)
@@ -320,6 +342,7 @@ def main(argv: list[str] | None = None) -> None:
             flexibility_factor=args.flexibility_factor,
             deadline_penalty_weight=args.deadline_penalty,
             peak_penalty_weight=args.peak_penalty_weight,
+            batch_spatial_routing=args.batch_spatial_routing,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
         summary = compute_summary(history, batch_enabled=args.batch_mode)

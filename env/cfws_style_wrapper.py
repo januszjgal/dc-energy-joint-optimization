@@ -92,7 +92,11 @@ class CFWSStyleDiscretizedEnv(gym.Wrapper):
 
         if self.env.batch_enabled:
             drain_logits = np.full(self.n_dc, drain_logit, dtype=np.float32)
-            return np.concatenate([routing_logits, drain_logits])
+            parts = [routing_logits, drain_logits]
+            if getattr(self.env, "batch_spatial_routing", False):
+                # Route batch like service (the migration action applies to both).
+                parts.append(routing_logits)
+            return np.concatenate(parts)
         return routing_logits
 
     def step(self, action):

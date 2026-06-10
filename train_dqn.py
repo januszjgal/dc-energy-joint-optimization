@@ -49,6 +49,7 @@ def make_env(
     peak_penalty_weight: float = 0.0,
     action_scheme: str = "routing-grid",
     burst_aware: bool = False,
+    batch_spatial_routing: bool = True,
 ) -> gym.Wrapper:
     """Create a discretized MultiDCEnv from a scenario config.
 
@@ -82,6 +83,7 @@ def make_env(
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
         burst_aware=burst_aware,
+        batch_spatial_routing=batch_spatial_routing,
     )
 
     if action_scheme == "cfws-style":
@@ -178,6 +180,14 @@ def main(argv: list[str] | None = None) -> None:
         help="Augment observation with per-DC burst_severity = current_arrival / "
              "rolling_24h_mean_arrival (batch mode only). Adds 1 dim per DC.",
     )
+    parser.add_argument(
+        "--no-batch-spatial-routing",
+        dest="batch_spatial_routing",
+        action="store_false",
+        help="Disable spatial routing of drained batch work (batch mode only). "
+             "Drained batch executes at its home DC. DQN ties batch routing to "
+             "service routing, so the discrete action count is unchanged.",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -202,6 +212,7 @@ def main(argv: list[str] | None = None) -> None:
         peak_penalty_weight=args.peak_penalty_weight,
         action_scheme=args.action_scheme,
         burst_aware=args.burst_aware,
+        batch_spatial_routing=args.batch_spatial_routing,
     )
     n_actions = getattr(env, "n_actions", env.action_space.n)
     print(f"Observation space: {env.observation_space}")

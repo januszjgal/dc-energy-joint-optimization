@@ -28,7 +28,30 @@ We explicitly **do not** model:
 - On-site solar generation or PPAs (DCs are pure grid-connected loads — solar enters only as a forecast feature for upcoming net-demand peaks)
 - Carbon emissions (excluded to maintain a focused optimization target; net demand is a correlated proxy)
 - Battery storage
-- Cooling energy (excluded per advisor guidance)
+- Cooling energy (excluded per advisor guidance; the cooling-optimization dimension — cooling-aware scheduling and RL cooling control — is covered by surveys such as *"A survey on data center cooling systems"* and *"Towards Joint Optimization Over ICT and Cooling Systems in Data Centre: A Survey"*, and is out of scope here)
+
+### 1.2 Modeling Granularity & Positioning
+
+**We model workload as divisible aggregate flow, not discrete jobs.** Each cell's demand is a single continuous CPU-utilization curve; the agent routes *fractions* of it spatially and releases a deferrable *pool* temporally. There is no per-job placement, no bin-packing, and no VM migration anywhere in the environment — individual jobs enter only *upstream*, as samples that shape the batch-demand curve (§2.2, §3.8). This is a deliberate abstraction, and it places the work in a specific lineage.
+
+**The sustainable-scheduling literature splits by granularity.** One camp schedules discrete units onto machines: **Grange et al. (2018), *"Green IT scheduling for data center powered with renewable energy"*** places individual *tasks*; **Xu et al. (2020), *"A Self-Adaptive Approach for Managing…"*** creates/migrates *VMs* via OpenStack; **Haghshenas et al. (2022), *"Infrastructure-Aware…"*** schedules *jobs* on heterogeneous machines; **CFWS (Zhao et al. 2025)** migrates *VMs* across physical machines. The other camp shapes *aggregate* cluster load with no per-job placement — most authoritatively **Radovanovic et al. (2023), *"Carbon-Aware Computing for Datacenters"*** (Google's production Carbon-Intelligent Compute Management System, CICS, operating on the same Google-cluster workload). Our environment sits squarely in the aggregate camp.
+
+**Alignment with Google's production system (CICS).** Our abstraction mirrors CICS point-for-point:
+
+| Our environment | CICS (Radovanovic et al. 2023) |
+|---|---|
+| Aggregate cell CPU curve; no job placement | Cluster-level "Virtual Capacity Curves" shape hourly resource/power usage |
+| Deferrable vs must-serve split by **priority tier** (free+beb vs production) | *"temporally **inflexible** (higher tiers)"* vs *"**flexible** (lower-tier batch jobs that tolerate delays)"* |
+| Per-cell power model on aggregate CPU | *"power models trained separately for each cluster"* on *"aggregate… resource demand"* |
+| Spatial routing **+** temporal deferral | *"shifting workloads across datacenter locations, or by delaying jobs' execution"* |
+| Peak-contribution penalty | *"reduces daily peak CPU and, consequently, power consumption"* |
+| CPU as demand proxy | *"in aggregate, resource consumption is highly correlated to CPU consumption"* |
+
+Crucially, CICS explicitly characterizes the *job-level deadline-optimization* approach — i.e. Grange's — as the **previous** treatment it moved away from: it runs *"independently from real-time job-level scheduling"* using *"aggregate cluster-specific resource demand forecasts… rather than… stylized models for job-level resource demand modeling."* We therefore follow the newer, production-validated paradigm rather than a naïve simplification.
+
+**What we reuse vs. what we benchmark.** We reuse Grange/Da Costa's *workload generator* (the input model; §3.8) but make the scheduling decision at CICS's *aggregate* granularity, not Grange's per-task placement. The three single-DC predecessors (Grange, Xu, Haghshenas) are benchmarked on **objectives and effects** (operator cost, peak contribution, deferral savings), not on mechanism — we do not claim to reproduce their machine-level placement or VM migration.
+
+**Honest limitations of the abstraction.** Divisible aggregate flow cannot capture per-VM/per-job SLA enforcement, VM-migration overhead, bin-packing and resource fragmentation on real machines, or the indivisibility of a single job. These belong to the intra-DC placement problem (CFWS's territory) and are out of scope. The aggregate view is appropriate for the inter-DC, grid-facing question this thesis asks — *how much load runs where, and when* — which does not require machine-level detail.
 
 ---
 
@@ -53,24 +76,31 @@ This per-cell aggregate extraction is the standard way of summarizing the 2019 t
 
 ### 2.2 Batch Job Distributions — Google ClusterData 2019
 
-The 2019 trace exposes job priority as a sparse value in [0, 450] and groups priorities into named **tiers** (Tirmazi §2). We filter on the **best-effort batch (beb) tier** (priorities 110–115), which is "managed by the batch scheduler and incurs low internal charges; they have no associated SLOs" — i.e., the workloads that are genuinely deferrable. Tirmazi reports that across the 2019 trace, the beb tier accounts for ~20% of cell capacity on average; our per-cell measured batch fractions (4.3%–7.3%, below) are lower because we filter more conservatively for jobs whose duration and arrival pattern allow modeling as a queueable pool.
+The 2019 trace exposes job priority as a sparse value in [0, 450] and groups priorities into named **tiers** (Tirmazi et al. 2020, *"Borg: the Next Generation"*, §2). We classify a job as deferrable **batch** iff it belongs to one of the two **SLO-free tiers**: the **free tier** (`priority ≤ 99`) or the **best-effort batch (beb) tier** (`priority ∈ [110, 115]`). Both are explicitly described as having "no associated SLOs" (Tirmazi §2) — they are the genuinely delay-tolerant work. Every SLO-bearing tier is non-deferrable **service**: the mid-tier (116–119, weak SLOs) and especially the **production tier** (120–359), which "require[s] high availability" — "Borg will evict lower-tier jobs in order to ensure production tier jobs receive their expected level of service" (Tirmazi §2). Production must be served immediately and cannot be queued.
 
-For batch scheduling, we extract 200,000 batch jobs per cell from the beb tier and fit statistical distributions to characterize:
+**Why both no-SLO tiers, not beb alone.** Tirmazi's terminology reserves "batch" for the beb tier, but in these four cells beb *alone* is negligible (≈0% of CPU-time, <6% of jobs). The free tier — equally SLO-free — holds the deferrable mass; restricting to strict beb would leave essentially nothing to defer. The union of the two SLO-free tiers is the defensible deferrable class. Classification is by **priority**, not `scheduling_class`: the latter encodes latency-sensitivity (0–3), is orthogonal to tier, and a `scheduling_class ≤ 1` filter is dominated by latency-insensitive *production* (priority 200) jobs.
 
-| Property | Cell A Distribution | Key Parameters |
+We fit statistical distributions to each cell's deferrable jobs (Cell A shown):
+
+| Property | Cell A distribution | Key parameters |
 |---|---|---|
-| **Inter-arrival time** (sec) | Exponential | mean=0.91s, λ fitted via MLE |
-| **Duration** (sec) | Weibull (min) | shape=0.49, scale=567, mean=11,044s |
-| **CPU request** (normalized) | Log-normal | σ=0.91, μ=0.007, mean=0.011 |
-| **Memory request** (normalized) | Log-normal | σ=0.83, μ=0.004, mean=0.006 |
-| **Tasks per job** | Mixture: 83.2% point-mass at 1 + Gamma tail | mean=12.0 |
+| **Inter-arrival time** (sec) | Weibull (min) | shape=0.54, scale=33.0, mean=29.4s, KS D=0.11 |
+| **Duration** (sec) | Log-normal | σ=1.74, scale=129, mean=1430s, median=105s, KS D=0.13 |
+| **CPU request** (normalized) | Log-normal | σ=0.81, mean=0.0090, KS D=0.07 |
+| **Memory request** (normalized) | Log-normal | σ=0.95, mean=0.0061, KS D=0.08 |
+| **Tasks per job** | Negative binomial | mean=52.5, median=1, KS D=0.20 |
 
-**Fitting methodology**: Maximum Likelihood Estimation (MLE) with p1-p99 percentile trimming to remove extreme outliers. Distribution candidates (lognorm, weibull_min, gamma, expon) were tested and the best-fit selected per property. The choice of heavy-tailed candidates (Weibull, log-normal, Pareto-adjacent) reflects Tirmazi's finding that "the top 1% of jobs consume over 99% of resources" with "squared coefficients of variation over 23,000" — these distributions are necessary to faithfully reproduce the extreme variability in production cluster workloads (Tirmazi §7).
+**Fitting methodology.** Candidate continuous distributions (exponential, log-normal, gamma, Weibull) are fit by MLE and the best selected by **minimum KS *D* statistic** — *not* the KS *p*-value, which underflows to 0 at n~10⁵ regardless of fit quality and is invalid for parameters estimated from the same sample (the Lilliefors situation). Tasks-per-job is count data, so it uses a **discrete** fit (Poisson / geometric / negative-binomial). Inter-arrivals and resource requests are taken over all deferrable jobs; durations only over jobs that reached FINISH. The heavy-tailed winners — log-normal durations/requests, negative-binomial task counts with mean 52 ≫ median 1 — reproduce the extreme variability Tirmazi documents: "the top 1% of jobs consume over 99% of resources," squared coefficient of variation > 23,000 (Tirmazi §7).
 
-The **batch fraction** (percentage of total cluster workload that is deferrable batch) is computed directly from the dataset:
-- Cell A: 4.3%, Cell B: 7.3%, Cell C: 5.1%, Cell D: 6.2%
+**Batch fraction.** Because the environment splits the CPU-*usage* curve, each cell's `batch_fraction` is the share of **CPU-time** (cpu_request × duration, with unfinished jobs charged to trace end) that is deferrable — not a job count:
 
-These are realistic values: Tirmazi reports that workload mix has migrated from the free tier into the best-effort batch tier between 2011 and 2019, with beb now a structural part of Google's workload. Batch work is a relatively small fraction of total compute, but its deferability makes it high-leverage for energy optimization.
+| | Cell A | Cell B | Cell C | Cell D |
+|---|---|---|---|---|
+| **batch_fraction (CPU-time, used)** | 27% | 61% | 45% | 54% |
+| by job count | 1.9% | 38.5% | 6.6% | 11.1% |
+| by CPU request | 35% | 66% | 51% | 62% |
+
+These are substantial — the cells are batch/free-heavy research clusters — so the temporal-deferral lever acts on a large slice of load. Because the usage-weighted value is itself a proxy (request × duration), `batch_fraction` is also treated as a **sensitivity-sweep parameter** rather than a single point estimate. (These supersede earlier `scheduling_class ≤ 1 AND priority < 200` figures, which conflated production with batch.)
 
 ### 2.3 Grid Net Demand & Solar Forecast Features
 
@@ -134,7 +164,7 @@ Number of DCs: 4
 
 ### 3.2 Power Model
 
-The power model converts CPU utilization to electrical power consumption using a **linear model** calibrated against real Google power measurements from the **`powerdata_2019`** BigQuery dataset — the companion power-measurement trace published alongside ClusterData 2019 and documented in **Sakalkar et al. (2020), "Data Center Power Oversubscription with a Medium Voltage Power Plane and Priority-Aware Capping" (ASPLOS '20)** [§8]. `powerdata_2019` exposes per-PDU measured power utilization at the cell level; we join it with aggregate cell-level CPU utilization at hourly resolution and fit a linear model on the resulting (cpu_util, power_util) pairs.
+The power model converts CPU utilization to electrical power consumption using a **linear model** calibrated against real Google power measurements from the **`powerdata_2019`** BigQuery dataset — the companion power-measurement trace published alongside ClusterData 2019 and documented in **Sakalkar et al. (2020), "Data Center Power Oversubscription with a Medium Voltage Power Plane and Priority-Aware Capping" (ASPLOS '20)** [§8]. `powerdata_2019` exposes per-PDU measured power utilization at the cell level; we join it with aggregate cell-level CPU utilization at hourly resolution and fit a linear model on the resulting (cpu_util, power_util) pairs. The linear `idle + slope·util` server-power form is the standard model catalogued by **Dayarathna, Wen & Fan (2016), "Data Center Energy Consumption Modeling: A Survey" (IEEE Communications Surveys & Tutorials 18(1))**.
 
 **Calibration** (see [preprocess/power_calibrator.py](preprocess/power_calibrator.py)):
 
@@ -172,6 +202,8 @@ peak_penalty = α × grid_mw² × net_demand_normalized[t]                     #
 ```
 
 The `× 1000` converts MW to kW (matching $/kWh prices), and `× (5/60)` converts the 5-minute interval to hours.
+
+This load-squared, net-demand-weighted term operationalizes **demand response / peak shaving** — flattening and time-shifting DC load to relieve grid stress — which **Vasques, Moura & de Almeida (2018), "A review on energy efficiency and demand response with focus on small and medium data centers" (Energy Efficiency, Springer)** identify as an underexploited lever for data centers.
 
 The peak-contribution term is **quadratic in load** (so concentrating draw is penalized more than spreading it out) and **scaled by current net demand** (so the penalty only bites near the duck-curve neck — sleepy 3 AM consumption is essentially free). The weight `α` is calibrated so that, at peak net demand and full DC load, the penalty contributes roughly 20% of total reward magnitude — making demand smoothing a meaningful but not dominant objective. Exact calibration is determined empirically during reward-shaping experiments (§4.3).
 
@@ -274,7 +306,7 @@ The `renewable_bonus` term from the prior on-site-solar formulation has been rem
 
 ### 3.7 Batch Scheduling Mechanism
 
-The deferrable-batch-with-deadlines pattern follows a well-established lineage in renewable-aware datacenter scheduling — most directly **Grange et al. (2018)** (§8.2), whose central abstraction is "batch jobs with due-date constraints, which takes into account the availability of the renewable energy," and **GreenSlot (Goiri et al. 2011)** (§8.4), which "delays jobs to execute them when the cost is the lowest." We extend the single-DC pool-with-deadline pattern from that lineage to the multi-DC setting, where the agent must simultaneously decide *where* to route service work and *when* to drain each DC's batch pool.
+The deferrable-batch-with-deadlines pattern follows a well-established lineage in renewable-aware datacenter scheduling — most directly **Grange et al. (2018)** (§8.3), whose central abstraction is "batch jobs with due-date constraints, which takes into account the availability of the renewable energy," and **GreenSlot (Goiri et al. 2011)** (§8.5), which "delays jobs to execute them when the cost is the lowest." We extend the single-DC pool-with-deadline pattern from that lineage to the multi-DC setting, where the agent must simultaneously decide *where* to route service work and *when* to drain each DC's batch pool.
 
 When batch mode is enabled, each timestep follows this pipeline:
 
@@ -299,18 +331,22 @@ The `BatchPool` data structure maintains a deque of `(cpu_demand, deadline_step)
 
 ### 3.8 Dynamic Batch Arrivals
 
-Rather than using a fixed `workload[t] × batch_fraction` split, we generate **synthetic batch arrivals** from fitted distributions (`BatchArrivalGenerator`):
+Rather than using a fixed `workload[t] × batch_fraction` split, we generate **synthetic batch arrivals** from the per-cell fitted distributions (`BatchArrivalGenerator`):
 
-1. Sample inter-arrival times from the fitted exponential distribution
-2. For each arrival, sample CPU demand, memory demand, and task count from fitted distributions
+1. Sample inter-arrival times from the fitted distribution (Weibull / log-normal per cell; see §2.2)
+2. For each arrival, sample CPU demand, memory demand, and task count from the fitted distributions
 3. Aggregate into per-timestep demand arrays
 4. **Normalize** total demand to match the expected aggregate from the static split
 
 This preserves realistic temporal **burstiness** (batch jobs arrive in clusters, not uniformly) while maintaining consistent aggregate demand volume.
 
+**Methodological lineage — we reuse Grange et al.'s generator.** This distribution-fitting-then-generating approach is taken directly from **Grange et al. (2018), *"Green IT scheduling for data center powered with renewable energy"*** (Future Generation Computer Systems 86), whose Listing 1 is a short `scipy.stats` generator that draws each batch task's submission time and execution time from distributions fit to a Google cluster — *"we can easily control its duration, and generate several workloads based on the same distribution laws, but using different random seeds."* That generator instantiates the parameterized model of **Da Costa, Grange & De Courchelle (2016), *"Modeling and generating large-scale Google-like workload"*** (IGSC '16) — itself in the Feitelson parallel-workload-modeling tradition. We reproduce their exact Listing 1 verbatim in [`scripts/grange_generator.py`](scripts/grange_generator.py) (it recovers their reported log-normal parameters `s=1.634, scale=447` and a makespan mean of ~1700 s, their `mass`), and our `BatchArrivalGenerator` is the same generator *family*. We extend it in three ways: (i) we re-fit the **2019** trace (Grange/Da Costa used the ~2011-era study) under the no-SLO deferrable definition (§2.2); (ii) we select each distribution by minimum KS *D* rather than fixing the family a priori, and add **per-task CPU/memory request** and a **discrete negative-binomial task-count** distribution Grange does not model; and (iii) Grange's `mass`/`disparity`/`dynamism`/`ratioTask` knobs and his truncated-normal **task-flexibility** distribution map onto our fitted parameters and our `flexibility_factor` deadline knob, respectively. Net: same established methodology, refreshed to the newer trace and enriched. (Contrast: Xu et al. (2020) instead *replay* a real trace; Haghshenas et al. (2022) use hand-constructed synthetic arrival benchmarks.)
+
 ---
 
 ## 4. RL Agents
+
+Reinforcement learning is an established lens for data-center energy optimization. **Kahil, Sharma, Välisuo & Elmusrati, "Reinforcement learning for data center energy efficiency optimization: A systematic literature review and research roadmap" (Applied Energy)** survey the area and find model-free RL increasingly applied to scheduling and resource control, and **Ran, Hu, Zhou & Wen, "DeepEE: Joint Optimization of Job Scheduling and Cooling Control for Data Center Energy Efficiency Using Deep Reinforcement Learning" (IEEE INFOCOM 2019)** is a representative DRL scheduler (it jointly controls cooling, which we exclude per scope; RL for thermal/HVAC control is an adjacent subfield, e.g. *"Practical Implementation and Evaluation of Deep Reinforcement Learning Control for a Radiant Heating System"*). We apply RL to the *spatial routing + temporal deferral* decision and compare two algorithm families — PPO (continuous) and DQN (discrete).
 
 ### 4.1 PPO (Proximal Policy Optimization)
 
@@ -343,7 +379,7 @@ We train **two DQN variants** as algorithm-level analogs to CFWS (Zhao et al. 20
 - **DQN (routing-grid)**: 759-action enumerated grid (253 routing × 3 drain). Generic discretization.
 - **DQN (flat-idx)**: 48-action CFWS-style flattened-index decoded via hash-map to `(src_dc, dst_dc, drain_level)` — the closest port of CFWS's hash-map action philosophy our cell-aggregate formulation allows. See [env/cfws_style_wrapper.py](env/cfws_style_wrapper.py).
 
-This setup tests two questions: (a) does the CFWS algorithmic choice (DQN) work on our formulation? (b) does CFWS's *action-encoding* idea (small, semantically-meaningful action set) transfer? See §8.6 for the formulation/algorithm/encoding comparison tables and §7 for empirical results. Both DQN variants are independent of and not reimplementations of CFWS — CFWS operates on per-PM VM migrations at a different state granularity.
+This setup tests two questions: (a) does the CFWS algorithmic choice (DQN) work on our formulation? (b) does CFWS's *action-encoding* idea (small, semantically-meaningful action set) transfer? See §8.7 for the formulation/algorithm/encoding comparison tables and §7 for empirical results. Both DQN variants are independent of and not reimplementations of CFWS — CFWS operates on per-PM VM migrations at a different state granularity.
 
 | Hyperparameter | Value |
 |---|---|
@@ -626,6 +662,27 @@ The burst-aware augmentation is **a modest positive result for PPO with a negati
 
 For the thesis story, the contribution is honest: we identified the burst-window concentration of the optimization signal (a non-trivial finding tied to Tirmazi's heavy-tail observation), tested an explicit intervention, and report that PPO improves modestly via spatial-routing tightening — not via the differentiated temporal behavior we hypothesized.
 
+### 7.7 Comparison to the no-optimization status quo
+
+The tables above rank policies against each other. This section adds the external reference point: **how much grid-aware optimization saves over running the workload as-is** — the closest in-framework analogue to "Google's actual operation."
+
+**The Status Quo baseline.** `StatusQuoPolicy` ([baselines.py](baselines.py)) serves each cell's own demand **locally and immediately** — no cross-DC routing, no temporal deferral. It is Borg's raw aggregate run grid-unaware: a CICS-style load-shaper switched *off* (§1.2, §8.6). Since the 2019 trace has no grid prices, no net demand, and no inter-cell routing, this is the correct counterfactual — *not* "Google's scheduler," which never solved the multi-DC grid-aware problem.
+
+**Why the comparison is fair despite R²=0.43.** Status Quo and every optimized policy are scored by the **same** power model, so its absolute error (CPU explains ~43% of point-level power variance; §3.2) **cancels in the relative comparison** — a shared bias does not change the *difference* between policies. The reported saving is therefore robust to the power model's noise; R²=0.43 is the honest model fit, not a limitation on this comparison.
+
+**Normalized power metric — load factor.** Beyond cost, every policy reports `load_factor = mean / peak` aggregate grid draw (emitted by `compute_summary`). Higher = flatter draw = better demand smoothing. Status Quo is the peakiest; optimization should raise the load factor by shaving the peak.
+
+| Policy (US batch) | Total cost | Peak draw | Load factor | Δ cost vs Status Quo |
+|---|---|---|---|---|
+| **Status Quo (no optimization)** | $9.85M | 357.5 MW | 0.806 | reference |
+| Round Robin | $9.84M | 352.7 MW | 0.817 | +0.1% |
+| Trough-Slot Lookahead (oracle) | $9.72M | 344.1 MW | 0.829 | +1.3% |
+| PPO | *(pending retrain)* | — | — | — |
+
+*Baselines computed on the corrected free+beb data ([scripts/refit_freebeb_local.py](scripts/refit_freebeb_local.py)); the PPO row fills in after the retrain+eval rerun. The visual profile is produced by [analysis/plot_power_profile.py](analysis/plot_power_profile.py) → `output/power_profile_comparison.png`.*
+
+Even the foresighted heuristic already shaves the fleet peak by ~13 MW (357.5 → 344.1) and lifts the load factor 0.806 → 0.829. PPO is expected to extend both margins once retrained, since **27–61% of load is now deferrable** (§2.2). "Savings versus the grid-unaware status quo" is the cleanest externally-facing result the thesis can state, and it mirrors exactly what a CICS-style layer contributes on top of Borg.
+
 ---
 
 ## 8. Comparison with Related Work
@@ -643,31 +700,53 @@ The combination explored in this thesis — multi-DC spatial routing + temporal 
 | 5-minute sampling interval | "The 2019 trace adds a 21-element histogram of CPU utilization for each 5 minute sampling period" (§3) |
 | `cpu_demand_norm` in [0, 1] | Normalized Compute Units (NCUs) are "always in the range 0–1" (§3) |
 | Using multiple heterogeneous cells | "Considerable inter-cell workload variation" reported across cells a–h (§3, Fig 3) |
-| Best-effort batch (beb) tier as the deferrable pool | beb tier "managed by the batch scheduler ... no associated SLOs," priority 110–115 (§2); accounts for ~20% of cell capacity (§4) |
+| No-SLO tiers (free + beb) as the deferrable pool | Both the free tier (priority ≤ 99) and the best-effort batch tier (110–115) are explicitly "no associated SLOs" (§2); strict beb alone is negligible in cells a–d, so the deferrable class is the union of the two SLO-free tiers (see §2.2) |
 | Heavy-tailed distribution fits (Weibull, log-normal) | "Top 1% of jobs (resource hogs) consume over 99% of all resources" with squared coefficient of variation > 23,000 (§7) |
 | 31-day episode length | "31 days" duration of the 2019 trace (Table 1) |
 
 This grounds our data usage in the dataset publisher's own framing rather than borrowing a methodology from an unrelated research thread. The cells a–d we use are four of the eight cells (a–h) Tirmazi analyzes, with ~12k machines per cell on average.
 
-### 8.2 Single-DC renewable-aware predecessors — Grange (2018), Haghshenas et al., Liu et al.
+### 8.2 Workload-generation foundation — Da Costa et al. (2016) & Grange et al. (2018)
+
+The synthetic batch workload that drives every experiment is **not original to this thesis** — its methodology, and even its concrete generator code, come from two papers. This subsection makes that provenance explicit.
+
+**The model — Da Costa, Grange & De Courchelle (2016), "Modeling and generating large-scale Google-like workload" (IGSC '16).** This is the parameterized generator at the root of our pipeline: it fits statistical distributions to a real Google cluster and synthesizes tasks from four knobs — `mass` (mean execution time), `disparity` (mean/median ratio), `dynamism` (mean inter-arrival), `ratioTask` (batch fraction). The entire "fit distributions to the trace → sample a synthetic workload" approach this thesis uses originates here.
+
+**The instantiation — Grange, Da Costa & Stolf (2018), "Green IT scheduling for data center powered with renewable energy" (FGCS 86).** Grange instantiates that 2016 model as a compact `scipy.stats` generator (their **Listing 1**: modified-Pareto inter-arrivals, log-normal execution time, truncated-exponential priority). We **reproduce Listing 1 verbatim** in [scripts/grange_generator.py](scripts/grange_generator.py) — it recovers their published parameters exactly (log-normal `s=1.634, scale=447`; makespan mean ≈ their `mass`=1700) — and our [`BatchArrivalGenerator`](env/workload_generator.py) is the same generator *family*.
+
+**Exactly what we took from each, and what we added:**
+
+| Idea | Source | Where it lives in our work |
+|---|---|---|
+| Fit-distributions-then-generate methodology | Da Costa et al. (2016) | §2.2, §3.8; `scripts/refit_freebeb_local.py` |
+| Concrete scipy generator (Listing 1) | Grange et al. (2018) | `scripts/grange_generator.py` (verbatim); `BatchArrivalGenerator` (same family) |
+| Log-normal execution-time / heavy-tailed fits | both | our duration fits (§2.2) |
+| SLA-flexibility → deadline knob | Grange et al. (2018) | `flexibility_factor` (§3.7) |
+| "SLA freedom drives savings" finding | Grange et al. (2018) | motivates the flexibility sweep (§3.7) |
+| Separation of concerns (scheduler agnostic of electrical infrastructure) | Grange et al. (2018) | reward `peak_penalty` summarizes grid stress (§8.3) |
+| **Our extensions** | — | re-fit to the **2019** trace under the no-SLO definition (§2.2); **KS-D** model selection; added per-task **CPU/memory** and **discrete task-count** distributions; the scheduling *decision* is made at aggregate granularity, not per task (§1.2) |
+
+Grange therefore plays a **dual role** here: the *methodological parent* of our workload generator (this subsection) and a *benchmark predecessor* for the scheduling problem (§8.3). The difference between Grange's per-task scheduler and our aggregate-flow decision is the granularity point of §1.2.
+
+### 8.3 Single-DC renewable-aware predecessors — Grange (2018), Haghshenas et al., Liu et al.
 
 The renewable-aware batch scheduling literature is largely **single-DC**. Three reference points form the immediate lineage:
 
-**Grange, Da Costa, Stolf (2018), "Green IT scheduling for data center powered with renewable energy"** (*Future Generation Computer Systems* 86) is the closest single-DC predecessor to our batch-deferral logic. Grange schedules **batch jobs with due-date constraints** in a small-scale DC powered by on-site solar panels and grid, achieving up to **49% brown-energy reduction and 51% cost savings** vs a renewable-unaware scheduler. Their core architectural insight — which we adopt — is **separation of concerns**: "a scheduling algorithm agnostic of the electrical infrastructure. A separated system, managing the renewable sources, provides an arbitrary objective function, which is used to guide the scheduling heuristic." In our env, the same separation holds: the agent's reward gets a `peak_penalty` term that summarizes grid stress via `net_demand_normalized × grid_mw²`, but the agent doesn't model the grid directly. Grange also identifies the SLA-flexibility/savings tradeoff that motivates our `flexibility_factor` parameter (§3.7).
+**Grange, Da Costa, Stolf (2018), "Green IT scheduling for data center powered with renewable energy"** (*Future Generation Computer Systems* 86) is the closest single-DC predecessor to our batch-deferral logic. (Its workload-*generator* role, which we reuse directly, is covered separately in §8.2; here we treat its *scheduling* contribution.) Grange schedules **batch jobs with due-date constraints** in a small-scale DC powered by on-site solar panels and grid, achieving up to **49% brown-energy reduction and 51% cost savings** vs a renewable-unaware scheduler. Their core architectural insight — which we adopt — is **separation of concerns**: "a scheduling algorithm agnostic of the electrical infrastructure. A separated system, managing the renewable sources, provides an arbitrary objective function, which is used to guide the scheduling heuristic." In our env, the same separation holds: the agent's reward gets a `peak_penalty` term that summarizes grid stress via `net_demand_normalized × grid_mw²`, but the agent doesn't model the grid directly. Grange also identifies the SLA-flexibility/savings tradeoff that motivates our `flexibility_factor` parameter (§3.7).
 
 **Haghshenas, Taheri, Goudarzi, Mohammadi, "Infrastructure Aware Heterogeneous-Workloads Scheduling for Data Center Energy Cost Minimization"** considers a single Internet DC with **heterogeneous interactive + batch workloads**, on-site solar, cooling subsystem, and time-varying electricity prices. Their algorithm achieves 46% cost reduction. Two aspects flow through to our work: (1) the **interactive-vs-batch split** that we encode as `get_service_demand(t)` (non-deferrable) vs `get_batch_demand(t)` (pool-managed) — Haghshenas-style heterogeneous workloads are the rationale for treating these as separate workload classes; (2) **electricity rate structure awareness**, which we extend from a single DC's local price to per-DC LMP signals.
 
-**Liu, Chen, Bash, Wierman, Gmach, Wang, Marwah, Hyser, "Renewable and Cooling Aware Workload Management for Sustainable Data Centers"** (Caltech + HP Labs) takes a **predict-then-plan** structure: forecast renewable supply + IT demand, then generate a workload plan that schedules IT work and allocates resources according to time-varying power supply. The forecasting horizon and lookahead-based planning structure is what motivates our **Trough-Slot Lookahead** baseline (§8.4) — though we use net demand as the forecast signal rather than renewable supply, consistent with the reframing in §1.
+**Liu, Chen, Bash, Wierman, Gmach, Wang, Marwah, Hyser, "Renewable and Cooling Aware Workload Management for Sustainable Data Centers"** (Caltech + HP Labs) takes a **predict-then-plan** structure: forecast renewable supply + IT demand, then generate a workload plan that schedules IT work and allocates resources according to time-varying power supply. The forecasting horizon and lookahead-based planning structure is what motivates our **Trough-Slot Lookahead** baseline (§8.5) — though we use net demand as the forecast signal rather than renewable supply, consistent with the reframing in §1.
 
 All three are **single-DC**. The combination "multi-DC routing + temporal batch deferral + grid-aware objective + cell-aggregate ClusterData" is the gap this thesis fills relative to that lineage.
 
-### 8.3 Interactive + batch deferral pattern — Xu, Toosi, Buyya
+### 8.4 Interactive + batch deferral pattern — Xu, Toosi, Buyya
 
-**"A Self-Adaptive Approach for Managing Applications and Harnessing Renewable Energy for Sustainable Cloud Computing"** (Xu, Toosi, Buyya) provides the framework we adopt for **splitting workloads into interactive (must-serve-now) and batch (deferrable) components**, with separate handling for each: brownout for interactive, deferring for batch. Our environment's `batch_enabled` mode (§3.7) and the batch pool / drain abstraction are direct descendants of this framework, restricted to the batch side (we don't implement brownout). Like the others in §8.2, Xu's setup is single-DC.
+**"A Self-Adaptive Approach for Managing Applications and Harnessing Renewable Energy for Sustainable Cloud Computing"** (Xu, Toosi, Buyya) provides the framework we adopt for **splitting workloads into interactive (must-serve-now) and batch (deferrable) components**, with separate handling for each: brownout for interactive, deferring for batch. Our environment's `batch_enabled` mode (§3.7) and the batch pool / drain abstraction are direct descendants of this framework, restricted to the batch side (we don't implement brownout). Like the others in §8.3, Xu's setup is single-DC.
 
-### 8.4 Lookahead-based scheduling — GreenSlot (Goiri et al. 2011)
+### 8.5 Lookahead-based scheduling — GreenSlot (Goiri et al. 2011)
 
-**Goiri et al., "GreenSlot: Scheduling Energy Consumption in Green Datacenters"** is the lineage for our **Trough-Slot Lookahead** baseline. Per Grange et al.'s clear summary (§8.2 above): GreenSlot "considered a small cluster used for scientific computation, and powered partially with solar panels. Using prediction of renewable power available, along with grid electricity price, the GreenSlot algorithm delays jobs to execute them when the cost is the lowest (both in terms of brown energy usage and in terms of purchasing cost)." The algorithm discretizes future time into fixed-duration slots, each "valuated with predicted renewable energy production, grid electricity cost, and number of available computing nodes," then greedily places each task in the first slot allowing renewable-only execution.
+**Goiri et al., "GreenSlot: Scheduling Energy Consumption in Green Datacenters"** is the lineage for our **Trough-Slot Lookahead** baseline. Per Grange et al.'s clear summary (§8.3 above): GreenSlot "considered a small cluster used for scientific computation, and powered partially with solar panels. Using prediction of renewable power available, along with grid electricity price, the GreenSlot algorithm delays jobs to execute them when the cost is the lowest (both in terms of brown energy usage and in terms of purchasing cost)." The algorithm discretizes future time into fixed-duration slots, each "valuated with predicted renewable energy production, grid electricity cost, and number of available computing nodes," then greedily places each task in the first slot allowing renewable-only execution.
 
 Our Trough-Slot Lookahead baseline (§5.8) reuses the slot-valuation idea but retargets it to the demand-smoothing formulation: instead of evaluating slots by predicted renewable supply, it evaluates them by predicted **grid net demand** — a slot is "good" when net demand will be low (a duck-curve trough), not when local solar will be high. The 36-step (3-hour) lookahead window directly mirrors GreenSlot's slot horizon.
 
@@ -689,11 +768,15 @@ PPO **outperforms Trough-Slot Lookahead in every config where temporal flexibili
 
 This is meaningful because Trough-Slot has **privileged 3-hour future net-demand information** that PPO does not. PPO learns implicit forecasting AND coordinates it with routing — a strictly stronger policy than the foresighted single-axis heuristic.
 
-### 8.5 Operational anchor — Radovanovic et al. (2022)
+### 8.6 Granularity & operational precedent — Radovanovic et al. (2023)
 
-**Radovanovic, Koningstein, Schneider, Chen, Duarte, Roy, Xiao, Haridasan, Hung, Care, Talukdar, Mullen, Smith, Cottman, Cirne. "Carbon-Aware Computing for Datacenters." IEEE Transactions on Power Systems** describes **CICS — Google's Carbon-Intelligent Compute System**, the production system that shifts temporally flexible workloads across Google's datacenter portfolio (20+ DCs, 15.5 TWh annual consumption, 4 continents) to align computing with low-carbon grid hours. CICS uses day-ahead carbon-intensity forecasts and cluster-level load forecasts to generate hourly Virtual Capacity Curves (VCCs) per cluster.
+**Radovanović, Koningstein, Schneider, Chen, Duarte, Roy, Xiao, Haridasan, Hung, Care, Talukdar, Mullen, Smith, Cottman, Cirne. "Carbon-Aware Computing for Datacenters." IEEE Transactions on Power Systems (2023; arXiv 2021)** describes **CICS — Google's Carbon-Intelligent Compute System**, the production system that shifts temporally flexible workloads across Google's datacenter portfolio (20+ DCs, 15.5 TWh annual consumption, 4 continents) to align computing with low-carbon grid hours, via day-ahead cluster-level **Virtual Capacity Curves (VCCs)**.
 
-This paper is the **operational validation that the problem class this thesis addresses is real at hyperscale**. Three specific claims from Radovanovic carry through to our work:
+CICS is this thesis's single most important external anchor, and it serves as a precedent in **two distinct ways** (the full point-for-point alignment is in §1.2):
+
+**1. Granularity precedent — this is the methodological one.** CICS shapes *aggregate, cluster-level* load and explicitly runs *"independently from real-time job-level scheduling."* Crucially, it frames the job-level deadline-optimization approach — i.e. the §8.3 lineage (Grange et al.) — as the **prior paradigm it superseded**, using *"aggregate cluster-specific resource demand forecasts… rather than… stylized models for job-level resource demand modeling."* So our divisible-aggregate-flow abstraction (§1.2) is **not** a simplification of the academic predecessors — it is the newer, production-validated paradigm. CICS also matches our **tier-based deferrable split** (*"temporally inflexible (higher tiers)"* vs *"flexible (lower-tier batch jobs)"* = our production vs free+beb, §2.2) and our **per-cluster power model on aggregate CPU** (§3.2).
+
+**2. Operational precedent — the problem-is-real one.** Three specific CICS claims carry through to our objective:
 
 | Radovanovic CICS | Our env |
 |---|---|
@@ -701,9 +784,9 @@ This paper is the **operational validation that the problem class this thesis ad
 | Uses "cluster-level load forecasts and power models [Sakalkar 2020]" | Same cluster-level cell-aggregate granularity (§2.1); same Sakalkar 2020 power model lineage (§3.2) |
 | "Datacenters are planned based on peak power and resource usage, smaller peaks reduce the need for more capacity" | Direct motivation for our load-squared peak penalty in the reward |
 
-We do **not** reproduce CICS — it's an operational paper not a published methodology, uses internal Google data not the public ClusterData 2019 trace, and optimizes carbon rather than grid demand smoothing. But it confirms our problem framing matches industry practice at the scale we model. The thesis can be positioned as "a published methodology and reproducible Gymnasium env for the problem class that CICS solves operationally."
+We do **not** reproduce CICS — it uses internal Google data not the public ClusterData 2019 trace, and optimizes carbon rather than grid demand smoothing. The positioning that follows: **this thesis is a published, reproducible Gymnasium methodology for the aggregate spatial-temporal load-shaping problem class that CICS solves operationally** — retargeted to grid demand smoothing and benchmarked against the finer-grained academic lineage (§8.3–8.7).
 
-### 8.6 Academic foundation — CFWS (Zhao et al. 2025)
+### 8.7 Academic foundation — CFWS (Zhao et al. 2025)
 
 **CFWS (Zhao, Zhou, Li, IEEE Trans. Sustainable Computing 10(1), Jan/Feb 2025)** is the closest published academic peer — a DRL framework for **multi-DC workload distribution under renewable considerations**, with 4 geographically distributed US DCs (Arizona, California, Oregon, Louisiana). Like us, CFWS is geo-distributed at the DC level; unlike us, the unit of work CFWS shifts is an individual VM (with per-PM state inside each DC) rather than aggregate cell-level load. We use CFWS as the **academic foundation** establishing that DRL is a valid approach to this class of problem, and align with it at the **algorithmic level** (DQN) without claiming methodology reproduction.
 
@@ -767,19 +850,19 @@ Three findings emerge:
 
 PPO remains our overall best policy and goes beyond what CFWS's framework can express: their flattened-index action is inherently discrete (pick *one* VM to migrate), so a continuous-action variant would require reformulating their problem. In our cell-aggregate formulation, the action is naturally continuous (routing fractions in [0,1] summing to 1, drain rates in [0,1]), making PPO a natural fit. With the **flat-idx variant as the cleaner CFWS-style analog**, the PPO advantage is now tightly quantified: **+1.6 to +2.6% over the best DQN variant in 3 of 4 configs, and a statistical tie in Global legacy**. The contribution claim is "continuous actions provide a small but consistent advantage over even well-designed discrete action spaces in this formulation" — narrower and more defensible than the original "1–7% over DQN-routing-grid" framing.
 
-### 8.7 Survey context — Lin et al. (2024) and Wu et al. (2025)
+### 8.8 Survey context — Lin et al. (2024) and Wu et al. (2025)
 
-**"A systematic review of green-aware management techniques for sustainable data center"** (Lin, Lin, Peng, Huang, Lin, Li, 2024) provides the broader sustainable-DC landscape view. The categories of workload management, virtual resource management, energy management, thermal management, and waste heat recovery surveyed there place this thesis within "workload management + energy management for grid-aware multi-DC operation." For the multi-DC scheduling subarea specifically, **Wu et al. (2025), "Task Scheduling in Geo-Distributed Computing: A Survey"** (arXiv:2501.15504) is the most recent systematic review and covers the geo-distributed task-scheduling thread that this thesis sits within.
+**"A systematic review of green-aware management techniques for sustainable data center"** (Lin, Lin, Peng, Huang, Lin, Li, 2024) provides the broader sustainable-DC landscape view. The categories of workload management, virtual resource management, energy management, thermal management, and waste heat recovery surveyed there place this thesis within "workload management + energy management for grid-aware multi-DC operation." For the multi-DC scheduling subarea specifically, **Wu et al. (2025), "Task Scheduling in Geo-Distributed Computing: A Survey"** (arXiv:2501.15504) is the most recent systematic review and covers the geo-distributed task-scheduling thread that this thesis sits within. Additional green-DC landscape reviews — *"Energy efficiency in cloud computing data centers: a survey on software technologies"* and *"A systematic review on effective energy utilization management strategies in cloud data centers"* — corroborate the workload-/energy-management framing.
 
-### 8.8 Positioning of Our Contribution
+### 8.9 Positioning of Our Contribution
 
 Stated against the lineage above:
 
 1. **Cell-as-proxy-DC modeling exercise.** We treat four ClusterData 2019 cells (a–d) as four geographically distributed hyperscale DCs — what such DCs' workloads would look like if they had cell-level inter-DC heterogeneity. This is *not* what Tirmazi et al. (2020) intended when documenting the trace (they don't claim the cells are geographically distinct), and no prior published work does exactly this. It is a defensible modeling exercise rather than a dataset-grounded claim (see §2.1 and §3.2 for the explicit modeling assumptions on workload-as-shape and `rated_power_mw`-as-magnitude).
 2. **Grid demand smoothing as a first-class objective**, via a peak-contribution penalty against actual EIA-930 net demand timeseries — rather than the on-site-renewable framing that dominates academic prior work.
-3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. Against our best DQN variant per config, PPO wins by +1.6 to +2.6% in 3 of 4 configs and ties in Global legacy (§8.6). The PPO advantage is narrower than against generic routing-grid DQN alone, because a CFWS-style flat-idx encoding closes much of the gap in Global scenarios.
+3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. Against our best DQN variant per config, PPO wins by +1.6 to +2.6% in 3 of 4 configs and ties in Global legacy (§8.7). The PPO advantage is narrower than against generic routing-grid DQN alone, because a CFWS-style flat-idx encoding closes much of the gap in Global scenarios.
 4. **Real-data grounding**: ClusterData 2019 (per Tirmazi 2020) for workloads, `powerdata_2019` (per Sakalkar 2020) for the power model, EIA-930 (CISO, MISO, SOCO, DUK) for grid net demand, real ISO prices, NSRDB solar irradiance as forecast features.
-5. **Operational relevance**: the problem class is the same one **Google's CICS (Radovanovic 2022)** solves in production at 20+ DCs across 4 continents. This thesis contributes a published methodology + reproducible Gymnasium env for that problem class.
+5. **Operational relevance**: the problem class is the same one **Google's CICS (Radovanović et al. 2023)** solves in production at 20+ DCs across 4 continents. This thesis contributes a published methodology + reproducible Gymnasium env for that problem class.
 
 Honest framing of what this thesis is *not*: it is not a head-to-head comparable against CFWS (different action paradigm, different state granularity, different objective), nor a reimplementation of Google's CICS (closed-source operational system). It is a self-contained academic exploration of multi-DC + cell-aggregate + RL + grid-aware scheduling, with the cell-as-DC and 100 MW magnitude assumptions stated explicitly rather than hidden.
 
@@ -878,7 +961,7 @@ python evaluate.py --scenario env/scenarios/us_model.yaml \
 # All four configs at once (including DQN-flatidx if trained)
 python scripts/evaluate_all.py --alpha 0.015
 
-# CFWS-style flat-index DQN variant (48-action hash-map-decoded space, §8.6)
+# CFWS-style flat-index DQN variant (48-action hash-map-decoded space, §8.7)
 python train_dqn.py --scenario env/scenarios/us_model.yaml --batch-mode \
     --timesteps 500000 --peak-penalty-weight 0.015 \
     --action-scheme cfws-style
@@ -912,7 +995,7 @@ python scripts/analyze_burst_drain_diff.py
 
 4. **PPO discovers an aggressive cost-deadline tradeoff.** The agent expires 1,200–1,300 units of batch work per episode (vs ~10 for Defer-to-Low-Net-Demand) because the deadline penalty (~$2.5K) is dwarfed by the energy + peak savings (~$300K) from deferring drain into low-net-demand hours. This is emergent — the deadline weight is fixed at 2.0.
 
-5. **Action-encoding choice matters as much as algorithm choice — and PPO's edge over DQN narrows once DQN's encoding is well-designed.** Both CFWS and our work are geo-distributed multi-DC; CFWS shifts individual VMs across DCs using per-PM state, we shift aggregate load across DCs at cell granularity (§8.6). We trained two DQN variants on *our* formulation: a generic 759-action routing-grid and a 48-action CFWS-style flat-idx encoding (`src_dc, dst_dc, drain_level` via hash-map decode, the closest port of CFWS's hash-map decoding philosophy our cell-aggregate setting allows). The flat-idx variant **wins under high geographic diversity** (Global legacy: ties PPO at $13.47M; Global batch: 4.7% better than routing-grid DQN) and **loses under low diversity** (US legacy: 10.4% worse than routing-grid DQN, because the constrained 48-action space can't fine-tune the few available levers when DCs are similar). PPO still wins overall (+1.6 to +2.6% over the best DQN per config in 3 of 4 configs; statistical tie in Global legacy) but the margin is narrower than against routing-grid DQN alone. This says nothing about how CFWS's encoding performs on CFWS's own per-PM formulation — they report their flat-idx DQN works well on their AZ/CA/OR/LA setup. It says that *in our cell-aggregate setting*, structured small action spaces beat generic large ones only when there's enough inter-DC diversity to exploit.
+5. **Action-encoding choice matters as much as algorithm choice — and PPO's edge over DQN narrows once DQN's encoding is well-designed.** Both CFWS and our work are geo-distributed multi-DC; CFWS shifts individual VMs across DCs using per-PM state, we shift aggregate load across DCs at cell granularity (§8.7). We trained two DQN variants on *our* formulation: a generic 759-action routing-grid and a 48-action CFWS-style flat-idx encoding (`src_dc, dst_dc, drain_level` via hash-map decode, the closest port of CFWS's hash-map decoding philosophy our cell-aggregate setting allows). The flat-idx variant **wins under high geographic diversity** (Global legacy: ties PPO at $13.47M; Global batch: 4.7% better than routing-grid DQN) and **loses under low diversity** (US legacy: 10.4% worse than routing-grid DQN, because the constrained 48-action space can't fine-tune the few available levers when DCs are similar). PPO still wins overall (+1.6 to +2.6% over the best DQN per config in 3 of 4 configs; statistical tie in Global legacy) but the margin is narrower than against routing-grid DQN alone. This says nothing about how CFWS's encoding performs on CFWS's own per-PM formulation — they report their flat-idx DQN works well on their AZ/CA/OR/LA setup. It says that *in our cell-aggregate setting*, structured small action spaces beat generic large ones only when there's enough inter-DC diversity to exploit.
 
 6. **Per-DC reallocation matches the duck-curve story.** PPO cuts US-West (CAISO duck curve) cost by 14% vs Round Robin in US batch, and cuts Global-Asia (high-price Singapore) cost by 19% in Global batch. The agent is exploiting exactly the regional differences in net demand and price that motivated the framing.
 

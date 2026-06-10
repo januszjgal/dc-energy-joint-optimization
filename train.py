@@ -31,6 +31,7 @@ def make_env(
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
     burst_aware: bool = False,
+    batch_spatial_routing: bool = True,
 ) -> MultiDCEnv:
     """Create a MultiDCEnv from a scenario config."""
     sites, power_model, batch_config = load_scenario(
@@ -60,6 +61,7 @@ def make_env(
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
         burst_aware=burst_aware,
+        batch_spatial_routing=batch_spatial_routing,
     )
 
 
@@ -167,6 +169,13 @@ def main(argv: list[str] | None = None) -> None:
         help="Augment observation with per-DC burst_severity = current_arrival / "
              "rolling_24h_mean_arrival (batch mode only). Adds 1 dim per DC.",
     )
+    parser.add_argument(
+        "--no-batch-spatial-routing",
+        dest="batch_spatial_routing",
+        action="store_false",
+        help="Disable spatial routing of drained batch work (batch mode only). "
+             "Drained batch executes at its home DC; action space drops 3N->2N.",
+    )
     args = parser.parse_args(argv)
 
     scenario_name = args.scenario.stem
@@ -188,6 +197,7 @@ def main(argv: list[str] | None = None) -> None:
         seed=args.seed,
         peak_penalty_weight=args.peak_penalty_weight,
         burst_aware=args.burst_aware,
+        batch_spatial_routing=args.batch_spatial_routing,
     )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")

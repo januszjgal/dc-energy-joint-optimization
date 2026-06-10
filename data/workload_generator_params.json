@@ -1,101 +1,120 @@
 {
-  "description": "Workload generator parameters fitted to Google ClusterData2019. Distributions fitted via MLE on 200k batch jobs per cell. Following Da Costa et al. (2016) and Grange et al. (2018) methodology.",
-  "primary_cell": "a",
+  "description": "Workload generator parameters fitted to Google ClusterData2019. Distributions fitted via MLE, selected by minimum KS D statistic. Following Da Costa et al. (2016) and Grange et al. (2018) methodology.",
+  "primary_cell": "c",
+  "primary_cell_selection": "cell with most completed (FINISH) batch jobs",
   "inter_arrival": {
-    "distribution": "expon",
+    "distribution": "weibull_min",
     "params": [
-      5e-06,
-      26.183250458357357
+      0.3738553959407622,
+      3.999999999999999e-06,
+      13.997822394849578
     ],
-    "ks_statistic": 0.2987916241759439,
+    "ks_statistic": 0.08392656438527757,
     "ks_pvalue": 0.0,
+    "aic": 764232.8089274303,
+    "loglik": -382113.40446371515,
     "name": "inter_arrival_sec",
-    "n_samples": 102311,
-    "mean": 26.18325545835736,
-    "median": 7.581608,
-    "std": 40.94655533413778,
-    "p5": 1.4e-05,
-    "p25": 0.27374,
-    "p75": 35.817152,
-    "p95": 113.85315349999999
+    "distribution_kind": "continuous",
+    "n_samples": 129534,
+    "mean": 20.680676384717525,
+    "median": 4.6293245,
+    "std": 42.77563565826228,
+    "p5": 1.1e-05,
+    "p25": 0.33188625000000005,
+    "p75": 22.383328499999998,
+    "p95": 92.85862194999976
   },
   "duration": {
-    "distribution": "expon",
+    "distribution": "lognorm",
     "params": [
-      4.079896,
-      2101.427890661834
+      1.1245298769194907,
+      13.448650508609308,
+      263.510445860494
     ],
-    "ks_statistic": 0.5344716216892896,
+    "ks_statistic": 0.12469852773046197,
     "ks_pvalue": 0.0,
+    "aic": 1288125.4488294057,
+    "loglik": -644059.7244147029,
     "name": "duration_sec",
-    "n_samples": 102364,
-    "mean": 2105.5077866618344,
-    "median": 106.8217515,
-    "std": 22907.731473356915,
-    "p5": 15.6915987,
-    "p25": 44.64156025,
-    "p75": 610.90578925,
-    "p95": 3193.4840513999984
+    "distribution_kind": "continuous",
+    "n_samples": 90580,
+    "mean": 780.549319685074,
+    "median": 207.489459,
+    "std": 7230.660594114096,
+    "p5": 86.05469905000001,
+    "p25": 147.04794025,
+    "p75": 421.01754475,
+    "p95": 2628.6744897500007
   },
   "cpu_request": {
-    "distribution": "expon",
+    "distribution": "weibull_min",
     "params": [
-      8.106231689453125e-05,
-      0.00953809530842178
+      0.8811931387510312,
+      0.00022029876708979998,
+      0.009591454078576717
     ],
-    "ks_statistic": 0.12318246264817664,
+    "ks_statistic": 0.09659368653810241,
     "ks_pvalue": 0.0,
+    "aic": -945746.039598071,
+    "loglik": 472876.0197990355,
     "name": "cpu_request",
-    "n_samples": 102046,
-    "mean": 0.00961915762531631,
-    "median": 0.0059890747070312,
-    "std": 0.012228774646313532,
-    "p5": 0.0016727447509765,
-    "p25": 0.0036087036132812,
-    "p75": 0.0097198486328125,
+    "distribution_kind": "continuous",
+    "n_samples": 131293,
+    "mean": 0.010547293886771805,
+    "median": 0.0054931640625,
+    "std": 0.012030151965795138,
+    "p5": 0.0011444091796875,
+    "p25": 0.0020256042480468,
+    "p75": 0.0153961181640625,
     "p95": 0.03240966796875
   },
   "memory_request": {
-    "distribution": "expon",
+    "distribution": "lognorm",
     "params": [
-      0.000126838684082,
-      0.006668239318335782
+      0.9346935472122875,
+      -6.553845625079956e-05,
+      0.005034311097238554
     ],
-    "ks_statistic": 0.18369621832031913,
+    "ks_statistic": 0.11697307597127071,
     "ks_pvalue": 0.0,
+    "aic": -1034705.3992753165,
+    "loglik": 517355.69963765825,
     "name": "memory_request",
-    "n_samples": 102122,
-    "mean": 0.006795078002417782,
-    "median": 0.0046539306640625,
-    "std": 0.009778934728436236,
-    "p5": 0.0010929107666015,
-    "p25": 0.0021400451660156,
-    "p75": 0.0065078735351562,
-    "p95": 0.021820068359375
+    "distribution_kind": "continuous",
+    "n_samples": 131306,
+    "mean": 0.00835577489270663,
+    "median": 0.0052108764648437,
+    "std": 0.015098622789701114,
+    "p5": 0.001220703125,
+    "p25": 0.0026054382324218,
+    "p75": 0.009124755859375,
+    "p95": 0.020843505859375
   },
   "tasks_per_job": {
-    "distribution": "expon",
+    "distribution": "nbinom",
     "params": [
-      1.0,
-      6.580487280684616
+      0.034336287376653396,
+      0.02500163054799618
     ],
-    "ks_statistic": 0.9755382751748661,
-    "ks_pvalue": 0.0,
+    "ks_statistic": 0.06312948593190304,
+    "aic": 942989.4301569465,
+    "loglik": -471492.71507847327,
     "name": "tasks_per_job",
-    "n_samples": 102364,
-    "mean": 7.580487280684616,
+    "distribution_kind": "discrete",
+    "n_samples": 131347,
+    "mean": 1.3390256343882998,
     "median": 1.0,
-    "std": 122.03130733450182,
+    "std": 7.318301186098885,
     "p5": 1.0,
     "p25": 1.0,
     "p75": 1.0,
     "p95": 1.0
   },
   "workload_mix": {
-    "total_jobs": 4763884,
-    "batch_count": 205060,
-    "service_count": 4558824,
-    "batch_fraction": 0.04304470889719397
+    "total_jobs": 6453721,
+    "batch_count": 131347,
+    "service_count": 6322374,
+    "batch_fraction": 0.02035213483818095
   },
   "deadline_model": {
     "description": "deadline = submit_time + duration * (1 + flexibility_factor)",
@@ -109,28 +128,28 @@
   },
   "cross_validation": {
     "a": {
-      "batch_fraction": 0.04304,
-      "mean_duration": 11043.576667093406,
-      "duration_distribution": "weibull_min",
-      "inter_arrival_distribution": "expon"
+      "batch_fraction": 0.0012546485178900242,
+      "mean_duration": 6078.954759823619,
+      "mean_inter_arrival": 487.21320422903403,
+      "n_completed_batch": 4615
     },
     "b": {
-      "batch_fraction": 0.48353,
-      "mean_duration": 12726.605469269367,
-      "duration_distribution": "lognorm",
-      "inter_arrival_distribution": "gamma"
+      "batch_fraction": 0.05660788594889284,
+      "mean_duration": 2172.004956513207,
+      "mean_inter_arrival": 45.95032903780381,
+      "n_completed_batch": 48875
     },
     "c": {
-      "batch_fraction": 0.12955,
-      "mean_duration": 15159.857493709593,
-      "duration_distribution": "lognorm",
-      "inter_arrival_distribution": "gamma"
+      "batch_fraction": 0.02035213483818095,
+      "mean_duration": 780.549319685074,
+      "mean_inter_arrival": 20.680676384717525,
+      "n_completed_batch": 90580
     },
     "d": {
-      "batch_fraction": 0.20146,
-      "mean_duration": 14917.275307737285,
-      "duration_distribution": "lognorm",
-      "inter_arrival_distribution": "gamma"
+      "batch_fraction": 0.027191924856301695,
+      "mean_duration": 2610.202217234218,
+      "mean_inter_arrival": 57.70364714945821,
+      "n_completed_batch": 27073
     }
   }
 }
