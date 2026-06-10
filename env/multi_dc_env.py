@@ -310,52 +310,53 @@ class MultiDCEnv(gym.Env):
         # Phase 2: expire overdue entries
         expired_per_dc = [site.batch_pool.expire(t) for site in self.sites]
 
-        # Phase 3: drain pools (work leaves its home pool)
-        batch_drained = [
-            site.batch_pool.drain(drain_rates[i]) for i, site in enumerate(self.sites)
+        # Phase 3: each DC's *intended* batch release (drain request). Work is NOT
+        # removed from the pool yet — only what actually gets served leaves it (Phase 7).
+        # This way capacity-blocked batch keeps its ORIGINAL deadline and waits for a
+        # later trough, instead of being re-queued with a 1-step fuse and expiring next
+        # step. (Borg's beb tier is queued/best-effort; it does not discard work that
+        # merely could not run this instant — see thesis_overview §7.9.)
+        drain_request = [
+            drain_rates[i] * site.batch_pool.total_demand
+            for i, site in enumerate(self.sites)
         ]
 
-        # Phase 4: spatially route the drained batch.
-        #   routing on : pool all drained batch and re-split by batch_fractions
-        #   routing off: each DC executes its own drained batch (legacy behavior)
+        # Phase 4: spatially route the requested batch.
+        #   routing on : pool all requested batch and re-split by batch_fractions
+        #   routing off: each DC executes its own requested batch (legacy behavior)
         if self.batch_spatial_routing:
-            total_drained = float(sum(batch_drained))
-            batch_assigned = [batch_fractions[j] * total_drained for j in range(N)]
+            total_request = float(sum(drain_request))
+            batch_assigned = [batch_fractions[j] * total_request for j in range(N)]
         else:
-            batch_assigned = list(batch_drained)
+            batch_assigned = list(drain_request)
 
         # Phase 5: route service demand
         total_service = sum(s.get_service_demand(t) for s in self.sites)
 
-        # Phase 6: per-DC cost (service served first, then assigned batch)
+        # Phase 6: per-DC serve (service first, then assigned batch) + cost
         total_cost = 0.0
         total_energy = 0.0
         total_peak = 0.0
         total_grid_mw = 0.0
         info_per_dc = []
+        batch_served_list = []
 
         for i, site in enumerate(self.sites):
             service_assigned = fractions[i] * total_service
             service_to_serve = service_assigned + site.backlog
 
             batch_work = batch_assigned[i]
-            total_work = service_to_serve + batch_work
 
             max_serve = site.capacity
             if self.memory_enabled:
                 mem_limit = site.memory_capacity / site.memory_cpu_ratio
                 max_serve = min(max_serve, mem_limit)
 
-            served = min(total_work, max_serve)
+            served = min(service_to_serve + batch_work, max_serve)
             service_served = min(service_to_serve, served)
             batch_served = served - service_served
             new_backlog = service_to_serve - service_served
-
-            # Unserved batch re-queues at THIS DC (its routing destination) for
-            # next step, preserving urgency.
-            batch_unserved = batch_work - batch_served
-            if batch_unserved > 1e-9:
-                site.batch_pool.add(batch_unserved, t + 1)
+            batch_served_list.append(batch_served)
 
             dc_cost, energy, peak, grid_mw, nd = self._compute_dc_cost(
                 site, served, new_backlog, t
@@ -378,12 +379,10 @@ class MultiDCEnv(gym.Env):
                     "name": site.name,
                     "service_assigned": float(service_assigned),
                     "service_served": float(service_served),
-                    "batch_drained": float(batch_drained[i]),  # drained from this DC's pool
-                    "batch_assigned": float(batch_work),        # routed to this DC to execute
+                    "batch_assigned": float(batch_work),     # routed to this DC to execute
                     "batch_served": float(batch_served),
                     "served": float(served),
                     "backlog": float(new_backlog),
-                    "batch_pool_size": float(site.batch_pool.total_demand),
                     "batch_expired": float(expired_per_dc[i]),
                     "drain_rate": float(drain_rates[i]),
                     "grid_mw": float(grid_mw),
@@ -393,6 +392,27 @@ class MultiDCEnv(gym.Env):
                     "deadline_cost": float(deadline_cost),
                 }
             )
+
+        # Phase 7: remove ONLY the served batch from the pools (urgency-first). Each DC
+        # gives up the share of its offered work that was actually served; everything
+        # unserved stays in its pool with its original deadline (no 1-step requeue), so
+        # it can be retried at a later trough and expires only when genuinely overdue.
+        total_request_sum = float(sum(drain_request))
+        total_served_sum = float(sum(batch_served_list))
+        serve_ratio = (
+            total_served_sum / total_request_sum if total_request_sum > 1e-12 else 0.0
+        )
+        for i, site in enumerate(self.sites):
+            served_from_i = (
+                drain_request[i] * serve_ratio
+                if self.batch_spatial_routing
+                else batch_served_list[i]
+            )
+            pool_total = site.batch_pool.total_demand
+            if served_from_i > 1e-12 and pool_total > 1e-12:
+                site.batch_pool.drain(min(served_from_i / pool_total, 1.0))
+            info_per_dc[i]["batch_drained"] = float(served_from_i)  # served & removed from pool
+            info_per_dc[i]["batch_pool_size"] = float(site.batch_pool.total_demand)
 
         reward = -total_cost
 
