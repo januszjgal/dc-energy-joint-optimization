@@ -99,12 +99,39 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
     mean_grid_mw = float(np.mean(agg_grid_mw)) if agg_grid_mw else 0.0
     load_factor = mean_grid_mw / peak_grid_mw if peak_grid_mw > 0 else 0.0
 
+    # Cost-component breakdown + backlog audit (peer-review M4): every policy is
+    # scored on the full shaped objective, so report the components separately,
+    # plus terminal state (finite-horizon leakage check) and served-vs-demand.
+    total_backlog_cost = sum(
+        sum(dc.get("backlog_cost", 0.0) for dc in h["per_dc"]) for h in history
+    )
+    total_capacity_cost = sum(
+        sum(dc.get("capacity_cost", 0.0) for dc in h["per_dc"]) for h in history
+    )
+    terminal_backlog = float(sum(dc.get("backlog", 0.0) for dc in history[-1]["per_dc"]))
+    terminal_batch_pool = float(history[-1].get("total_batch_pool", 0.0))
+    demand_total = float(sum(h.get("total_demand", 0.0) for h in history))
+    served_key = "service_served" if batch_enabled else "served"
+    served_total = float(
+        sum(sum(dc.get(served_key, 0.0) for dc in h["per_dc"]) for h in history)
+    )
+    max_backlog = float(max(
+        sum(dc.get("backlog", 0.0) for dc in h["per_dc"]) for h in history
+    ))
+
     summary: dict[str, Any] = {
         "total_cost": float(total_cost),
         "peak_grid_mw": peak_grid_mw,
         "mean_grid_mw": mean_grid_mw,
         "load_factor": load_factor,
         "total_energy_cost": float(total_energy_cost),
+        "total_backlog_cost": float(total_backlog_cost),
+        "total_capacity_cost": float(total_capacity_cost),
+        "terminal_backlog": terminal_backlog,
+        "terminal_batch_pool": terminal_batch_pool,
+        "max_backlog": max_backlog,
+        "service_demand_total": demand_total,
+        "service_served_total": served_total,
         "total_peak_penalty": float(total_peak_penalty),
         "total_grid_mw_steps": float(total_grid_mw),
         "nd_weighted_load": float(nd_weighted_load),
