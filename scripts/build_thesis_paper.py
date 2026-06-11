@@ -161,16 +161,22 @@ set_cols(body, 2)
 
 # ---------------- I. INTRODUCTION ----------------
 H1("I. INTRODUCTION")
-P("Data centers draw an estimated 1–2% of global electricity, and the "
-  "geographic concentration of hyperscale campuses turns individual operators "
-  "into grid-scale loads. Simultaneously, solar-heavy grids exhibit the duck "
+P("Data centers consumed roughly 415 TWh of electricity in 2024, and the IEA "
+  "projects consumption to more than double to ~950 TWh — about 3% of global "
+  "electricity demand — by 2030 [28]; the geographic concentration of "
+  "hyperscale campuses turns individual operators into grid-scale loads. Simultaneously, solar-heavy grids exhibit the duck "
   "curve: midday renewable generation depresses net demand, followed by a steep "
   "evening ramp during which prices spike and grid stress peaks. A data-center "
   "fleet that concentrates its draw during these ramps contributes directly to "
   "system peaks; a fleet that shifts flexible work across locations and hours "
   "can instead smooth them. Google's production Carbon-Intelligent Computing "
-  "System (CICS) demonstrates that this lever is real at hyperscale [3], but "
-  "no reproducible, open formulation of the problem exists on public data.")
+  "System (CICS) demonstrates that this lever is real at hyperscale [3]. Open "
+  "RL environments for sustainable data-center scheduling now exist — "
+  "SustainDC for within-DC multi-agent control [26] and SustainCluster for "
+  "geo-distributed per-task dispatch [27] — but none provides measured "
+  "per-tier (flexible vs. inflexible) demand decomposition of a hyperscale "
+  "trace, power models calibrated on companion power measurements, or a grid "
+  "net-demand (duck-curve) objective; those are the gaps this thesis fills.")
 P("This thesis asks: can a model-free reinforcement-learning agent, observing "
   "only per-site demand, prices, and grid net demand, learn a joint spatial-"
   "temporal load-shaping policy that beats both the grid-unaware status quo and "
@@ -223,7 +229,19 @@ P("Our synthetic batch generator descends directly from Da Costa, Grange & "
   "generator is demoted to sensitivity analysis: measured per-tier curves are "
   "the primary input, after we found single-timestep job pulses inflated batch "
   "burstiness by two orders of magnitude (Sec. VII).")
-H2("C. Single-DC renewable-aware scheduling")
+H2("C. Geographic load balancing for electricity cost")
+P("Spatial electricity-price arbitrage across internet-scale systems predates "
+  "the renewable-aware literature: Qureshi et al. quantified the savings from "
+  "routing request load toward cheap electricity markets [23]; Rao et al. "
+  "formalized cost minimization for distributed data centers across multiple "
+  "electricity markets [24]; and Liu, Lin, Wierman, Low and Andrew gave the "
+  "optimization treatment of geographical load balancing with renewable "
+  "supply, characterizing when 'follow the renewables' routing is optimal "
+  "[25]. Our spatial lever is a direct descendant of this lineage — with two "
+  "displacements: the objective targets grid net demand (the duck-curve "
+  "quantity) rather than price alone, and the routed quantity is measured "
+  "aggregate tier demand rather than request traffic.")
+H2("D. Single-DC renewable-aware scheduling")
 P("The deferral-with-deadlines pattern originates in single-DC work: GreenSlot "
   "[10] delays jobs toward predicted cheap/green slots; Grange et al. [4] add "
   "due-date constraints and an infrastructure-agnostic objective signal (49% "
@@ -234,7 +252,7 @@ P("The deferral-with-deadlines pattern originates in single-DC work: GreenSlot "
   "peak contribution, deferral value — not mechanism: our Trough-Slot baseline "
   "retargets GreenSlot's slot valuation from solar supply to grid net demand, "
   "and our service/batch split operationalizes Xu's taxonomy via measured tiers.")
-H2("D. Aggregate load shaping at hyperscale")
+H2("E. Aggregate load shaping at hyperscale")
 P("Radovanović et al. [3] describe CICS, which shapes aggregate cluster "
   "load via day-ahead Virtual Capacity Curves and explicitly supersedes "
   "job-level deadline optimization (“aggregate cluster-specific resource "
@@ -243,7 +261,7 @@ P("Radovanović et al. [3] describe CICS, which shapes aggregate cluster "
   "reproducible: aggregate flexible/inflexible demand curves per cluster, "
   "power models trained separately per cluster, and both spatial and temporal "
   "shifting — retargeted from carbon to grid demand smoothing, on public data.")
-H2("E. Reinforcement learning for data-center energy")
+H2("F. Reinforcement learning and open environments")
 P("RL for DC energy management is surveyed in [15]; DeepEE [16] jointly "
   "schedules jobs and cooling with DRL (cooling is excluded from our scope). "
   "Closest to our setting, CFWS [6] applies DQN with a flattened-index action "
@@ -255,6 +273,19 @@ P("RL for DC energy management is surveyed in [15]; DeepEE [16] jointly "
   "linear idle+slope server model surveyed in [14] and canonicalized by Fan et "
   "al. [17]; the demand-response framing follows [13]; broader green-DC context "
   "in [11], geo-distributed scheduling in [12].")
+P("Open benchmark environments for this problem class have recently emerged. "
+  "SustainDC [26] provides multi-agent Gymnasium environments for control "
+  "*within* a data center (workload shifting, cooling, battery). SustainCluster "
+  "[27] is its geo-distributed successor: a centralized scheduler dispatches or "
+  "defers *individual tasks* of the Alibaba 2020 GPU trace across 20+ global "
+  "locations every 15 minutes, optimizing energy cost, carbon, SLA, and "
+  "per-GB transmission overheads. Our environment is complementary on three "
+  "axes: granularity (CICS-style measured aggregate per-tier curves rather "
+  "than per-task dispatch), data grounding (Google ClusterData 2019 with "
+  "PowerData2019-calibrated per-cell power, rather than Alibaba GPU jobs with "
+  "carbon-intensity feeds), and objective (grid net-demand peak contribution "
+  "rather than carbon). SustainCluster's transmission-cost model is the "
+  "natural template for the movement-cost sensitivity analysis of Sec. VIII.")
 
 # ---------------- III. SYSTEM MODEL ----------------
 H1("III. SYSTEM MODEL")
@@ -497,8 +528,10 @@ P("(1) Sensitivity sweeps: deferrable fraction (via the retained generator) "
   "stabilization: distributional/double variants and action-space curricula "
   "to separate encoding effects from optimizer fragility. (9) Multi-objective "
   "Pareto analysis of cost vs. peak contribution vs. completion latency. "
-  "(10) Transfer to other public traces (e.g., Alibaba) to test trace "
-  "dependence of the slope-arbitrage finding.")
+  "(10) Transfer to other public traces — e.g., the Alibaba 2020 GPU trace "
+  "already packaged by SustainCluster [27] — to test trace dependence of the "
+  "slope-arbitrage finding, and cross-validation of our policies inside the "
+  "SustainCluster environment.")
 
 # ---------------- IX. CONCLUSION ----------------
 H1("IX. CONCLUSION")
@@ -541,6 +574,12 @@ refs = [
  "A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and N. Dormann, “Stable-Baselines3: Reliable Reinforcement Learning Implementations,” JMLR, vol. 22, 2021.",
  "D. G. Feitelson, Workload Modeling for Computer Systems Performance Evaluation. Cambridge University Press, 2015.",
  "J. Wilkes, “Google cluster-usage traces v3,” Google Inc., technical documentation distributed with ClusterData2019, rev. 2020-08.",
+ "A. Qureshi, R. Weber, H. Balakrishnan, J. Guttag, and B. Maggs, “Cutting the Electric Bill for Internet-Scale Systems,” in Proc. ACM SIGCOMM, 2009.",
+ "L. Rao, X. Liu, L. Xie, and W. Liu, “Minimizing Electricity Cost: Optimization of Distributed Internet Data Centers in a Multi-Electricity-Market Environment,” in Proc. IEEE INFOCOM, 2010.",
+ "Z. Liu, M. Lin, A. Wierman, S. H. Low, and L. L. H. Andrew, “Geographical Load Balancing with Renewables,” ACM SIGMETRICS Performance Evaluation Review, vol. 39, no. 3, 2011.",
+ "A. Naug, A. Guillen, R. Luna, V. Gundecha, D. Rengarajan, S. Ghorbanpour, S. Mousavi, A. Ramesh Babu, D. Markovikj, L. D. Kashyap, and S. Sarkar, “SustainDC: Benchmarking for Sustainable Data Center Control,” in Advances in Neural Information Processing Systems (NeurIPS), 2024.",
+ "Hewlett Packard Enterprise, “SustainCluster: A high-fidelity, open-source Gymnasium environment for benchmarking multi-objective, sustainable workload scheduling across geo-distributed data centers,” software repository, https://github.com/HewlettPackard/sustain-cluster (MIT License).",
+ "International Energy Agency, “Key Questions on Energy and AI,” World Energy Outlook Special Report, IEA, 2025.",
 ]
 for i, r in enumerate(refs, 1):
     p = doc.add_paragraph()
