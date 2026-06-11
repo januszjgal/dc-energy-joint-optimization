@@ -284,8 +284,15 @@ P("Open benchmark environments for this problem class have recently emerged. "
   "than per-task dispatch), data grounding (Google ClusterData 2019 with "
   "PowerData2019-calibrated per-cell power, rather than Alibaba GPU jobs with "
   "carbon-intensity feeds), and objective (grid net-demand peak contribution "
-  "rather than carbon). SustainCluster's transmission-cost model is the "
-  "natural template for the movement-cost sensitivity analysis of Sec. VIII.")
+  "rather than carbon). We deliberately do not run our experiments inside "
+  "SustainCluster: answering our question there would require replacing both "
+  "its objective (carbon → grid net demand) and its action model (per-task "
+  "dispatch → aggregate tier control, the granularity Sec. II-E argues for), "
+  "while abandoning the Google-trace data contributions — at which point the "
+  "environment would no longer be SustainCluster. The two environments are "
+  "complementary benchmarks; SustainCluster's transmission-cost model is the "
+  "natural template for the movement-cost sensitivity analysis of Sec. VIII, "
+  "and cross-validation of our policies inside it is listed as future work.")
 
 # ---------------- III. SYSTEM MODEL ----------------
 H1("III. SYSTEM MODEL")
