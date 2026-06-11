@@ -14,6 +14,7 @@ batch:
 sites:
   - name: US-West
     cell: data/cells/cell_a.csv
+    tier_curves: data/cells/cell_a_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/the_dalles_or.csv         # forecast feature only
     price: data/prices/caiso.csv
     net_demand: data/net_demand/caiso.csv
@@ -23,6 +24,7 @@ sites:
 
   - name: US-Central
     cell: data/cells/cell_b.csv
+    tier_curves: data/cells/cell_b_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/council_bluffs_ia.csv
     price: data/prices/miso.csv
     net_demand: data/net_demand/miso.csv
@@ -32,6 +34,7 @@ sites:
 
   - name: US-Southeast-1
     cell: data/cells/cell_c.csv
+    tier_curves: data/cells/cell_c_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/douglas_county_ga.csv
     price: data/prices/southern_co.csv
     net_demand: data/net_demand/southern_co.csv
@@ -41,6 +44,7 @@ sites:
 
   - name: US-Southeast-2
     cell: data/cells/cell_d.csv
+    tier_curves: data/cells/cell_d_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/berkeley_county_sc.csv
     price: data/prices/duke_carolinas.csv
     net_demand: data/net_demand/duke_carolinas.csv

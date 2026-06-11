@@ -68,6 +68,11 @@ class DataCenterSite:
     batch_generator: BatchArrivalGenerator | None = field(
         default=None, init=False, repr=False
     )
+    # Real per-tier demand curves derived from the trace (see
+    # scripts/derive_tier_curves.py). When set, they take precedence over the
+    # synthetic generator / static split; service + batch = measured aggregate.
+    service_curve: np.ndarray | None = field(default=None, init=False, repr=False)
+    batch_curve: np.ndarray | None = field(default=None, init=False, repr=False)
 
     # Rolling history of recent batch arrivals (24h window at 5-min resolution
     # = 288 steps). Used by the burst-aware observation augmentation (§7-burst).
@@ -112,9 +117,15 @@ class DataCenterSite:
     # immediately (unserved service accrues a backlog penalty; it is never
     # moved into the batch pool).
     def get_service_demand(self, t: int) -> float:
+        if self.service_curve is not None:
+            return float(self.service_curve[t])
         return float(self.workload[t]) * (1.0 - self.batch_fraction)
 
     def get_batch_demand(self, t: int) -> float:
+        # Preference order: real per-tier curve (trace-derived; see
+        # scripts/derive_tier_curves.py) > synthetic generator > static split.
+        if self.batch_curve is not None:
+            return float(self.batch_curve[t])
         if self.batch_generator is not None:
             return self.batch_generator.get_batch_cpu_demand(t)
         return float(self.workload[t]) * self.batch_fraction

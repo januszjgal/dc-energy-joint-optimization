@@ -329,16 +329,11 @@ When batch mode is enabled, each timestep follows this pipeline:
 
 The `BatchPool` data structure maintains a deque of `(cpu_demand, deadline_step)` entries. Draining preferentially removes the most urgent (nearest-deadline) entries first, which is the canonical EDF (earliest-deadline-first) policy used in the batch-deferral literature.
 
-### 3.8 Dynamic Batch Arrivals
+### 3.8 Batch Demand Input — Real Per-Tier Curves (primary) + Synthetic Generator (sensitivity)
 
-Rather than using a fixed `workload[t] × batch_fraction` split, we generate **synthetic batch arrivals** from the per-cell fitted distributions (`BatchArrivalGenerator`):
+**Primary input: real per-tier demand curves.** Each site's batch demand comes from `data/cells/cell_{x}_tiers.csv` — the measured cell aggregate split into non-deferrable `service_demand_norm` (SLO tiers) and deferrable `batch_demand_norm` (no-SLO tiers), with `service + batch = measured aggregate` at every timestep. This follows the data organization of Google's CICS (real aggregate flexible vs inflexible demand per cluster; §1.2, §8.6) and was adopted after the synthetic generator was found to produce unrealistically bursty arrivals (peak/mean ≈ 195 vs ≈ 1.24 in the trace — the full diagnosis and lesson are in §7.10). Curves are derived locally from the job extracts ([scripts/derive_tier_curves.py](scripts/derive_tier_curves.py)); a ground-truth BigQuery version is [extract_tier_curves.ipynb](extract_tier_curves.ipynb).
 
-1. Sample inter-arrival times from the fitted distribution (Weibull / log-normal per cell; see §2.2)
-2. For each arrival, sample CPU demand, memory demand, and task count from the fitted distributions
-3. Aggregate into per-timestep demand arrays
-4. **Normalize** total demand to match the expected aggregate from the static split
-
-This preserves realistic temporal **burstiness** (batch jobs arrive in clusters, not uniformly) while maintaining consistent aggregate demand volume.
+**Sensitivity tool: the synthetic generator.** The distribution-fitted `BatchArrivalGenerator` (sample inter-arrivals → per-job CPU/memory/task-count → aggregate → normalize volume) is retained for *controlled* experiments — varying load intensity, job mix, and arrival patterns independent of the trace — which is its original purpose in the Grange/Da Costa methodology below. It is no longer the primary demand path.
 
 **Methodological lineage — we reuse Grange et al.'s generator.** This distribution-fitting-then-generating approach is taken directly from **Grange et al. (2018), *"Green IT scheduling for data center powered with renewable energy"*** (Future Generation Computer Systems 86), whose Listing 1 is a short `scipy.stats` generator that draws each batch task's submission time and execution time from distributions fit to a Google cluster — *"we can easily control its duration, and generate several workloads based on the same distribution laws, but using different random seeds."* That generator instantiates the parameterized model of **Da Costa, Grange & De Courchelle (2016), *"Modeling and generating large-scale Google-like workload"*** (IGSC '16) — itself in the Feitelson parallel-workload-modeling tradition. We reproduce their exact Listing 1 verbatim in [`scripts/grange_generator.py`](scripts/grange_generator.py) (it recovers their reported log-normal parameters `s=1.634, scale=447` and a makespan mean of ~1700 s, their `mass`), and our `BatchArrivalGenerator` is the same generator *family*. We extend it in three ways: (i) we re-fit the **2019** trace (Grange/Da Costa used the ~2011-era study) under the no-SLO deferrable definition (§2.2); (ii) we select each distribution by minimum KS *D* rather than fixing the family a priori, and add **per-task CPU/memory request** and a **discrete negative-binomial task-count** distribution Grange does not model; and (iii) Grange's `mass`/`disparity`/`dynamism`/`ratioTask` knobs and his truncated-normal **task-flexibility** distribution map onto our fitted parameters and our `flexibility_factor` deadline knob, respectively. Net: same established methodology, refreshed to the newer trace and enriched. (Contrast: Xu et al. (2020) instead *replay* a real trace; Haghshenas et al. (2022) use hand-constructed synthetic arrival benchmarks.)
 
@@ -721,6 +716,27 @@ A second batch-model artifact surfaced from a simple sanity check: **why does St
 Status Quo's expiry collapses by **~85%** to a small genuine residual (bursts that exceed capacity even across the full deadline window). Avoid-the-Ramp stays high — but *legitimately*, because routing everything to one DC really does overload it. With the artifact removed, the batch comparison measures **scheduling skill** (placing deferrable work in the troughs) rather than who least-suffers from a modeling fuse. The §7.2–7.5 batch tables reflect this fix (and the calibrated `w = 250`).
 
 **The general lesson:** in a deferral-with-deadlines simulator, work that is merely capacity-blocked must **retain its deadline and queue**, not be discarded — otherwise saturation manufactures artificial deadline violations that swamp the real optimization signal.
+
+### 7.10 Real per-tier curves replace synthetic arrival pulses — the burstiness lesson
+
+The third (and final) batch-model artifact was found by comparing the synthetic batch curve against the trace it was supposed to mimic:
+
+| Curve | peak / mean | max (fraction of capacity) |
+|---|---|---|
+| **Real cell-a aggregate** (includes all batch, post-Borg) | **1.24** | 0.69 |
+| Synthetic batch curve (`BatchArrivalGenerator`) | **195** | **29.7** (≈30× one DC's capacity in a single 5-min bucket) |
+
+The generator sampled each job's `cpu × tasks` and injected **all of it into the single arrival timestep** — the sampled *duration* was used only for deadlines, never for the curve shape. In reality (and in the Grange/Da Costa model it descends from), a job occupies capacity *at its rate over its runtime*; thousands of concurrent long jobs overlap, and the aggregate is smooth — which is precisely why the measured cell curves have peak/mean ≈ 1.2 despite Tirmazi's extreme per-job heavy tail. The single-step pulses explain the earlier anomaly that batch mode was *peakier* than legacy (load factor 0.796 vs 0.954) and every policy saturated at the same 357.5 MW: a modeling artifact, not a property of the workload.
+
+**The fix — adopt CICS's data organization.** Rather than repairing the generator, we switched the batch-demand input to **real per-tier demand curves**, exactly the organization of Radovanović et al. (2023), *"Carbon-Aware Computing for Datacenters"* (real aggregate flexible vs inflexible demand per cluster, no synthetic generation in the loop):
+
+- `data/cells/cell_{x}_tiers.csv`: per-timestep `service_demand_norm` (SLO tiers) and `batch_demand_norm` (no-SLO tiers), with **`service + batch = measured aggregate`** at every timestep.
+- Derived locally from the full job extracts ([scripts/derive_tier_curves.py](scripts/derive_tier_curves.py)): each job's requested CPU is spread over its real submit→end window, the per-bucket deferrable *share* is computed from those request windows, and the share is applied to the *measured* aggregate — magnitude real, split request-derived. Resulting batch curves have peak/mean **1.5–1.7**. Effective batch fractions: a=0.55, b=0.68, c=0.44, d=0.58.
+- Ground-truth version (splitting `instance_usage` itself by tier) is a single standalone notebook, [extract_tier_curves.ipynb](extract_tier_curves.ipynb), for the next Colab session. The known approximation in the local derivation: submit→end windows include queueing delay, and requests ≠ usage.
+
+**Validation:** with the real curves (and the §7.9 queueing fix), a serve-everything-now policy in batch mode reproduces the legacy demand exactly — Status Quo: load factor 0.954, peak 302.3 MW, **zero** expiry, total cost within $2 of its legacy run. The batch machinery is now demand-neutral by construction; any cost difference between policies is *scheduling*, not artifacts.
+
+**The general lesson:** a synthetic workload generator must conserve not just total volume but the **demand-presentation process** — jobs present their rate *over their duration*. Validating the generated curve's shape statistics against the source trace (peak/mean here) is a one-line check that would have caught this immediately. The generator is retained for controlled load-intensity sensitivity experiments (its original purpose in Grange et al.), no longer as the primary input.
 
 ---
 

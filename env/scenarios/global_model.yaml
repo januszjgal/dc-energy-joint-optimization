@@ -14,6 +14,7 @@ batch:
 sites:
   - name: Global-US-West
     cell: data/cells/cell_a.csv
+    tier_curves: data/cells/cell_a_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/the_dalles_or.csv
     price: data/prices/caiso.csv
     net_demand: data/net_demand/caiso.csv
@@ -23,6 +24,7 @@ sites:
 
   - name: Global-US-Central
     cell: data/cells/cell_b.csv
+    tier_curves: data/cells/cell_b_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/council_bluffs_ia.csv
     price: data/prices/miso.csv
     net_demand: data/net_demand/miso.csv
@@ -32,6 +34,7 @@ sites:
 
   - name: Global-EU
     cell: data/cells/cell_c.csv
+    tier_curves: data/cells/cell_c_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/eemshaven_nl.csv
     price: data/prices/entso_e_nl.csv
     net_demand: data/net_demand/entso_e_nl.csv
@@ -41,6 +44,7 @@ sites:
 
   - name: Global-Asia
     cell: data/cells/cell_d.csv
+    tier_curves: data/cells/cell_d_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
     solar: data/solar/singapore.csv
     price: data/prices/ema_singapore.csv
     net_demand: data/net_demand/ema_singapore.csv
