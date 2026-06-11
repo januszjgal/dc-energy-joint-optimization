@@ -1,6 +1,6 @@
 # dqn_us_legacy
 # cmd: C:\Projects\thesis\.venv\Scripts\python.exe train_dqn.py --scenario env/scenarios/us_model.yaml --timesteps 500000 --peak-penalty-weight 0.015
-# started: Wed Jun 10 10:59:35 2026
+# started: Wed Jun 10 21:51:37 2026
 
 === Training DQN on scenario: us_model ===
 Observation space: Box(-inf, inf, (26,), float32)
@@ -16,31 +16,31 @@ Training for 500000 timesteps...
 -----------------------------------
 | rollout/            |           |
 |    ep_len_mean      | 8.92e+03  |
-|    ep_rew_mean      | -9.97e+06 |
+|    ep_rew_mean      | -9.89e+06 |
 |    exploration_rate | 0.774     |
 | time/               |           |
 |    episodes         | 4         |
-|    fps              | 505       |
-|    time_elapsed     | 70        |
+|    fps              | 1104      |
+|    time_elapsed     | 32        |
 |    total_timesteps  | 35668     |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 344       |
+|    loss             | 329       |
 |    n_updates        | 8891      |
 -----------------------------------
 -----------------------------------
 | rollout/            |           |
 |    ep_len_mean      | 8.92e+03  |
-|    ep_rew_mean      | -1.07e+07 |
+|    ep_rew_mean      | -1.06e+07 |
 |    exploration_rate | 0.548     |
 | time/               |           |
 |    episodes         | 8         |
-|    fps              | 497       |
-|    time_elapsed     | 143       |
+|    fps              | 1089      |
+|    time_elapsed     | 65        |
 |    total_timesteps  | 71336     |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 346       |
+|    loss             | 341       |
 |    n_updates        | 17808     |
 -----------------------------------
 -----------------------------------
@@ -50,12 +50,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.322     |
 | time/               |           |
 |    episodes         | 12        |
-|    fps              | 492       |
-|    time_elapsed     | 217       |
+|    fps              | 973       |
+|    time_elapsed     | 109       |
 |    total_timesteps  | 107004    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 528       |
+|    loss             | 512       |
 |    n_updates        | 26725     |
 -----------------------------------
 -----------------------------------
@@ -65,12 +65,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.0964    |
 | time/               |           |
 |    episodes         | 16        |
-|    fps              | 484       |
-|    time_elapsed     | 294       |
+|    fps              | 894       |
+|    time_elapsed     | 159       |
 |    total_timesteps  | 142672    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 483       |
+|    loss             | 462       |
 |    n_updates        | 35642     |
 -----------------------------------
 -----------------------------------
@@ -80,12 +80,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 20        |
-|    fps              | 521       |
-|    time_elapsed     | 342       |
+|    fps              | 856       |
+|    time_elapsed     | 208       |
 |    total_timesteps  | 178340    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 426       |
+|    loss             | 432       |
 |    n_updates        | 44559     |
 -----------------------------------
 -----------------------------------
@@ -95,12 +95,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 24        |
-|    fps              | 561       |
-|    time_elapsed     | 381       |
+|    fps              | 839       |
+|    time_elapsed     | 254       |
 |    total_timesteps  | 214008    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 496       |
+|    loss             | 480       |
 |    n_updates        | 53476     |
 -----------------------------------
 -----------------------------------
@@ -110,42 +110,42 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 28        |
-|    fps              | 597       |
-|    time_elapsed     | 418       |
+|    fps              | 825       |
+|    time_elapsed     | 302       |
 |    total_timesteps  | 249676    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 479       |
+|    loss             | 486       |
 |    n_updates        | 62393     |
 -----------------------------------
 -----------------------------------
 | rollout/            |           |
 |    ep_len_mean      | 8.92e+03  |
-|    ep_rew_mean      | -1.02e+07 |
+|    ep_rew_mean      | -1.01e+07 |
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 32        |
-|    fps              | 629       |
-|    time_elapsed     | 453       |
+|    fps              | 822       |
+|    time_elapsed     | 347       |
 |    total_timesteps  | 285344    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 539       |
+|    loss             | 519       |
 |    n_updates        | 71310     |
 -----------------------------------
 -----------------------------------
 | rollout/            |           |
 |    ep_len_mean      | 8.92e+03  |
-|    ep_rew_mean      | -1.02e+07 |
+|    ep_rew_mean      | -1.01e+07 |
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 36        |
-|    fps              | 655       |
-|    time_elapsed     | 489       |
+|    fps              | 839       |
+|    time_elapsed     | 382       |
 |    total_timesteps  | 321012    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 565       |
+|    loss             | 577       |
 |    n_updates        | 80227     |
 -----------------------------------
 -----------------------------------
@@ -155,12 +155,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 40        |
-|    fps              | 678       |
-|    time_elapsed     | 525       |
+|    fps              | 854       |
+|    time_elapsed     | 417       |
 |    total_timesteps  | 356680    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 505       |
+|    loss             | 540       |
 |    n_updates        | 89144     |
 -----------------------------------
 -----------------------------------
@@ -170,12 +170,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 44        |
-|    fps              | 700       |
-|    time_elapsed     | 560       |
+|    fps              | 866       |
+|    time_elapsed     | 452       |
 |    total_timesteps  | 392348    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 507       |
+|    loss             | 466       |
 |    n_updates        | 98061     |
 -----------------------------------
 -----------------------------------
@@ -185,12 +185,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 48        |
-|    fps              | 718       |
-|    time_elapsed     | 595       |
+|    fps              | 877       |
+|    time_elapsed     | 487       |
 |    total_timesteps  | 428016    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 414       |
+|    loss             | 403       |
 |    n_updates        | 106978    |
 -----------------------------------
 -----------------------------------
@@ -200,12 +200,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 52        |
-|    fps              | 732       |
-|    time_elapsed     | 632       |
+|    fps              | 886       |
+|    time_elapsed     | 523       |
 |    total_timesteps  | 463684    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 435       |
+|    loss             | 459       |
 |    n_updates        | 115895    |
 -----------------------------------
 -----------------------------------
@@ -215,12 +215,12 @@ Training for 500000 timesteps...
 |    exploration_rate | 0.05      |
 | time/               |           |
 |    episodes         | 56        |
-|    fps              | 746       |
-|    time_elapsed     | 669       |
+|    fps              | 892       |
+|    time_elapsed     | 559       |
 |    total_timesteps  | 499352    |
 | train/              |           |
 |    learning_rate    | 0.0001    |
-|    loss             | 447       |
+|    loss             | 481       |
 |    n_updates        | 124812    |
 -----------------------------------
 

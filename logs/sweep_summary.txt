@@ -1,15 +1,15 @@
 # Full training sweep summary
 # timesteps = 500000
 # alpha = 0.015
-# total elapsed: 116.8 min (1.95 h)
+# total elapsed: 96.8 min (1.61 h)
 
 label                        status    elapsed (min)
 ----------------------------------------------------
-ppo_us_batch                 OK                 13.0
-ppo_us_legacy                OK                 11.7
-ppo_global_batch             OK                 14.0
-ppo_global_legacy            OK                 11.1
-dqn_us_batch                 OK                 28.4
-dqn_us_legacy                OK                 11.2
-dqn_global_batch             OK                 13.2
-dqn_global_legacy            OK                 14.1
+ppo_us_batch                 OK                  6.6
+ppo_us_legacy                OK                  6.3
+ppo_global_batch             OK                  6.6
+ppo_global_legacy            OK                  8.1
+dqn_us_batch                 OK                 17.7
+dqn_us_legacy                OK                  9.4
+dqn_global_batch             OK                 33.7
+dqn_global_legacy            OK                  8.4
