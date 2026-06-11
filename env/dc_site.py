@@ -73,6 +73,9 @@ class DataCenterSite:
     # synthetic generator / static split; service + batch = measured aggregate.
     service_curve: np.ndarray | None = field(default=None, init=False, repr=False)
     batch_curve: np.ndarray | None = field(default=None, init=False, repr=False)
+    # Per-cell calibrated power model (PowerModel); when set, the env uses it for
+    # this site instead of the pooled fleet model (thesis_overview §3.2).
+    power_model: object | None = field(default=None, init=False, repr=False)
 
     # Rolling history of recent batch arrivals (24h window at 5-min resolution
     # = 288 steps). Used by the burst-aware observation augmentation (§7-burst).

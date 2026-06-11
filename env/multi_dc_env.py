@@ -169,7 +169,10 @@ class MultiDCEnv(gym.Env):
 
         Returns (dc_cost, energy_cost, peak_penalty, grid_mw, net_demand).
         """
-        power_util = self.power_model.compute(served)
+        # Per-cell calibrated model when available (R² 0.75-0.80 vs pooled 0.43;
+        # §3.2), else the pooled fleet model.
+        pm = site.power_model if site.power_model is not None else self.power_model
+        power_util = pm.compute(served)
         power_mw = power_util * site.rated_power_mw
         grid_mw = power_mw  # no on-site solar; full draw from grid
 

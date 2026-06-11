@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -58,12 +59,19 @@ def load_scenario(
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    # Power model
+    # Power model (pooled fleet model; per-cell override below)
     pm_path = config.get("power_model", "default")
     if pm_path == "default":
         power_model = PowerModel.default()
     else:
         power_model = PowerModel.from_json(root_dir / pm_path)
+
+    # Per-cell calibrated power models (R² 0.75-0.80 vs pooled 0.43; §3.2).
+    # Enabled via `per_cell_power: true` in the scenario; each site is matched to
+    # its cell's model by the cell letter in its workload path.
+    per_cell_models: dict[str, PowerModel] = {}
+    if config.get("per_cell_power", False) and pm_path != "default":
+        per_cell_models = PowerModel.per_cell_from_json(root_dir / pm_path)
 
     batch_config: dict[str, Any] = config.get("batch", {}) if batch_enabled else {}
 
@@ -184,6 +192,13 @@ def load_scenario(
         if sd["batch_curve"] is not None:
             site.service_curve = sd["service_curve"]
             site.batch_curve = sd["batch_curve"]
+
+        # Per-cell calibrated power model, matched by the cell letter in the
+        # site's workload path (e.g. "data/cells/cell_a.csv" -> "a")
+        if per_cell_models:
+            m = re.search(r"cell_([a-z])", str(site_cfg["cell"]))
+            if m and m.group(1) in per_cell_models:
+                site.power_model = per_cell_models[m.group(1)]
 
         cell_cfg_obj = sd["cell_cfg_obj"]
         if (

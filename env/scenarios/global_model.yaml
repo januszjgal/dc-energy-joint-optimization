@@ -5,6 +5,7 @@
 # (EMA does not publish renewable-decomposed demand).
 
 power_model: data/power_model_params.json
+per_cell_power: true   # per-cell calibrated idle/slope (R2 0.75-0.80); see thesis_overview §3.2
 
 batch:
   flexibility_factor: 1.0
