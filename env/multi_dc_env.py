@@ -31,6 +31,9 @@ from env.power_model import PowerModel
 
 INTERVAL_HOURS = 5.0 / 60.0  # 5-minute intervals
 
+# Bound on the continuous action logits (see action_space comment in __init__).
+ACTION_LOGIT_BOUND = 3.0
+
 
 class MultiDCEnv(gym.Env):
     """Gymnasium environment for multi-DC workload routing.
@@ -47,7 +50,15 @@ class MultiDCEnv(gym.Env):
         sites: list[DataCenterSite],
         power_model: PowerModel,
         max_steps: int | None = None,
-        backlog_weight: float = 1.5,
+        # Service-backlog penalty per unit-step. Calibrated like the deadline
+        # penalty (§7.8 logic): delaying a unit of service one step must never be
+        # cheaper than the maximum price-spread arbitrage it could capture.
+        # Serving one unit-step ≈ slope·R·Δh·1000 ≈ 3,700 kWh; a peak-to-trough
+        # price spread of ~$0.05/kWh makes ~$180/unit-step the largest plausible
+        # saving from delay, so at 25 a three-hour hold costs $900 ≫ $180 —
+        # parking SLO service traffic in the backlog is never profitable.
+        # (The old 1.5 made a 3 h hold cost $54: exploitable. Peer-review M4.)
+        backlog_weight: float = 25.0,
         capacity_penalty_weight: float = 5.0,
         peak_penalty_weight: float = 0.0,
         steps_per_day: int = 288,
@@ -123,8 +134,18 @@ class MultiDCEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
+        # Action bound ±3 (was ±1): SB3 clips continuous actions to this Box, so
+        # the bound sets the agent's reachable range after softmax/sigmoid decode.
+        # At ±1 PPO was structurally capped to routing shares in [4.3%, 71%] and
+        # drain rates in [27%, 73%] — multi-hour holding and full concentration
+        # were impossible by construction, while the discrete wrappers (logits
+        # ±2/±3) and heuristics (±3/±5) were not so limited. ±3 gives the
+        # continuous agent the same reach (shares to ~98.5%, drain 4.7–95.3%).
+        # Heuristic baselines and DQN wrappers call step() directly and are
+        # unaffected. (Peer-review M5.)
         self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(action_dim,), dtype=np.float32
+            low=-ACTION_LOGIT_BOUND, high=ACTION_LOGIT_BOUND,
+            shape=(action_dim,), dtype=np.float32,
         )
 
         self.step_index = 0
@@ -164,10 +185,11 @@ class MultiDCEnv(gym.Env):
         served: float,
         new_backlog: float,
         t: int,
-    ) -> tuple[float, float, float, float, float]:
+    ) -> tuple[float, float, float, float, float, float, float]:
         """Compute energy + peak + backlog + capacity costs for one DC.
 
-        Returns (dc_cost, energy_cost, peak_penalty, grid_mw, net_demand).
+        Returns (dc_cost, energy_cost, peak_penalty, grid_mw, net_demand,
+        backlog_cost, capacity_cost).
         """
         # Per-cell calibrated model when available (R² 0.75-0.80 vs pooled 0.43;
         # §3.2), else the pooled fleet model.
@@ -186,7 +208,7 @@ class MultiDCEnv(gym.Env):
         cap_penalty = self.capacity_penalty_weight * max(0.0, served - site.capacity)
 
         dc_cost = energy_cost + peak_penalty + backlog_cost + cap_penalty
-        return dc_cost, energy_cost, peak_penalty, grid_mw, nd
+        return dc_cost, energy_cost, peak_penalty, grid_mw, nd, backlog_cost, cap_penalty
 
     # ------------------------------------------------------------------
     # Legacy step (spatial routing only)
@@ -222,7 +244,7 @@ class MultiDCEnv(gym.Env):
 
             new_backlog = total_to_serve - served
 
-            dc_cost, energy, peak, grid_mw, nd = self._compute_dc_cost(
+            dc_cost, energy, peak, grid_mw, nd, backlog_cost, cap_cost = self._compute_dc_cost(
                 site, served, new_backlog, t
             )
 
@@ -246,6 +268,8 @@ class MultiDCEnv(gym.Env):
                     "net_demand": float(nd),
                     "energy_cost": float(energy),
                     "peak_penalty": float(peak),
+                    "backlog_cost": float(backlog_cost),
+                    "capacity_cost": float(cap_cost),
                 }
             )
 
@@ -361,7 +385,7 @@ class MultiDCEnv(gym.Env):
             new_backlog = service_to_serve - service_served
             batch_served_list.append(batch_served)
 
-            dc_cost, energy, peak, grid_mw, nd = self._compute_dc_cost(
+            dc_cost, energy, peak, grid_mw, nd, backlog_cost, cap_cost = self._compute_dc_cost(
                 site, served, new_backlog, t
             )
             deadline_cost = self.deadline_penalty_weight * expired_per_dc[i]
@@ -392,6 +416,8 @@ class MultiDCEnv(gym.Env):
                     "net_demand": float(nd),
                     "energy_cost": float(energy),
                     "peak_penalty": float(peak),
+                    "backlog_cost": float(backlog_cost),
+                    "capacity_cost": float(cap_cost),
                     "deadline_cost": float(deadline_cost),
                 }
             )
