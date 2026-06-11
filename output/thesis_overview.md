@@ -613,67 +613,31 @@ PPO **inverts** the load distribution relative to the do-nothing policies: it sh
 
 Global-Asia (Singapore, high EMA prices) dominates fleet cost, and PPO attacks exactly that: **−32% Singapore energy** and **−21% EU** vs the Status Quo, paid for with more (cheap, low-slope) US-West/Central consumption. Price arbitrage and slope arbitrage compound — this is where the 11.7% total saving over the status quo (§7.7) comes from.
 
-### 7.6 Burst-Aware Augmentation (Heavy-Tail Follow-Up)
+### 7.6 Burst-Awareness Revisited (superseded experiment)
 
-> ⚠ **Pending rerun.** The burst experiments in this subsection were run on the *pre-recalibration* models (old batch fraction, `deadline_penalty_weight=2.0`). The qualitative finding — the optimization signal concentrates in burst windows — is expected to survive, but the specific percentages are stale and will be regenerated with the w=250 batch models (§7.8).
+> This subsection documents an experiment whose **premise was dissolved by the environment corrections** of §7.8–§7.10. It is retained because the dissolution is itself a finding, and because the original experiment is part of the artifact narrative (§12).
 
-Tirmazi et al. (2020) document that the 2019 trace exhibits an extreme long tail at the job level: "the top 1% of jobs (resource hogs) consume over 99% of all resources" with squared coefficients of variation >23,000 (§7 of that paper). The intra-cluster scheduling implication is "insulate the mice from the hogs"; for our cell-aggregate routing problem, the same heavy-tail manifests as **bursty aggregate batch arrivals** — a small fraction of timesteps deliver a large fraction of new batch CPU demand. Our heavy-tailed distribution fits (Weibull, log-normal; §2.2) preserve this burstiness into the per-step cell-aggregate arrivals our env exposes.
+**The original premise and experiments.** Tirmazi et al. (2020) document an extreme per-job heavy tail ("the top 1% of jobs consume over 99% of all resources," squared coefficient of variation > 23,000). The hypothesis: this tail manifests as *bursty aggregate batch arrivals*, making burst handling a high-leverage optimization axis. Two experiments tested it on the pre-correction environment: (1) a decomposition showing the RL agents' advantage over Round Robin was up to **2.1× larger in burst windows** (top-5% arrival timesteps); (2) an explicit `burst_severity` observation feature, which improved PPO by +0.7–1.2% (via tighter spatial routing, not differentiated drain timing) and *hurt* DQN-flatidx by 5.4%.
 
-This sub-section reports two diagnostic experiments on whether burst handling is a high-leverage optimization axis we should target explicitly.
+**Why the corrected environment dissolved the premise.** Each correction removed a leg:
 
-#### Step 1 — Are bursts where the optimization signal lives?
+1. **The burstiness was manufactured.** The synthetic generator injected each job's full demand at its arrival timestep, producing batch curves with peak/mean ≈ 195 vs ≈ 1.24 in the measured trace (§7.10). The "burst windows" the agents exploited were two orders of magnitude more extreme than reality — the 2.1× concentration finding was a property of the bug, not the workload.
+2. **The measured deferrable slice is small.** At the ground-truth 2–10% batch fractions (§2.2), even genuinely bursty batch arrivals barely perturb total fleet demand.
+3. **The damage channel is closed.** With deadline-preserving queueing (§7.9), arrival spikes no longer cause expiry — violations are ≈ 0 for every reasonable policy — so there is nothing for burst-awareness to protect against.
+4. **The real curves are deterministic.** The generator re-sampled arrivals per seed, making bursts stochastic events worth detecting; the measured tier curves are a fixed 31-day series whose "bursts" sit at known calendar positions an agent can learn implicitly. An explicit burst feature is a derived column of fixed data.
 
-Define a **burst timestep** as any step in the top 5% by aggregate batch CPU arrival across all DCs (446 of 8,917 timesteps per episode; arrival magnitude ~2.5× the non-burst mean). Per-policy cost decomposition on US batch and Global batch (full results in `output/burst_analysis.json`):
+**What replaced it — where does the advantage actually live in time?** A no-retrain diagnostic ([scripts/analyze_peak_windows.py](scripts/analyze_peak_windows.py)) decomposes PPO's per-timestep advantage over the Status Quo by fleet-mean net-demand quartile:
 
-| Metric | US batch | Global batch |
+| Net-demand quartile | US batch: share of savings | Global batch: share of savings |
 |---|---|---|
-| Burst share of total cost (Round Robin) | 5.3% | 5.3% |
-| Burst $/step premium vs non-burst (Round Robin) | +6.5% | +5.7% |
-| PPO total advantage vs Round Robin | +3.19% | +6.76% |
-| PPO **burst-window** advantage vs Round Robin | **+6.37%** | **+8.86%** |
-| PPO **off-burst** advantage vs Round Robin | +3.01% | +6.65% |
-| DQN-routing-grid total / burst-window adv | +1.34% / **+4.33%** | +0.57% / +1.64% |
-| DQN-flatidx total / burst-window adv | −0.49% / −1.15% | +5.23% / **+6.75%** |
+| Q1 (slack grid) | 23.3% | 21.1% |
+| Q2 | 23.5% | 26.7% |
+| Q3 | 24.1% | 26.4% |
+| Q4 (duck-curve neck) | **29.1%** | 25.8% |
 
-**Findings**:
+PPO's savings are **nearly uniform in time** — a mild tilt toward high-net-demand windows in the US (Q4 earns 1.25× the per-step savings of Q1, driven by the peak penalty), and effectively flat in Global. This is the honest final picture: the slope- and price-arbitrage that drive the savings (§7.5) operate *continuously*, not in rare crisis windows. The old "advantage concentrates in bursts" result inverted into "the advantage is steady" once the bursts stopped being synthetic.
 
-1. **Bursts do not dominate raw cost.** The pool-with-deadline mechanic smears arrival spikes across multiple subsequent drain steps, so the 5% of timesteps with the largest arrivals account for ~5.3% of total cost — only a slight premium over their share-of-timesteps baseline.
-2. **But the RL optimization signal *does* concentrate in burst windows.** Every RL agent's advantage-over-Round-Robin is larger in burst windows than off-burst — for PPO, the burst-window advantage is **2.1× the off-burst advantage in US batch** and **1.3× in Global batch**. So the policies aren't winning by averaging gains over uniform conditions; they're winning by making their best decisions during the high-arrival moments.
-3. **PPO already learned burst-aware spatial routing implicitly** (no explicit burst signal in the observation). Quantified via three behavior metrics — HHI of routing fractions (spatial concentration), `Σ fraction_i × net_demand_i` (net-demand-weighted routing target), and mean drain rate:
-
-   | PPO metric (US batch) | Burst | Non-burst |
-   |---|---|---|
-   | HHI (spatial concentration) | 0.316 | 0.308 |
-   | ND-weighted routing target (lower = route to slack grids) | **0.662** | **0.693** |
-   | Mean drain rate | 0.460 | 0.461 |
-
-   Spatial routing differs during bursts (more concentrated toward lower-net-demand DCs). **Temporal behavior (drain rate) is essentially identical** burst vs non-burst — the unused lever.
-
-#### Step 2 — Does an explicit burst signal help?
-
-We added a per-DC `burst_severity = current_batch_arrival / rolling_24h_mean_arrival` observation feature (clipped to [0, 10]) and retrained PPO + DQN-flatidx on US batch and Global batch. We also enabled the `memory_enabled` flag in these runs (memory does not bind in our env — verified by [scripts/check_memory_binding.py](scripts/check_memory_binding.py) showing 0.0000% cost diff with memory on vs off — so this adds observation dimensionality without changing dynamics).
-
-| Variant | US batch | Global batch | Total improvement |
-|---|---|---|---|
-| PPO baseline | $9.47M | $13.20M | — |
-| **PPO + burst + memory** | **$9.41M** | **$13.04M** | **+0.7% US, +1.2% Global** |
-| DQN-flatidx baseline | $9.83M | $13.42M | — |
-| DQN-flatidx + burst + memory | $9.79M | $14.18M | +0.4% US, **−5.4% Global** |
-
-**Findings**:
-
-1. **PPO benefits modestly from the explicit burst signal** (+0.7–1.2% total cost reduction). The improvement is **proportionally larger in burst windows** (+1.3% burst $/step in US, +1.7% in Global) than off-burst (+0.7%, +1.2%), consistent with the prediction.
-2. **The improvement mechanism is NOT what we predicted.** Drain rate differentiation between burst and non-burst remains essentially zero even with the explicit signal (PPO-burst delta = −0.0018 vs baseline's −0.0009). What changed: PPO-burst+mem learned a **more spatially concentrated** policy (HHI 0.358 vs 0.316 in US burst windows) and a **slightly more aggressive overall drain rate** (0.477 vs 0.461 in US). The agent did not learn to vary drain timing based on burst presence; it learned a uniformly tighter policy that happens to perform better during bursts.
-3. **DQN-flatidx is hit-or-miss** with burst awareness: small +0.4% improvement on US, but a **−5.4% regression on Global**. Likely cause: the 47-dim augmented observation (vs 35 baseline) is harder for DQN with only 48 actions to map into Q-values in the same training budget. PPO scales better with input dimensionality on our env.
-
-#### Takeaway
-
-The burst-aware augmentation is **a modest positive result for PPO with a negative result for DQN-flatidx in geo-distributed settings**. The deeper finding from these two experiments is structural: **temporal scheduling (drain timing) is the lever PPO appears unable to differentiate by arrival magnitude**, even when given the explicit signal. The Step 1 spatial-routing differentiation that PPO learned implicitly extends and slightly amplifies with the burst signal, but no agent we trained learned to vary drain timing based on burst severity. This suggests one of:
-- The current pool-with-deadline mechanic already absorbs bursts well enough that differentiated drain timing has limited additional value
-- The deadline penalty weight is calibrated such that holding longer during bursts isn't favorable
-- A different reward structure (e.g., explicit reward for "uniform-load drain") would be needed to elicit differentiated temporal behavior
-
-For the thesis story, the contribution is honest: we identified the burst-window concentration of the optimization signal (a non-trivial finding tied to Tirmazi's heavy-tail observation), tested an explicit intervention, and report that PPO improves modestly via spatial-routing tightening — not via the differentiated temporal behavior we hypothesized.
+**What survives of the heavy-tail story.** The tail is real at the job level, but **it does not survive aggregation**: thousands of concurrent jobs smooth the cell-level curve to peak/mean ≈ 1.24 (§7.10). For cell-aggregate scheduling, Tirmazi's heavy tail matters through the *distribution fits* used in sensitivity experiments (§3.8), not as an operational burst phenomenon. The burst-aware models and sweep scripts are retained in the repository as the historical record of the superseded experiment.
 
 ### 7.7 Comparison to the no-optimization status quo
 
@@ -681,7 +645,7 @@ The tables above rank policies against each other. This section adds the externa
 
 **The Status Quo baseline.** `StatusQuoPolicy` ([baselines.py](baselines.py)) serves each cell's own demand **locally and immediately** — no cross-DC routing, no temporal deferral. It is Borg's raw aggregate run grid-unaware: a CICS-style load-shaper switched *off* (§1.2, §8.6). Since the 2019 trace has no grid prices, no net demand, and no inter-cell routing, this is the correct counterfactual — *not* "Google's scheduler," which never solved the multi-DC grid-aware problem.
 
-**Why the comparison is fair despite R²=0.43.** Status Quo and every optimized policy are scored by the **same** power model, so its absolute error (CPU explains ~43% of point-level power variance; §3.2) **cancels in the relative comparison** — a shared bias does not change the *difference* between policies. The reported saving is therefore robust to the power model's noise; R²=0.43 is the honest model fit, not a limitation on this comparison.
+**Why the comparison is fair despite imperfect power fits.** Status Quo and every optimized policy are scored by the **same** per-cell power models (R² 0.75–0.80; §3.2), so any remaining model error **cancels in the relative comparison** — a shared bias does not change the *difference* between policies. The reported savings are therefore robust to residual power-model noise.
 
 **Normalized power metric — load factor.** Beyond cost, every policy reports `load_factor = mean / peak` aggregate grid draw (emitted by `compute_summary`). Higher = flatter.
 
@@ -1074,4 +1038,27 @@ python scripts/analyze_burst_drain_diff.py
 
 8. **Concentration heuristics fail in every mode once the artifacts are gone.** Avoid-the-Ramp and Cheapest-First collapse on backlog/capacity penalties in legacy *and* batch (Cheapest: $34.9–43.2M). The earlier "batch deferral rescues concentrators" effect was a by-product of the dumping artifact; with work that queues, there is no free capacity relief.
 
-9. **(Pending rerun, §7.6)** **The RL optimization signal concentrates in burst windows.** From the *pre-recalibration* burst study (stale numbers): burst timesteps don't drive disproportionate raw cost, but RL agents' advantage over Round Robin is larger in burst windows, and PPO learns implicit burst-aware spatial routing without an explicit signal. To be regenerated on the final environment.
+9. **The "burst concentration" finding inverted into "the advantage is steady" — and the inversion is the finding (§7.6).** On the artifact environment, RL advantage appeared to concentrate 2.1× in burst windows; on the final environment, PPO's savings over the status quo are **nearly uniform in time** (the high-net-demand quartile earns only ~1.25× the per-step savings of the slack quartile in US, ~flat in Global). The slope/price arbitrage driving the savings operates continuously, not in rare crisis windows — consistent with the real aggregate being smooth (the job-level heavy tail does not survive aggregation, §7.10). The burst experiments are retained as a superseded study; their premise was the §7.10 artifact.
+
+---
+
+## 12. Change Log — How the Final Results Were Reached
+
+The results in §7 were not produced by a single clean run; they are the product of an iterative validation process in which **five substantive modeling corrections** were found, fixed, retrained, and documented. This log records the journey honestly — both because several corrections inverted the experimental rankings (making the lineage essential context for anyone comparing against earlier drafts), and because the corrections themselves are among the thesis's contributions.
+
+| # | Change | Trigger | Effect on results |
+|---|---|---|---|
+| 1 | **Distribution-fitting fixes**: select by KS *D* statistic (the p-value underflows to 0 at n≈10⁵ and silently defaulted every fit to the first candidate); discrete (negative-binomial) fit for task counts; FINISH-only durations; last-terminal (not first-eviction) end times | "Isn't it suspicious we're getting KS=0 for every result?" | Fits became meaningful: log-normal durations, Weibull/log-normal inter-arrivals, nbinom task counts — instead of "exponential everywhere" |
+| 2 | **Batch definition corrected twice**: `scheduling_class ≤ 1 AND priority < 200` → strict beb tier (110–115) → **no-SLO tiers (free ≤ 99 ∪ beb 110–115)** per Tirmazi §2 | Validation showed the old extraction was 94% *production* (priority-200) jobs; strict beb alone was ~0% of CPU | The deferrable class became defensible and citable; all batch data regenerated |
+| 3 | **Batch spatial routing added** (action 2N → 3N): drained batch is pooled and routed by a second softmax head | Deferrable work has no latency SLO — pinning it to its home DC while routing latency-sensitive service inverted physical reality | Deferred work can shift in space *and* time (CICS's two levers); all batch models retrained |
+| 4 | **Status Quo baseline + load-factor metric**: serve-locally-immediately reference; `load_factor = mean/peak` | "Can I tell how much my run is better than Google's actual data?" | The externally-facing result (§7.7) — savings vs the grid-unaware status quo — became measurable |
+| 5 | **Deadline penalty calibrated 2.0 → 250** (§7.8) | At realistic batch volumes, expiring a unit cost \$2 vs ~\$150 to serve it — dumping won; ranking inverted at w≈183 | Aggressive-expiry "winners" sank; completing work became rational |
+| 6 | **Queue-don't-dump** (§7.9): capacity-blocked batch keeps its original deadline instead of a 1-step fuse | "Does the status quo dump any? In theory it shouldn't, right?" — it expired 5,059 units, identically in both scenarios (the tell) | The policy-independent expiry floor vanished (5,059 → ~0); the "concentrators win by dumping" anomaly disappeared |
+| 7 | **Real per-tier demand curves replace the synthetic generator** (§7.10): first a local request-window approximation, then ground truth from `instance_usage` split by tier | Generated batch curves had peak/mean ≈ 195 vs ≈ 1.24 in the trace — the generator injected whole jobs as single-step pulses | Batch demand became measured reality; the demand-neutrality invariant (Status Quo batch ≡ legacy to the dollar) holds by construction |
+| 8 | **Requests ≠ usage**: ground-truth tier split showed the deferrable share is **2–10%** of usage, not the 27–61% suggested by request-based proxies (Borg over-allocates best-effort tiers ~5–13×) | Comparing the local approximation against the BigQuery ground truth | Honest sizing of the temporal lever (+1.5–1.6%); batch-heavy mixes moved to sensitivity territory |
+| 9 | **Per-cell power calibration** (§3.2): R² 0.43 (pooled) → 0.75–0.80 (per cell); env consumes per-cell models | Extended power diagnostics showed the pooled residual was *between-cell heterogeneity*, not noise | **US flipped from "PPO loses" to "PPO wins"** — per-DC slope heterogeneity is a real routing signal (slope arbitrage, §7.5); full 12-model retrain |
+| 10 | **Burst study superseded** (§7.6): premise dissolved by #7; replaced with a net-demand-window diagnostic | The burstiness the burst study analyzed was the #7 artifact | "Advantage concentrates in bursts (2.1×)" inverted to "advantage is nearly uniform in time (~1.25×)" |
+
+**The arc in one sentence:** every correction moved the environment *toward the measured trace* — and each step toward reality first *shrank* an inflated finding (the temporal lever, the burst concentration) and then *revealed* a genuine one (slope arbitrage, the steady-state advantage), ending with PPO winning all four configurations on an environment whose batch machinery is provably demand-neutral.
+
+**Reproducibility of the lineage:** each correction is an individual commit on `master` with the diagnosis in its commit message; the corrected data artifacts are regenerable via `extract_tier_curves.ipynb` (ground truth), `scripts/refit_freebeb_local.py` + `scripts/derive_tier_curves.py` (local approximations), and the enhanced Dataset 2 cell of `extract_clusterdata2019_full.ipynb` (per-cell power).
