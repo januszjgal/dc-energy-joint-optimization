@@ -79,12 +79,24 @@ def load_scenario(
             root_dir / site_cfg["net_demand"], "net_demand_normalized"
         )
 
+        # Optional real per-tier curves (trace-derived service/batch split;
+        # scripts/derive_tier_curves.py). Take precedence over the synthetic
+        # generator when batch mode is enabled.
+        service_curve = batch_curve = None
+        tier_path = site_cfg.get("tier_curves")
+        if batch_enabled and tier_path:
+            service_curve = load_csv_values(root_dir / tier_path, "service_demand_norm")
+            batch_curve = load_csv_values(root_dir / tier_path, "batch_demand_norm")
+
         # Truncate to the shortest series
         min_len = min(len(workload), len(solar), len(price), len(net_demand))
         workload = workload[:min_len]
         solar = solar[:min_len]
         price = price[:min_len]
         net_demand = net_demand[:min_len]
+        if service_curve is not None:
+            service_curve = service_curve[:min_len]
+            batch_curve = batch_curve[:min_len]
 
         # Optional machine fleet for capacity calibration
         machines_path = site_cfg.get("machines")
@@ -106,6 +118,10 @@ def load_scenario(
                 batch_mean_duration_sec = cell_cfg_obj.mean_duration_sec
                 memory_cpu_ratio = cell_cfg_obj.memory_cpu_ratio
 
+        # Real tier curves define the effective batch fraction directly
+        if batch_curve is not None and workload.sum() > 0:
+            batch_fraction = float(batch_curve.sum() / workload.sum())
+
         raw_fleet_data.append(fleet)
         sites_data.append(
             {
@@ -114,6 +130,8 @@ def load_scenario(
                 "solar": solar,
                 "price": price,
                 "net_demand": net_demand,
+                "service_curve": service_curve,
+                "batch_curve": batch_curve,
                 "batch_fraction": batch_fraction,
                 "batch_mean_duration_sec": batch_mean_duration_sec,
                 "memory_cpu_ratio": memory_cpu_ratio,
@@ -162,10 +180,16 @@ def load_scenario(
             fleet_machine_count=fleet["machine_count"] if fleet else 0,
         )
 
+        # Real per-tier curves take precedence over the synthetic generator
+        if sd["batch_curve"] is not None:
+            site.service_curve = sd["service_curve"]
+            site.batch_curve = sd["batch_curve"]
+
         cell_cfg_obj = sd["cell_cfg_obj"]
         if (
             batch_enabled
             and dynamic_arrivals
+            and sd["batch_curve"] is None
             and cell_cfg_obj is not None
             and cell_cfg_obj.dist_config is not None
         ):
