@@ -92,15 +92,16 @@ We fit statistical distributions to each cell's deferrable jobs (Cell A shown):
 
 **Fitting methodology.** Candidate continuous distributions (exponential, log-normal, gamma, Weibull) are fit by MLE and the best selected by **minimum KS *D* statistic** — *not* the KS *p*-value, which underflows to 0 at n~10⁵ regardless of fit quality and is invalid for parameters estimated from the same sample (the Lilliefors situation). Tasks-per-job is count data, so it uses a **discrete** fit (Poisson / geometric / negative-binomial). Inter-arrivals and resource requests are taken over all deferrable jobs; durations only over jobs that reached FINISH. The heavy-tailed winners — log-normal durations/requests, negative-binomial task counts with mean 52 ≫ median 1 — reproduce the extreme variability Tirmazi documents: "the top 1% of jobs consume over 99% of resources," squared coefficient of variation > 23,000 (Tirmazi §7).
 
-**Batch fraction.** Because the environment splits the CPU-*usage* curve, each cell's `batch_fraction` is the share of **CPU-time** (cpu_request × duration, with unfinished jobs charged to trace end) that is deferrable — not a job count:
+**Batch fraction.** The environment splits the CPU-*usage* curve, so the operative `batch_fraction` is the no-SLO tiers' share of **measured usage** — extracted ground-truth from `instance_usage` split by priority tier ([extract_tier_curves.ipynb](extract_tier_curves.ipynb)):
 
 | | Cell A | Cell B | Cell C | Cell D |
 |---|---|---|---|---|
-| **batch_fraction (CPU-time, used)** | 27% | 61% | 45% | 54% |
-| by job count | 1.9% | 38.5% | 6.6% | 11.1% |
+| **measured usage share (used by the env)** | **2.1%** | **6.1%** | **8.1%** | **9.7%** |
+| by CPU-time proxy (request × duration) | 27% | 61% | 45% | 54% |
 | by CPU request | 35% | 66% | 51% | 62% |
+| by job count | 1.9% | 38.5% | 6.6% | 11.1% |
 
-These are substantial — the cells are batch/free-heavy research clusters — so the temporal-deferral lever acts on a large slice of load. Because the usage-weighted value is itself a proxy (request × duration), `batch_fraction` is also treated as a **sensitivity-sweep parameter** rather than a single point estimate. (These supersede earlier `scheduling_class ≤ 1 AND priority < 200` figures, which conflated production with batch.)
+**The request-based proxies overestimate the deferrable *usage* share by ~5–13×.** This is exactly the over-allocation Tirmazi documents: the best-effort tiers request far more than Borg actually runs them at — *"cell c has allocated ~140% of the cell's memory capacity just to the best-effort batch tier"* (§5 of that paper) while tier *usage* is a small fraction of that. Requests measure intent; usage measures the schedulable reality. The deferrable lever in these four cells is therefore **real but small (2–10% of load)** — which makes `batch_fraction` a natural **sensitivity-sweep parameter** (the synthetic generator, §3.8, can instantiate counterfactually batch-heavier mixes up to the ~20%-of-capacity trace-wide beb average Tirmazi reports). (All figures supersede earlier `scheduling_class ≤ 1 AND priority < 200` numbers, which conflated production with batch.)
 
 ### 2.3 Grid Net Demand & Solar Forecast Features
 
@@ -181,6 +182,17 @@ The power model converts CPU utilization to electrical power consumption using a
 | `R²` | 0.4328 | CPU alone explains ~43% of measured power variance |
 
 The R² of ~0.43 reflects that CPU is one of several drivers of cell power — memory, I/O, network, and (Sakalkar et al. note) priority-aware capping decisions all contribute to the residual. The 48% idle / 92% peak shape is consistent with the canonical Fan et al. (2007) range for hyperscale servers (~50–100% of rated).
+
+**Where the missing variance actually lives — per-cell heterogeneity.** Extended diagnostics (per-cell fits, CPU+memory regression, binned means; all stored in `power_model_params.json`) decompose the low pooled R²:
+
+| Model | R² | Note |
+|---|---|---|
+| Pooled CPU-only (above) | 0.433 | fleet-wide reference / fallback |
+| Pooled CPU + memory | 0.460 | memory adds little (coef 0.08) |
+| Binned means (20 CPU bins) | 0.950 | the mean CPU→power relationship is cleanly linear |
+| **Per-cell CPU-only (used by the env)** | **0.75–0.80** | a: idle 0.53/slope 0.34 · b: 0.55/0.38 · c: 0.44/0.53 · d: 0.38/0.57 |
+
+Most of the pooled residual is **between-cell heterogeneity**, not noise: each cell's machine mix has its own idle/slope (cell d is markedly more energy-proportional than cell a), and pooling four different lines into one scatters the fit. Memory as a second regressor is *not* the fix (+0.03). **The environment therefore uses the per-cell models** (`per_cell_power: true` in the scenario YAMLs; each site matched to its cell's calibration) — which both lifts the fit to R² 0.75–0.80 and makes the §1.2 CICS alignment literal: *"power models trained separately for each cluster"* (Radovanović et al. 2023). Per-DC power heterogeneity is also a real routing signal: the agent can prefer the more energy-proportional fleet (cell d) at high load.
 
 **Magnitude scaling (the `rated_power_mw` assumption)**. The model output `P(u)` is dimensionless [0, 1]. To get MW:
 
@@ -730,13 +742,13 @@ The generator sampled each job's `cpu × tasks` and injected **all of it into th
 
 **The fix — adopt CICS's data organization.** Rather than repairing the generator, we switched the batch-demand input to **real per-tier demand curves**, exactly the organization of Radovanović et al. (2023), *"Carbon-Aware Computing for Datacenters"* (real aggregate flexible vs inflexible demand per cluster, no synthetic generation in the loop):
 
-- `data/cells/cell_{x}_tiers.csv`: per-timestep `service_demand_norm` (SLO tiers) and `batch_demand_norm` (no-SLO tiers), with **`service + batch = measured aggregate`** at every timestep.
-- Derived locally from the full job extracts ([scripts/derive_tier_curves.py](scripts/derive_tier_curves.py)): each job's requested CPU is spread over its real submit→end window, the per-bucket deferrable *share* is computed from those request windows, and the share is applied to the *measured* aggregate — magnitude real, split request-derived. Resulting batch curves have peak/mean **1.5–1.7**. Effective batch fractions: a=0.55, b=0.68, c=0.44, d=0.58.
-- Ground-truth version (splitting `instance_usage` itself by tier) is a single standalone notebook, [extract_tier_curves.ipynb](extract_tier_curves.ipynb), for the next Colab session. The known approximation in the local derivation: submit→end windows include queueing delay, and requests ≠ usage.
+- `data/cells/cell_{x}_tiers.csv`: per-timestep `service_demand_norm` (SLO tiers) and `batch_demand_norm` (no-SLO tiers), with **`service + batch = measured aggregate`** at every timestep (verified to machine precision, and the aggregate matches `cell_X.csv` exactly).
+- **Ground truth** ([extract_tier_curves.ipynb](extract_tier_curves.ipynb)): `instance_usage` split by priority tier in BigQuery — measured usage, no reconstruction. Batch usage shares: **a=2.1%, b=6.1%, c=8.1%, d=9.7%** (§2.2). The batch curves are legitimately burstier than the total (peak/mean 3.5–21 vs 1.24) because the deferrable slice is small; that burstiness is now *real*, not manufactured.
+- An interim local approximation ([scripts/derive_tier_curves.py](scripts/derive_tier_curves.py)) reconstructed the split from job *request* windows and **overestimated the deferrable share ~5–13×** (a=0.55, b=0.68, c=0.44, d=0.58) — a second instance of the requests-vs-usage gap (§2.2). It remains useful only when BigQuery is unavailable.
 
-**Validation:** with the real curves (and the §7.9 queueing fix), a serve-everything-now policy in batch mode reproduces the legacy demand exactly — Status Quo: load factor 0.954, peak 302.3 MW, **zero** expiry, total cost within $2 of its legacy run. The batch machinery is now demand-neutral by construction; any cost difference between policies is *scheduling*, not artifacts.
+**Validation:** with the real curves (and the §7.9 queueing fix), a serve-everything-now policy in batch mode reproduces the legacy demand exactly — Status Quo: load factor 0.954, peak 302.3 MW, **zero** expiry, total cost equal to its legacy run to the dollar. The batch machinery is now demand-neutral by construction; any cost difference between policies is *scheduling*, not artifacts.
 
-**The general lesson:** a synthetic workload generator must conserve not just total volume but the **demand-presentation process** — jobs present their rate *over their duration*. Validating the generated curve's shape statistics against the source trace (peak/mean here) is a one-line check that would have caught this immediately. The generator is retained for controlled load-intensity sensitivity experiments (its original purpose in Grange et al.), no longer as the primary input.
+**Two general lessons:** (i) a synthetic workload generator must conserve not just total volume but the **demand-presentation process** — jobs present their rate *over their duration*; validating the generated curve's shape statistics against the source trace (peak/mean here) is a one-line check that would have caught this immediately. (ii) **Resource *requests* are not resource *usage*** — any quantity weighted by requests (batch fractions, tier shares) can be off by an order of magnitude in an over-allocated system; only measured usage settles it. The generator is retained for controlled load-intensity sensitivity experiments (its original purpose in Grange et al.), no longer as the primary input.
 
 ---
 

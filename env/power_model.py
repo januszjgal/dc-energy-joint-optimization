@@ -28,7 +28,7 @@ class PowerModel:
 
     @classmethod
     def from_json(cls, path: Path) -> PowerModel:
-        """Load from power_model_params.json."""
+        """Load the pooled (fleet-wide) model from power_model_params.json."""
         with open(path, "r", encoding="utf-8") as f:
             params = json.load(f)
         return cls(
@@ -36,6 +36,23 @@ class PowerModel:
             slope=params["slope"],
             peak_power=params["peak_power"],
         )
+
+    @classmethod
+    def per_cell_from_json(cls, path: Path) -> dict[str, PowerModel]:
+        """Load per-cell calibrated models (R² 0.75–0.80 vs pooled 0.43; each cell's
+        machine mix has its own idle/slope). Mirrors CICS practice: "power models
+        trained separately for each cluster" (Radovanović et al. 2023). Returns {}
+        if the JSON predates the per-cell diagnostics."""
+        with open(path, "r", encoding="utf-8") as f:
+            params = json.load(f)
+        return {
+            cell: cls(
+                idle_power=m["idle_power"],
+                slope=m["slope"],
+                peak_power=m["peak_power"],
+            )
+            for cell, m in params.get("per_cell_cpu_model", {}).items()
+        }
 
     @classmethod
     def default(cls) -> PowerModel:

@@ -1,7 +1,49 @@
 {
   "idle_power": 0.4788075667889108,
-  "peak_power": 0.9226554171804561,
-  "slope": 0.4438478503915453,
+  "peak_power": 0.9226554171804562,
+  "slope": 0.44384785039154534,
   "r_squared": 0.4328205683679991,
-  "description": "Linear power model: P = idle_power + slope * cpu_utilization"
+  "description": "Linear power model: P = idle_power + slope * cpu_utilization",
+  "cpu_util_range": [
+    0.08431266129756233,
+    0.6811512428804478
+  ],
+  "binned_r_squared": 0.9500426782800528,
+  "cpu_mem_model": {
+    "idle_power": 0.4408047266598488,
+    "cpu_coef": 0.41532107265333007,
+    "mem_coef": 0.0813335129363853,
+    "r_squared": 0.4599882043147926,
+    "description": "P = idle_power + cpu_coef*cpu_util + mem_coef*mem_util"
+  },
+  "per_cell_cpu_model": {
+    "a": {
+      "idle_power": 0.5280156091206172,
+      "slope": 0.3397277846039694,
+      "peak_power": 0.8677433937245866,
+      "r_squared": 0.7885010565892737,
+      "n": 745
+    },
+    "b": {
+      "idle_power": 0.5481899557638172,
+      "slope": 0.3757613138380374,
+      "peak_power": 0.9239512696018546,
+      "r_squared": 0.7478556087006227,
+      "n": 745
+    },
+    "c": {
+      "idle_power": 0.4396038457059293,
+      "slope": 0.5257398388801392,
+      "peak_power": 0.9653436845860686,
+      "r_squared": 0.7642127153399898,
+      "n": 745
+    },
+    "d": {
+      "idle_power": 0.3820385383043128,
+      "slope": 0.5703704468908332,
+      "peak_power": 0.9524089851951459,
+      "r_squared": 0.8005326068723064,
+      "n": 745
+    }
+  }
 }
