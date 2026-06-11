@@ -60,13 +60,13 @@ We pull **6 derived datasets** from the trace via [`extract_clusterdata2019_full
 | 5 | **Batch job distribution fits** | Per-cell MLE fits (Weibull / log-normal / gamma) for inter-arrival, duration, CPU/memory request, tasks/job | Drives the synthetic batch arrival generator |
 | 6 | **Workload generator params** | Aggregated cross-cell summary of #5 + deadline-flexibility methodology from Grange | One-file handoff to the env's `BatchArrivalGenerator` |
 
-**Classification rule for batch vs service** (Borg priority tiers; Tirmazi et al. 2020, "Borg: the Next Generation", §2):
-- `priority ≤ 99` (free) **OR** `priority ∈ [110, 115]` (beb) → **batch** — the two **SLO-free** tiers, genuinely delay-tolerant. (Strict beb alone is ~0% of these cells' CPU, so the deferrable class is the union of both no-SLO tiers; the **free tier holds the mass**.)
+**Classification rule for batch vs service** (Borg priority tiers; Wilkes, "Google cluster-usage traces v3" — which corrects the beb range "mistakenly reported as 110–115" in Tirmazi et al. 2020 §2):
+- **`priority ≤ 115`** → **batch** — the two **SLO-free** tiers: free (≤ 99) + best-effort batch (**100–115**), genuinely delay-tolerant.
 - otherwise → **service** (must-serve-now). In particular the **production tier** (priority 120–359) "require[s] high availability" and Borg evicts lower-tier jobs to protect it — so it is *not* deferrable.
 
 Classification is by **priority**, not `scheduling_class`: the latter is latency-sensitivity (0–3), orthogonal to tier — `scheduling_class ≤ 1` is dominated by latency-insensitive *production* (priority 200) jobs.
 
-The batch class is the **deferrable** subset — what the agent's drain decisions act on in batch mode. Per-cell deferrable share, by CPU-time: **A 27%, B 61%, C 45%, D 54%**.
+The batch class is the **deferrable** subset — what the agent's drain decisions act on in batch mode. Per-cell deferrable share: *pending re-extraction under the corrected ≤ 115 band* (measured 2.1–9.7% under the inherited 110–115 erratum; the 100–109 band adds a to-be-measured amount).
 
 ---
 

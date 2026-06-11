@@ -31,7 +31,7 @@ class DataCenterSite:
         memory_capacity: Normalized memory capacity (from fleet data or 1.0)
         memory_cpu_ratio: Ratio of memory demand to CPU demand for workloads
         batch_fraction: Fraction of workload that is deferrable batch [0, 1]
-            (Borg no-SLO tiers: free <=99 or beb 110-115; Tirmazi et al. 2020 §2)
+            (Borg no-SLO tiers: priority <= 115 = free + beb; trace docs v3)
         batch_mean_duration_sec: Mean batch job duration (for deadline computation)
 
     Mutable state (reset each episode):
@@ -112,8 +112,9 @@ class DataCenterSite:
         return float(self.workload[t])
 
     # Service vs batch split. Deferrable "batch" = the Borg NO-SLO tiers: free
-    # (priority <= 99) and best-effort batch / beb (110-115) — both run without
-    # SLOs (Tirmazi et al. 2020, "Borg: the Next Generation", EuroSys '20, §2).
+    # (priority <= 99) and best-effort batch / beb (100-115), i.e. priority <= 115
+    # per the trace documentation v3 (which corrects the 110-115 erratum in
+    # Tirmazi et al. 2020, "Borg: the Next Generation", EuroSys '20, §2).
     # Service is the SLO-bearing remainder (mid 116-119, production 120-359,
     # monitoring >= 360); production in particular requires high availability —
     # Borg evicts lower tiers to protect it — so service must be served
