@@ -201,10 +201,11 @@ H2("A. The trace and its semantics")
 P("ClusterData 2019, documented by Tirmazi et al. [1], covers eight Borg cells "
   "for May 2019 (~96k machines). We adopt three of its definitions wholesale: "
   "the cell as the natural management unit (§2 of [1]); priority tiers, from "
-  "which we define deferrable work as the union of the two no-SLO tiers (free, "
-  "priority ≤ 99; best-effort batch, 110–115) — production work "
-  "(120–359) is explicitly protected by eviction of lower tiers and is never "
-  "deferred; and Normalized Compute Units. The companion PowerData2019 [2] "
+  "which we define deferrable work as the union of the two no-SLO tiers — "
+  "free (priority ≤ 99) and best-effort batch (100–115, per the trace "
+  "documentation [22], which corrects the 110–115 range mistakenly reported "
+  "in [1]) — production work (120–359) is explicitly protected by eviction "
+  "of lower tiers and is never deferred; and Normalized Compute Units. The companion PowerData2019 [2] "
   "provides measured per-PDU power utilization, used here for calibration. "
   "Tirmazi's heavy-tail observation (top 1% of jobs consume >99% of resources) "
   "informs our distribution fits; notably we find the tail does not survive "
@@ -523,7 +524,7 @@ refs = [
  "A. Radovanović, R. Koningstein, I. Schneider, B. Chen, A. Duarte, B. Roy, D. Xiao, M. Haridasan, P. Hung, N. Care, S. Talukdar, E. Mullen, K. Smith, M. Cottman, and W. Cirne, “Carbon-Aware Computing for Datacenters,” IEEE Trans. Power Systems, vol. 38, no. 2, 2023 (arXiv:2106.11750, 2021).",
  "L. Grange, G. Da Costa, and P. Stolf, “Green IT scheduling for data center powered with renewable energy,” Future Generation Computer Systems, vol. 86, pp. 99–120, 2018.",
  "G. Da Costa, L. Grange, and I. De Courchelle, “Modeling and generating large-scale Google-like workload,” in Proc. Int. Green and Sustainable Computing Conf. (IGSC), 2016.",
- "K. Zhao, P. Zhou, and K. Li, “CFWS: DRL-based framework for energy cost and carbon footprint reduction of workload scheduling in geo-distributed data centers,” IEEE Trans. Sustainable Computing, vol. 10, no. 1, 2025.",
+ "D. Zhao, J.-t. Zhou, and K. Li, “CFWS: DRL-Based Framework for Energy Cost and Carbon Footprint Optimization in Cloud Data Centers,” IEEE Trans. Sustainable Computing, vol. 10, no. 1, pp. 95–107, Jan./Feb. 2025.",
  "M. Xu, A. N. Toosi, and R. Buyya, “A Self-Adaptive Approach for Managing Applications and Harnessing Renewable Energy for Sustainable Cloud Computing,” IEEE Trans. Sustainable Computing, 2020.",
  "K. Haghshenas, A. Taheri, M. Goudarzi, and S. Mohammadi, “Infrastructure-Aware Heterogeneous-Workloads Scheduling for Data Center Energy Cost Minimization,” IEEE Trans. Cloud Computing, 2022.",
  "Z. Liu, Y. Chen, C. Bash, A. Wierman, D. Gmach, Z. Wang, M. Marwah, and C. Hyser, “Renewable and Cooling Aware Workload Management for Sustainable Data Centers,” in Proc. ACM SIGMETRICS, 2012.",
@@ -539,6 +540,7 @@ refs = [
  "V. Mnih et al., “Human-level control through deep reinforcement learning,” Nature, vol. 518, 2015.",
  "A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and N. Dormann, “Stable-Baselines3: Reliable Reinforcement Learning Implementations,” JMLR, vol. 22, 2021.",
  "D. G. Feitelson, Workload Modeling for Computer Systems Performance Evaluation. Cambridge University Press, 2015.",
+ "J. Wilkes, “Google cluster-usage traces v3,” Google Inc., technical documentation distributed with ClusterData2019, rev. 2020-08.",
 ]
 for i, r in enumerate(refs, 1):
     p = doc.add_paragraph()

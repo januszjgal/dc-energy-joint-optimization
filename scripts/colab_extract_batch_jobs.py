@@ -56,7 +56,7 @@ def build_query(cell: str) -> str:
         ANY_VALUE(scheduling_class) AS scheduling_class,
         ANY_VALUE(priority) AS priority
       FROM {dataset}.collection_events
-      WHERE (priority <= 99 OR priority BETWEEN 110 AND 115)  -- no-SLO tiers: free + beb; Tirmazi 2020 §2
+      WHERE priority <= 115   -- no-SLO tiers: free (<=99) + beb (100-115); trace docs v3 (corrects Tirmazi's 110-115)
         AND collection_type = 0            -- jobs (not alloc sets)
       GROUP BY collection_id
       HAVING submit_time_us IS NOT NULL

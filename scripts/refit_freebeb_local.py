@@ -1,11 +1,13 @@
 """Recompute batch_fraction and refit batch-job distributions LOCALLY from the
 full jobs_*.csv extracts, under the 'no-SLO tiers' deferrable definition.
 
-Deferrable ("batch") = Borg free tier OR best-effort batch tier, i.e.
-priority <= 99 OR priority in [110, 115] (Tirmazi et al. 2020,
-"Borg: the Next Generation", EuroSys '20, §2 -- both tiers explicitly have
-NO SLOs). Everything else (mid 116-119, production 120-359, monitoring >=360)
-is non-deferrable service.
+Deferrable ("batch") = Borg free tier (priority <= 99) OR best-effort batch
+tier (priority 100-115), i.e. simply priority <= 115 -- both tiers explicitly
+have NO SLOs. Tier bounds per the authoritative trace documentation (Wilkes,
+"Google cluster-usage traces v3", 2020-08 revision), which explicitly corrects
+the beb range "mistakenly reported as 110-115" in Tirmazi et al. (2020),
+"Borg: the Next Generation" (EuroSys '20) §2. Everything else (mid 116-119,
+production 120-359, monitoring >=360) is non-deferrable service.
 
 No BigQuery needed: reads data/jobs/jobs_{a..d}.csv directly. Mirrors the
 fitting logic in extract_clusterdata2019_full.ipynb (continuous fits selected
@@ -131,7 +133,7 @@ def process_cell(cell):
         ],
     )
     pr = df["priority"]
-    deferrable = (pr <= 99) | ((pr >= 110) & (pr <= 115))
+    deferrable = pr <= 115  # free (<=99) + beb (100-115); trace docs v3
 
     # --- batch_fraction proxies ---
     job_frac = float(deferrable.mean())
@@ -162,7 +164,7 @@ def process_cell(cell):
     profiles["tasks_per_job"] = fit_best_discrete_distribution(d["num_tasks"].dropna().values, "tasks_per_job")
 
     profiles["workload_mix"] = {
-        "definition": "no-SLO tiers: priority <= 99 OR 110-115 (Tirmazi 2020 §2)",
+        "definition": "no-SLO tiers: priority <= 115 (free <=99 + beb 100-115; trace docs v3, correcting Tirmazi 2020's 110-115 erratum)",
         "total_jobs": int(len(df)),
         "batch_count": int(deferrable.sum()),
         "completed_batch": int(len(completed)),

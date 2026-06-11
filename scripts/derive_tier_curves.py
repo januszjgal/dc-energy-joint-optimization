@@ -8,7 +8,8 @@ inflexible demand curves per cluster rather than stylized job-level models.
 Method (no BigQuery needed — uses the local full jobs_{cell}.csv extracts):
   1. For every job, spread its total_cpu_request (a rate, NCUs) uniformly over its
      [submit, end) window (unfinished jobs charged to trace end). Do this separately
-     for the deferrable no-SLO tiers (priority <= 99 or 110-115; Tirmazi et al. 2020
+     for the deferrable no-SLO tiers (priority <= 115: free + beb per trace docs v3,
+     which corrects Tirmazi et al. 2020
      §2) and for ALL jobs. Interval sums are computed with a diff-array + cumsum.
   2. Align the job-derived total curve to the measured cell curve (cells/cell_X.csv)
      by Pearson cross-correlation over candidate bucket offsets.
@@ -83,7 +84,7 @@ def process_cell(cell: str) -> None:
     pr = df["priority"].values
 
     n_buckets = int(np.ceil(trace_end / BUCKET_US)) + 2
-    deferrable = (pr <= 99) | ((pr >= 110) & (pr <= 115))
+    deferrable = pr <= 115  # free (<=99) + beb (100-115); trace docs v3
 
     all_spread = spread_jobs(sub, end, rate, n_buckets)
     bat_spread = spread_jobs(sub[deferrable], end[deferrable], rate[deferrable], n_buckets)
