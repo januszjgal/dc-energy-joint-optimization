@@ -32,6 +32,7 @@ def make_env(
     peak_penalty_weight: float = 0.0,
     burst_aware: bool = False,
     batch_spatial_routing: bool = True,
+    domain_randomization: bool = False,
 ) -> MultiDCEnv:
     """Create a MultiDCEnv from a scenario config."""
     sites, power_model, batch_config = load_scenario(
@@ -62,6 +63,7 @@ def make_env(
         peak_penalty_weight=peak_penalty_weight,
         burst_aware=burst_aware,
         batch_spatial_routing=batch_spatial_routing,
+        domain_randomization=domain_randomization,
     )
 
 
@@ -170,6 +172,13 @@ def main(argv: list[str] | None = None) -> None:
              "rolling_24h_mean_arrival (batch mode only). Adds 1 dim per DC.",
     )
     parser.add_argument(
+        "--domain-rand",
+        action="store_true",
+        help="TRAIN-time domain randomization: permute compute bundles across "
+             "market slots + resample power params per episode (peer-review M2; "
+             "forces the policy onto the observed site context).",
+    )
+    parser.add_argument(
         "--no-batch-spatial-routing",
         dest="batch_spatial_routing",
         action="store_false",
@@ -198,6 +207,7 @@ def main(argv: list[str] | None = None) -> None:
         peak_penalty_weight=args.peak_penalty_weight,
         burst_aware=args.burst_aware,
         batch_spatial_routing=args.batch_spatial_routing,
+        domain_randomization=args.domain_rand,
     )
     print(f"Observation space: {env.observation_space}")
     print(f"Action space: {env.action_space}")
