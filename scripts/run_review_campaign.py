@@ -16,6 +16,7 @@ re-runs cheaply. Outputs:
 
 from __future__ import annotations
 
+import argparse
 import itertools
 import json
 import subprocess
@@ -42,8 +43,13 @@ CONFIGS = [
 ]
 ALGOS = ["ppo", "dqn", "flatidx"]
 
-MODEL_DIR = ROOT / "models" / "review"
-OUT_DIR = ROOT / "output" / "review_campaign"
+_ap = argparse.ArgumentParser()
+_ap.add_argument("--tag", default="",
+                 help="suffix for model/output dirs (e.g. 'ctx' -> models/review_ctx)")
+_ARGS = _ap.parse_args()
+_SUF = f"_{_ARGS.tag}" if _ARGS.tag else ""
+MODEL_DIR = ROOT / "models" / f"review{_SUF}"
+OUT_DIR = ROOT / "output" / f"review_campaign{_SUF}"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -80,6 +80,15 @@ class MultiDCEnv(gym.Env):
         # Motivated by the burst-window analysis showing the optimization
         # signal concentrates in high-arrival periods (§7-burst).
         burst_aware: bool = False,
+        # Static site context in the observation: per-DC (idle_power, slope,
+        # capacity, batch_fraction). Without these, a policy can only exploit
+        # per-site power/capacity heterogeneity by MEMORIZING which site slot
+        # has which hidden constants — which is exactly what the held-out
+        # cells e-h evaluation exposed (frozen a-d policies inverted their
+        # slope-arbitrage routing on unseen cells, -15% to -33% vs status
+        # quo). With the context observed, the same strategy is learnable as
+        # a transferable *function* of site parameters. (Peer-review M2.)
+        site_context: bool = True,
     ):
         super().__init__()
 
@@ -104,6 +113,7 @@ class MultiDCEnv(gym.Env):
 
         self.memory_enabled = memory_enabled
         self.burst_aware = burst_aware and batch_enabled  # only meaningful in batch mode
+        self.site_context = site_context
 
         # Per-site deadline offsets (timesteps)
         self._deadline_offsets: list[int] = []
@@ -120,15 +130,16 @@ class MultiDCEnv(gym.Env):
                 self._deadline_offsets.append(offset)
 
         # Observation & action spaces
+        ctx_dims = 4 if self.site_context else 0  # idle, slope, capacity, batch_fraction
         if self.batch_enabled:
             mem_dims = 2 if memory_enabled else 0
             burst_dims = 1 if self.burst_aware else 0
-            obs_dim = (8 + mem_dims + burst_dims) * self.n_dc + 3
+            obs_dim = (8 + mem_dims + burst_dims + ctx_dims) * self.n_dc + 3
             # service routing (N) + drain (N) [+ batch routing (N) if enabled]
             action_dim = (3 if self.batch_spatial_routing else 2) * self.n_dc
         else:
             mem_dims = 1 if memory_enabled else 0
-            obs_dim = (6 + mem_dims) * self.n_dc + 2
+            obs_dim = (6 + mem_dims + ctx_dims) * self.n_dc + 2
             action_dim = self.n_dc
 
         self.observation_space = spaces.Box(
@@ -477,6 +488,17 @@ class MultiDCEnv(gym.Env):
     # Observation
     # ------------------------------------------------------------------
 
+    def _site_ctx(self, site: DataCenterSite) -> list[float]:
+        """Static per-site context (constant within an episode, varies across
+        scenarios/cells): power idle & slope, capacity, deferrable fraction."""
+        pm = site.power_model if site.power_model is not None else self.power_model
+        return [
+            float(pm.idle_power),
+            float(pm.slope),
+            float(site.capacity),
+            float(site.batch_fraction),
+        ]
+
     def _get_obs(self) -> np.ndarray:
         t = self.step_index
         obs_parts: list[float] = []
@@ -505,6 +527,8 @@ class MultiDCEnv(gym.Env):
                     per_dc.append(site.memory_backlog)
                 if self.burst_aware:
                     per_dc.append(site.get_burst_severity(t))
+                if self.site_context:
+                    per_dc.extend(self._site_ctx(site))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_service, total_batch_pool, hour_of_day])
@@ -523,6 +547,8 @@ class MultiDCEnv(gym.Env):
                 ]
                 if self.memory_enabled:
                     per_dc.append(site.current_memory_load)
+                if self.site_context:
+                    per_dc.extend(self._site_ctx(site))
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_demand, hour_of_day])
