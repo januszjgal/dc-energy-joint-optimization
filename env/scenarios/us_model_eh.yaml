@@ -1,0 +1,57 @@
+# HELD-OUT GENERALIZATION variant (peer-review M2): cells e-h replace a-d.
+# Market series (prices/net demand/solar) and rated power are unchanged;
+# frozen policies trained on a-d are evaluated here without retraining.
+# US Model: 4 data centers within the United States.
+# Tests optimization under data sovereignty constraints (~3-hour timezone spread).
+# DCs are pure grid-connected loads — no on-site solar. Reward combines
+# operator cost (price × grid_mw) with a peak-contribution penalty
+# (α × grid_mw² × net_demand_normalized) to encourage grid demand smoothing.
+
+power_model: data/power_model_params.json
+per_cell_power: true   # per-cell calibrated idle/slope (R2 0.75-0.80); see thesis_overview §3.2
+
+batch:
+  flexibility_factor: 1.0
+  deadline_penalty_weight: 250.0   # calibrated to ~energy cost of serving a unit; see thesis_overview §7.8
+  urgency_horizon_steps: 12
+
+sites:
+  - name: US-West
+    cell: data/cells/cell_e.csv
+    tier_curves: data/cells/cell_e_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
+    solar: data/solar/the_dalles_or.csv         # forecast feature only
+    price: data/prices/caiso.csv
+    net_demand: data/net_demand/caiso.csv
+    machines: data/machines/machines_e.csv
+    rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_e.json
+
+  - name: US-Central
+    cell: data/cells/cell_f.csv
+    tier_curves: data/cells/cell_f_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
+    solar: data/solar/council_bluffs_ia.csv
+    price: data/prices/miso.csv
+    net_demand: data/net_demand/miso.csv
+    machines: data/machines/machines_f.csv
+    rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_f.json
+
+  - name: US-Southeast-1
+    cell: data/cells/cell_g.csv
+    tier_curves: data/cells/cell_g_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
+    solar: data/solar/douglas_county_ga.csv
+    price: data/prices/southern_co.csv
+    net_demand: data/net_demand/southern_co.csv
+    machines: data/machines/machines_g.csv
+    rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_g.json
+
+  - name: US-Southeast-2
+    cell: data/cells/cell_h.csv
+    tier_curves: data/cells/cell_h_tiers.csv   # real service/batch split (scripts/derive_tier_curves.py)
+    solar: data/solar/berkeley_county_sc.csv
+    price: data/prices/duke_carolinas.csv
+    net_demand: data/net_demand/duke_carolinas.csv
+    machines: data/machines/machines_h.csv
+    rated_power_mw: 100.0
+    batch_distributions: data/jobs/batch_distributions_h.json
