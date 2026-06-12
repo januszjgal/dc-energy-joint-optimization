@@ -1,0 +1,42 @@
+{
+  "us_spatial": {
+    "status": "Solved",
+    "optimum_total": 9461871.991667543,
+    "objective_constant_idle_and_phi": 6108986.48702932,
+    "n_vars": 107004,
+    "n_constraints": 187257,
+    "solve_seconds": 0.9,
+    "ppo_mean": 9613950.753669292,
+    "ppo_optimality_gap_pct": 1.6072798504954944
+  },
+  "us_batch": {
+    "status": "Solved",
+    "optimum_total": 9443367.080889873,
+    "objective_constant_idle_and_phi": 6108986.48702932,
+    "n_vars": 214008,
+    "n_constraints": 410116,
+    "solve_seconds": 6.3,
+    "ppo_mean": 9566751.377384555,
+    "ppo_optimality_gap_pct": 1.306571008389251
+  },
+  "global_spatial": {
+    "status": "Solved",
+    "optimum_total": 11947301.34890167,
+    "objective_constant_idle_and_phi": 8449258.67718127,
+    "n_vars": 107004,
+    "n_constraints": 187257,
+    "solve_seconds": 1.1,
+    "ppo_mean": 12628682.954931706,
+    "ppo_optimality_gap_pct": 5.7032260770142535
+  },
+  "global_batch": {
+    "status": "Solved",
+    "optimum_total": 11921269.259247653,
+    "objective_constant_idle_and_phi": 8449258.67718127,
+    "n_vars": 214008,
+    "n_constraints": 410116,
+    "solve_seconds": 3.4,
+    "ppo_mean": 12251396.893185265,
+    "ppo_optimality_gap_pct": 2.7692322583983513
+  }
+}
