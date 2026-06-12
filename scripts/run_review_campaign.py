@@ -41,11 +41,15 @@ CONFIGS = [
     ("global_spatial", "env/scenarios/global_model.yaml", False),
     ("global_batch", "env/scenarios/global_model.yaml", True),
 ]
-ALGOS = ["ppo", "dqn", "flatidx"]
+ALGOS = _ARGS.algos if _ARGS.algos else ["ppo", "dqn", "flatidx"]
 
 _ap = argparse.ArgumentParser()
 _ap.add_argument("--tag", default="",
                  help="suffix for model/output dirs (e.g. 'ctx' -> models/review_ctx)")
+_ap.add_argument("--algos", nargs="*", default=None,
+                 help="subset of {ppo,dqn,flatidx} (default: all)")
+_ap.add_argument("--domain-rand", action="store_true",
+                 help="pass --domain-rand to PPO trainings (train.py only)")
 _ARGS = _ap.parse_args()
 _SUF = f"_{_ARGS.tag}" if _ARGS.tag else ""
 MODEL_DIR = ROOT / "models" / f"review{_SUF}"
@@ -77,6 +81,8 @@ def train_one(algo: str, cfg_key: str, scenario: str, batch: bool, seed: int) ->
         cmd.append("--batch-mode")
     if algo == "flatidx":
         cmd += ["--action-scheme", "cfws-style"]
+    if _ARGS.domain_rand and algo == "ppo":
+        cmd.append("--domain-rand")
     t0 = time.time()
     print(f"[train] {algo} {cfg_key} seed={seed} ...", flush=True)
     proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)

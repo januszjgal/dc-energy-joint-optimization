@@ -89,6 +89,18 @@ class MultiDCEnv(gym.Env):
         # quo). With the context observed, the same strategy is learnable as
         # a transferable *function* of site parameters. (Peer-review M2.)
         site_context: bool = True,
+        # Domain randomization (TRAIN-time only; leave False for evaluation).
+        # Observability alone proved insufficient for transfer: the context is
+        # constant within every episode trained on fixed cells a-d, so the
+        # network receives it as a bias term with no gradient signal to learn
+        # dependence on it (ctx-only policies still failed on e-h). At each
+        # reset this (i) permutes the compute bundles (workload/tier curves/
+        # capacity/power/deadlines) across the market slots, destroying slot
+        # identity so the policy must read the context features, and (ii)
+        # resamples each site's power parameters uniformly within the range
+        # spanned by all eight PowerData2019-fitted cells (idle 0.35-0.60,
+        # slope 0.30-0.65), so held-out cells lie inside the training support.
+        domain_randomization: bool = False,
     ):
         super().__init__()
 
@@ -114,20 +126,20 @@ class MultiDCEnv(gym.Env):
         self.memory_enabled = memory_enabled
         self.burst_aware = burst_aware and batch_enabled  # only meaningful in batch mode
         self.site_context = site_context
+        self.domain_randomization = domain_randomization
+        # Original compute bundles for permutation (captured once at init)
+        self._bundle_attrs = [
+            "workload", "service_curve", "batch_curve", "capacity",
+            "memory_capacity", "memory_cpu_ratio", "batch_fraction",
+            "batch_mean_duration_sec", "power_model",
+            "fleet_cpu_total", "fleet_memory_total", "fleet_machine_count",
+        ]
+        self._bundles = [
+            {a: getattr(s, a) for a in self._bundle_attrs} for s in sites
+        ]
 
         # Per-site deadline offsets (timesteps)
-        self._deadline_offsets: list[int] = []
-        if self.batch_enabled:
-            for site in self.sites:
-                offset = max(
-                    1,
-                    math.ceil(
-                        site.batch_mean_duration_sec
-                        * (1.0 + self.flexibility_factor)
-                        / self.interval_seconds
-                    ),
-                )
-                self._deadline_offsets.append(offset)
+        self._deadline_offsets = self._compute_deadline_offsets()
 
         # Observation & action spaces
         ctx_dims = 4 if self.site_context else 0  # idle, slope, capacity, batch_fraction
@@ -165,11 +177,36 @@ class MultiDCEnv(gym.Env):
     # Reset
     # ------------------------------------------------------------------
 
+    def _compute_deadline_offsets(self) -> list[int]:
+        if not self.batch_enabled:
+            return []
+        return [
+            max(1, math.ceil(site.batch_mean_duration_sec
+                             * (1.0 + self.flexibility_factor)
+                             / self.interval_seconds))
+            for site in self.sites
+        ]
+
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         self.step_index = 0
+        if self.domain_randomization:
+            # (i) permute compute bundles across market slots — slot identity
+            # carries no information, forcing the policy onto the context
+            # features; (ii) resample power params within the measured range
+            # of all eight PowerData2019-fitted cells.
+            perm = self.np_random.permutation(self.n_dc)
+            for i, site in enumerate(self.sites):
+                for a in self._bundle_attrs:
+                    setattr(site, a, self._bundles[int(perm[i])][a])
+                idle = float(self.np_random.uniform(0.35, 0.60))
+                slope = float(self.np_random.uniform(0.30, 0.65))
+                site.power_model = PowerModel(
+                    idle_power=idle, slope=slope, peak_power=idle + slope
+                )
+            self._deadline_offsets = self._compute_deadline_offsets()
         for i, site in enumerate(self.sites):
             site_seed = seed + i if seed is not None else None
             site.reset(seed=site_seed)

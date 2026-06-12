@@ -1,0 +1,1068 @@
+{
+  "baselines": {
+    "Status Quo (local, no deferral)": {
+      "total_cost": 14061553.495361215,
+      "peak_grid_mw": 302.82104031747355,
+      "mean_grid_mw": 288.26174704121456,
+      "load_factor": 0.9519211305099698,
+      "total_energy_cost": 12056445.997911314,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0035888662911912894,
+      "max_backlog": 0.0,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 2005107.4974499,
+      "total_grid_mw_steps": 2570429.998366511,
+      "nd_weighted_load": 1849858.289520481,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2563207.9935176945,
+        "Global-US-Central": 1661717.142576299,
+        "Global-EU": 2500211.7507702247,
+        "Global-Asia": 5331309.111047097
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 435406.927111779,
+        "Global-US-Central": 562838.4933420084,
+        "Global-EU": 516918.37781717465,
+        "Global-Asia": 489943.6991789378
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "avg_batch_pool_size": 0.0029687487425039552,
+      "avg_drain_rates": {
+        "Global-US-West": 0.9933071490757154,
+        "Global-US-Central": 0.9933071490757154,
+        "Global-EU": 0.9933071490757154,
+        "Global-Asia": 0.9933071490757154
+      }
+    },
+    "Round Robin": {
+      "total_cost": 14094728.07146854,
+      "peak_grid_mw": 303.0837951757943,
+      "mean_grid_mw": 288.4906258239358,
+      "load_factor": 0.9518510405896355,
+      "total_energy_cost": 12088015.410148043,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.530431571514955,
+      "max_backlog": 0.0,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 2006712.6613204968,
+      "total_grid_mw_steps": 2572470.910472036,
+      "nd_weighted_load": 1851323.1377412018,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2545087.266660973,
+        "Global-US-Central": 1667526.7276362188,
+        "Global-EU": 2498302.357391732,
+        "Global-Asia": 5377099.05845912
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 427831.3150109244,
+        "Global-US-Central": 566310.7533864765,
+        "Global-EU": 514797.5518611925,
+        "Global-Asia": 497773.0410619033
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "avg_batch_pool_size": 0.44054229650232796,
+      "avg_drain_rates": {
+        "Global-US-West": 0.5,
+        "Global-US-Central": 0.5,
+        "Global-EU": 0.5,
+        "Global-Asia": 0.5
+      }
+    },
+    "Cheapest Price First": {
+      "total_cost": 235080141.02591154,
+      "peak_grid_mw": 287.16529839644267,
+      "mean_grid_mw": 272.2741486134467,
+      "load_factor": 0.9481443270961027,
+      "total_energy_cost": 10741285.51767592,
+      "total_backlog_cost": 222468589.07094148,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 2155.2682867297385,
+      "terminal_batch_pool": 3.8744081734494245,
+      "max_backlog": 2155.2682867297385,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 13350.29094210741,
+      "total_peak_penalty": 1870266.4372941577,
+      "total_grid_mw_steps": 2427868.583186104,
+      "nd_weighted_load": 1749402.5812392745,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2265168.857556297,
+        "Global-US-Central": 2041237.4546847565,
+        "Global-EU": 2078171.1185993317,
+        "Global-Asia": 4356708.086835534
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 338381.6446787714,
+        "Global-US-Central": 849106.2188906664,
+        "Global-EU": 357302.19418341375,
+        "Global-Asia": 325476.3795413063
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 997.9526256406481,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "avg_batch_pool_size": 2.956034887037856,
+      "avg_drain_rates": {
+        "Global-US-West": 0.6167936936208583,
+        "Global-US-Central": 0.731058578630005,
+        "Global-EU": 0.6327267811010191,
+        "Global-Asia": 0.26894142136999516
+      }
+    },
+    "Avoid the Ramp": {
+      "total_cost": 17968226.516933613,
+      "peak_grid_mw": 358.49791864201507,
+      "mean_grid_mw": 278.9764826858795,
+      "load_factor": 0.7781815965421456,
+      "total_energy_cost": 11279016.802047385,
+      "total_backlog_cost": 4538049.271253267,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 37.45504679473103,
+      "terminal_batch_pool": 7.324178146378028,
+      "max_backlog": 82.36464101657141,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15468.104182042762,
+      "total_peak_penalty": 1875009.6882212455,
+      "total_grid_mw_steps": 2487633.2961099874,
+      "nd_weighted_load": 1752900.5352704234,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2729394.762946377,
+        "Global-US-Central": 1611606.8393435231,
+        "Global-EU": 2498160.607756847,
+        "Global-Asia": 4439854.592000637
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 481431.4090526761,
+        "Global-US-Central": 530514.9776791665,
+        "Global-EU": 524575.1598022353,
+        "Global-Asia": 338488.1416871676
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 15.086824329463527,
+        "Global-US-Central": 2.7819444558883593,
+        "Global-EU": 2.2060634858463053,
+        "Global-Asia": 0.2820109328088421
+      },
+      "total_batch_expired": 1104.6030216468514,
+      "total_deadline_cost": 276150.75541171286,
+      "avg_batch_pool_size": 6.03888605753991,
+      "avg_drain_rates": {
+        "Global-US-West": 0.34598499629493973,
+        "Global-US-Central": 0.20329116500407646,
+        "Global-EU": 0.22641483266392998,
+        "Global-Asia": 0.18087679221171227
+      }
+    },
+    "Local Only (No Routing)": {
+      "total_cost": 14061514.130175237,
+      "peak_grid_mw": 302.7111584587516,
+      "mean_grid_mw": 288.2606893877406,
+      "load_factor": 0.9522631767372394,
+      "total_energy_cost": 12056434.483379208,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.1955294217826796,
+      "max_backlog": 0.0,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 2005079.646796029,
+      "total_grid_mw_steps": 2570420.5672704834,
+      "nd_weighted_load": 1849849.6477633896,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2563200.112005362,
+        "Global-US-Central": 1661710.0762955612,
+        "Global-EU": 2500201.5789334937,
+        "Global-Asia": 5331322.716144791
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 435411.0043122065,
+        "Global-US-Central": 562834.1900576298,
+        "Global-EU": 516906.28262692614,
+        "Global-Asia": 489928.1697992665
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "avg_batch_pool_size": 0.16208027056107557,
+      "avg_drain_rates": {
+        "Global-US-West": 0.731058578630005,
+        "Global-US-Central": 0.731058578630005,
+        "Global-EU": 0.731058578630005,
+        "Global-Asia": 0.731058578630005
+      }
+    },
+    "Random": {
+      "total_cost": 14121523.514560776,
+      "peak_grid_mw": 320.17234324272863,
+      "mean_grid_mw": 288.4888775692555,
+      "load_factor": 0.9010424655903109,
+      "total_energy_cost": 12078819.844452564,
+      "total_backlog_cost": 2138.7026837684243,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.49203849743510486,
+      "max_backlog": 0.47905324658714066,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 2040564.967424444,
+      "total_grid_mw_steps": 2572455.3212850513,
+      "nd_weighted_load": 1851236.8256826838,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2541545.9393550754,
+        "Global-US-Central": 1669966.1549103875,
+        "Global-EU": 2501726.044591163,
+        "Global-Asia": 5365581.705595937
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 430279.0590160466,
+        "Global-US-Central": 574202.3153367499,
+        "Global-EU": 527613.4077283582,
+        "Global-Asia": 508470.18534328917
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.00281464546085945,
+        "Global-US-Central": 0.0008550900899215144,
+        "Global-EU": 0.0005558503949533522,
+        "Global-Asia": 0.005368235670362685
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "avg_batch_pool_size": 0.48306839432239906,
+      "avg_drain_rates": {
+        "Global-US-West": 0.5009354962943509,
+        "Global-US-Central": 0.5027435031292874,
+        "Global-EU": 0.5017898399854164,
+        "Global-Asia": 0.4999791232997661
+      }
+    },
+    "Drain Immediately": {
+      "total_cost": 14094783.31105721,
+      "peak_grid_mw": 302.8375398192384,
+      "mean_grid_mw": 288.49330169003537,
+      "load_factor": 0.9526338837062109,
+      "total_energy_cost": 12088005.8406603,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0035888662911910812,
+      "max_backlog": 0.0,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 2006777.4703969108,
+      "total_grid_mw_steps": 2572494.771170045,
+      "nd_weighted_load": 1851344.8552113806,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2545115.416690324,
+        "Global-US-Central": 1667549.9958320973,
+        "Global-EU": 2498323.9166012723,
+        "Global-Asia": 5377016.511536607
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 427823.02443661966,
+        "Global-US-Central": 566325.3083501909,
+        "Global-EU": 514826.5853849402,
+        "Global-Asia": 497802.5522251599
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "avg_batch_pool_size": 0.0029687487425039557,
+      "avg_drain_rates": {
+        "Global-US-West": 0.9933071490757154,
+        "Global-US-Central": 0.9933071490757154,
+        "Global-EU": 0.9933071490757154,
+        "Global-Asia": 0.9933071490757154
+      }
+    },
+    "Defer to Low Net Demand": {
+      "total_cost": 14089464.914059382,
+      "peak_grid_mw": 303.4053650943522,
+      "mean_grid_mw": 288.05813019640823,
+      "load_factor": 0.9494167319909741,
+      "total_energy_cost": 12068384.404989257,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 2.7067236542901374,
+      "max_backlog": 0.0,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 2000336.4123979409,
+      "total_grid_mw_steps": 2568614.346961372,
+      "nd_weighted_load": 1848377.6659316998,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2542005.54354421,
+        "Global-US-Central": 1665429.0836850777,
+        "Global-EU": 2494048.059133778,
+        "Global-Asia": 5366901.718626192
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 426965.06028036046,
+        "Global-US-Central": 564754.8675205911,
+        "Global-EU": 512811.2513094581,
+        "Global-Asia": 495805.2332875312
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.0,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 0.0
+      },
+      "total_batch_expired": 82.97638668873402,
+      "total_deadline_cost": 20744.096672183507,
+      "avg_batch_pool_size": 2.219353271474837,
+      "avg_drain_rates": {
+        "Global-US-West": 0.34598499629493973,
+        "Global-US-Central": 0.20329116500407646,
+        "Global-EU": 0.22641483266392998,
+        "Global-Asia": 0.18087679221171227
+      }
+    },
+    "Trough-Slot Lookahead": {
+      "total_cost": 13757404.999293372,
+      "peak_grid_mw": 309.4041338752454,
+      "mean_grid_mw": 286.50599153204314,
+      "load_factor": 0.9259927717952372,
+      "total_energy_cost": 11814965.288416317,
+      "total_backlog_cost": 1457.1854392371738,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.5614375270617378,
+      "max_backlog": 1.1575874423562897,
+      "service_demand_total": 15505.55922883749,
+      "service_served_total": 15505.55922883749,
+      "total_peak_penalty": 1940546.9136639396,
+      "total_grid_mw_steps": 2554773.9264912293,
+      "nd_weighted_load": 1801541.5183858606,
+      "per_dc_energy_cost": {
+        "Global-US-West": 2702944.222091004,
+        "Global-US-Central": 1624013.6244364302,
+        "Global-EU": 2491903.3984988662,
+        "Global-Asia": 4996104.043390016
+      },
+      "per_dc_peak_penalty": {
+        "Global-US-West": 465817.4238390702,
+        "Global-US-Central": 533989.5120971263,
+        "Global-EU": 506606.88609478856,
+        "Global-Asia": 434133.0916329544
+      },
+      "per_dc_avg_backlog": {
+        "Global-US-West": 0.006536508391478064,
+        "Global-US-Central": 0.0,
+        "Global-EU": 0.0,
+        "Global-Asia": 1.5389062207533036e-07
+      },
+      "total_batch_expired": 1.7424470955130658,
+      "total_deadline_cost": 435.61177387826643,
+      "avg_batch_pool_size": 0.6430799615742765,
+      "avg_drain_rates": {
+        "Global-US-West": 0.4950171320634679,
+        "Global-US-Central": 0.49974731956282986,
+        "Global-EU": 0.49813440102927703,
+        "Global-Asia": 0.4986053522107965
+      }
+    }
+  },
+  "agents": {
+    "ppo": {
+      "101": {
+        "total_cost": 12150066.898815421,
+        "peak_grid_mw": 287.9550679801826,
+        "mean_grid_mw": 273.95588737090014,
+        "load_factor": 0.9513841492442637,
+        "total_energy_cost": 10220788.121609462,
+        "total_backlog_cost": 8083.444065352791,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 1.1328900539820213,
+        "max_backlog": 1.4792579705401145,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1921192.2862171063,
+        "total_grid_mw_steps": 2442864.6476863166,
+        "nd_weighted_load": 1738973.0511083,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2922536.0459633823,
+          "Global-US-Central": 2034094.6870970873,
+          "Global-EU": 2002019.4031505575,
+          "Global-Asia": 3262137.985398434
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 564180.2003627057,
+          "Global-US-Central": 842958.6920804837,
+          "Global-EU": 331126.4741175111,
+          "Global-Asia": 182926.91965640578
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.036260823439958685,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.012187694001203855,
+        "total_deadline_cost": 3.046923500300964,
+        "avg_batch_pool_size": 0.9786674420265149,
+        "avg_drain_rates": {
+          "Global-US-West": 0.4983918956925249,
+          "Global-US-Central": 0.5008340604114261,
+          "Global-EU": 0.4829887902976936,
+          "Global-Asia": 0.5138190118904339
+        }
+      },
+      "102": {
+        "total_cost": 12189017.056594055,
+        "peak_grid_mw": 287.14267765575823,
+        "mean_grid_mw": 274.54365974496756,
+        "load_factor": 0.9561227957695128,
+        "total_energy_cost": 10234378.413883686,
+        "total_backlog_cost": 28228.395628633403,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 1.0374330742702376,
+        "max_backlog": 2.3566486323952014,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1926410.2470817352,
+        "total_grid_mw_steps": 2448105.8139458755,
+        "nd_weighted_load": 1743826.8263111687,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2882180.888855109,
+          "Global-US-Central": 2035724.6439415552,
+          "Global-EU": 2061698.6819608943,
+          "Global-Asia": 3254774.1991261286
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 549008.547863801,
+          "Global-US-Central": 844348.2316999099,
+          "Global-EU": 351210.6262136273,
+          "Global-Asia": 181842.841304397
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.12662732142484423,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 1.0085235232575025,
+        "avg_drain_rates": {
+          "Global-US-West": 0.533217220967061,
+          "Global-US-Central": 0.4638320588130371,
+          "Global-EU": 0.38085363660926147,
+          "Global-Asia": 0.39007345044936853
+        }
+      },
+      "103": {
+        "total_cost": 12491937.661119485,
+        "peak_grid_mw": 287.1579040081965,
+        "mean_grid_mw": 274.64902447858947,
+        "load_factor": 0.9564390206398429,
+        "total_energy_cost": 10226712.776280923,
+        "total_backlog_cost": 337543.20135349437,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 1.4824436868664743,
+        "terminal_batch_pool": 1.3365625344687744,
+        "max_backlog": 5.312857682624661,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15504.076785150624,
+        "total_peak_penalty": 1927681.683485067,
+        "total_grid_mw_steps": 2449045.3512755823,
+        "nd_weighted_load": 1744379.4941432667,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2870083.7067342205,
+          "Global-US-Central": 2039189.4584647184,
+          "Global-EU": 2080184.6941890882,
+          "Global-Asia": 3237254.9168928964
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 542917.154101796,
+          "Global-US-Central": 847312.2745145872,
+          "Global-EU": 357310.0400406318,
+          "Global-Asia": 180142.21482805192
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 1.5141558880946253,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.8331953458887711,
+        "avg_drain_rates": {
+          "Global-US-West": 0.5675281839308929,
+          "Global-US-Central": 0.409478382092659,
+          "Global-EU": 0.4877732752637345,
+          "Global-Asia": 0.47994911577329136
+        }
+      },
+      "104": {
+        "total_cost": 12205633.002711179,
+        "peak_grid_mw": 287.44053762557394,
+        "mean_grid_mw": 274.33496147069445,
+        "load_factor": 0.9544059572698438,
+        "total_energy_cost": 10251106.517057225,
+        "total_backlog_cost": 31907.144680308276,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 0.821876173017389,
+        "max_backlog": 2.419394903146156,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1922619.3409736454,
+        "total_grid_mw_steps": 2446244.8514341824,
+        "nd_weighted_load": 1742126.3391235222,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2901939.958110228,
+          "Global-US-Central": 2032639.3579819314,
+          "Global-EU": 2022483.4121881232,
+          "Global-Asia": 3294043.788776943
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 556467.6890282081,
+          "Global-US-Central": 841690.0576898931,
+          "Global-EU": 338030.34480652306,
+          "Global-Asia": 186431.24944902112
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.14312950400497154,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.849858397473104,
+        "avg_drain_rates": {
+          "Global-US-West": 0.4455630563857853,
+          "Global-US-Central": 0.4724952174742539,
+          "Global-EU": 0.4541597565339775,
+          "Global-Asia": 0.4263684206106638
+        }
+      },
+      "105": {
+        "total_cost": 12195387.612998515,
+        "peak_grid_mw": 287.96432646962336,
+        "mean_grid_mw": 274.4833670568873,
+        "load_factor": 0.9531853143824809,
+        "total_energy_cost": 10258937.135036316,
+        "total_backlog_cost": 12534.081782990199,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 0.8744867234191478,
+        "max_backlog": 1.568030447096438,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1923916.3961792102,
+        "total_grid_mw_steps": 2447568.184046264,
+        "nd_weighted_load": 1743328.233052219,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2889686.521101562,
+          "Global-US-Central": 2035319.6002808865,
+          "Global-EU": 2032885.9792728296,
+          "Global-Asia": 3301045.034381037
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 551604.122891444,
+          "Global-US-Central": 844003.9730626856,
+          "Global-EU": 341164.0352004944,
+          "Global-Asia": 187144.26502458614
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.05622555470669597,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.8517668012126542,
+        "avg_drain_rates": {
+          "Global-US-West": 0.45338345110270784,
+          "Global-US-Central": 0.541141641751026,
+          "Global-EU": 0.4676615631095969,
+          "Global-Asia": 0.45923849937922306
+        }
+      }
+    },
+    "dqn": {
+      "101": {
+        "total_cost": 14783478.384677652,
+        "peak_grid_mw": 307.53700520752693,
+        "mean_grid_mw": 292.3702522583884,
+        "load_factor": 0.9506831610755136,
+        "total_energy_cost": 12710307.141053343,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 0.5304315715149543,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.559228837492,
+        "total_peak_penalty": 2073171.243624309,
+        "total_grid_mw_steps": 2607065.539388049,
+        "nd_weighted_load": 1873495.467590865,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2697672.8752858504,
+          "Global-US-Central": 1353222.2926290291,
+          "Global-EU": 2726088.964529328,
+          "Global-Asia": 5933323.008609136
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 480700.4608118418,
+          "Global-US-Central": 373065.5806830879,
+          "Global-EU": 612951.9214621969,
+          "Global-Asia": 606453.2806671826
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.4405422965023279,
+        "avg_drain_rates": {
+          "Global-US-West": 0.5,
+          "Global-US-Central": 0.5,
+          "Global-EU": 0.5,
+          "Global-Asia": 0.5
+        }
+      },
+      "102": {
+        "total_cost": 14508028.288179467,
+        "peak_grid_mw": 304.3361885445307,
+        "mean_grid_mw": 288.24111361547955,
+        "load_factor": 0.947114160146301,
+        "total_energy_cost": 12220182.984447924,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 8.656180182397055,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 2046927.1862153255,
+        "total_grid_mw_steps": 2570246.0101092313,
+        "nd_weighted_load": 1862092.9985027306,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2135074.9788646693,
+          "Global-US-Central": 1730916.79789779,
+          "Global-EU": 2637362.8738392093,
+          "Global-Asia": 5716828.333846255
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 301190.28114899364,
+          "Global-US-Central": 609950.3387152082,
+          "Global-EU": 573103.3759954826,
+          "Global-Asia": 562683.1903556411
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 963.672470064867,
+        "total_deadline_cost": 240918.11751621673,
+        "avg_batch_pool_size": 6.659553682832014,
+        "avg_drain_rates": {
+          "Global-US-West": 0.04742587317756679,
+          "Global-US-Central": 0.04742587317756679,
+          "Global-EU": 0.04742587317756679,
+          "Global-Asia": 0.04742587317756679
+        }
+      },
+      "103": {
+        "total_cost": 14119987.687356403,
+        "peak_grid_mw": 303.5869652790083,
+        "mean_grid_mw": 289.1102521196945,
+        "load_factor": 0.9523144442449657,
+        "total_energy_cost": 12108364.38080159,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 0.02651203082369538,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 2011623.3065548134,
+        "total_grid_mw_steps": 2577996.118151316,
+        "nd_weighted_load": 1849375.65217016,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2697705.883749256,
+          "Global-US-Central": 1492926.8043557839,
+          "Global-EU": 2726114.085997038,
+          "Global-Asia": 5191617.606699512
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 480690.42863111314,
+          "Global-US-Central": 453986.866407867,
+          "Global-EU": 612989.9499936737,
+          "Global-Asia": 463956.06152215967
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.021936123013076382,
+        "avg_drain_rates": {
+          "Global-US-West": 0.9525741268224334,
+          "Global-US-Central": 0.9525741268224334,
+          "Global-EU": 0.9525741268224334,
+          "Global-Asia": 0.9525741268224334
+        }
+      },
+      "104": {
+        "total_cost": 14695820.743473995,
+        "peak_grid_mw": 303.1719164635338,
+        "mean_grid_mw": 287.2404279019945,
+        "load_factor": 0.9474506453388615,
+        "total_energy_cost": 12456555.978916865,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 8.656180182397055,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.559228837492,
+        "total_peak_penalty": 1998346.6470409147,
+        "total_grid_mw_steps": 2561322.895602085,
+        "nd_weighted_load": 1840472.3197834864,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2656781.4860194987,
+          "Global-US-Central": 1346194.3465961025,
+          "Global-EU": 2666238.1491304147,
+          "Global-Asia": 5787341.997170849
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 466782.88024813955,
+          "Global-US-Central": 369159.45440878684,
+          "Global-EU": 585713.2932752896,
+          "Global-Asia": 576691.0191086987
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 963.6724700648668,
+        "total_deadline_cost": 240918.1175162167,
+        "avg_batch_pool_size": 6.659553682832013,
+        "avg_drain_rates": {
+          "Global-US-West": 0.04742587317756679,
+          "Global-US-Central": 0.04742587317756679,
+          "Global-EU": 0.04742587317756679,
+          "Global-Asia": 0.04742587317756679
+        }
+      },
+      "105": {
+        "total_cost": 14184106.665788027,
+        "peak_grid_mw": 300.2313982260552,
+        "mean_grid_mw": 286.3335749048417,
+        "load_factor": 0.9537096272963785,
+        "total_energy_cost": 12214666.417520327,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 0.5304315715149548,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1969440.2482676993,
+        "total_grid_mw_steps": 2553236.487426474,
+        "nd_weighted_load": 1830029.1378162582,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2845631.144601271,
+          "Global-US-Central": 1543710.5840167482,
+          "Global-EU": 2229101.638036665,
+          "Global-Asia": 5596223.050865643
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 534912.0471566067,
+          "Global-US-Central": 485376.04031527066,
+          "Global-EU": 409845.56592964777,
+          "Global-Asia": 539306.5948661742
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.4405517247162927,
+        "avg_drain_rates": {
+          "Global-US-West": 0.5,
+          "Global-US-Central": 0.5,
+          "Global-EU": 0.5,
+          "Global-Asia": 0.5
+        }
+      }
+    },
+    "flatidx": {
+      "101": {
+        "total_cost": 12964177.359929578,
+        "peak_grid_mw": 288.6212966326762,
+        "mean_grid_mw": 276.37608587103296,
+        "load_factor": 0.9575734330608752,
+        "total_energy_cost": 10865976.11021024,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 8.666053407270983,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.559228837488,
+        "total_peak_penalty": 1855961.1104732156,
+        "total_grid_mw_steps": 2464445.557712001,
+        "nd_weighted_load": 1756025.5794533815,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2887525.869698022,
+          "Global-US-Central": 1644808.3573075447,
+          "Global-EU": 2449938.4953910178,
+          "Global-Asia": 3883703.3878136547
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 551518.6031247515,
+          "Global-US-Central": 550818.8016953924,
+          "Global-EU": 494595.0385064861,
+          "Global-Asia": 259028.66714658582
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 968.960556984491,
+        "total_deadline_cost": 242240.13924612274,
+        "avg_batch_pool_size": 6.672034164761586,
+        "avg_drain_rates": {
+          "Global-US-West": 0.04742587317756679,
+          "Global-US-Central": 0.04742587317756679,
+          "Global-EU": 0.04742587317756679,
+          "Global-Asia": 0.04742587317756679
+        }
+      },
+      "102": {
+        "total_cost": 14043842.123839205,
+        "peak_grid_mw": 298.8837874687656,
+        "mean_grid_mw": 283.5548036457025,
+        "load_factor": 0.9487125616518594,
+        "total_energy_cost": 11864711.97243532,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 8.656180182397055,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1938212.0338876678,
+        "total_grid_mw_steps": 2528458.1841087295,
+        "nd_weighted_load": 1819285.7356365353,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2511863.012891798,
+          "Global-US-Central": 1644685.902948892,
+          "Global-EU": 2449673.569894364,
+          "Global-Asia": 5258489.486700267
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 417151.86978840956,
+          "Global-US-Central": 550737.6529388223,
+          "Global-EU": 494487.93936588545,
+          "Global-Asia": 475834.57179455063
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 963.672470064867,
+        "total_deadline_cost": 240918.11751621673,
+        "avg_batch_pool_size": 6.659553682832015,
+        "avg_drain_rates": {
+          "Global-US-West": 0.04742587317756679,
+          "Global-US-Central": 0.04742587317756679,
+          "Global-EU": 0.04742587317756679,
+          "Global-Asia": 0.04742587317756679
+        }
+      },
+      "103": {
+        "total_cost": 14043842.123839205,
+        "peak_grid_mw": 298.8837874687656,
+        "mean_grid_mw": 283.5548036457025,
+        "load_factor": 0.9487125616518594,
+        "total_energy_cost": 11864711.97243532,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 8.656180182397055,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.55922883749,
+        "total_peak_penalty": 1938212.0338876678,
+        "total_grid_mw_steps": 2528458.1841087295,
+        "nd_weighted_load": 1819285.7356365353,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2511863.012891798,
+          "Global-US-Central": 1644685.902948892,
+          "Global-EU": 2449673.569894364,
+          "Global-Asia": 5258489.486700267
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 417151.86978840956,
+          "Global-US-Central": 550737.6529388223,
+          "Global-EU": 494487.93936588545,
+          "Global-Asia": 475834.57179455063
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 963.672470064867,
+        "total_deadline_cost": 240918.11751621673,
+        "avg_batch_pool_size": 6.659553682832015,
+        "avg_drain_rates": {
+          "Global-US-West": 0.04742587317756679,
+          "Global-US-Central": 0.04742587317756679,
+          "Global-EU": 0.04742587317756679,
+          "Global-Asia": 0.04742587317756679
+        }
+      },
+      "104": {
+        "total_cost": 13268312.57802907,
+        "peak_grid_mw": 297.2711280409068,
+        "mean_grid_mw": 282.1687313722923,
+        "load_factor": 0.9491965574721529,
+        "total_energy_cost": 11052763.343901768,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 8.656180182397055,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.559228837488,
+        "total_peak_penalty": 1974631.1166110844,
+        "total_grid_mw_steps": 2516098.5776467305,
+        "nd_weighted_load": 1803023.9324732171,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2511863.016099997,
+          "Global-US-Central": 1644685.9051515565,
+          "Global-EU": 3012741.468501206,
+          "Global-Asia": 3883472.9541490087
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 417151.8708562047,
+          "Global-US-Central": 550737.6544126545,
+          "Global-EU": 747749.2095004522,
+          "Global-Asia": 258992.38184177305
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 963.6724700648672,
+        "total_deadline_cost": 240918.1175162168,
+        "avg_batch_pool_size": 6.659553682832015,
+        "avg_drain_rates": {
+          "Global-US-West": 0.04742587317756679,
+          "Global-US-Central": 0.04742587317756679,
+          "Global-EU": 0.04742587317756679,
+          "Global-Asia": 0.04742587317756679
+        }
+      },
+      "105": {
+        "total_cost": 12964211.271554336,
+        "peak_grid_mw": 294.09454672085025,
+        "mean_grid_mw": 281.0756892970979,
+        "load_factor": 0.9557324079316926,
+        "total_energy_cost": 11044163.367220508,
+        "total_backlog_cost": 0.0,
+        "total_capacity_cost": 0.0,
+        "terminal_backlog": 0.0,
+        "terminal_batch_pool": 0.5325721168005512,
+        "max_backlog": 0.0,
+        "service_demand_total": 15505.55922883749,
+        "service_served_total": 15505.559228837488,
+        "total_peak_penalty": 1920047.9043338292,
+        "total_grid_mw_steps": 2506351.921462222,
+        "nd_weighted_load": 1785966.7223686061,
+        "per_dc_energy_cost": {
+          "Global-US-West": 2929959.234600144,
+          "Global-US-Central": 1670970.8535682615,
+          "Global-EU": 2505705.732361563,
+          "Global-Asia": 3937527.546690539
+        },
+        "per_dc_peak_penalty": {
+          "Global-US-West": 567093.1481413741,
+          "Global-US-Central": 568618.8122579869,
+          "Global-EU": 517865.90646469366,
+          "Global-Asia": 266470.03746977466
+        },
+        "per_dc_avg_backlog": {
+          "Global-US-West": 0.0,
+          "Global-US-Central": 0.0,
+          "Global-EU": 0.0,
+          "Global-Asia": 0.0
+        },
+        "total_batch_expired": 0.0,
+        "total_deadline_cost": 0.0,
+        "avg_batch_pool_size": 0.47237807638387475,
+        "avg_drain_rates": {
+          "Global-US-West": 0.5,
+          "Global-US-Central": 0.5,
+          "Global-EU": 0.5,
+          "Global-Asia": 0.5
+        }
+      }
+    }
+  }
+}
