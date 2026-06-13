@@ -23,32 +23,112 @@ plt.rcParams.update({"font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8,
 FIGW = (3.35, 2.3)  # single-column
 
 
-def fig1_results() -> None:
-    configs = ["US legacy", "US batch", "Global legacy", "Global batch"]
-    status_quo = [9.848, 9.848, 14.062, 14.062]
-    trough = [9.934, 9.908, 13.751, 13.755]
-    best_dqn = [9.759, 9.798, 13.760, 13.006]
-    ppo = [9.666, 9.524, 12.617, 12.421]
+def _ctx_stats():
+    st = json.load(open(ROOT / "output/review_campaign_ctx/stats.json"))
+    qp = json.load(open(ROOT / "output/review_campaign/qp_optimum.json"))
+    order = ["us_spatial", "us_batch", "global_spatial", "global_batch"]
+    return st, qp, order
 
-    x = np.arange(len(configs))
+
+def fig1_results() -> None:
+    """Multi-seed (5-seed) costs with std error bars + QP optimum line."""
+    st, qp, order = _ctx_stats()
+    labels = ["US\nspatial", "US\nbatch", "Global\nspatial", "Global\nbatch"]
+    sq, trough, bestdqn, ppo, ppo_sd, opt = [], [], [], [], [], []
+    # Trough-Slot pulled from per-config eval JSONs
+    for cfg in order:
+        d = json.load(open(ROOT / f"output/review_campaign_ctx/{cfg}.json"))
+        tr = next(v["total_cost"] for k, v in d["baselines"].items() if "Trough" in k)
+        pa = st[cfg]["per_algo"]
+        sq.append(st[cfg]["status_quo"] / 1e6)
+        trough.append(tr / 1e6)
+        bestdqn.append(min(pa.get("dqn", {}).get("mean", 9e18),
+                           pa.get("flatidx", {}).get("mean", 9e18)) / 1e6)
+        ppo.append(pa["ppo"]["mean"] / 1e6)
+        ppo_sd.append(pa["ppo"]["std"] / 1e6)
+        opt.append(qp[cfg]["optimum_total"] / 1e6)
+
+    x = np.arange(len(order))
     w = 0.2
-    fig, ax = plt.subplots(figsize=(3.35, 2.5))
-    ax.bar(x - 1.5 * w, status_quo, w, label="Status Quo", color="#9e9e9e")
-    ax.bar(x - 0.5 * w, trough, w, label="Trough-Slot (oracle)", color="#7fb3d5")
-    ax.bar(x + 0.5 * w, best_dqn, w, label="Best DQN", color="#f5b041")
-    ax.bar(x + 1.5 * w, ppo, w, label="PPO", color="#27ae60")
+    fig, ax = plt.subplots(figsize=(3.35, 2.6))
+    ax.bar(x - 1.5 * w, sq, w, label="Status Quo", color="#9e9e9e")
+    ax.bar(x - 0.5 * w, trough, w, label="Trough-Slot", color="#7fb3d5")
+    ax.bar(x + 0.5 * w, bestdqn, w, label="Best DQN", color="#f5b041")
+    ax.bar(x + 1.5 * w, ppo, w, yerr=ppo_sd, capsize=2, label="PPO (5 seeds)",
+           color="#27ae60", error_kw=dict(lw=0.8))
+    # QP optimum as a lower-bound tick per config
+    for i, o in enumerate(opt):
+        ax.plot([x[i] - 1.7 * w, x[i] + 1.7 * w], [o, o], color="#c0392b",
+                lw=1.0, ls="--", zorder=5)
+    ax.plot([], [], color="#c0392b", lw=1.0, ls="--", label="QP optimum")
     for i, v in enumerate(ppo):
-        sq = status_quo[i]
-        ax.annotate(f"−{100*(sq-v)/sq:.1f}%", (x[i] + 1.5 * w, v), ha="center",
-                    va="bottom", fontsize=6.5, fontweight="bold")
+        ax.annotate(f"−{100*(sq[i]-v)/sq[i]:.1f}%", (x[i] + 1.5 * w, v + ppo_sd[i]),
+                    ha="center", va="bottom", fontsize=6, fontweight="bold")
     ax.set_xticks(x)
-    ax.set_xticklabels(configs, fontsize=7)
+    ax.set_xticklabels(labels, fontsize=7)
     ax.set_ylabel("Total episode cost (M$)")
     ax.set_ylim(9, 15)
-    ax.legend(ncol=2, loc="upper left")
+    ax.legend(ncol=2, loc="upper left", fontsize=6)
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     fig.savefig(OUT / "fig1_results.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+def fig6_generalization() -> None:
+    """Held-out transfer: observed (net-demand) vs unobserved (cells) axis."""
+    order = ["us_spatial", "us_batch", "global_spatial", "global_batch"]
+    labels = ["US\nspatial", "US\nbatch", "Global\nspatial", "Global\nbatch"]
+    ctx_cells = json.load(open(ROOT / "output/review_campaign_ctx/generalization_cells.json"))
+    dr_cells = json.load(open(ROOT / "output/review_campaign_dr/generalization_cells.json"))
+    ctx_mkt = json.load(open(ROOT / "output/review_campaign_ctx/generalization_market.json"))
+
+    def sv(d, cfg):
+        return d[cfg]["summary"]["ppo_mean_savings_pct"]
+
+    cells_ctx = [sv(ctx_cells, c) for c in order]
+    cells_dr = [sv(dr_cells, c) for c in order]
+    mkt_ctx = [sv(ctx_mkt, c) for c in order]
+
+    x = np.arange(len(order))
+    w = 0.26
+    fig, ax = plt.subplots(figsize=(3.35, 2.5))
+    ax.bar(x - w, cells_ctx, w, label="cells e–h, ctx (unobserved)", color="#e74c3c")
+    ax.bar(x, cells_dr, w, label="cells e–h, +DR", color="#27ae60")
+    ax.bar(x + w, mkt_ctx, w, label="2024 net-demand, ctx (observed)", color="#7fb3d5")
+    ax.axhline(0, color="k", lw=0.8)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=7)
+    ax.set_ylabel("Held-out savings vs SQ (%)")
+    ax.set_title("Generalization: observability determines transfer")
+    ax.legend(loc="lower left", fontsize=6)
+    ax.grid(True, axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig6_generalization.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+def fig7_movement_cost() -> None:
+    d = json.load(open(ROOT / "output/review_campaign_ctx/movement_cost_sensitivity.json"))
+    fig, ax = plt.subplots(figsize=(3.35, 2.4))
+    colors = {"global_spatial": "#27ae60", "global_batch": "#7fb3d5",
+              "us_spatial": "#e67e22"}
+    names = {"global_spatial": "Global spatial", "global_batch": "Global batch",
+             "us_spatial": "US spatial"}
+    for cfg, c in colors.items():
+        sweep = d[cfg]["sweep"]
+        ws = [s["w"] for s in sweep]
+        sv = [s["mean_savings_pct"] for s in sweep]
+        ax.plot(ws, sv, "-o", ms=2.5, lw=1.0, color=c, label=names[cfg])
+    ax.axhline(0, color="k", lw=0.8, ls=":")
+    ax.set_xscale("symlog")
+    ax.set_xlabel("Movement cost ($/unit moved)")
+    ax.set_ylabel("PPO savings vs SQ (%)")
+    ax.set_title("Spatial advantage vs. movement cost")
+    ax.legend(loc="lower left", fontsize=6.5)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig7_movement_cost.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -103,7 +183,7 @@ def fig4_profile() -> None:
     sc = ROOT / "env/scenarios/us_model.yaml"
     env = _make_env(sc, batch_enabled=True, peak_penalty_weight=0.015)
     _, h_sq = run_episode(env, StatusQuoPolicy().predict, is_sb3=False)
-    model = PPO.load(str(ROOT / "models/ppo_us_model_batch.zip"))
+    model = PPO.load(str(ROOT / "models/review_ctx/s101/ppo_us_model_batch.zip"))
     env = _make_env(sc, batch_enabled=True, peak_penalty_weight=0.015)
     _, h_ppo = run_episode(env, model.predict, is_sb3=True)
 
@@ -154,4 +234,6 @@ if __name__ == "__main__":
     fig3_power()
     fig4_profile()
     fig5_peakwindow()
+    fig6_generalization()
+    fig7_movement_cost()
     print(f"Figures written to {OUT}")
