@@ -8,10 +8,14 @@ never seen, without any retraining. Two axes:
                  market series), testing whether the learned routing/deferral
                  strategy transfers across workloads, tier mixes, and per-cell
                  power characteristics.
-  --axis market  : held-out market conditions — cells a–d with price and
-                 net-demand series from a different year (requires the
-                 shifted series to exist; see preprocess fetchers --year),
-                 testing the calendar-memorization concern directly.
+  --axis market  : held-out market conditions — cells a–d with the NET-DEMAND
+                 series shifted to real EIA-930 May-2024 (a genuine 2019->2024
+                 duck-curve shift, corr ~0.74). Prices are the documented
+                 synthetic series held fixed (real hourly LMP is unavailable
+                 for the GA/SC non-ISO regions and EIA exposes no hourly price
+                 route; see M7 provenance), so this isolates the net-demand
+                 axis — the OBSERVED quantity at the core of the objective.
+                 Tests the calendar-memorization concern on the demand signal.
 
 For each config, evaluates the no-optimization Status Quo, Round Robin, and
 the foresighted Trough-Slot heuristic (all parameter-free, so they transfer
