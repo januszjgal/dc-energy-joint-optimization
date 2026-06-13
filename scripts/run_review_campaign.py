@@ -41,7 +41,7 @@ CONFIGS = [
     ("global_spatial", "env/scenarios/global_model.yaml", False),
     ("global_batch", "env/scenarios/global_model.yaml", True),
 ]
-ALGOS = _ARGS.algos if _ARGS.algos else ["ppo", "dqn", "flatidx"]
+ALGOS = ["ppo", "dqn", "flatidx"]  # may be narrowed by --algos below
 
 _ap = argparse.ArgumentParser()
 _ap.add_argument("--tag", default="",
@@ -51,6 +51,8 @@ _ap.add_argument("--algos", nargs="*", default=None,
 _ap.add_argument("--domain-rand", action="store_true",
                  help="pass --domain-rand to PPO trainings (train.py only)")
 _ARGS = _ap.parse_args()
+if _ARGS.algos:
+    ALGOS = _ARGS.algos
 _SUF = f"_{_ARGS.tag}" if _ARGS.tag else ""
 MODEL_DIR = ROOT / "models" / f"review{_SUF}"
 OUT_DIR = ROOT / "output" / f"review_campaign{_SUF}"
@@ -163,10 +165,12 @@ def aggregate_stats(all_results: dict) -> dict:
                 "worst_seed_savings_vs_status_quo_pct": float(100 * (sq - c.max()) / sq),
             }
         # paired PPO vs best-DQN-per-seed (paired by seed)
-        if len(costs["ppo"]) and (len(costs["dqn"]) or len(costs["flatidx"])):
+        c_dqn = costs.get("dqn", np.array([]))
+        c_flat = costs.get("flatidx", np.array([]))
+        if len(costs.get("ppo", [])) and (len(c_dqn) or len(c_flat)):
             best_dqn = np.minimum(
-                costs["dqn"] if len(costs["dqn"]) else np.inf,
-                costs["flatidx"] if len(costs["flatidx"]) else np.inf,
+                c_dqn if len(c_dqn) else np.inf,
+                c_flat if len(c_flat) else np.inf,
             )
             diffs = best_dqn - costs["ppo"]  # >0 means PPO cheaper
             wilcoxon_p = None
