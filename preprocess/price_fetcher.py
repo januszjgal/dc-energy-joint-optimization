@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -86,13 +87,30 @@ STEPS_PER_DAY = 288
 TOTAL_STEPS = MAY_DAYS * STEPS_PER_DAY
 
 
+def _load_env_key() -> str | None:
+    """Read EIA_API_KEY from the repo-root .env file or environment.
+
+    Mirrors net_demand_fetcher._load_env_key so both fetchers resolve the key
+    the same way (the key lives in the gitignored .env; never pass it on the
+    command line in shared shells).
+    """
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("EIA_API_KEY="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return os.environ.get("EIA_API_KEY")
+
+
 def fetch_eia_prices(
-    api_key: str, region: str
+    api_key: str, region: str, year: int = 2019
 ) -> pd.DataFrame | None:
     """Fetch hourly wholesale electricity prices from EIA API v2.
 
     Returns DataFrame with columns: datetime (UTC), price_usd_mwh
-    or None if the fetch fails.
+    or None if the fetch fails. ``year`` selects the May window (peer-review
+    M2b shifts this to test market-condition generalization).
     """
     url = "https://api.eia.gov/v2/electricity/rto/wholesale-prices/data/"
     params = {
@@ -100,8 +118,8 @@ def fetch_eia_prices(
         "frequency": "hourly",
         "data[0]": "value",
         "facets[respondent][]": region,
-        "start": "2019-05-01T00",
-        "end": "2019-05-31T23",
+        "start": f"{year}-05-01T00",
+        "end": f"{year}-05-31T23",
         "sort[0][column]": "period",
         "sort[0][direction]": "asc",
         "length": 750,  # 31 days * 24 hours = 744
@@ -218,9 +236,22 @@ def main(argv: list[str] | None = None) -> None:
         help="'auto' tries real data first, falls back to synthetic. "
         "'synthetic' uses calibrated model only.",
     )
+    parser.add_argument(
+        "--year",
+        type=int,
+        default=2019,
+        help="May-window year (default 2019). Non-2019 writes to "
+             "data/prices_<year>/ for the M2b market-shift test, leaving the "
+             "2019 series the campaign trained on untouched.",
+    )
     args = parser.parse_args(argv)
 
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    eia_key = args.eia_key or _load_env_key()
+    out_dir = DATA_DIR if args.year == 2019 else (
+        DATA_DIR.parent / f"prices_{args.year}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if args.mode == "auto" and not eia_key:
+        print("No EIA key (--eia-key or .env EIA_API_KEY); using synthetic.")
 
     for market_id, market in MARKETS.items():
         print(f"\nProcessing {market['label']}...")
@@ -230,10 +261,10 @@ def main(argv: list[str] | None = None) -> None:
         # Try real data first (US markets via EIA)
         if (
             args.mode == "auto"
-            and args.eia_key
+            and eia_key
             and market["eia_region"] is not None
         ):
-            eia_df = fetch_eia_prices(args.eia_key, market["eia_region"])
+            eia_df = fetch_eia_prices(eia_key, market["eia_region"], args.year)
             if eia_df is not None and len(eia_df) > 100:
                 df = interpolate_to_5min(eia_df)
                 print(f"  Using real EIA data ({len(df)} rows)")
@@ -243,7 +274,7 @@ def main(argv: list[str] | None = None) -> None:
             df = generate_synthetic_prices(market)
             print(f"  Using calibrated synthetic prices ({len(df)} rows)")
 
-        out_path = DATA_DIR / f"{market_id}.csv"
+        out_path = out_dir / f"{market_id}.csv"
         df.to_csv(out_path, index=False)
         print(
             f"  Saved to {out_path} "

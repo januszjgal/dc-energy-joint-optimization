@@ -331,7 +331,22 @@ def main(argv: list[str] | None = None) -> None:
         default="auto",
         help="auto: try real then fall back; synthetic: always use model",
     )
+    parser.add_argument(
+        "--year",
+        type=int,
+        default=2019,
+        help="May-window year (default 2019). Non-2019 writes to "
+             "data/net_demand_<year>/ for the M2b market-shift test, leaving "
+             "the 2019 series the campaign trained on untouched.",
+    )
     args = parser.parse_args(argv)
+
+    # Shift the EIA query window (module globals are read by the fetch helpers)
+    global START_DATE, END_DATE, DATA_DIR
+    START_DATE = f"{args.year}-05-01T00"
+    END_DATE = f"{args.year}-05-31T23"
+    if args.year != 2019:
+        DATA_DIR = DATA_DIR.parent / f"net_demand_{args.year}"
 
     eia_key = args.eia_key or _load_env_key()
     if args.mode == "auto" and not eia_key:
