@@ -1,0 +1,182 @@
+{
+  "global_spatial": {
+    "status_quo_cost": 14061554.383309688,
+    "ppo_base_mean": 12620686.541740075,
+    "ppo_mean_moved_units": 6576.018895298616,
+    "mean_unit_energy_cost": 620.3661041942285,
+    "breakeven_w_usd_per_unit": 219.10944364830388,
+    "breakeven_as_mult_of_unit_energy": 0.35319377085067755,
+    "sweep": [
+      {
+        "w": 0,
+        "mean_savings_pct": 10.246860356205337,
+        "min_savings_pct": 7.697761813018668
+      },
+      {
+        "w": 1,
+        "mean_savings_pct": 10.200094410449696,
+        "min_savings_pct": 7.6498476097181
+      },
+      {
+        "w": 2,
+        "mean_savings_pct": 10.153328464694058,
+        "min_savings_pct": 7.6019334064175315
+      },
+      {
+        "w": 5,
+        "mean_savings_pct": 10.013030627427128,
+        "min_savings_pct": 7.458190796515814
+      },
+      {
+        "w": 10,
+        "mean_savings_pct": 9.779200898648927,
+        "min_savings_pct": 7.218619780012973
+      },
+      {
+        "w": 20,
+        "mean_savings_pct": 9.311541441092512,
+        "min_savings_pct": 6.739477747007265
+      },
+      {
+        "w": 50,
+        "mean_savings_pct": 7.908563068423274,
+        "min_savings_pct": 5.302051647990182
+      },
+      {
+        "w": 100,
+        "mean_savings_pct": 5.570265780641205,
+        "min_savings_pct": 2.906341482961684
+      },
+      {
+        "w": 200,
+        "mean_savings_pct": 0.8936712050770683,
+        "min_savings_pct": -1.8850788470953002
+      },
+      {
+        "w": 500,
+        "mean_savings_pct": -13.136112521615331,
+        "min_savings_pct": -16.25933983726624
+      }
+    ]
+  },
+  "global_batch": {
+    "status_quo_cost": 14061553.495361215,
+    "ppo_base_mean": 12246408.44644773,
+    "ppo_mean_moved_units": 5489.982875398507,
+    "mean_unit_energy_cost": 620.3662024562915,
+    "breakeven_w_usd_per_unit": 330.6285447715038,
+    "breakeven_as_mult_of_unit_energy": 0.5329570557880264,
+    "sweep": [
+      {
+        "w": 0,
+        "mean_savings_pct": 12.908566962478819,
+        "min_savings_pct": 11.162463910972086
+      },
+      {
+        "w": 1,
+        "mean_savings_pct": 12.869524456419942,
+        "min_savings_pct": 11.126542691983603
+      },
+      {
+        "w": 2,
+        "mean_savings_pct": 12.830481950361067,
+        "min_savings_pct": 11.090621472995107
+      },
+      {
+        "w": 5,
+        "mean_savings_pct": 12.71335443218444,
+        "min_savings_pct": 10.98285781602965
+      },
+      {
+        "w": 10,
+        "mean_savings_pct": 12.518141901890058,
+        "min_savings_pct": 10.8032517210872
+      },
+      {
+        "w": 20,
+        "mean_savings_pct": 12.127716841301295,
+        "min_savings_pct": 10.444039531202318
+      },
+      {
+        "w": 50,
+        "mean_savings_pct": 10.95644165953501,
+        "min_savings_pct": 9.366402961547669
+      },
+      {
+        "w": 100,
+        "mean_savings_pct": 9.00431635659121,
+        "min_savings_pct": 7.570342012123269
+      },
+      {
+        "w": 200,
+        "mean_savings_pct": 5.100065750703597,
+        "min_savings_pct": 3.9782201132744546
+      },
+      {
+        "w": 500,
+        "mean_savings_pct": -6.612686066959233,
+        "min_savings_pct": -7.25721753776595
+      }
+    ]
+  },
+  "us_spatial": {
+    "status_quo_cost": 9847535.831561957,
+    "ppo_base_mean": 9570000.825133296,
+    "ppo_mean_moved_units": 4921.626533842033,
+    "mean_unit_energy_cost": 410.1319480919245,
+    "breakeven_w_usd_per_unit": 56.390911524935454,
+    "breakeven_as_mult_of_unit_energy": 0.1374945594638151,
+    "sweep": [
+      {
+        "w": 0,
+        "mean_savings_pct": 2.8183193356773018,
+        "min_savings_pct": 2.438549390754672
+      },
+      {
+        "w": 1,
+        "mean_savings_pct": 2.7683410810354863,
+        "min_savings_pct": 2.3877658616348265
+      },
+      {
+        "w": 2,
+        "mean_savings_pct": 2.71836282639367,
+        "min_savings_pct": 2.336982332514962
+      },
+      {
+        "w": 5,
+        "mean_savings_pct": 2.5684280624682305,
+        "min_savings_pct": 2.1846317451554267
+      },
+      {
+        "w": 10,
+        "mean_savings_pct": 2.3185367892591477,
+        "min_savings_pct": 1.930714099556163
+      },
+      {
+        "w": 20,
+        "mean_savings_pct": 1.8187542428409977,
+        "min_savings_pct": 1.4228788083576545
+      },
+      {
+        "w": 50,
+        "mean_savings_pct": 0.3194066035865388,
+        "min_savings_pct": -0.10062706523787152
+      },
+      {
+        "w": 100,
+        "mean_savings_pct": -2.179506128504224,
+        "min_savings_pct": -2.6398035212304145
+      },
+      {
+        "w": 200,
+        "mean_savings_pct": -7.177331592685744,
+        "min_savings_pct": -7.718156433215481
+      },
+      {
+        "w": 500,
+        "mean_savings_pct": -22.17080798523032,
+        "min_savings_pct": -23.89400276245134
+      }
+    ]
+  }
+}
