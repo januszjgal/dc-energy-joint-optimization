@@ -78,9 +78,9 @@ This per-cell aggregate extraction is the standard way of summarizing the 2019 t
 
 The 2019 trace exposes job priority as a sparse value in [0, 450] and groups priorities into named **tiers**. We classify a job as deferrable **batch** iff it belongs to one of the two **SLO-free tiers**: the **free tier** (`priority ≤ 99`) or the **best-effort batch (beb) tier** (`priority ∈ [100, 115]`) — i.e., simply **`priority ≤ 115`**. Tier bounds follow the authoritative trace documentation (**Wilkes, *"Google cluster-usage traces v3"*, 2020-08 revision**), which explicitly notes that the beb range was *"mistakenly reported as 110–115"* in **Tirmazi et al. (2020), *"Borg: the Next Generation"*, §2** — an erratum our pipeline initially inherited by citing the paper faithfully (see §12, row 11). Both no-SLO tiers are the genuinely delay-tolerant work. Every SLO-bearing tier is non-deferrable **service**: the mid-tier (116–119, weak SLOs) and especially the **production tier** (120–359), which "require[s] high availability" — "Borg will evict lower-tier jobs in order to ensure production tier jobs receive their expected level of service" (Tirmazi §2). Monitoring (≥ 360) is likewise service. Production must be served immediately and cannot be queued. Classification is by **priority**, not `scheduling_class`: the latter encodes latency-sensitivity (0–3), is orthogonal to tier ("scheduling class is *not* a priority," trace docs v3), and a `scheduling_class ≤ 1` filter is dominated by latency-insensitive *production* (priority 200) jobs.
 
-> ⚠ **Pending re-extraction (beb erratum).** The distribution fits and measured shares below were extracted under the inherited 110–115 beb band. The 100–109 band holds 16–30% of *requested* CPU per cell, so the corrected `≤ 115` definition will shift the measured usage shares upward by a to-be-measured amount. The tier-curve notebook and all pipeline code are already corrected; numbers refresh on the next Colab extraction + retraining campaign.
+All numbers below are the **corrected `≤ 115` (free + beb) extraction** — the re-extraction the earlier erratum banner anticipated is done, and the deferrable shares duly rose (the 100–109 band the inherited 110–115 filter had dropped was the bulk of best-effort batch). Exact per-cell fit parameters live in `data/jobs/batch_distributions_{a..d}.json`.
 
-We fit statistical distributions to each cell's deferrable jobs (Cell A shown):
+We fit statistical distributions to each cell's deferrable jobs (Cell A shown; illustrative — full params in the JSON):
 
 | Property | Cell A distribution | Key parameters |
 |---|---|---|
@@ -96,12 +96,12 @@ We fit statistical distributions to each cell's deferrable jobs (Cell A shown):
 
 | | Cell A | Cell B | Cell C | Cell D |
 |---|---|---|---|---|
-| **measured usage share (used by the env)** | **2.1%** | **6.1%** | **8.1%** | **9.7%** |
-| by CPU-time proxy (request × duration) | 27% | 61% | 45% | 54% |
-| by CPU request | 35% | 66% | 51% | 62% |
-| by job count | 1.9% | 38.5% | 6.6% | 11.1% |
+| **measured usage share (used by the env)** | **16.6%** | **15.7%** | **22.3%** | **26.4%** |
+| by CPU request | 63% | 85% | 81% | 79% |
+| by CPU-time proxy (request × duration) | 60% | 82% | 77% | 75% |
+| by job count | 2.4% | 49.8% | 9.1% | 14.3% |
 
-**The request-based proxies overestimate the deferrable *usage* share by ~5–13×.** This is exactly the over-allocation Tirmazi documents: the best-effort tiers request far more than Borg actually runs them at — *"cell c has allocated ~140% of the cell's memory capacity just to the best-effort batch tier"* (§5 of that paper) while tier *usage* is a small fraction of that. Requests measure intent; usage measures the schedulable reality. The deferrable lever in these four cells is therefore **real but small (2–10% of load)** — which makes `batch_fraction` a natural **sensitivity-sweep parameter** (the synthetic generator, §3.8, can instantiate counterfactually batch-heavier mixes up to the ~20%-of-capacity trace-wide beb average Tirmazi reports). (All figures supersede earlier `scheduling_class ≤ 1 AND priority < 200` numbers, which conflated production with batch.)
+**The request-based proxies overestimate the deferrable *usage* share by ~3–5×.** This is exactly the over-allocation Tirmazi documents: the best-effort tiers request far more than Borg actually runs them at — *"cell c has allocated ~140% of the cell's memory capacity just to the best-effort batch tier"* (§5 of that paper) while tier *usage* is a smaller fraction of that. Requests measure intent; usage measures the schedulable reality. The corrected measured deferrable share — **16–26% of load** — sits right at the **~20%-of-capacity best-effort average** Tirmazi reports for the trace, an independent consistency check. `batch_fraction` remains a natural **sensitivity-sweep parameter** (the synthetic generator, §3.8, can instantiate counterfactually batch-heavier mixes). (All figures supersede earlier `scheduling_class ≤ 1 AND priority < 200` numbers, which conflated production with batch, and the inherited 110–115 band, which dropped most of beb.)
 
 ### 2.3 Grid Net Demand & Solar Forecast Features
 
@@ -133,20 +133,24 @@ Two timeseries support the duck-curve modeling. The DCs themselves do not own or
 
 **Column**: `solar_fraction` ∈ [0, 1].
 
-### 2.4 Electricity Prices — Regional ISOs
+### 2.4 Electricity Prices — documented synthetic (⚠ provenance, to resolve)
 
-Real-time wholesale electricity prices from US Independent System Operators:
+> **⚠ Honesty note — the price series are SYNTHETIC, not real LMP.** This is the thesis's single most important data caveat, surfaced during the peer-review response. The committed `data/prices/*.csv` are **byte-identical** to the output of the calibrated diurnal generator in [preprocess/price_fetcher.py](preprocess/price_fetcher.py) (`generate_synthetic_prices`) — confirmed by regenerating and diffing (max |Δ| = 9.7×10⁻¹⁷). The fetcher's "real EIA" path was never functional: the EIA API v2 exposes **no hourly wholesale-price route** (the route it queried 404s for every year), and two US-scenario territories (**Southern Co./GA, Duke/SC are vertically integrated utilities with no public wholesale market**) have no LMP that could be fetched at all. So a fully-real price series is *not currently obtainable* for this footprint.
 
-| DC | Price Source | File |
+What the prices **are**: a calibrated diurnal model (regional May-2019 average × diurnal shape + noise) — structurally realistic *dynamics* (diurnal spread, cross-region differences) anchored to plausible levels.
+
+| DC | Price model (calibrated to) | File |
 |---|---|---|
-| US-West | CAISO (California ISO) | `data/prices/caiso.csv` |
-| US-Central | MISO (Midcontinent ISO) | `data/prices/miso.csv` |
-| US-Southeast-1 | Southern Company | `data/prices/southern_co.csv` |
-| US-Southeast-2 | Duke Energy Carolinas | `data/prices/duke_carolinas.csv` |
-| Global-EU | ENTSO-E Netherlands | `data/prices/entso_e_nl.csv` |
-| Global-Asia | EMA Singapore | `data/prices/ema_singapore.csv` |
+| US-West | "CAISO-exposed" Western DC, ~$48/MWh | `data/prices/caiso.csv` |
+| US-Central | MISO-like, ~$30/MWh | `data/prices/miso.csv` |
+| US-Southeast-1 | Southern Co. territory, ~$38/MWh | `data/prices/southern_co.csv` |
+| US-Southeast-2 | Duke Carolinas territory, ~$34/MWh | `data/prices/duke_carolinas.csv` |
+| Global-EU | ENTSO-E NL-like, ~$46/MWh | `data/prices/entso_e_nl.csv` |
+| Global-Asia | EMA Singapore (USEP)-like, ~$105/MWh | `data/prices/ema_singapore.csv` |
 
-**Column**: `price_usd_kwh` — locational marginal price in $/kWh at 5-minute resolution.
+**Net demand, by contrast, IS real** (EIA-930; §2.3). **Why this is defensible for now:** every policy is scored against the *same* price series, so any price bias **cancels in the relative comparison** — and the comparisons (PPO vs baselines) are all we report. **What resolves it (future work, top priority):** real CAISO/MISO LMP (CAISO OASIS works but is rate-limited and historical access is finicky; `gridstatus` would help but its wheels would not build in this env) plus documented proxies for the non-ISO territories. The fetchers already accept `--year` and read the key from `.env`; the generalization study (§7.12) shifts the *real* net-demand signal to 2024 as a partial market-shift test in the meantime.
+
+**Column**: `price_usd_kwh` — modeled $/kWh at 5-minute resolution.
 
 ---
 
@@ -487,109 +491,28 @@ All DCs: `rated_power_mw = 100`. No on-site solar.
 
 All numbers below come from the demand-smoothing formulation: grid-only DCs, reward = -(energy_cost + α × grid_mw² × net_demand_normalized + backlog + capacity penalties [+ deadline]), with α = 0.015. Each policy is run for one full 8,917-step episode (~31 days) under the same seed. **These are the final, artifact-free results**: ground-truth per-tier demand curves (§7.10), per-cell calibrated power models (§3.2), deadline-preserving queueing (§7.9), and the calibrated deadline penalty w=250 (§7.8).
 
-### 7.1 US Model — Legacy Mode (Spatial Routing Only)
+### 7.1 Multi-Seed Campaign — Canonical Results
 
-| Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | Load Factor | Peak (MW) |
-|---|---|---|---|---|---|
-| **PPO** | **9,665,560** | 7,705,782 | 1,888,721 | 0.962 | 293.1 |
-| DQN (routing-grid) | 9,759,381 | 7,923,142 | 1,836,239 | 0.954 | 299.0 |
-| DQN (flat-idx) | 9,786,852 | 7,896,901 | 1,828,198 | 0.966 | 290.8 |
-| Round Robin | 9,845,529 | 7,969,872 | 1,875,658 | 0.953 | 302.8 |
-| Drain Immediately | 9,845,529 | 7,969,872 | 1,875,658 | 0.953 | 302.8 |
-| Defer to Low Net Demand | 9,845,529 | 7,969,872 | 1,875,658 | 0.953 | 302.8 |
-| Status Quo / Local Only | 9,847,536 | 7,970,671 | 1,876,865 | 0.952 | 302.8 |
-| Random | 9,889,207 | 7,970,392 | 1,917,793 | 0.869 | 331.9 |
-| Trough-Slot Lookahead | 9,934,152 | 8,017,735 | 1,833,401 | 0.869 | 332.1 |
-| Avoid the Ramp | 16,579,964 | 7,964,406 | 1,849,241 | 0.865 | 329.8 |
-| Cheapest Price First | 40,110,844 | 6,966,633 | 1,636,567 | 0.983 | 261.7 |
+The headline numbers come from the **multi-seed review campaign** ([scripts/run_review_campaign.py](scripts/run_review_campaign.py)): 5 training seeds × 3 algorithms × 4 configurations = 60 models, each evaluated deterministically on the full 31-day episode, with seed-level statistics (mean ± std, paired PPO-vs-best-DQN sign/Wilcoxon tests, bootstrap CIs). This is the **canonical context-aware (`ctx`) model set** — PPO's observation includes the static per-DC site context (idle, slope, capacity, batch_fraction; §3.4) that makes per-site heterogeneity learnable rather than memorized (§7.12). Costs in **millions of dollars**; "spatial-only" = the former "legacy" mode (routing only); "batch" = spatial + temporal.
 
-**Key findings**:
+| Config | Status Quo | Trough-Slot | Best DQN | **PPO (mean ± sd)** | **Δ vs SQ** | QP optimum | PPO gap | PPO vs DQN | PPO wins |
+|---|---|---|---|---|---|---|---|---|---|
+| US spatial-only | 9.848 | 11.235 | 9.809 | **9.570 ± 0.034** | **+2.82%** | 9.462 | 1.14% | +2.50% | 5/5 |
+| US batch | 9.848 | 10.090 | 9.893 | **9.586 ± 0.080** | **+2.66%** | 9.443 | 1.51% | +3.20% | 5/5 |
+| Global spatial-only | 14.062 | 14.324 | 13.348 | **12.621 ± 0.249** | **+10.25%** | 11.947 | 5.64% | +5.77% | 4/5 |
+| Global batch | 14.062 | 13.757 | 13.457 | **12.246 ± 0.139** | **+12.91%** | 11.921 | 2.73% | +9.88% | 5/5 |
 
-1. **All three RL agents now beat every baseline — PPO first at $9.67M (+1.8% over Round Robin).** This *reverses* the earlier result in which PPO lost US legacy. The change is the **per-cell power models** (§3.2): under the pooled model the four DCs were energetically identical and near-uniform routing was optimal (nothing to learn); with each cell's real idle/slope, a genuine routing signal exists even at 3-hour timezone spread, and the agents find it. PPO simultaneously achieves lower cost, a flatter draw (load factor 0.962), and a *lower* fleet peak (293.1 vs 302.8 MW).
+**Headline.** PPO is the best policy — learned or heuristic — in **all four configurations**: **+2.7–12.9%** vs the grid-unaware status quo, **+5.0–14.8%** vs the foresighted Trough-Slot heuristic, **+2.5–9.9%** vs the best DQN variant. It beats the best DQN in **19 of 20 seed-paired comparisons** (sign/Wilcoxon p = 0.031 in three configs; Global spatial-only is the exception at 4/5, p = 0.19). It sits **1.1–5.6% from the clairvoyant QP lower bound** (§7.11), serves **100% of service demand with zero deadline violations** (§7.14), and holds the flattest, lowest fleet draw. Savings scale with exploitable structure: modest under US-only diversity, large under global price/timezone spread.
 
-2. **The signal is marginal-cost (slope) arbitrage.** Cells a/b have high idle but *low slope* (0.34/0.38); cells c/d are the reverse (0.53/0.57). Idle power is sunk — so marginal load is cheapest at the low-slope DCs, and the learned policies shift it there (see §7.5).
+**Where the savings come from (slope arbitrage).** Per-cell power calibration (§3.2) turned the low-diversity US scenario from "nothing to learn" into a real optimization: idle power is sunk, so each marginal unit of CPU is cheapest where the *slope* is lowest. PPO inverts the load distribution relative to the do-nothing policies — toward low-slope cells a/b (slope 0.34/0.38), away from high-slope c/d (0.53/0.57) — worth +2.8% with no price diversity at all (§7.5). In the Global scenario this compounds with price arbitrage (route away from high-priced Singapore toward cheap, low-slope US capacity).
 
-3. **Trough-Slot Lookahead now underperforms the trivial baselines** ($9.93M): its route-to-the-slack-grid concentration raises the fleet peak (332 MW, load factor 0.869), which the quadratic peak penalty punishes. Concentration heuristics (Avoid-the-Ramp, Cheapest-First) still fail catastrophically on backlog/capacity penalties.
+**The foresighted heuristic loses everywhere.** Trough-Slot Lookahead has privileged 3-hour net-demand foresight yet loses every config by 5.0–14.8%, and in the US is the single most expensive policy (worse than doing nothing): its slack-grid routing *concentrates* load, raising the fleet peak the quadratic penalty punishes (load factor ≈ 0.86 vs PPO's ≈ 0.96), and it is blind to per-cell power. Foresight does not compensate for optimizing the wrong surface.
 
-### 7.2 US Model — Batch Mode (Spatial + Temporal)
+**The temporal lever, honestly sized.** At the measured 16–26% deferrable fractions (§2.2), batch deferral adds **+2.7 points** over spatial-only in the Global scenario (+10.3% → +12.9%) but is essentially neutral in the US (+2.8% → +2.7%), which has little price/timezone diversity to shift into. Spatial routing is the primary lever; deferral is a real but secondary, scenario-dependent one. (Earlier drafts' inflated +6% estimates were artifacts L1–L3, §7.8–§7.10.)
 
-Run with the calibrated `deadline_penalty_weight = 250` (§7.8) and the measured 2–10% deferrable fractions (§2.2).
+**DQN stability is the discrete-encoding story.** With 5 seeds, DQN's weakness is variance, not a single bad run: DQN std reaches ±$0.6M and flat-idx ±$0.9M, versus PPO's ≤ ±$0.25M. Neither discrete encoding dominates the other across configs, and the one PPO near-miss (Global spatial-only, 4/5) is where a flat-idx seed got close. PPO trained reliably in all four with one hyperparameter set. (This concerns our cell-aggregate formulation, not CFWS's per-VM setting where the encoding is reported effective — §8.7.)
 
-| Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | Batch Expired | Load Factor | Peak (MW) |
-|---|---|---|---|---|---|---|
-| **PPO** | **9,523,696** | 7,669,066 | 1,850,919 | **0** | 0.957 | 289.5 |
-| DQN (flat-idx) | 9,798,256 | 7,845,542 | 1,952,715 | 0 | 0.953 | 304.1 |
-| Round Robin | 9,845,510 | 7,969,838 | 1,875,672 | 0 | 0.952 | 302.9 |
-| Drain Immediately | 9,845,529 | 7,969,871 | 1,875,658 | 0 | 0.953 | 302.8 |
-| Defer to Low Net Demand | 9,846,742 | 7,961,162 | 1,871,118 | 58 | 0.952 | 302.7 |
-| Status Quo / Local Only | 9,847,536 | 7,970,670 | 1,876,865 | 0 | 0.952 | 302.8 |
-| Random | 9,882,203 | 7,969,112 | 1,912,484 | 0 | 0.876 | 329.2 |
-| Trough-Slot Lookahead | 9,907,755 | 8,021,038 | 1,838,869 | 0 | 0.866 | 333.7 |
-| DQN (routing-grid) | 10,354,413 | 8,044,242 | 1,829,427 | 0 | 0.954 | 299.1 |
-| Avoid the Ramp | 13,435,357 | 7,976,679 | 1,855,591 | 488 | 0.864 | 331.3 |
-| Cheapest Price First | 34,915,615 | 7,098,290 | 1,681,450 | 30 | 0.955 | 274.2 |
-
-**Key findings**:
-
-1. **PPO wins decisively with zero deadline violations** ($9.52M, +3.3% over Round Robin and the Status Quo, +3.9% over the Trough-Slot oracle). It defers the small deferrable slice into troughs *and* exploits the per-cell routing signal, shaving the fleet peak to 289.5 MW while completing every unit of committed work.
-
-2. **Temporal deferral adds +1.5% on top of PPO's legacy result** ($9.67M → $9.52M). With the measured (small) batch fractions and deadline-preserving queueing, deferral is a real but modest second lever — spatial routing remains the larger one.
-
-3. **Deadline violations have essentially vanished across the board.** Almost every policy expires 0 units: with realistic batch volumes and work that queues rather than dumps (§7.9), deadlines are nearly always met. Expiry now occurs only for genuinely overloading policies (Avoid-the-Ramp: 488). The Status Quo's batch-mode cost equals its legacy run **to the dollar** — the demand-neutrality invariant (§7.10) holds in the final results.
-
-4. **DQN is unstable here.** flat-idx trains to a respectable 2nd ($9.80M); routing-grid *degrades* relative to its own legacy run ($10.35M vs $9.76M) — same hyperparameters, larger action space, worse policy. See §8.7 for the robustness pattern across configs.
-
-### 7.3 Global Model — Legacy Mode
-
-| Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | Load Factor | Peak (MW) |
-|---|---|---|---|---|---|
-| **PPO** | **12,617,024** | 10,589,720 | 1,933,785 | 0.958 | 289.1 |
-| Trough-Slot Lookahead | 13,750,946 | 11,783,494 | 1,930,847 | 0.858 | 333.4 |
-| DQN (flat-idx) | 13,759,893 | 11,768,159 | 1,991,734 | 0.955 | 297.1 |
-| Status Quo / Local Only | 14,061,554 | 12,056,446 | 2,005,108 | 0.952 | 302.8 |
-| Round Robin | 14,094,784 | 12,088,006 | 2,006,778 | 0.953 | 302.8 |
-| Drain Immediately | 14,094,784 | 12,088,006 | 2,006,778 | 0.953 | 302.8 |
-| Defer to Low Net Demand | 14,094,784 | 12,088,006 | 2,006,778 | 0.953 | 302.8 |
-| Avoid the Ramp | 14,127,792 | 11,271,058 | 1,954,845 | 0.788 | 358.5 |
-| Random | 14,148,602 | 12,093,644 | 2,053,936 | 0.869 | 331.9 |
-| Cheapest Price First | 43,180,168 | 9,965,768 | 1,706,756 | 0.983 | 261.7 |
-| DQN (routing-grid) | 77,786,603 | 8,930,276 | 1,273,289 | 0.996 | 226.6 |
-
-**Key findings**:
-
-1. **PPO dominates: $12.62M — 8.2% better than the foresighted Trough-Slot oracle and 10.5% better than Round Robin.** This is the largest margin in any configuration. The 16-hour timezone spread (price + net-demand diversity) *plus* the per-cell power heterogeneity give the continuous policy a rich routing surface, and it exploits both: lowest energy ($10.59M), flat draw (0.958), lowest competitive peak (289.1 MW).
-
-2. **DQN (routing-grid) diverged** ($77.8M): it learned a degenerate concentration policy — lowest energy in the table ($8.93M) and a near-perfect load factor (0.996), achieved by cramming load into too few DCs and absorbing massive backlog penalties. Same hyperparameters that worked elsewhere; an honest data point on DQN's training fragility in this formulation. DQN (flat-idx) trained fine ($13.76M, 3rd) — its constrained action set acts as a stabilizer.
-
-3. **The earlier "flat-idx ties PPO" result did not survive the corrected environment.** With per-cell power in play, fine-grained continuous routing pulls decisively ahead of the 48-action migrate-15% primitives (gap: 8.3%). The encoding that was sufficient under homogeneous power is too coarse under heterogeneous power.
-
-### 7.4 Global Model — Batch Mode
-
-Run with the calibrated `deadline_penalty_weight = 250` (§7.8) and the measured 2–10% deferrable fractions (§2.2).
-
-| Policy | Total Cost ($) | Energy Cost ($) | Peak Penalty ($) | Batch Expired | Load Factor | Peak (MW) |
-|---|---|---|---|---|---|---|
-| **PPO** | **12,421,134** | 10,503,810 | 1,904,733 | **0** | 0.952 | 288.9 |
-| DQN (routing-grid) | 13,005,570 | 11,030,612 | 1,974,959 | 0 | 0.954 | 297.2 |
-| Trough-Slot Lookahead | 13,755,219 | 11,804,098 | 1,936,613 | 5 | 0.866 | 330.5 |
-| Avoid the Ramp | 13,886,070 | 11,233,175 | 1,919,421 | 539 | 0.782 | 358.5 |
-| Status Quo / Local Only | 14,061,554 | 12,056,446 | 2,005,108 | 0 | 0.952 | 302.8 |
-| Defer to Low Net Demand | 14,091,169 | 12,072,596 | 2,001,729 | 67 | 0.955 | 301.8 |
-| Round Robin | 14,094,780 | 12,088,025 | 2,006,755 | 0 | 0.952 | 302.9 |
-| DQN (flat-idx) | 14,094,783 | 12,088,006 | 2,006,777 | 0 | 0.953 | 302.9 |
-| Drain Immediately | 14,094,784 | 12,088,006 | 2,006,778 | 0 | 0.953 | 302.8 |
-| Random | 14,134,003 | 12,085,745 | 2,047,652 | 0 | 0.876 | 329.2 |
-| Cheapest Price First | 38,092,654 | 10,206,975 | 1,756,660 | 2 | 0.957 | 273.8 |
-
-**Key findings**:
-
-1. **PPO wins decisively with zero deadline violations** ($12.42M — +9.7% over the Trough-Slot oracle, +11.7% over the Status Quo). Geographic diversity + per-cell power + temporal deferral jointly give the largest absolute savings of any configuration, and PPO captures them while completing all committed work.
-
-2. **The earlier "Cheapest-First wins by dumping" anomaly is gone.** With work that queues rather than dumps (§7.9) and realistic batch volumes, the price-chasing concentrator can no longer convert deadline violations into profit — it collapses to $38.1M on backlog/capacity penalties, just as in legacy mode. The apparent "batch deferral rescues concentration heuristics" effect of earlier runs was largely an artifact of the dumping mechanism.
-
-3. **Temporal deferral adds +1.6%** on top of PPO's legacy result ($12.62M → $12.42M) — consistent with the US figure (+1.5%): a real but secondary lever at measured batch fractions.
-
-4. **DQN variants are again the stability story.** routing-grid — which *diverged* in Global legacy — trains fine here ($13.01M, 2nd). flat-idx converges to a near-uniform no-op (cost within $4 of Round Robin/Drain-Immediately). Each discrete variant failed in one Global config and worked in the other; PPO trained reliably in all four (§8.7).
+> **Note on the single-seed tables.** Earlier drafts of §7.1–§7.4 carried full 11-policy baseline tables from a single pre-context model per config. Those are superseded by the campaign above; the full per-policy field (every heuristic) is still produced per run in `output/review_campaign_ctx/{config}.json` if the complete ranking is needed.
 
 ### 7.5 Per-DC Energy Cost Breakdown
 
@@ -622,7 +545,7 @@ Global-Asia (Singapore, high EMA prices) dominates fleet cost, and PPO attacks e
 **Why the corrected environment dissolved the premise.** Each correction removed a leg:
 
 1. **The burstiness was manufactured.** The synthetic generator injected each job's full demand at its arrival timestep, producing batch curves with peak/mean ≈ 195 vs ≈ 1.24 in the measured trace (§7.10). The "burst windows" the agents exploited were two orders of magnitude more extreme than reality — the 2.1× concentration finding was a property of the bug, not the workload.
-2. **The measured deferrable slice is small.** At the ground-truth 2–10% batch fractions (§2.2), even genuinely bursty batch arrivals barely perturb total fleet demand.
+2. **The measured deferrable slice is bounded.** At the ground-truth 16–26% batch fractions (§2.2), and with the aggregate batch curve being smooth (peak/mean ≈ 1.24), bursty *arrivals* barely perturb total fleet demand.
 3. **The damage channel is closed.** With deadline-preserving queueing (§7.9), arrival spikes no longer cause expiry — violations are ≈ 0 for every reasonable policy — so there is nothing for burst-awareness to protect against.
 4. **The real curves are deterministic.** The generator re-sampled arrivals per seed, making bursts stochastic events worth detecting; the measured tier curves are a fixed 31-day series whose "bursts" sit at known calendar positions an agent can learn implicitly. An explicit burst feature is a derived column of fixed data.
 
@@ -649,14 +572,16 @@ The tables above rank policies against each other. This section adds the externa
 
 **Normalized power metric — load factor.** Beyond cost, every policy reports `load_factor = mean / peak` aggregate grid draw (emitted by `compute_summary`). Higher = flatter.
 
-| Config | PPO cost | Status Quo cost | **Δ vs Status Quo** | PPO load factor / peak | SQ load factor / peak |
-|---|---|---|---|---|---|
-| US legacy | $9.67M | $9.85M | **+1.8%** | 0.962 / 293.1 MW | 0.952 / 302.8 MW |
-| US batch | $9.52M | $9.85M | **+3.3%** | 0.957 / 289.5 MW | 0.952 / 302.8 MW |
-| Global legacy | $12.62M | $14.06M | **+10.3%** | 0.958 / 289.1 MW | 0.952 / 302.8 MW |
-| Global batch | $12.42M | $14.06M | **+11.7%** | 0.952 / 288.9 MW | 0.952 / 302.8 MW |
+Multi-seed PPO means vs the status quo:
 
-**PPO saves 1.8–11.7% over the grid-unaware status quo in every configuration**, with zero deadline violations, while *also* shaving the fleet peak ~10–14 MW (≈303 → ≈289). The saving scales with the exploitable structure: modest under US-only diversity (where it comes from per-cell slope arbitrage, §7.5), large under global price/timezone diversity. This is the cleanest externally-facing result of the thesis, and it mirrors exactly what a CICS-style grid-aware layer contributes on top of Borg's grid-unaware operation. The visual profile is produced by [analysis/plot_power_profile.py](analysis/plot_power_profile.py) → `output/power_profile_comparison.png` (PPO: peak 289 MW, load factor 0.957 vs Status Quo 303 MW / 0.952).
+| Config | PPO mean cost | Status Quo cost | **Δ vs Status Quo** |
+|---|---|---|---|
+| US spatial-only | $9.570M | $9.848M | **+2.82%** |
+| US batch | $9.586M | $9.848M | **+2.66%** |
+| Global spatial-only | $12.621M | $14.062M | **+10.25%** |
+| Global batch | $12.246M | $14.062M | **+12.91%** |
+
+**PPO saves 2.7–12.9% over the grid-unaware status quo in every configuration**, with zero deadline violations, while *also* shaving the fleet peak ~10–14 MW (≈303 → ≈289). The saving scales with exploitable structure: modest under US-only diversity (where it comes from per-cell slope arbitrage, §7.5), large under global price/timezone diversity. This is the cleanest externally-facing result of the thesis, and it mirrors exactly what a CICS-style grid-aware layer contributes on top of Borg's grid-unaware operation. The visual profile is produced by [analysis/plot_power_profile.py](analysis/plot_power_profile.py) → `output/power_profile_comparison.png`.
 
 ### 7.8 Calibrating the deadline penalty — a sensitivity lesson
 
@@ -674,11 +599,11 @@ Because the penalty is linear in expired demand, the cost of any rollout at any 
 
 **The general lesson:** in a deferral-with-deadlines reward, the deadline penalty must **scale with the value of the deferred work** (≈ its energy cost), not be a fixed small constant — otherwise the agent learns to discard work whenever the deferrable fraction is non-trivial. All batch-mode results in this thesis use the recalibrated **`w = 250`**.
 
-*Postscript: the expiry counts in this subsection are from the interim (request-based) batch fractions under which the lesson was learned. In the final environment — measured 2–10% fractions (§2.2) plus deadline-preserving queueing (§7.9) — deadline violations essentially vanish for all reasonable policies (§7.2/§7.4), and the calibrated penalty matters mainly for counterfactual batch-heavy sensitivity sweeps.*
+*Postscript: the expiry counts in this subsection are from the interim (request-based) batch fractions under which the lesson was learned. In the final environment — measured 16–26% fractions (§2.2) plus deadline-preserving queueing (§7.9) — deadline violations essentially vanish for all reasonable policies (§7.1, §7.14), and the calibrated penalty matters mainly for counterfactual batch-heavy sensitivity sweeps.*
 
 ### 7.9 Queue, don't dump — preserving deadlines under capacity pressure
 
-A second batch-model artifact surfaced from a simple sanity check: **why does Status Quo expire ~5,000 units?** A policy that drains everything *immediately* should never discard work. The cause was in the step loop — drained batch that didn't fit under capacity was re-queued with a **1-step deadline (`t+1`)**, so any capacity-blocked work expired the very next step instead of waiting for a later trough. With the interim request-based free+beb fraction (27–61%; later measured at 2–10%, §2.2), bursty arrivals routinely exceeded capacity, so this manufactured a large, *policy-independent* expiry floor — ~5,059 in **both** US and Global batch (identical, because the cells/capacity/arrivals are the same and only the grid differs: the tell that it was an artifact, not a result).
+A second batch-model artifact surfaced from a simple sanity check: **why does Status Quo expire ~5,000 units?** A policy that drains everything *immediately* should never discard work. The cause was in the step loop — drained batch that didn't fit under capacity was re-queued with a **1-step deadline (`t+1`)**, so any capacity-blocked work expired the very next step instead of waiting for a later trough. With the interim request-based free+beb fraction (27–61%; later measured at 16–26% of usage, §2.2), bursty arrivals routinely exceeded capacity, so this manufactured a large, *policy-independent* expiry floor — ~5,059 in **both** US and Global batch (identical, because the cells/capacity/arrivals are the same and only the grid differs: the tell that it was an artifact, not a result).
 
 **This is the opposite of how Borg behaves.** The best-effort batch tier is *queued* — beb jobs wait for capacity, managed by the batch scheduler; they are not discarded because they could not run this instant. The "deadline" itself is a *synthetic* construct (Grange/Da Costa's `flexibility_factor`; §2.2 / §8.2), not a property of the trace. So the `t+1` re-queue contradicted both Borg's documented behavior and the deferral semantics we meant to model.
 
@@ -710,13 +635,58 @@ The generator sampled each job's `cpu × tasks` and injected **all of it into th
 
 - `data/cells/cell_{x}_tiers.csv`: per-timestep `service_demand_norm` (SLO tiers) and `batch_demand_norm` (no-SLO tiers), with **`service + batch = measured aggregate`** at every timestep (verified to machine precision, and the aggregate matches `cell_X.csv` exactly).
 - **Ground truth** ([extract_tier_curves.ipynb](extract_tier_curves.ipynb)): `instance_usage` split by priority tier in BigQuery — measured usage, no reconstruction. Batch usage shares: **a=2.1%, b=6.1%, c=8.1%, d=9.7%** (§2.2). The batch curves are legitimately burstier than the total (peak/mean 3.5–21 vs 1.24) because the deferrable slice is small; that burstiness is now *real*, not manufactured.
-- An interim local approximation ([scripts/derive_tier_curves.py](scripts/derive_tier_curves.py)) reconstructed the split from job *request* windows and **overestimated the deferrable share ~5–13×** (a=0.55, b=0.68, c=0.44, d=0.58) — a second instance of the requests-vs-usage gap (§2.2). It remains useful only when BigQuery is unavailable.
+- An interim local approximation ([scripts/derive_tier_curves.py](scripts/derive_tier_curves.py)) reconstructed the split from job *request* windows and **overestimated the deferrable share ~3–5×** (request-weighted ≈ 60–85% vs measured usage 16–26%) — a second instance of the requests-vs-usage gap (§2.2). It remains useful only when BigQuery is unavailable.
 
 **Validation:** with the real curves (and the §7.9 queueing fix), a serve-everything-now policy in batch mode reproduces the legacy demand exactly — Status Quo: load factor 0.952, peak 302.8 MW, **zero** expiry, total cost equal to its legacy run **to the dollar** ($9,847,536 both modes; the invariant also holds under the per-cell power models and in the final §7.2 results). The batch machinery is now demand-neutral by construction; any cost difference between policies is *scheduling*, not artifacts.
 
 **Two general lessons:** (i) a synthetic workload generator must conserve not just total volume but the **demand-presentation process** — jobs present their rate *over their duration*; validating the generated curve's shape statistics against the source trace (peak/mean here) is a one-line check that would have caught this immediately. (ii) **Resource *requests* are not resource *usage*** — any quantity weighted by requests (batch fractions, tier shares) can be off by an order of magnitude in an over-allocated system; only measured usage settles it. The generator is retained for controlled load-intensity sensitivity experiments (its original purpose in Grange et al.), no longer as the primary input.
 
 ---
+
+### 7.11 Optimality gap — a clairvoyant QP lower bound
+
+Reviewers rightly note that "beats the best heuristic we wrote" is weaker than "near-optimal." Our environment is **convex in the serving decisions** (linear power Eq. 1, linear energy cost, convex-quadratic peak penalty, linear queue/backlog dynamics), so a clairvoyant planner with full-episode foresight and fluid (unconstrained) allocation solves a **quadratic program whose optimum lower-bounds any policy** — causal or not. [scripts/compute_qp_optimum.py](scripts/compute_qp_optimum.py) assembles it directly for the Clarabel solver (per-origin-stream cumulative deadline constraints are exact because each stream has one deadline offset; the manual sparse assembly was **validated against a cvxpy reference at 10⁻⁹** before the full solve, since cvxpy's conic reduction overflows 32-bit indices at this scale on Windows). All four configs solve in 1–6 s.
+
+| Config | QP optimum | PPO mean | **PPO gap** | Share of clairvoyant savings captured |
+|---|---|---|---|---|
+| US spatial-only | $9.462M | $9.570M | **1.14%** | 72% |
+| US batch | $9.443M | $9.586M | **1.51%** | 65% |
+| Global spatial-only | $11.947M | $12.621M | **5.64%** | 68% |
+| Global batch | $11.921M | $12.246M | **2.73%** | 85% |
+
+PPO captures **65–85% of the total clairvoyant savings over the status quo** and is **1.1–5.6% from a bound no causal policy can reach** (the bound has perfect foresight and no action-parameterization limits, so the true achievable gap is smaller). A useful by-product: the QP's spatial-only and batch optima differ by only **~0.2%**, independently confirming that the *intrinsic* value of temporal flexibility at these deferrable fractions is small (§7.1, temporal-lever paragraph) — PPO's larger empirical batch gains come mostly from the batch formulation training better routing, not from deferral per se.
+
+### 7.12 Generalization — transfer tracks observability
+
+A model evaluated on the same 31-day episode it trained on could be memorizing the calendar. We test the **frozen** policies (no retraining) on two distribution shifts via [scripts/eval_generalization.py](scripts/eval_generalization.py); the result is a clean, mechanistic story.
+
+**Stage 1 — unobserved shift (held-out cells e–h).** Swap cells a–d for the four cells the agent never trained on (new workloads, tier mixes, per-cell power), via `extract_cells_eh.ipynb` → `*_eh.yaml`. The context-aware policies **fail where their edge is purely spatial** (US spatial-only −19.0%, Global spatial-only −27.5% vs the held-out status quo): the policy had learned per-site routing keyed to static parameters that — although now *in* the observation (§3.4) — never *varied* across the fixed-a–d training episodes, so the network received them as a constant bias with no gradient signal to depend on them. Adding the observation feature is **necessary but not sufficient**.
+
+**Stage 2 — the fix (domain randomization).** Train with the env's `domain_randomization` flag ([env/multi_dc_env.py](env/multi_dc_env.py) `reset`): each episode permutes the compute bundles (workload/tiers/capacity/power/deadlines) across the market slots — destroying slot identity so the policy *must* read the context — and resamples power parameters within the measured 8-cell range (idle 0.35–0.60, slope 0.30–0.65) so held-out cells lie inside the training support. This **restores positive transfer in 3 of 4 configs** (US spatial +4.7%, US batch +4.0%, Global batch +5.2%). Global spatial-only stays brittle (−19.8%): its aggressive price-concentration strategy has no deferral pool to absorb mistakes on unseen capacity, and the (correctly expensive) backlog penalty amplifies the overload — while its **batch** counterpart, which *does* have the pool, transfers at +5.2% with the tightest variance of all. **Deferral capacity buys distribution-shift robustness** — a finding that did not exist before this experiment.
+
+**Stage 3 — observed shift (real 2019→2024 net demand, M2b).** Keep cells a–d but swap net demand to **real EIA-930 May-2024** (a genuine duck-curve shift, corr ≈ 0.74; prices held fixed — see provenance caveat §2.4), via the `--year` fetchers → `*_yshift.yaml`. The **same frozen context-aware policies transfer near-perfectly** (US +3.4%/+3.1%, Global +10.7%/+13.2% — within ~0.5 point of their on-training result, two configs *better*).
+
+**The unified statement:** generalization **succeeds along the axes the policy observes** (net demand, prices) and **fails along the one it cannot** (static site parameters) — until domain randomization makes the static axis learnable. This answers the memorization concern for the demand signal and prescribes the fix.
+
+### 7.13 Robustness to inter-site movement cost
+
+The spatial lever assumes free, instant fungibility. [scripts/movement_cost_sensitivity.py](scripts/movement_cost_sensitivity.py) charges a per-unit cost `w` on service routed away from its home cell (the SustainCluster transmission-cost idea, §8.8) and sweeps `w`, scoring the existing policies post-hoc — a **conservative lower bound**, since a movement-aware policy would route less and recover more. The Status Quo serves locally (zero movement), so it is the invariant reference.
+
+| Config | Break-even `w*` ($/unit) | As multiple of unit-energy cost | Savings at $50/unit |
+|---|---|---|---|
+| Global spatial-only | $219 | 0.35× | +7.9% |
+| Global batch | $331 | 0.53× | +11.0% |
+| US spatial-only | $56 | 0.14× | +0.3% |
+
+The 10–13% Global advantage **survives until movement costs reach 35–53% of the energy cost of serving a unit** — far above realistic data-egress prices — so it is *not* an artifact of free fungibility. The US margin is thinner (0.14×), honestly reflecting its smaller spatial diversity.
+
+### 7.14 Deadline & backlog audit; environment calibration
+
+**Backlog audit (are the savings real scheduling, not penalty-dodging?).** Because every policy is scored on the shaped objective (§3.6), `compute_summary` ([evaluate.py](evaluate.py)) now emits a full cost-component breakdown plus terminal state. Across all **ten PPO batch-mode seeds**: service served / demand = **1.0000**, terminal backlog = **0**, terminal batch pool ≤ 0.95 units, **zero** expired batch, peak transient backlog ≤ 3.9 units, backlog penalty ≤ 1% of total cost. PPO serves everything, on time — the savings are scheduling, not leakage.
+
+**Two reward-calibration changes underpin that** (both following the §7.8 "scale the penalty to the value of the work" logic):
+- **Service-backlog weight λ_b: 1.5 → 25.** At 1.5, parking a unit of SLO service for 3 hours cost ~$54 against ~$180 of price arbitrage — an exploitable loophole (delay interactive work when it's expensive). At 25 a 3-hour hold costs ~$900 ≫ $180, closing it; the audit above confirms it is closed.
+- **Continuous action bound: ±1 → ±3** ([env/multi_dc_env.py](env/multi_dc_env.py) `ACTION_LOGIT_BOUND`). SB3 clips actions to the action box *before* the softmax/sigmoid decode, so the default ±1 structurally capped routing shares to [4.3%, 71%] and drain rates to [27%, 73%] — full concentration and multi-hour holding were impossible by construction, while the discrete wrappers (logits ±2/±3) were not so limited. ±3 restores expressiveness parity (shares to ~98.5%, drain 4.7–95.3%). Baselines and DQN bypass the box and are unaffected.
 
 ## 8. Comparison with Related Work
 
@@ -793,14 +763,14 @@ Our Trough-Slot Lookahead baseline (§5.8) reuses the slot-valuation idea but re
 
 PPO **beats Trough-Slot Lookahead in all four configurations**:
 
-| Config | PPO | Trough-Slot | PPO Advantage |
+| Config | PPO (mean) | Trough-Slot | PPO Advantage |
 |---|---|---|---|
-| US legacy | $9.67M | $9.93M | **+2.7%** |
-| US batch | $9.52M | $9.91M | **+3.9%** |
-| Global legacy | $12.62M | $13.75M | **+8.2%** |
-| Global batch | $12.42M | $13.76M | **+9.7%** |
+| US spatial-only | $9.570M | $11.235M | **+14.8%** |
+| US batch | $9.586M | $10.090M | **+5.0%** |
+| Global spatial-only | $12.621M | $14.324M | **+11.9%** |
+| Global batch | $12.246M | $13.757M | **+11.0%** |
 
-This is meaningful because Trough-Slot has **privileged 3-hour future net-demand information** that PPO does not: PPO learns implicit forecasting *and* coordinates it with routing. Two structural weaknesses cost the oracle: (i) its route-to-the-slack-grid rule **concentrates** load, raising the fleet peak (load factor ~0.86, peak ~333 MW vs PPO's ~0.96/289), which the quadratic peak penalty punishes; (ii) it has no notion of the **per-cell power heterogeneity** (§3.2) — it optimizes against net demand only, while PPO additionally arbitrages each cell's marginal power slope (§7.5). Foresight does not compensate for optimizing the wrong surface.
+This is meaningful because Trough-Slot has **privileged 3-hour future net-demand information** that PPO does not: PPO learns implicit forecasting *and* coordinates it with routing. Two structural weaknesses cost the foresighted heuristic: (i) its route-to-the-slack-grid rule **concentrates** load, raising the fleet peak (load factor ~0.86, peak ~333 MW vs PPO's ~0.96/289), which the quadratic peak penalty punishes — in the US this makes it the single most expensive policy, worse than doing nothing; (ii) it has no notion of the **per-cell power heterogeneity** (§3.2) — it optimizes against net demand only, while PPO additionally arbitrages each cell's marginal power slope (§7.5). Foresight does not compensate for optimizing the wrong surface.
 
 ### 8.6 Granularity & operational precedent — Radovanovic et al. (2023)
 
@@ -865,24 +835,24 @@ The **flat-idx variant** is closer to CFWS *in spirit* (small discrete action se
 
 #### Empirical comparison: action-space encoding matters, but direction depends on scenario
 
-Trained models evaluated under identical conditions (α = 0.015, calibrated deadline penalty w=250, ground-truth tier curves, per-cell power models, same seeds, full 31-day trace):
+Multi-seed campaign (5 seeds; mean ± std), ground-truth tier curves, per-cell power, w=250, λ_b=25, action bound ±3, full 31-day trace (§7.1):
 
-| Scenario | PPO | DQN (routing-grid, 759) | DQN (flat-idx, 48) | PPO vs best DQN |
-|---|---|---|---|---|
-| US legacy | **$9.67M** | $9.76M | $9.79M | **+1.0%** |
-| US batch | **$9.52M** | $10.35M (degraded) | $9.80M | **+2.8%** |
-| Global legacy | **$12.62M** | $77.79M (diverged) | $13.76M | **+8.3%** |
-| Global batch | **$12.42M** | $13.01M | $14.09M (≈ no-op) | **+4.5%** |
+| Scenario | PPO (mean ± sd) | best DQN (mean) | DQN std | PPO vs best DQN | PPO wins |
+|---|---|---|---|---|---|
+| US spatial-only | **$9.570M ± 0.034** | $9.809M | ±0.08–0.31M | **+2.50%** | 5/5 |
+| US batch | **$9.586M ± 0.080** | $9.893M | ±0.08–0.16M | **+3.20%** | 5/5 |
+| Global spatial-only | **$12.621M ± 0.249** | $13.348M | ±0.62–0.63M | **+5.77%** | 4/5 |
+| Global batch | **$12.246M ± 0.139** | $13.457M | ±0.30–0.55M | **+9.88%** | 5/5 |
 
 Three findings emerge:
 
-1. **PPO is the best RL agent in all four configurations** (+1.0% to +8.3% over the best DQN variant per config) — and in the final environment, the dominant DQN story is **training robustness, not encoding**. Across eight DQN runs, three failed in distinct ways: routing-grid *diverged* in Global legacy (a degenerate concentration policy — lowest energy and load factor 0.996, bought with massive backlog penalties) and degraded in US batch; flat-idx collapsed to a near-uniform no-op in Global batch (cost within $4 of Round Robin). PPO trained to a strong policy in all four configs with one set of hyperparameters.
-2. **Neither discrete encoding dominates the other, and the direction flips by config.** flat-idx beats routing-grid in US batch and Global legacy (where its small action set acts as a stabilizer against divergence); routing-grid wins US legacy and Global batch. The earlier clean narrative ("flat-idx wins under diversity") did not survive the corrected environment: with per-cell power heterogeneity, the 48-action migrate-15% primitives are too coarse to capture the slope-arbitrage routing PPO learns (§7.5). *This says nothing about CFWS's own per-PM formulation* — there each migration event exposes many meaningful actions (CFWS reports 5.67–13.22% brown-energy reduction, 46.49–86.53% migration reduction on their AZ/CA/OR/LA setting); on their formulation the encoding is reportedly effective.
-3. **Continuous actions matter most where the optimization surface is richest.** PPO's margin over the best DQN grows with the structure available: +1.0% (US legacy, slope arbitrage only) → +8.3% (Global legacy, slope + price + timezone). Fine-grained fractional routing is what converts surface richness into savings.
+1. **PPO is the best RL agent in all four configurations**, winning **19 of 20 seed-paired comparisons** (sign/Wilcoxon p = 0.031 in three configs; Global spatial-only 4/5, p = 0.19). In the multi-seed view the DQN story is **variance, not a single catastrophic run**: DQN std reaches ±$0.6M and flat-idx ±$0.9M versus PPO's ≤ ±$0.25M. (The earlier single-seed campaign *did* show a $77.8M routing-grid divergence in Global spatial-only and a flat-idx no-op in Global batch; with 5 seeds these read as the tails of a high-variance optimizer, which is the more honest framing.) PPO trained to a strong policy in all four configs with one hyperparameter set.
+2. **Neither discrete encoding dominates the other**, and with per-cell power heterogeneity the 48-action migrate-fraction primitives are too coarse to capture the slope-arbitrage routing PPO learns (§7.5). *This says nothing about CFWS's own per-PM formulation* — there each migration event exposes many meaningful actions (CFWS reports 5.67–13.22% brown-energy reduction, 46.49–86.53% migration reduction on their AZ/CA/OR/LA setting); on their formulation the encoding is reportedly effective.
+3. **Continuous actions matter most where the optimization surface is richest.** PPO's margin over the best DQN grows with available structure: +2.5% (US spatial-only, slope arbitrage only) → +9.9% (Global batch, slope + price + timezone + deferral). Fine-grained fractional routing is what converts surface richness into savings.
 
 #### PPO as the contribution beyond CFWS
 
-PPO is the best policy — RL or heuristic — in **all four configurations**, with **zero deadline violations** in both batch modes (§7.2, §7.4). Its continuous action space (routing fractions + drain rates + batch routing) is something CFWS's discrete one-VM-migration encoding cannot express without reformulation, and the final results tie its advantage to exactly that expressiveness: the slope-arbitrage and price-arbitrage routing patterns (§7.5) require fine-grained, per-DC fractional control. The contribution claim: **a continuous-action PPO formulation of aggregate multi-DC load-shaping beats foresighted heuristics (+2.7–9.7%), discrete DQN variants (+1.0–8.3%), and the grid-unaware status quo (+1.8–11.7%) across every tested configuration, while completing all committed deferrable work** — with the caveat that DQN's failures are training-stability failures on our formulation, not evidence against CFWS's design on theirs.
+PPO is the best policy — RL or heuristic — in **all four configurations**, with **zero deadline violations** in both batch modes (§7.1, §7.14). Its continuous action space (routing fractions + drain rates + batch routing) is something CFWS's discrete one-VM-migration encoding cannot express without reformulation, and the results tie its advantage to exactly that expressiveness: the slope- and price-arbitrage routing it learns (§7.5) requires fine-grained, per-DC fractional control. The contribution claim: **a continuous-action PPO formulation of aggregate multi-DC load-shaping beats foresighted heuristics (+5.0–14.8%), discrete DQN variants (+2.5–9.9%, 19/20 seeds), and the grid-unaware status quo (+2.7–12.9%) across every tested configuration — landing 1.1–5.6% from a clairvoyant QP bound (§7.11), completing all committed work** — with the caveat that DQN's instability is a training-stability property of our formulation, not evidence against CFWS's design on theirs.
 
 ### 8.8 Survey context — Lin et al. (2024) and Wu et al. (2025)
 
@@ -896,18 +866,19 @@ Stated against the lineage above:
 
 1. **Cell-as-proxy-DC modeling exercise.** We treat four ClusterData 2019 cells (a–d) as four geographically distributed hyperscale DCs — what such DCs' workloads would look like if they had cell-level inter-DC heterogeneity. This is *not* what Tirmazi et al. (2020) intended when documenting the trace (they don't claim the cells are geographically distinct), and no prior published work does exactly this. It is a defensible modeling exercise rather than a dataset-grounded claim (see §2.1 and §3.2 for the explicit modeling assumptions on workload-as-shape and `rated_power_mw`-as-magnitude).
 2. **Grid demand smoothing as a first-class objective**, via a peak-contribution penalty against actual EIA-930 net demand timeseries — rather than the on-site-renewable framing that dominates academic prior work.
-3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. PPO is the best policy — RL or heuristic — in **all four configurations** (+1.0–8.3% over the best DQN variant, +2.7–9.7% over the foresighted Trough-Slot oracle), with **zero deadline violations** in batch mode. Its advantage is tied to expressiveness: the slope-arbitrage and price-arbitrage routing it learns (§7.5) requires per-DC fractional control that the discrete encodings cannot represent (§8.7).
-4. **Real-data grounding**: ClusterData 2019 (per Tirmazi 2020) for workloads, `powerdata_2019` (per Sakalkar 2020) for the power model, EIA-930 (CISO, MISO, SOCO, DUK) for grid net demand, real ISO prices, NSRDB solar irradiance as forecast features.
+3. **Continuous action space (PPO)** enabling fine-grained joint routing + drain decisions. PPO is the best policy — RL or heuristic — in **all four configurations** (+2.5–9.9% over the best DQN variant across 19/20 seeds, +5.0–14.8% over the foresighted Trough-Slot heuristic, within 1.1–5.6% of the QP optimum), with **zero deadline violations** in batch mode. Its advantage is tied to expressiveness: the slope- and price-arbitrage routing it learns (§7.5) requires per-DC fractional control that the discrete encodings cannot represent (§8.7).
+4. **Real-data grounding** *(with one documented exception)*: ClusterData 2019 (per Tirmazi 2020) for workloads, `powerdata_2019` (per Sakalkar 2020) for per-cell power, EIA-930 (CISO, MISO, SOCO, DUK) for grid net demand, NSRDB solar irradiance as forecast features — **but prices are documented synthetic, not real LMP (§2.4)**, the thesis's primary data limitation and top future-work item.
 5. **Operational relevance**: the problem class is the same one **Google's CICS (Radovanović et al. 2023)** solves in production at 20+ DCs across 4 continents. This thesis contributes a published methodology + reproducible Gymnasium env for that problem class.
 
 Honest framing of what this thesis is *not*: it is not a head-to-head comparable against CFWS (different action paradigm, different state granularity, different objective), nor a reimplementation of Google's CICS (closed-source operational system). It is a self-contained academic exploration of multi-DC + cell-aggregate + RL + grid-aware scheduling, with the cell-as-DC and 100 MW magnitude assumptions stated explicitly rather than hidden.
 
-The primary empirical findings are:
+The primary empirical findings (5-seed campaign) are:
 
-- **PPO wins every configuration** — +1.8% (US legacy) to +11.7% (Global batch) over the grid-unaware status quo, +2.7–9.7% over the foresighted Trough-Slot oracle, with zero deadline violations and the lowest fleet peaks (~289 vs ~303 MW).
-- **Spatial routing is the primary lever; its strength scales with exploitable structure.** Under global diversity PPO saves 10.3% (legacy) over the status quo from price + timezone + power-heterogeneity arbitrage. Even in the low-diversity US scenario, **per-cell power calibration (§3.2) creates a real signal** — marginal-cost (slope) arbitrage (§7.5) — worth +1.8%.
-- **Temporal deferral is a consistent secondary lever: +1.5–1.6%** on top of legacy in both scenarios, at the *measured* 2–10% deferrable fractions. Larger deferral leverage requires batch-heavier workload mixes (sensitivity sweeps via the §3.8 generator).
-- **Three modeling lessons as methodological contributions (§7.8–§7.10):** the deadline penalty must scale with the energy value of deferred work; capacity-blocked work must queue with its original deadline, not be discarded; and synthetic workload generation must conserve the demand-presentation process (and requests ≠ usage). Each artifact, while present, *inverted* the experimental ranking — the final results exist because each was found and fixed.
+- **PPO wins every configuration** — +2.7% (US batch) to +12.9% (Global batch) over the grid-unaware status quo, +5.0–14.8% over the foresighted Trough-Slot heuristic, +2.5–9.9% over the best DQN (19/20 seeds), within **1.1–5.6% of a clairvoyant QP bound** (§7.11), with zero deadline violations and the lowest fleet peaks (~289 vs ~303 MW).
+- **Spatial routing is the primary lever; its strength scales with exploitable structure.** Under global diversity PPO saves 10.3% (spatial-only) over the status quo from price + timezone + power-heterogeneity arbitrage. Even in the low-diversity US scenario, **per-cell power calibration (§3.2) creates a real signal** — marginal-cost (slope) arbitrage (§7.5) — worth +2.8%.
+- **Temporal deferral is a secondary, scenario-dependent lever: +2.7 points in Global, ~neutral in US**, at the *measured* 16–26% deferrable fractions; the QP confirms the intrinsic value of deferral here is small (§7.11).
+- **Generalization tracks observability (§7.12):** frozen policies transfer along observed axes (real 2019→2024 net-demand shift, +3–13%) but not the unobserved static-site axis (held-out cells) until domain randomization restores it (+4–5%).
+- **Three modeling lessons as methodological contributions (§7.8–§7.10):** the deadline penalty must scale with the energy value of deferred work; capacity-blocked work must queue, not be discarded; and synthetic workload generation must conserve the demand-presentation process (requests ≠ usage). Each artifact, while present, *inverted* the experimental ranking.
 
 ---
 
@@ -954,6 +925,53 @@ The primary empirical findings are:
               │                 │  reports, plots, comparisons
               └─────────────────┘
 ```
+
+### 9.1 File-by-file reference (what every file does)
+
+The authoritative map of the repository — grouped by role. Paths are clickable.
+
+**Environment (the simulator the agent acts against)**
+- [env/multi_dc_env.py](env/multi_dc_env.py) — the Gymnasium `MultiDCEnv`. Observation/action spaces, the `_step_legacy` (spatial-only) and `_step_batch` (spatial + temporal) loops, reward (§3.6), `_compute_dc_cost` (per-cell power → energy + peak + backlog + capacity components), the deadline/queue dynamics (§7.9), the **site-context observation** and **domain-randomization** in `reset` (§7.12), and the `ACTION_LOGIT_BOUND = 3` action box (§7.14). The heart of the project.
+- [env/dc_site.py](env/dc_site.py) — `DataCenterSite`: per-DC demand/price/net-demand accessors, the real per-tier `service_curve`/`batch_curve`, the per-cell `power_model`, the `BatchPool` deferrable queue, and `batch_fraction` (Tirmazi-cited).
+- [env/power_model.py](env/power_model.py) — linear idle+slope `PowerModel`; `per_cell_from_json` builds the four per-cell models (§3.2).
+- [env/data_loader.py](env/data_loader.py) — `load_scenario`: reads a scenario YAML, loads all CSVs, fits fleet capacities, wires real tier curves + per-cell power onto each site.
+- [env/discrete_wrapper.py](env/discrete_wrapper.py) — 759-action routing-grid wrapper for DQN.
+- [env/cfws_style_wrapper.py](env/cfws_style_wrapper.py) — 48-action CFWS-style flattened-index wrapper for DQN (§8.7).
+- [env/scenarios/](env/scenarios/) — `us_model.yaml`, `global_model.yaml` (primary); `*_eh.yaml` (held-out cells e–h, §7.12); `*_yshift.yaml` (2024 net-demand shift, §7.12).
+
+**Agents, baselines, training, evaluation**
+- [train.py](train.py) — PPO trainer (`make_env` + SB3 PPO); flags include `--batch-mode`, `--peak-penalty-weight`, `--seed`, `--domain-rand`.
+- [train_dqn.py](train_dqn.py) — DQN trainer for both discrete wrappers (`--action-scheme cfws-style` selects flat-idx).
+- [baselines.py](baselines.py) — the 9 heuristic policies incl. `StatusQuoPolicy` (local, no deferral — the headline reference) and `TroughSlotLookaheadPolicy` (foresighted heuristic).
+- [evaluate.py](evaluate.py) — `run_episode` + `compute_summary` (cost, load factor, peak, **and the §7.14 component breakdown + backlog audit metrics**).
+
+**Review-response experiment scripts (one per major result)**
+- [scripts/run_review_campaign.py](scripts/run_review_campaign.py) — the **multi-seed campaign** (M1): trains 5 seeds × 3 algos × 4 configs (resumable via `--tag`, `--algos`, `--domain-rand`) and emits seed-level stats → `output/review_campaign[_ctx|_dr]/`.
+- [scripts/compute_qp_optimum.py](scripts/compute_qp_optimum.py) — the **clairvoyant QP lower bound** (M3, §7.11); Clarabel sparse assembly, cvxpy-validated, `--validate` for the small-T cross-check.
+- [scripts/eval_generalization.py](scripts/eval_generalization.py) — **frozen-policy held-out evaluation** (M2/M2b, §7.12); `--axis cells|market`, `--model-dir`.
+- [scripts/movement_cost_sensitivity.py](scripts/movement_cost_sensitivity.py) — **movement-cost sweep** (M6, §7.13).
+- [scripts/analyze_peak_windows.py](scripts/analyze_peak_windows.py) — the net-demand-quartile advantage diagnostic that replaced the burst study (§7.6).
+- [scripts/validate_caiso_prices.py](scripts/validate_caiso_prices.py) — attempted real-CAISO price provenance check (blocked by tooling; see §2.4) — retained as the documented attempt.
+
+**Data pipeline (extraction & fitting)**
+- [extract_clusterdata2019_full.ipynb](extract_clusterdata2019_full.ipynb) — the original Colab notebook: per-cell aggregate demand, machine fleets, **per-cell power calibration** (Dataset 2), and job metadata with the ≤115 tier classification (Dataset 4).
+- [extract_tier_curves.ipynb](extract_tier_curves.ipynb) — standalone Colab: ground-truth per-tier (service/batch) usage curves, `priority ≤ 115` (§7.10).
+- [extract_cells_eh.ipynb](extract_cells_eh.ipynb) — standalone Colab: held-out cells e–h (curves, machines, power, durations) for the generalization test (§7.12).
+- [scripts/refit_freebeb_local.py](scripts/refit_freebeb_local.py) — refits batch distributions from `jobs_*.csv` under free+beb (§2.2).
+- [scripts/derive_tier_curves.py](scripts/derive_tier_curves.py) — local (request-window) tier-curve approximation; superseded by the notebook but kept.
+- [scripts/grange_generator.py](scripts/grange_generator.py) — verbatim Grange Listing 1 reproduction (§8.2).
+- [preprocess/price_fetcher.py](preprocess/price_fetcher.py) — price series generator (**documented synthetic**, §2.4); `--year`, reads `.env`.
+- [preprocess/net_demand_fetcher.py](preprocess/net_demand_fetcher.py) — **real EIA-930** net demand; `--year`, reads `.env`.
+
+**Figures & paper**
+- [scripts/build_paper_figures.py](scripts/build_paper_figures.py) — all 7 paper figures (results+QP, tiers, power, profile, peak-window, generalization, movement cost).
+- [scripts/build_thesis_paper.py](scripts/build_thesis_paper.py) — assembles `thesis_paper.docx` (two-column, Google-Docs-importable).
+- [analysis/plot_power_profile.py](analysis/plot_power_profile.py) — the Status-Quo-vs-PPO fleet power-profile plot.
+
+**Key data & outputs**
+- `data/cells/cell_{a..h}.csv` + `cell_*_tiers.csv` — aggregate + per-tier demand. `data/machines/`, `data/power_model_params.json` (per-cell fits, all 8 cells), `data/net_demand/` (real 2019), `data/net_demand_2024/` (real 2024), `data/prices/` (synthetic), `data/jobs/batch_distributions_*.json`.
+- `output/review_campaign[_ctx|_dr]/` — per-config eval JSONs, `stats.json`, `qp_optimum.json`, `generalization_*.json`, `movement_cost_sensitivity.json`. `models/review[_ctx|_dr]/s{seed}/` — the trained models.
+- `.env` — `EIA_API_KEY` (gitignored; read by both fetchers).
 
 ---
 
@@ -1024,25 +1042,29 @@ python scripts/analyze_burst_drain_diff.py
 
 ## 11. Key Takeaways for Thesis Writing
 
-1. **PPO wins all four configurations — against every heuristic, both DQN variants, and the status quo — with zero deadline violations.** Final margins: +1.8–11.7% over the grid-unaware Status Quo, +2.7–9.7% over the foresighted Trough-Slot oracle, +1.0–8.3% over the best DQN per config. It achieves this while *also* shaving the fleet peak from ~303 to ~289 MW. This headline only became true (and trustworthy) after three modeling artifacts were found and fixed (takeaway 5) and the per-cell power calibration exposed the full routing surface (takeaway 3).
+*(All numbers are the 5-seed multi-seed campaign, §7.1.)*
 
-2. **Spatial routing is the primary lever and scales with exploitable structure.** Global legacy: PPO saves 10.3% over the status quo from compounding price, timezone, and power-heterogeneity arbitrage. The per-DC breakdown (§7.5) shows the mechanism: −32% energy at high-priced Singapore, −21% at EU, paid for with cheap low-slope US capacity.
+1. **PPO wins all four configurations — against every heuristic, both DQN variants, and the status quo — with zero deadline violations, across five seeds.** Margins: **+2.7–12.9%** over the grid-unaware Status Quo, **+5.0–14.8%** over the foresighted Trough-Slot heuristic, **+2.5–9.9%** over the best DQN (winning **19 of 20** seed-paired comparisons), while shaving the fleet peak ~303 → ~289 MW. This headline only became trustworthy after the modeling artifacts were fixed (takeaway 5), the per-cell power calibration exposed the routing surface (takeaway 3), and the multi-seed campaign confirmed the margins are not seed noise.
 
-3. **Per-cell power calibration turned the US scenario from "nothing to learn" into a real optimization.** Under the pooled power model all DCs were energetically identical and near-uniform routing was optimal; with each cell's measured idle/slope (R² 0.75–0.80, §3.2), **marginal-cost (slope) arbitrage** emerges — idle power is sunk, so load is cheapest where the slope is lowest — and PPO converts it into +1.8% (legacy) / +3.3% (batch) over the status quo. An emergent strategy no baseline encodes, and a direct payoff of calibrating power per cluster as CICS does.
+2. **PPO is near-optimal, not just "best heuristic we wrote."** It lands **1.1–5.6% from a clairvoyant convex-QP lower bound** (§7.11) that no causal policy can reach — capturing 65–85% of the total achievable savings over the status quo. The QP also shows the intrinsic value of temporal deferral here is small (spatial-only and batch optima differ ~0.2%).
 
-4. **Temporal deferral is a consistent but secondary lever: +1.5% (US) / +1.6% (Global) on top of legacy.** At the *measured* 2–10% deferrable fractions (§2.2), with deadline-preserving queueing, deferral helps modestly and deadline violations essentially vanish (PPO: 0 in both batch configs; only genuinely overloading heuristics expire work). The dramatic batch gains of earlier drafts were artifacts. Counterfactually batch-heavier mixes are sensitivity territory (§3.8 generator).
+3. **Per-cell power calibration turned the US scenario from "nothing to learn" into a real optimization.** Under pooled power all DCs were energetically identical; with each cell's measured idle/slope (R² 0.75–0.80, §3.2), **marginal-cost (slope) arbitrage** emerges — idle power is sunk, so load is cheapest where the slope is lowest — worth **+2.8%** in the US with no price diversity at all. An emergent strategy no baseline encodes, and a direct payoff of calibrating power per cluster as CICS does.
 
-5. **Three modeling lessons, each of which inverted the experimental ranking while present (§7.8–§7.10):** (i) a deadline penalty must scale with the energy value of the deferred work, or the agent learns to discard it; (ii) capacity-blocked work must queue with its original deadline, not get a 1-step fuse — Borg queues, it doesn't dump; (iii) synthetic workload generation must conserve the demand-presentation process (rate over duration), and **requests ≠ usage** (request-weighted tier shares overestimated the deferrable fraction 5–13×). These are transferable methodological contributions in their own right.
+4. **Spatial routing is the primary lever; temporal deferral is secondary and scenario-dependent.** Global spatial-only already saves +10.3% over the status quo (price + timezone + slope arbitrage). At the measured 16–26% deferrable fractions, batch deferral adds **+2.7 points in Global** but is **~neutral in the US** — and the QP confirms the small intrinsic temporal value.
 
-6. **The foresighted oracle loses to learning on every config (+2.7–9.7%).** Trough-Slot has perfect 3-hour net-demand foresight but optimizes the wrong surface: its slack-grid concentration raises the peak (load factor 0.86 vs PPO's 0.96), and it is blind to per-cell power. Foresight does not compensate for a mis-specified objective; learned policies internalize the actual cost structure.
+5. **Generalization tracks observability (§7.12) — a three-stage result.** Frozen policies transfer near-perfectly across a real 2019→2024 *net-demand* shift (observed axis, +3–13%) but **fail** on held-out *cells* (unobserved static-site axis, −19 to −27%) — until **domain randomization** makes the static context learnable and restores transfer (+4–5% in 3/4 configs). Corollary: **deferral capacity buys distribution-shift robustness** (the one brittle config, Global spatial-only, has no pool; its batch counterpart transfers fine).
 
-7. **DQN's story in the final environment is training fragility, not encoding.** Across eight DQN runs, three failed distinctly (routing-grid diverged in Global legacy and degraded in US batch; flat-idx no-op'd in Global batch), and neither encoding dominates the other. PPO trained reliably in all four configs with one hyperparameter set. In this formulation, the continuous-vs-discrete choice matters both for expressiveness (slope arbitrage needs fractional control) *and* for stability.
+6. **The spatial advantage is robust to realistic movement costs (§7.13).** The 10–13% Global savings survive a per-unit inter-site movement charge up to **0.35–0.53× the energy cost of serving a unit** — far above realistic egress prices — so it is not an artifact of free fungibility.
 
-8. **Concentration heuristics fail in every mode once the artifacts are gone.** Avoid-the-Ramp and Cheapest-First collapse on backlog/capacity penalties in legacy *and* batch (Cheapest: $34.9–43.2M). The earlier "batch deferral rescues concentrators" effect was a by-product of the dumping artifact; with work that queues, there is no free capacity relief.
+7. **The foresighted heuristic loses to learning on every config (+5.0–14.8%).** Trough-Slot has perfect 3-hour foresight but optimizes the wrong surface: its slack-grid concentration raises the peak (load factor 0.86 vs PPO's 0.96) and it is blind to per-cell power. In the US it is the single most expensive policy. Foresight does not compensate for a mis-specified objective.
 
-9. **The "burst concentration" finding inverted into "the advantage is steady" — and the inversion is the finding (§7.6).** On the artifact environment, RL advantage appeared to concentrate 2.1× in burst windows; on the final environment, PPO's savings over the status quo are **nearly uniform in time** (the high-net-demand quartile earns only ~1.25× the per-step savings of the slack quartile in US, ~flat in Global). The slope/price arbitrage driving the savings operates continuously, not in rare crisis windows — consistent with the real aggregate being smooth (the job-level heavy tail does not survive aggregation, §7.10). The burst experiments are retained as a superseded study; their premise was the §7.10 artifact.
+8. **DQN's story is training variance, not encoding.** With 5 seeds, DQN std reaches ±$0.6M and flat-idx ±$0.9M vs PPO's ≤±$0.25M; neither discrete encoding dominates. PPO trained reliably everywhere with one hyperparameter set. The continuous/discrete choice matters for both expressiveness (slope arbitrage needs fractional control) and stability.
 
----
+9. **Four reward/observation calibrations, each tied to the value of the work (§7.8, §7.14):** deadline penalty w = 250 (scale to deferred-work energy value, or the agent discards it); service-backlog λ_b = 25 (or it parks SLO traffic to dodge price spikes); queue-don't-dump (Borg queues, it doesn't expire blocked work); and the ±3 action bound (or SB3 clipping structurally caps concentration/holding). Each, mis-set, inverted or distorted the ranking. The backlog audit confirms PPO serves 100% of demand with zero leakage.
+
+10. **Three modeling lessons as transferable methodological contributions (§7.8–§7.10):** the deadline penalty must scale with deferred-work energy value; capacity-blocked work must queue, not dump; and synthetic generation must conserve the demand-presentation process — with **requests ≠ usage** (request-weighted tier shares overestimated the deferrable fraction 3–5×). Each artifact, while present, inverted the ranking; the corrected results exist because each was found and fixed.
+
+11. **Honest provenance (§2.4):** demand, per-cell power, and net demand are real measured data; **prices are documented synthetic** (no real hourly LMP is obtainable for the non-ISO US territories, and the EIA API has no hourly price route). Relative comparisons are unaffected (shared price series), and resolving this with real LMP is the top future-work item.
 
 ## 12. Change Log — How the Final Results Were Reached
 
@@ -1060,7 +1082,19 @@ The results in §7 were not produced by a single clean run; they are the product
 | 8 | **Requests ≠ usage**: ground-truth tier split showed the deferrable share is **2–10%** of usage, not the 27–61% suggested by request-based proxies (Borg over-allocates best-effort tiers ~5–13×) | Comparing the local approximation against the BigQuery ground truth | Honest sizing of the temporal lever (+1.5–1.6%); batch-heavy mixes moved to sensitivity territory |
 | 9 | **Per-cell power calibration** (§3.2): R² 0.43 (pooled) → 0.75–0.80 (per cell); env consumes per-cell models | Extended power diagnostics showed the pooled residual was *between-cell heterogeneity*, not noise | **US flipped from "PPO loses" to "PPO wins"** — per-DC slope heterogeneity is a real routing signal (slope arbitrage, §7.5); full 12-model retrain |
 | 10 | **Burst study superseded** (§7.6): premise dissolved by #7; replaced with a net-demand-window diagnostic | The burstiness the burst study analyzed was the #7 artifact | "Advantage concentrates in bursts (2.1×)" inverted to "advantage is nearly uniform in time (~1.25×)" |
-| 11 | **beb tier band corrected to 100–115** (`deferrable = priority ≤ 115`): the trace documentation v3 explicitly corrects the 110–115 range "mistakenly reported" in Tirmazi et al. (2020) §2, which our pipeline had inherited by citing the paper | Peer review flagged the paper-vs-trace-docs discrepancy; our own earlier analysis had flagged the unassigned 100–109 band ("?") holding 16–30% of requested CPU | Pipeline + notebooks corrected; measured tier shares and all batch-mode results pending one Colab re-extraction + the consolidated retraining campaign |
+| 11 | **beb tier band corrected to 100–115** (`deferrable = priority ≤ 115`): the trace documentation v3 explicitly corrects the 110–115 range "mistakenly reported" in Tirmazi et al. (2020) §2, which our pipeline had inherited by citing the paper | Peer review (M9) flagged the paper-vs-trace-docs discrepancy; our own earlier analysis had flagged the unassigned 100–109 band ("?") holding 16–30% of requested CPU | Re-extracted: deferrable shares rose to **16–26%** (matching Tirmazi's ~20% best-effort average); requests-overestimate now 3–5× |
+
+**Peer-review response (M1–M9) — second campaign.** A reviewer pass prompted a settled-environment rebuild and a multi-seed campaign; these moved the headline from single-seed to statistically-backed.
+
+| # | Change | Trigger | Effect on results |
+|---|---|---|---|
+| 12 | **Action bound ±1 → ±3** (M5) + **service-backlog λ_b 1.5 → 25** (M4) | SB3 clips actions before decode, capping PPO's reachable concentration/drain; λ_b=1.5 made parking SLO traffic profitable | Expressiveness parity restored; backlog audit confirms 100% served, zero leakage (§7.14) |
+| 13 | **Multi-seed campaign** (M1): 5 seeds × 3 algos × 4 configs = 60 models + seed-level stats | Single seed can't support "wins every config" | **PPO wins 19/20 seed comparisons** (p=0.031); DQN reframed as high-variance, not single-divergence (§7.1) |
+| 14 | **Clairvoyant QP optimum** (M3): convex-QP lower bound, Clarabel, cvxpy-validated 1e-9 | "Beats best heuristic" is weaker than "near-optimal" | PPO **1.1–5.6% from optimum**; temporal value shown intrinsically small (§7.11) |
+| 15 | **Site-context observation + domain randomization** (M2): static per-DC params observed, then randomized in training | Held-out cells e–h exposed slot-memorization (frozen policies −19 to −27%) | DR restores transfer (+4–5%, 3/4); **generalization tracks observability** (§7.12) |
+| 16 | **Real 2019→2024 net-demand shift** (M2b) + **movement-cost sweep** (M6) | Test transfer on a real market signal; test free-fungibility assumption | Observed-axis transfer +3–13%; Global savings survive to 0.35–0.53× unit energy (§7.13) |
+| 17 | **Prices found synthetic, not real LMP** (M7): committed CSVs byte-identical to the generator; EIA has no hourly price route; GA/SC have no market | Tried to fetch real prices for M2b; discovered the fetch path never worked | Provenance corrected (§2.4): net demand real, **prices documented synthetic**; real LMP is top future work |
+| 18 | **Related work + novelty softened** (M8): Qureshi/Rao/Liu-Wierman geographic-load-balancing lineage; SustainDC/SustainCluster differentiated | Reviewer noted missing lineages and too-strong novelty claim | Novelty narrowed to measured per-tier demand + per-cell power + grid-net-demand objective (§8.7–§8.9) |
 
 **The arc in one sentence:** every correction moved the environment *toward the measured trace* — and each step toward reality first *shrank* an inflated finding (the temporal lever, the burst concentration) and then *revealed* a genuine one (slope arbitrage, the steady-state advantage), ending with PPO winning all four configurations on an environment whose batch machinery is provably demand-neutral.
 
