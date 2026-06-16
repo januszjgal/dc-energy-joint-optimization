@@ -313,12 +313,36 @@ total_cost += Σᵢ (deadline_penalty_weight × expired_demand[i])
 
 | Weight | Default | Purpose |
 |---|---|---|
-| `backlog_weight` | 1.5 | Penalize unserved service demand |
-| `capacity_penalty_weight` | 5.0 | Hard penalty for exceeding DC capacity |
+| `backlog_weight` (λ_b) | 25 (calibrated; §7.14) | Penalize unserved service demand |
+| `capacity_penalty_weight` (λ_κ) | 5.0 | Hard penalty for exceeding DC capacity |
 | `peak_penalty_weight` (α) | 0.015 (calibrated) | Weight on `grid_mw² × net_demand_normalized` peak-contribution term |
-| `deadline_penalty_weight` | 2.0 | Penalty per unit of batch work that expires past deadline |
+| `deadline_penalty_weight` (w) | 250 (calibrated; §7.8) | Penalty per unit of batch work that expires past deadline |
 
 The `renewable_bonus` term from the prior on-site-solar formulation has been removed — with grid-only DCs, there is no "renewable fraction" to reward. Demand smoothing is now expressed directly through `peak_penalty`, which carries the same intent but targets the actual quantity (grid stress) rather than a proxy (local solar self-consumption).
+
+### 3.6.1 Formal Problem Statement — what we optimize
+
+The reward above is the per-step signal; stated as an optimization, the agent solves a **constrained cost-minimization over the full episode**. With per-step controls **f**ₜ (service-routing fractions), **δ**ₜ (drain rates), **h**ₜ (batch placement):
+
+```
+minimize   J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + w·Xᵢ,ₜ ]          (P)
+ f, δ, h
+
+subject to, for all sites i and steps t:
+  gᵢ,ₜ = (Pᵢ_idle + sᵢ·uᵢ,ₜ)·R                       power model
+  uᵢ,ₜ = fᵢ,ₜ·Dₜ + Bᵢ,ₜ₋₁ + hᵢ,ₜ·Σⱼ δⱼ,ₜ·Qⱼ,ₜ        served load
+  uᵢ,ₜ ≤ κᵢ                                          capacity
+  Σᵢ fᵢ,ₜ = 1,  fᵢ,ₜ ≥ 0,  δ,h ∈ [0,1]               valid allocations
+  Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜ·Dₜ − (service served)         service conservation
+  Qᵢ,ₜ₊₁ = Qᵢ,ₜ + aᵢ,ₜ − Sᵢ,ₜ − Xᵢ,ₜ                 batch queue
+  Σ_{τ≤t} Sᵢ,τ ≥ (arrivals at i with deadline ≤ t)   deadline feasibility
+```
+
+where `Eᵢ,ₜ = πᵢ,ₜ·gᵢ,ₜ·1000·Δh` is energy cost (§3.3), `Φᵢ,ₜ = α·gᵢ,ₜ²·dᵢ,ₜ` the grid peak-contribution penalty (§3.3), and `B`, `X` are service backlog and expired batch. **In words:** route the inflexible service load and defer the flexible batch so as to **minimize electricity cost plus grid-peak contribution, while serving all demand within capacity and completing batch by its deadline.**
+
+**How we solve it.** Problem (P) is an *offline, full-information* statement; the deployed controller is **causal** — it cannot see future prices or demand. So we solve it with **model-free RL**: PPO maximizes the expected discounted return `E[Σₜ γᵗ rₜ]` with per-step reward `rₜ = −(`the bracketed cost`)` — i.e. the reward function (§3.6) is the negative per-step integrand of J. A **clairvoyant convex relaxation** of the same J (fluid allocation, known future) is a quadratic program whose optimum lower-bounds any policy — this is the optimality bound of §7.11.
+
+**Lineage of the formulation (what to cite).** Problem (P) follows the **aggregate flexible/inflexible load-shaping problem of Google's CICS** (Radovanović et al. 2023) — retargeted from carbon to grid net-demand smoothing + electricity cost — with the **cost-minimization-over-distributed-DCs** structure of geographic load balancing (Qureshi 2009; Rao 2010; Liu-Wierman 2011), a **linear idle+slope power model** (Fan 2007; Dayarathna 2016), a **demand-charge-style peak term** (Liu et al. 2012; Vasques 2019), and **aggregate batch-with-deadline dynamics** (Grange 2018; Liu et al. 2012). The contribution is unifying these under a single learned policy with a grid-net-demand objective, rather than CICS's day-ahead carbon caps or the GLB papers' static convex programs (§8.6).
 
 ### 3.7 Batch Scheduling Mechanism
 
