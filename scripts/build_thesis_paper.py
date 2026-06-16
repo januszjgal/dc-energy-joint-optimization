@@ -357,6 +357,31 @@ P("with capacity weight λ_κ = 5, deadline weight w = 250, and service-"
   "hold costs only ~$54 against ~$180 of arbitrage, an exploit the audit in "
   "Sec. VI confirms is closed). The demand-smoothing metric reported alongside "
   "cost is the fleet load factor LF = mean(g)/max(g).")
+H2("D. Problem formulation")
+P("Putting the terms together, the agent solves a constrained cost-"
+  "minimization over the full episode. With the per-step controls fₜ (service-"
+  "routing fractions), δₜ (drain rates), and hₜ (batch placement) of Sec. III-C:")
+EQ("minimize  J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + w·Xᵢ,ₜ ]", 9)
+P("subject to, for all i, t: the power model (1)–(2); the serving rule (7) with "
+  "capacity uᵢ,ₜ ≤ κᵢ; the routing simplex Σᵢ fᵢ,ₜ = 1, fᵢ,ₜ ≥ 0; service-"
+  "backlog conservation Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜDₜ − (service served); the batch "
+  "queue (6); and deadline feasibility — cumulative batch served at each origin "
+  "must cover all of its arrivals whose deadline has passed. Here Eᵢ,ₜ (Eq. 3) "
+  "is energy cost and Φᵢ,ₜ (Eq. 4) the grid peak-contribution penalty. In "
+  "words: route inflexible service and defer flexible batch to minimize "
+  "electricity cost plus grid-peak contribution, while serving all demand "
+  "within capacity and completing batch on time.")
+P("Eq. (9) is an offline, full-information statement; the deployed controller "
+  "is causal (it cannot observe future prices or demand). We therefore solve it "
+  "with model-free RL — PPO maximizes 𝔼[Σₜ γᵗ rₜ] with rₜ the negative per-step "
+  "cost (Eq. 8) — and bound it with the clairvoyant convex-QP relaxation of J "
+  "(Sec. VI-F), whose optimum lower-bounds any policy.")
+P("The formulation follows CICS's aggregate flexible/inflexible load-shaping "
+  "problem [3], retargeted from carbon to grid net-demand and electricity cost, "
+  "with the cost-minimization-over-distributed-DCs structure of geographic load "
+  "balancing [23]–[25], a linear idle+slope power model [14], [17], a "
+  "demand-charge-style peak term [9], [13], and aggregate batch-with-deadline "
+  "dynamics [4], [9].")
 
 # ---------------- IV. DATA ----------------
 H1("IV. DATA AND CALIBRATION")
