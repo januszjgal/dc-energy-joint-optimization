@@ -304,73 +304,91 @@ P("Open benchmark environments for this problem class have recently emerged. "
 
 # ---------------- III. SYSTEM MODEL ----------------
 H1("III. SYSTEM MODEL")
-P("N = 4 data centers indexed by i operate over T = 8,917 five-minute steps "
-  "(Δ = 300 s, Δh = 1/12 h). Site i has measured aggregate demand "
-  "curve wᵢ,ₜ ∈ [0,1] (fraction of cell capacity), decomposed by "
-  "measured priority tier into non-deferrable service demand vᵢ,ₜ and "
-  "deferrable batch arrivals aᵢ,ₜ with v + a = w exactly. Site inputs "
-  "further include electricity price πᵢ,ₜ ($/kWh), normalized grid "
-  "net demand dᵢ,ₜ ∈ [0,1], and capacity κᵢ from fleet "
-  "machine data.")
+P("N = 4 data centers, indexed by i, j ∈ {1,…,N} (i is the site under "
+  "consideration; j is a running index used in fleet-wide sums), operate over "
+  "T = 8,917 five-minute steps, indexed by t, τ ∈ {1,…,T} (t is the current "
+  "step; τ is a running index over earlier steps), with Δ = 300 s and "
+  "Δh = 1/12 h. Site i has measured aggregate demand curve wᵢ,ₜ ∈ [0,1] "
+  "(fraction of cell capacity), decomposed by measured priority tier into "
+  "non-deferrable service demand vᵢ,ₜ and deferrable batch arrivals aᵢ,ₜ with "
+  "wᵢ,ₜ = vᵢ,ₜ + aᵢ,ₜ exactly. The total service demand pooled across the "
+  "fleet at step t is Dₜ = Σᵢ vᵢ,ₜ — the quantity the routing fractions "
+  "redistribute. Site inputs further include electricity price πᵢ,ₜ ($/kWh), "
+  "normalized grid net demand dᵢ,ₜ ∈ [0,1] (0 = grid slack; 1 = grid peak, the "
+  "duck-curve neck), and capacity κᵢ from fleet machine data.")
 H2("A. Power and cost")
-P("Each site has a per-cell calibrated linear power model:")
+P("Each site has a per-cell calibrated linear power model — the standard "
+  "idle+slope server model [14], [17] (Sec. IV-C):")
 EQ("Pᵢ(u) = Pᵢⁱᵈˡᵉ + sᵢ · u", 1)
 EQ("gᵢ,ₜ = Pᵢ(uᵢ,ₜ) · R,   R = 100 MW", 2)
-P("where uᵢ,ₜ is served CPU and g the grid draw (sites are pure grid "
-  "loads; no on-site generation). Energy cost and the quadratic, net-demand-"
-  "weighted peak-contribution penalty are")
+P("where uᵢ,ₜ is served CPU, Pᵢⁱᵈˡᵉ is cell i's idle power (its draw at zero "
+  "CPU, as a fraction of theoretical peak), sᵢ is its marginal power slope "
+  "(the extra power per unit of CPU — the per-cell quantity the agent "
+  "arbitrages, Sec. VI-B), R is rated power per site, and g is the grid draw "
+  "(sites are pure grid loads; no on-site generation). Energy cost and the "
+  "quadratic, net-demand-weighted peak-contribution penalty are")
 EQ("Eₜ = Σᵢ πᵢ,ₜ · gᵢ,ₜ · 1000 · Δh", 3)
 EQ("Φₜ = α · Σᵢ gᵢ,ₜ² · dᵢ,ₜ,   α = 0.015", 4)
 P("The quadratic form penalizes concentration; the d-weighting makes draw "
   "near the duck-curve neck expensive and slack-hour draw nearly free [13].")
 H2("B. Deferrable batch dynamics")
-P("Each site maintains a pool Qᵢ,ₜ of batch work with per-entry "
-  "deadlines. Arrivals enter with deadline offset from the fitted mean duration "
-  "μᵢ and flexibility factor φ = 1 (after [4]):")
-EQ("τ = t + ⌈ μᵢ (1 + φ) / Δ ⌉", 5)
+P("Each site maintains a pool Qᵢ,ₜ of batch work with per-entry deadlines. The "
+  "per-cell deadline horizon (in steps) follows the fitted mean duration μᵢ and "
+  "flexibility factor φ = 1 (after [4]); an arrival entering at step t is due "
+  "by t + Hᵢ:")
+EQ("Hᵢ = ⌈ μᵢ (1 + φ) / Δ ⌉", 5)
 EQ("Qᵢ,ₜ₊₁ = Qᵢ,ₜ + aᵢ,ₜ − Sᵢ,ₜ − Xᵢ,ₜ", 6)
-P("where S is batch actually served and X expired work. Two semantics are "
-  "essential and were validated by invariant (Sec. V-C): the drain action is an "
-  "intended release — only served work leaves the pool — and capacity-blocked "
-  "work retains its original deadline (it queues, as Borg's batch scheduler "
-  "does [1], rather than expiring on a one-step fuse).")
+P("where Sᵢ,ₜ is batch actually served (run) at i this step and Xᵢ,ₜ is batch "
+  "that expired. Two semantics are essential and were validated by invariant "
+  "(Sec. V-C): a drain is an intended *release to run* — the released work runs "
+  "only insofar as it fits under capacity (Eq. 7), and the part that does not "
+  "fit stays in the pool with its original deadline (it queues, as Borg's batch "
+  "scheduler does [1], rather than expiring on a one-step fuse). Only served "
+  "work Sᵢ,ₜ leaves the pool; only deadline-passed work expires as Xᵢ,ₜ.")
 H2("C. Action, serving, and reward")
 P("The agent outputs a ∈ [−3,3]³ᴺ, decoded as service routing "
-  "fractions f = softmax(a₁:ₙ), drain rates δ = σ(aₙ₊₁:₂ₙ), "
-  "and batch placement h = softmax(a₂ₙ₊₁:₃ₙ) — batch "
-  "work, having no latency SLO, may execute anywhere:")
-EQ("uᵢ,ₜ = min( fᵢ Dₜ + Bᵢ,ₜ + hᵢ Σⱼ δⱼ Qⱼ,ₜ ,  κᵢ )", 7)
-P("with Dₜ total service demand, B backlog (unserved service, penalized), "
-  "and service strictly prioritized over batch. The ±3 action bound (not the "
-  "SB3 default ±1) matters: SB3 clips actions to the action box before the "
-  "decode, so ±1 would cap every routing share to [4.3%, 71%] and every drain "
-  "rate to [27%, 73%], making full concentration and multi-hour holding "
-  "impossible by construction; ±3 restores parity with the discrete baselines "
-  "(shares to ~98.5%). The reward is")
-EQ("rₜ = −[ Eₜ + Φₜ + λ_b Σ B + λ_κ Σ max(0, u−κ) + w Σ X ]", 8)
-P("with capacity weight λ_κ = 5, deadline weight w = 250, and service-"
-  "backlog weight λ_b = 25. Both w and λ_b are calibrated to the energy value "
-  "of the work they protect (Sec. VII, L1): w sits safely above both the ~$150 "
-  "cost of serving a deferred unit and the analytic ranking-inversion point "
-  "w ≈ 183, and λ_b is set so that parking SLO service in the backlog to dodge "
-  "a price spike is never profitable (at the SB3-typical λ_b = 1.5 a three-hour "
-  "hold costs only ~$54 against ~$180 of arbitrage, an exploit the audit in "
-  "Sec. VI confirms is closed). The demand-smoothing metric reported alongside "
-  "cost is the fleet load factor LF = mean(g)/max(g).")
+  "fractions f = softmax(a₁:ₙ), drain rates δ = sigmoid(aₙ₊₁:₂ₙ), and batch "
+  "placement h = softmax(a₂ₙ₊₁:₃ₙ) — batch work, having no latency SLO, may "
+  "execute anywhere. Service has first claim on capacity; batch runs only in "
+  "the remainder. Writing σᵢ,ₜ for service served and Sᵢ,ₜ for batch served, the "
+  "serving rule is")
+EQ("σᵢ,ₜ = min(fᵢ,ₜDₜ + Bᵢ,ₜ₋₁, κᵢ);   Sᵢ,ₜ = min(hᵢ,ₜΣⱼδⱼ,ₜQⱼ,ₜ, κᵢ−σᵢ,ₜ);   uᵢ,ₜ = σᵢ,ₜ + Sᵢ,ₜ", 7)
+P("Reading Eq. (7): service served = service routed in (fᵢ,ₜDₜ) plus carried "
+  "backlog (Bᵢ,ₜ₋₁), capped at capacity κᵢ; the batch term hᵢ,ₜ Σⱼ δⱼ,ₜ Qⱼ,ₜ is "
+  "site i's share (hᵢ,ₜ) of the fleet-wide drained pool — the sum over every "
+  "site j of its released batch δⱼ,ₜ Qⱼ,ₜ — and runs only in the capacity "
+  "service leaves free; total served CPU is uᵢ,ₜ = σᵢ,ₜ + Sᵢ,ₜ. The ±3 action "
+  "bound (not the SB3 default ±1) matters: SB3 clips actions to the action box "
+  "before the decode, so ±1 would cap every routing share to [4.3%, 71%] and "
+  "every drain rate to [27%, 73%], making full concentration and multi-hour "
+  "holding impossible by construction; ±3 restores parity with the discrete "
+  "baselines (shares to ~98.5%). The reward is the negative per-step cost:")
+EQ("rₜ = −[ Eₜ + Φₜ + λ_b Σᵢ Bᵢ,ₜ + λ_κ Σᵢ max(0, uᵢ,ₜ−κᵢ) + λ_x Σᵢ Xᵢ,ₜ ]", 8)
+P("with backlog weight λ_b = 25, capacity weight λ_κ = 5, and deadline "
+  "(expiry) weight λ_x = 250 — the last renamed from a bare w to avoid clashing "
+  "with the demand symbol wᵢ,ₜ. Both λ_x and λ_b are calibrated to the energy "
+  "value of the work they protect (Sec. VII, L1): λ_x sits safely above both "
+  "the ~$150 cost of serving a deferred unit and the analytic ranking-inversion "
+  "point λ_x ≈ 183, and λ_b is set so that parking SLO service in the backlog "
+  "to dodge a price spike is never profitable (at the SB3-typical λ_b = 1.5 a "
+  "three-hour hold costs only ~$54 against ~$180 of arbitrage, an exploit the "
+  "audit in Sec. VI confirms is closed). The demand-smoothing metric reported "
+  "alongside cost is the fleet load factor LF = mean(g)/max(g).")
 H2("D. Problem formulation")
 P("Putting the terms together, the agent solves a constrained cost-"
   "minimization over the full episode. With the per-step controls fₜ (service-"
   "routing fractions), δₜ (drain rates), and hₜ (batch placement) of Sec. III-C:")
-EQ("minimize  J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + w·Xᵢ,ₜ ]", 9)
+EQ("minimize  J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + λ_x·Xᵢ,ₜ ]", 9)
 P("subject to, for all i, t: the power model (1)–(2); the serving rule (7) with "
-  "capacity uᵢ,ₜ ≤ κᵢ; the routing simplex Σᵢ fᵢ,ₜ = 1, fᵢ,ₜ ≥ 0; service-"
-  "backlog conservation Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜDₜ − (service served); the batch "
-  "queue (6); and deadline feasibility — cumulative batch served at each origin "
-  "must cover all of its arrivals whose deadline has passed. Here Eᵢ,ₜ (Eq. 3) "
-  "is energy cost and Φᵢ,ₜ (Eq. 4) the grid peak-contribution penalty. In "
-  "words: route inflexible service and defer flexible batch to minimize "
-  "electricity cost plus grid-peak contribution, while serving all demand "
-  "within capacity and completing batch on time.")
+  "capacity uᵢ,ₜ ≤ κᵢ; the routing simplex Σᵢ fᵢ,ₜ = 1, fᵢ,ₜ ≥ 0 and drain/"
+  "placement δ, h ∈ [0,1]; service-backlog conservation "
+  "Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜDₜ − σᵢ,ₜ; the batch queue (6); and deadline feasibility "
+  "Σ_{τ≤t} Sᵢ,τ ≥ Σ of arrivals at i due by t (an arrival at τ is due by "
+  "τ + Hᵢ, Eq. 5) — i.e. cumulative batch completed must cover everything whose "
+  "deadline has passed. Here Eᵢ,ₜ (Eq. 3) is energy cost and Φᵢ,ₜ (Eq. 4) the "
+  "grid peak-contribution penalty. In words: route inflexible service and defer "
+  "flexible batch to minimize electricity cost plus grid-peak contribution, "
+  "while serving all demand within capacity and completing batch on time.")
 P("Eq. (9) is an offline, full-information statement; the deployed controller "
   "is causal (it cannot observe future prices or demand). We therefore solve it "
   "with model-free RL — PPO maximizes 𝔼[Σₜ γᵗ rₜ] with rₜ the negative per-step "
@@ -407,15 +425,26 @@ FIG(FIGS / "fig2_tiers.png",
     "Fig. 2. Measured per-tier decomposition of cell b (3 of 31 days): "
     "service + batch equals the measured aggregate at every step.")
 H2("C. Per-cell power calibration")
-P("Joining hourly PowerData2019 measured power with aggregate CPU yields 2,980 "
-  "(cell, hour) samples. A pooled linear fit gives idle 0.479, slope 0.444, "
-  "R² = 0.43 — but the residual is between-cell heterogeneity, not noise: "
-  "per-cell fits reach R² = 0.75–0.80 (Fig. 3, Table II), and adding "
-  "memory as a regressor contributes only +0.03. The environment therefore uses "
-  "per-cell models, mirroring CICS's per-cluster power models [3]. The cells "
-  "span a meaningful proportionality range: cell d (idle 0.38, slope 0.57) is "
-  "far more energy-proportional than cell a (0.53, 0.34) — a real routing "
-  "signal (Sec. VI-B).")
+P("We adopt the standard linear idle+slope server model (Eq. 1) — the form "
+  "used throughout the data-center power literature [14], [17] — and fix its "
+  "two constants per cell from data rather than from a single textbook value. "
+  "Joining hourly PowerData2019 measured power (whose ‘power utilization’ is "
+  "defined exactly as our normalization: actual power over theoretical peak [2]) "
+  "with aggregate CPU over 2,980 (cell, hour) samples, least-squares gives the "
+  "per-cell idle and slope of Table II. The calibration is literature-"
+  "consistent: the fitted idle draw is 0.40–0.61 of each cell's peak, squarely "
+  "inside the published range for this model (≈0.38 [8], ≈0.60–0.75 [23]), so "
+  "the constants are credible without appeal to goodness-of-fit. We keep PER-"
+  "CELL constants (not one pooled value) because the cells span a meaningful "
+  "proportionality range — cell d (idle 0.38, slope 0.57) is far more energy-"
+  "proportional than cell a (0.53, 0.34) — and that BETWEEN-cell spread is "
+  "precisely the routing signal the agent exploits (slope arbitrage, Sec. VI-B); "
+  "a single literature constant would erase it. This mirrors CICS's choice of "
+  "per-cluster power models [3]. (R² is reported in Table II as a diagnostic "
+  "only — 0.43 pooled vs 0.75–0.80 per cell, confirming the pooled residual is "
+  "between-cell heterogeneity rather than noise — but it is not the model's "
+  "justification: every policy is scored by the SAME power model, so any "
+  "residual error cancels in the relative comparisons we report.)")
 TABLE(["Cell", "idle", "slope", "R²"],
       [["a", "0.528", "0.340", "0.79"],
        ["b", "0.548", "0.376", "0.75"],
@@ -606,13 +635,13 @@ P("Three modeling errors each inverted the experimental ranking while present; "
   "we report them as first-class results because any deferral-with-deadlines "
   "simulator can reproduce them.")
 P("L1 — Deadline penalties must scale with the value of deferred work. A "
-  "fixed penalty of 2 made expiring a unit ~75× cheaper than serving it "
-  "(~$150 of energy); the cost-optimal policy was to discard batch, and "
+  "fixed expiry weight λ_x = 2 made expiring a unit ~75× cheaper than serving "
+  "it (~$150 of energy); the cost-optimal policy was to discard batch, and "
   "aggressive-expiry heuristics beat PPO. Because the penalty is linear in "
-  "expiry, any rollout can be re-ranked analytically as cost(w) = "
-  "(cost − w₀·x) + w·x (exact for a fixed rollout; retrained agents change "
-  "behavior with w); the ranking inverts at w ≈ 183. We set w = 250, safely "
-  "above both the ~$150 serving cost and that inversion point.")
+  "expiry, any rollout can be re-ranked analytically as cost(λ_x) = "
+  "(cost − λ₀·x) + λ_x·x (exact for a fixed rollout; retrained agents change "
+  "behavior with λ_x); the ranking inverts at λ_x ≈ 183. We set λ_x = 250, "
+  "safely above both the ~$150 serving cost and that inversion point.")
 P("L2 — Capacity-blocked work must queue, not expire. Re-queueing blocked "
   "batch with a one-step deadline manufactured a policy-independent expiry "
   "floor (~5,059 units, identical across scenarios — the tell), contradicting "
