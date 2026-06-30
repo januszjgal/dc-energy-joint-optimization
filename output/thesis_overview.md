@@ -614,7 +614,7 @@ A non-obvious lesson surfaced when the corrected free+beb batch fraction (27–6
 
 Because the penalty is linear in expired demand, the cost of any rollout at any weight is recoverable without re-evaluating: `cost(λ_x) = (cost − 2·expired) + λ_x·expired`. Sweeping `λ_x` over the US-batch rollouts inverts the ranking around **λ_x ≈ 183** (where low-expiry policies overtake high-expiry ones):
 
-| Policy (US batch) | expired | cost @ w=2 | cost @ w=250 |
+| Policy (US batch) | expired | cost @ λ_x=2 | cost @ λ_x=250 |
 |---|---|---|---|
 | **PPO** | 3,127 | $9.21M (10th) | **$9.99M (1st)** |
 | Avoid-the-Ramp | 6,434 | $8.64M (1st) | $10.23M (last) |
@@ -860,7 +860,7 @@ The **flat-idx variant** is closer to CFWS *in spirit* (small discrete action se
 
 #### Empirical comparison: action-space encoding matters, but direction depends on scenario
 
-Multi-seed campaign (5 seeds; mean ± std), ground-truth tier curves, per-cell power, w=250, λ_b=25, action bound ±3, full 31-day trace (§7.1):
+Multi-seed campaign (5 seeds; mean ± std), ground-truth tier curves, per-cell power, λ_x=250, λ_b=25, action bound ±3, full 31-day trace (§7.1):
 
 | Scenario | PPO (mean ± sd) | best DQN (mean) | DQN std | PPO vs best DQN | PPO wins |
 |---|---|---|---|---|---|
