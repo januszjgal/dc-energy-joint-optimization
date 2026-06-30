@@ -185,7 +185,7 @@ The power model converts CPU utilization to electrical power consumption using a
 | `peak_power` | 0.9227 | Power at 100% CPU (idle + slope) |
 | `R²` | 0.4328 | CPU alone explains ~43% of measured power variance |
 
-The R² of ~0.43 reflects that CPU is one of several drivers of cell power — memory, I/O, network, and (Sakalkar et al. note) priority-aware capping decisions all contribute to the residual. The 48% idle / 92% peak shape is consistent with the canonical Fan et al. (2007) range for hyperscale servers (~50–100% of rated).
+**Why this is credible without leaning on R² (advisor's framing).** The justification for the power model is *not* its goodness-of-fit but its **agreement with the established literature model and its published constants**. The form `idle + slope·u` is the standard server model (Dayarathna survey Eq. 22; DeepEE Eq. 2; Fan et al. 2007), and `powerdata_2019` even defines "power utilization" exactly as our normalization (actual power / theoretical peak; Sakalkar et al.). Our fitted **idle fractions sit squarely inside the published range**: per-cell idle is **0.40–0.61 of peak draw** (table below), bracketed by the measured-server values in the literature — ≈0.38 (Haghshenas, idle 103 W / peak 270 W), ≈0.60 (Qureshi, "idle power around 60% of peak"), up to ~0.70 (older systems). So the constants are defensible on their own terms. **R² is a diagnostic, not the justification**: because *every* policy is scored by the *same* power model, any residual error cancels in the relative comparisons we report — the model's job is fair comparison, not point prediction. (The pooled R² ≈ 0.43 is low only because it blends four distinct per-cell lines; see below.)
 
 **Where the missing variance actually lives — per-cell heterogeneity.** Extended diagnostics (per-cell fits, CPU+memory regression, binned means; all stored in `power_model_params.json`) decompose the low pooled R²:
 
@@ -316,29 +316,30 @@ total_cost += Σᵢ (deadline_penalty_weight × expired_demand[i])
 | `backlog_weight` (λ_b) | 25 (calibrated; §7.14) | Penalize unserved service demand |
 | `capacity_penalty_weight` (λ_κ) | 5.0 | Hard penalty for exceeding DC capacity |
 | `peak_penalty_weight` (α) | 0.015 (calibrated) | Weight on `grid_mw² × net_demand_normalized` peak-contribution term |
-| `deadline_penalty_weight` (w) | 250 (calibrated; §7.8) | Penalty per unit of batch work that expires past deadline |
+| `deadline_penalty_weight` (λ_x) | 250 (calibrated; §7.8) | Penalty per unit of batch work that expires past deadline |
 
 The `renewable_bonus` term from the prior on-site-solar formulation has been removed — with grid-only DCs, there is no "renewable fraction" to reward. Demand smoothing is now expressed directly through `peak_penalty`, which carries the same intent but targets the actual quantity (grid stress) rather than a proxy (local solar self-consumption).
 
 ### 3.6.1 Formal Problem Statement — what we optimize
 
-The reward above is the per-step signal; stated as an optimization, the agent solves a **constrained cost-minimization over the full episode**. With per-step controls **f**ₜ (service-routing fractions), **δ**ₜ (drain rates), **h**ₜ (batch placement):
+The reward above is the per-step signal; stated as an optimization, the agent solves a **constrained cost-minimization over the full episode**. Indices: **i, j ∈ {1,…,N}** (data centers; `i` = site under consideration, `j` = running index for fleet-wide sums), **t, τ ∈ {1,…,T}** (time steps; `t` = current, `τ` = running index over earlier steps). Per-step controls: **f**ₜ (service-routing fractions), **δ**ₜ (drain rates), **h**ₜ (batch placement). Served CPU splits into service-served **σᵢ,ₜ** (service has first claim on capacity) and batch-served **Sᵢ,ₜ** (runs in the remainder):
 
 ```
-minimize   J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + w·Xᵢ,ₜ ]          (P)
+minimize   J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + λ_x·Xᵢ,ₜ ]         (P)
  f, δ, h
 
 subject to, for all sites i and steps t:
   gᵢ,ₜ = (Pᵢ_idle + sᵢ·uᵢ,ₜ)·R                       power model
-  uᵢ,ₜ = fᵢ,ₜ·Dₜ + Bᵢ,ₜ₋₁ + hᵢ,ₜ·Σⱼ δⱼ,ₜ·Qⱼ,ₜ        served load
-  uᵢ,ₜ ≤ κᵢ                                          capacity
+  σᵢ,ₜ = min(fᵢ,ₜ·Dₜ + Bᵢ,ₜ₋₁, κᵢ)                    service served (priority)
+  Sᵢ,ₜ = min(hᵢ,ₜ·Σⱼ δⱼ,ₜ·Qⱼ,ₜ, κᵢ − σᵢ,ₜ)            batch served (remainder)
+  uᵢ,ₜ = σᵢ,ₜ + Sᵢ,ₜ  ≤ κᵢ                            total served / capacity
   Σᵢ fᵢ,ₜ = 1,  fᵢ,ₜ ≥ 0,  δ,h ∈ [0,1]               valid allocations
-  Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜ·Dₜ − (service served)         service conservation
+  Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜ·Dₜ − σᵢ,ₜ                      service conservation
   Qᵢ,ₜ₊₁ = Qᵢ,ₜ + aᵢ,ₜ − Sᵢ,ₜ − Xᵢ,ₜ                 batch queue
-  Σ_{τ≤t} Sᵢ,τ ≥ (arrivals at i with deadline ≤ t)   deadline feasibility
+  Σ_{τ≤t} Sᵢ,τ ≥ (arrivals at i due by t)            deadline feasibility
 ```
 
-where `Eᵢ,ₜ = πᵢ,ₜ·gᵢ,ₜ·1000·Δh` is energy cost (§3.3), `Φᵢ,ₜ = α·gᵢ,ₜ²·dᵢ,ₜ` the grid peak-contribution penalty (§3.3), and `B`, `X` are service backlog and expired batch. **In words:** route the inflexible service load and defer the flexible batch so as to **minimize electricity cost plus grid-peak contribution, while serving all demand within capacity and completing batch by its deadline.**
+where `Eᵢ,ₜ = πᵢ,ₜ·gᵢ,ₜ·1000·Δh` is energy cost (§3.3), `Φᵢ,ₜ = α·gᵢ,ₜ²·dᵢ,ₜ` the grid peak-contribution penalty weighted by **grid net demand** `dᵢ,ₜ` (§3.3), `B`/`X` are service backlog and expired batch, and **λ_x = 250** is the deadline (expiry) weight — renamed from a bare `w` so it does not clash with the demand symbol `wᵢ,ₜ` (= `vᵢ,ₜ + aᵢ,ₜ`). An arrival entering at step `τ` is due by `τ + Hᵢ`, where `Hᵢ = ⌈μᵢ(1+φ)/Δ⌉` is cell `i`'s deadline horizon (§3.7). **In words:** route the inflexible service load and defer the flexible batch so as to **minimize electricity cost plus grid-peak contribution, while serving all demand within capacity and completing batch by its deadline.**
 
 **How we solve it.** Problem (P) is an *offline, full-information* statement; the deployed controller is **causal** — it cannot see future prices or demand. So we solve it with **model-free RL**: PPO maximizes the expected discounted return `E[Σₜ γᵗ rₜ]` with per-step reward `rₜ = −(`the bracketed cost`)` — i.e. the reward function (§3.6) is the negative per-step integrand of J. A **clairvoyant convex relaxation** of the same J (fluid allocation, known future) is a quadratic program whose optimum lower-bounds any policy — this is the optimality bound of §7.11.
 
@@ -513,7 +514,7 @@ All DCs: `rated_power_mw = 100`. No on-site solar.
 
 ## 7. Results
 
-All numbers below come from the demand-smoothing formulation: grid-only DCs, reward = -(energy_cost + α × grid_mw² × net_demand_normalized + backlog + capacity penalties [+ deadline]), with α = 0.015. Each policy is run for one full 8,917-step episode (~31 days) under the same seed. **These are the final, artifact-free results**: ground-truth per-tier demand curves (§7.10), per-cell calibrated power models (§3.2), deadline-preserving queueing (§7.9), and the calibrated deadline penalty w=250 (§7.8).
+All numbers below come from the demand-smoothing formulation: grid-only DCs, reward = -(energy_cost + α × grid_mw² × net_demand_normalized + backlog + capacity penalties [+ deadline]), with α = 0.015. Each policy is run for one full 8,917-step episode (~31 days) under the same seed. **These are the final, artifact-free results**: ground-truth per-tier demand curves (§7.10), per-cell calibrated power models (§3.2), deadline-preserving queueing (§7.9), and the calibrated deadline penalty λ_x=250 (§7.8).
 
 ### 7.1 Multi-Seed Campaign — Canonical Results
 
@@ -611,7 +612,7 @@ Multi-seed PPO means vs the status quo:
 
 A non-obvious lesson surfaced when the corrected free+beb batch fraction (27–61%; §2.2) replaced the old tiny one. The deadline-violation penalty `deadline_penalty_weight × expired_demand` had been set to **2.0**, calibrated when batch was a negligible slice of load. At the realistic volume that value is **~100× too weak**: expiring a unit of deferred work costs \$2, while *serving* it costs ~\$150 of energy — so the cost-minimal strategy becomes to **dump batch and pay the trivial penalty**. Under that miscalibration, aggressive-expiry policies (Avoid-the-Ramp, Cheapest-First, even immediate-drain Status Quo) *beat* PPO, which conservatively served its committed work — an artifact, not a real ranking.
 
-Because the penalty is linear in expired demand, the cost of any rollout at any weight is recoverable without re-evaluating: `cost(w) = (cost − 2·expired) + w·expired`. Sweeping `w` over the US-batch rollouts inverts the ranking around **w ≈ 183** (where low-expiry policies overtake high-expiry ones):
+Because the penalty is linear in expired demand, the cost of any rollout at any weight is recoverable without re-evaluating: `cost(λ_x) = (cost − 2·expired) + λ_x·expired`. Sweeping `λ_x` over the US-batch rollouts inverts the ranking around **λ_x ≈ 183** (where low-expiry policies overtake high-expiry ones):
 
 | Policy (US batch) | expired | cost @ w=2 | cost @ w=250 |
 |---|---|---|---|
@@ -621,7 +622,7 @@ Because the penalty is linear in expired demand, the cost of any rollout at any 
 
 **The calibration.** A principled value is the **energy cost of serving one unit** of deferred CPU — `slope · rated_power · 1000 · Δt · price ≈ $150` at a typical wholesale price — so that dropping committed work is never cheaper than doing it. We set **`deadline_penalty_weight = 250`** (≈ that energy cost at a moderately high price, comfortably above the empirical $183 crossover). At this value the optimization rewards *completing* deferred work, and PPO's spatial batch routing — which lowers forced expiry by balancing load across DCs (3,127 vs Status Quo's 5,059) — becomes a legitimate advantage rather than a liability.
 
-**The general lesson:** in a deferral-with-deadlines reward, the deadline penalty must **scale with the value of the deferred work** (≈ its energy cost), not be a fixed small constant — otherwise the agent learns to discard work whenever the deferrable fraction is non-trivial. All batch-mode results in this thesis use the recalibrated **`w = 250`**.
+**The general lesson:** in a deferral-with-deadlines reward, the deadline penalty must **scale with the value of the deferred work** (≈ its energy cost), not be a fixed small constant — otherwise the agent learns to discard work whenever the deferrable fraction is non-trivial. All batch-mode results in this thesis use the recalibrated **`λ_x = 250`** (the `deadline_penalty_weight` config key).
 
 *Postscript: the expiry counts in this subsection are from the interim (request-based) batch fractions under which the lesson was learned. In the final environment — measured 16–26% fractions (§2.2) plus deadline-preserving queueing (§7.9) — deadline violations essentially vanish for all reasonable policies (§7.1, §7.14), and the calibrated penalty matters mainly for counterfactual batch-heavy sensitivity sweeps.*
 
@@ -640,7 +641,7 @@ A second batch-model artifact surfaced from a simple sanity check: **why does St
 | Round Robin | 2,891 | **777** |
 | Avoid the Ramp | 6,434 | 3,617 |
 
-Status Quo's expiry collapses by **~85%** to a small genuine residual (bursts that exceed capacity even across the full deadline window). Avoid-the-Ramp stays high — but *legitimately*, because routing everything to one DC really does overload it. With the artifact removed, the batch comparison measures **scheduling skill** (placing deferrable work in the troughs) rather than who least-suffers from a modeling fuse. The §7.2–7.5 batch tables reflect this fix (and the calibrated `w = 250`).
+Status Quo's expiry collapses by **~85%** to a small genuine residual (bursts that exceed capacity even across the full deadline window). Avoid-the-Ramp stays high — but *legitimately*, because routing everything to one DC really does overload it. With the artifact removed, the batch comparison measures **scheduling skill** (placing deferrable work in the troughs) rather than who least-suffers from a modeling fuse. The §7.2–7.5 batch tables reflect this fix (and the calibrated `λ_x = 250`).
 
 **The general lesson:** in a deferral-with-deadlines simulator, work that is merely capacity-blocked must **retain its deadline and queue**, not be discarded — otherwise saturation manufactures artificial deadline violations that swamp the real optimization signal.
 
@@ -1084,7 +1085,7 @@ python scripts/analyze_burst_drain_diff.py
 
 8. **DQN's story is training variance, not encoding.** With 5 seeds, DQN std reaches ±$0.6M and flat-idx ±$0.9M vs PPO's ≤±$0.25M; neither discrete encoding dominates. PPO trained reliably everywhere with one hyperparameter set. The continuous/discrete choice matters for both expressiveness (slope arbitrage needs fractional control) and stability.
 
-9. **Four reward/observation calibrations, each tied to the value of the work (§7.8, §7.14):** deadline penalty w = 250 (scale to deferred-work energy value, or the agent discards it); service-backlog λ_b = 25 (or it parks SLO traffic to dodge price spikes); queue-don't-dump (Borg queues, it doesn't expire blocked work); and the ±3 action bound (or SB3 clipping structurally caps concentration/holding). Each, mis-set, inverted or distorted the ranking. The backlog audit confirms PPO serves 100% of demand with zero leakage.
+9. **Four reward/observation calibrations, each tied to the value of the work (§7.8, §7.14):** deadline (expiry) penalty λ_x = 250 (scale to deferred-work energy value, or the agent discards it); service-backlog λ_b = 25 (or it parks SLO traffic to dodge price spikes); queue-don't-dump (Borg queues, it doesn't expire blocked work); and the ±3 action bound (or SB3 clipping structurally caps concentration/holding). Each, mis-set, inverted or distorted the ranking. The backlog audit confirms PPO serves 100% of demand with zero leakage.
 
 10. **Three modeling lessons as transferable methodological contributions (§7.8–§7.10):** the deadline penalty must scale with deferred-work energy value; capacity-blocked work must queue, not dump; and synthetic generation must conserve the demand-presentation process — with **requests ≠ usage** (request-weighted tier shares overestimated the deferrable fraction 3–5×). Each artifact, while present, inverted the ranking; the corrected results exist because each was found and fixed.
 
