@@ -44,23 +44,50 @@ INTERVAL_HOURS = 5.0 / 60.0  # 5-minute intervals
 # Bound on the continuous action logits (see action_space comment in __init__).
 ACTION_LOGIT_BOUND = 3.0
 
-# Steps in a nominal 30-day billing month (30 × 288). Used to convert a
-# $/kW-month tariff into the rate for whatever billing window is in force, so
-# the total charge over a month of flat load is the same regardless of window.
-STEPS_PER_MONTH = 30 * 288
-
-# Reference industrial demand-charge rate ($/kW-month) used for the
-# evaluation-only reporting metric. Mid-range of published US industrial
-# tariffs; the reported charge scales linearly, so it can be rescaled post hoc.
+# Reference US commercial/industrial demand-charge rate ($/kW per full-episode
+# billing cycle) used for reporting and sensitivity analysis. The study's
+# episode is one 31-day billing cycle. It is not a Dutch/Singapore tariff
+# reconstruction; the reported charge scales linearly for site-specific rates.
 REFERENCE_DEMAND_CHARGE_RATE = 15.0
+DEMAND_CHARGE_REWARD_SCALE = 1e-4
+PENALTY_SAFETY_MARGIN = 1.05
+
+
+def resolve_training_gamma(
+    requested_gamma: float | None,
+    demand_charge_rate: float,
+) -> float:
+    """Resolve an RL discount factor without distorting demand charges.
+
+    Incremental running-maximum charges telescope only in an undiscounted
+    return. Demand-charge training therefore requires gamma=1.0. Runs with the
+    term disabled retain Stable-Baselines3's historical default of 0.99.
+    """
+    gamma = (
+        1.0 if demand_charge_rate > 0.0 else 0.99
+    ) if requested_gamma is None else float(requested_gamma)
+    if not math.isfinite(gamma) or not 0.0 < gamma <= 1.0:
+        raise ValueError(f"gamma must be in (0, 1], got {gamma}")
+    if demand_charge_rate > 0.0 and not math.isclose(
+        gamma, 1.0, rel_tol=0.0, abs_tol=1e-12
+    ):
+        raise ValueError(
+            "demand-charge training requires gamma=1.0 so incremental "
+            "peak charges remain equivalent to the billed period maximum"
+        )
+    return gamma
 
 
 class MultiDCEnv(gym.Env):
     """Gymnasium environment for multi-DC workload routing.
 
-    Observation dimensions (with memory_enabled adding 1 dim/DC legacy or 2 dims/DC batch):
-        Legacy: 6*N + 2
+    Base observation dimensions:
+        Spatial-only: 6*N + 2
         Batch:  8*N + 3
+
+    Site context, memory, burst, and demand-charge state add optional
+    dimensions. Demand charging adds one running peak per site plus two global
+    billing-period features.
     """
 
     metadata = {"render_modes": []}
@@ -81,19 +108,25 @@ class MultiDCEnv(gym.Env):
         backlog_weight: float = 25.0,
         capacity_penalty_weight: float = 5.0,
         peak_penalty_weight: float = 0.0,
-        # Demand charge ($/kW-month). The real commercial tariff term: billed on
-        # the single highest demand interval of each billing period, and in
-        # practice 30-50% of a large customer's bill. Default 0.0 leaves it OUT
-        # of the reward, so every result produced before this term existed
-        # remains reproducible; evaluation reports the charge either way.
+        # Demand charge ($/kW per configured billing period). The real
+        # commercial tariff term is billed on the single highest demand
+        # interval of that period. Default 0.0 leaves it OUT of the reward, so
+        # every result produced before this term existed remains reproducible;
+        # evaluation reports a full-episode reference charge either way.
         demand_charge_rate: float = 0.0,
-        # Billing window in steps. Default 288 = daily. A monthly window (8640)
-        # is the realistic tariff but is 89x the γ=0.99 effective horizon
-        # (~100 steps), so the once-a-month record-setting reward is invisible
-        # to the agent. Daily billing keeps the same total magnitude for flat
-        # load while firing often enough to carry gradient — and daily-demand
-        # tariffs are themselves real.
-        demand_charge_period_steps: int = 288,
+        # Billing period in steps. None means the complete episode is one
+        # billing cycle, matching the paper's post-hoc monthly metric. Shorter
+        # periods represent a genuinely different tariff and therefore require
+        # a rate quoted for that shorter period; they are not a monthly proxy.
+        demand_charge_period_steps: int | None = None,
+        # Demand charges make the value of dropping or delaying one normalized
+        # CPU unit hundreds of thousands of dollars. When enabled, raise the
+        # backlog/expiry weights above a conservative marginal-cost bound so
+        # the tariff cannot make unserved work economically optimal.
+        demand_charge_penalty_guard: bool = True,
+        # Scale only the reward returned to RL; info retains raw dollar costs.
+        # None selects 1e-4 with demand charges and 1.0 otherwise.
+        reward_scale: float | None = None,
         steps_per_day: int = 288,
         # Batch scheduling
         batch_enabled: bool = False,
@@ -104,7 +137,7 @@ class MultiDCEnv(gym.Env):
         # Batch spatial routing: give the agent a second routing head that
         # distributes *drained* batch work across DCs. Deferrable batch has no
         # latency SLO, so (unlike service) it can be executed at any DC. When
-        # False, drained batch is executed at its home DC (legacy behavior).
+        # False, drained batch is executed at its home DC (home-site behavior).
         batch_spatial_routing: bool = True,
         # Memory constraint
         memory_enabled: bool = False,
@@ -140,34 +173,110 @@ class MultiDCEnv(gym.Env):
         self.sites = sites
         self.power_model = power_model
         self.n_dc = len(sites)
+        self.memory_enabled = memory_enabled
+        self.domain_randomization = domain_randomization
 
         min_timesteps = min(s.num_timesteps for s in sites)
         self.max_steps = max_steps if max_steps else min_timesteps
+        if self.max_steps <= 0:
+            raise ValueError(f"max_steps must be positive, got {self.max_steps}")
 
-        self.backlog_weight = backlog_weight
+        if not math.isfinite(backlog_weight) or backlog_weight < 0.0:
+            raise ValueError(
+                f"backlog_weight must be finite and non-negative, got {backlog_weight}"
+            )
+        if (
+            not math.isfinite(deadline_penalty_weight)
+            or deadline_penalty_weight < 0.0
+        ):
+            raise ValueError(
+                "deadline_penalty_weight must be finite and non-negative, "
+                f"got {deadline_penalty_weight}"
+            )
+        self.configured_backlog_weight = float(backlog_weight)
+        self.configured_deadline_penalty_weight = float(
+            deadline_penalty_weight
+        )
+        self.backlog_weight = self.configured_backlog_weight
         self.capacity_penalty_weight = capacity_penalty_weight
         self.peak_penalty_weight = peak_penalty_weight
-        self.demand_charge_rate = demand_charge_rate
-        self.demand_charge_period_steps = max(1, int(demand_charge_period_steps))
-        # $/kW charged per billing window, so that a month of flat load costs
-        # exactly `demand_charge_rate` $/kW regardless of window length.
-        self.demand_charge_per_period = demand_charge_rate * (
-            self.demand_charge_period_steps / STEPS_PER_MONTH
+        if not math.isfinite(demand_charge_rate) or demand_charge_rate < 0.0:
+            raise ValueError(
+                "demand_charge_rate must be a finite non-negative value, "
+                f"got {demand_charge_rate}"
+            )
+        self.demand_charge_rate = float(demand_charge_rate)
+        if demand_charge_period_steps is None:
+            self.demand_charge_period_steps = self.max_steps
+        else:
+            self.demand_charge_period_steps = int(demand_charge_period_steps)
+            if self.demand_charge_period_steps <= 0:
+                raise ValueError(
+                    "demand_charge_period_steps must be positive or None, "
+                    f"got {demand_charge_period_steps}"
+                )
+        self.demand_charge_enabled = self.demand_charge_rate > 0.0
+        self.demand_charge_penalty_guard = bool(
+            demand_charge_penalty_guard and self.demand_charge_enabled
         )
-        self.demand_charge_enabled = demand_charge_rate > 0.0
+        self.economic_penalty_floor = 0.0
+        if self.demand_charge_penalty_guard:
+            self.economic_penalty_floor = self._economic_penalty_floor()
+            self.backlog_weight = max(
+                self.configured_backlog_weight,
+                self.economic_penalty_floor,
+            )
+            deadline_penalty_weight = max(
+                self.configured_deadline_penalty_weight,
+                self.economic_penalty_floor,
+            )
+        if reward_scale is None:
+            self.reward_scale = (
+                DEMAND_CHARGE_REWARD_SCALE
+                if self.demand_charge_enabled
+                else 1.0
+            )
+        else:
+            self.reward_scale = float(reward_scale)
+        if not math.isfinite(self.reward_scale) or self.reward_scale <= 0.0:
+            raise ValueError(
+                f"reward_scale must be finite and positive, got {reward_scale}"
+            )
         # Running per-DC max grid draw within the current billing window (MW).
         self._billed_peak_mw = np.zeros(self.n_dc, dtype=np.float64)
-        # Rate in force for the window currently open. Set per window rather
-        # than once, so a partial trailing window (episode length is rarely an
-        # exact multiple of the billing period) is prorated by its true length
-        # instead of being charged a full period — which would otherwise nearly
-        # double the bill for a 31-day episode on a 30-day window.
-        self._period_rate = self.demand_charge_per_period
+        self._billing_period_start = 0
+        self._billing_period_length = min(
+            self.demand_charge_period_steps, self.max_steps
+        )
+        self._billing_period_index = 0
+        if (
+            self.demand_charge_enabled
+            and self.max_steps % self.demand_charge_period_steps != 0
+        ):
+            raise ValueError(
+                "demand-charge episodes must contain complete billing periods: "
+                f"max_steps={self.max_steps} is not divisible by "
+                f"demand_charge_period_steps={self.demand_charge_period_steps}"
+            )
+        if (
+            batch_enabled
+            and self.demand_charge_enabled
+            and self.demand_charge_period_steps != self.max_steps
+        ):
+            raise ValueError(
+                "batch demand-charge training requires one full-episode "
+                "billing cycle so the observed billing progress is also "
+                "episode progress"
+            )
+        self.batch_completion_shaping_enabled = bool(
+            batch_enabled and self.demand_charge_enabled
+        )
+        self._period_rate = self.demand_charge_rate
         self.steps_per_day = steps_per_day
 
         self.batch_enabled = batch_enabled
         self.flexibility_factor = flexibility_factor
-        self.deadline_penalty_weight = deadline_penalty_weight
+        self.deadline_penalty_weight = float(deadline_penalty_weight)
         self.urgency_horizon_steps = urgency_horizon_steps
         self.interval_seconds = interval_seconds
         self.batch_spatial_routing = batch_spatial_routing and batch_enabled
@@ -175,7 +284,6 @@ class MultiDCEnv(gym.Env):
         self.memory_enabled = memory_enabled
         self.burst_aware = burst_aware and batch_enabled  # only meaningful in batch mode
         self.site_context = site_context
-        self.domain_randomization = domain_randomization
         # Original compute bundles for permutation (captured once at init)
         self._bundle_attrs = [
             "workload", "service_curve", "batch_curve", "capacity",
@@ -196,15 +304,25 @@ class MultiDCEnv(gym.Env):
         # see the max so far — without it the same (load, price, net demand)
         # state has two different marginal costs depending on unobserved history.
         dc_dims = 1 if self.demand_charge_enabled else 0
+        # Billing-cycle progress and active-rate fraction expose reset timing.
+        billing_dims = 2 if self.demand_charge_enabled else 0
         if self.batch_enabled:
             mem_dims = 2 if memory_enabled else 0
             burst_dims = 1 if self.burst_aware else 0
-            obs_dim = (8 + mem_dims + burst_dims + ctx_dims + dc_dims) * self.n_dc + 3
+            obs_dim = (
+                (8 + mem_dims + burst_dims + ctx_dims + dc_dims) * self.n_dc
+                + 3
+                + billing_dims
+            )
             # service routing (N) + drain (N) [+ batch routing (N) if enabled]
             action_dim = (3 if self.batch_spatial_routing else 2) * self.n_dc
         else:
             mem_dims = 1 if memory_enabled else 0
-            obs_dim = (6 + mem_dims + ctx_dims + dc_dims) * self.n_dc + 2
+            obs_dim = (
+                (6 + mem_dims + ctx_dims + dc_dims) * self.n_dc
+                + 2
+                + billing_dims
+            )
             action_dim = self.n_dc
 
         self.observation_space = spaces.Box(
@@ -240,12 +358,61 @@ class MultiDCEnv(gym.Env):
             for site in self.sites
         ]
 
+    def _economic_penalty_floor(self) -> float:
+        """Bound the one-step value of delaying or dropping one CPU unit.
+
+        The bound includes the largest marginal demand-charge reduction plus
+        the largest same-step energy and quadratic grid-penalty reduction. A
+        safety margin makes one unit of backlog/expiry strictly more expensive
+        than avoiding all three costs.
+        """
+        max_saving = 0.0
+        for site in self.sites:
+            pm = (
+                site.power_model
+                if site.power_model is not None
+                else self.power_model
+            )
+            slope = max(pm.slope, 0.65) if self.domain_randomization else pm.slope
+            idle = (
+                max(pm.idle_power, 0.60)
+                if self.domain_randomization
+                else pm.idle_power
+            )
+            marginal_mw = slope * site.rated_power_mw
+            max_util = site.capacity
+            if self.memory_enabled and site.memory_cpu_ratio > 0.0:
+                max_util = min(
+                    max_util,
+                    site.memory_capacity / site.memory_cpu_ratio,
+                )
+            max_grid_mw = (
+                idle + slope * max_util
+            ) * site.rated_power_mw
+            max_price = max(
+                site.get_price(t) for t in range(self.max_steps)
+            )
+            max_net_demand = max(
+                site.get_net_demand(t) for t in range(self.max_steps)
+            )
+            energy = max_price * marginal_mw * 1000.0 * INTERVAL_HOURS
+            peak = (
+                2.0
+                * self.peak_penalty_weight
+                * max_net_demand
+                * max_grid_mw
+                * marginal_mw
+            )
+            demand = self.demand_charge_rate * marginal_mw * 1000.0
+            max_saving = max(max_saving, energy + peak + demand)
+        return PENALTY_SAFETY_MARGIN * max_saving
+
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         self.step_index = 0
-        self._billed_peak_mw[:] = 0.0
+        self._start_billing_period(0, force=True)
         if self.domain_randomization:
             # (i) permute compute bundles across market slots — slot identity
             # carries no information, forcing the policy onto the context
@@ -275,7 +442,7 @@ class MultiDCEnv(gym.Env):
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         if self.batch_enabled:
             return self._step_batch(action)
-        return self._step_legacy(action)
+        return self._step_spatial(action)
 
     # ------------------------------------------------------------------
     # Per-DC cost (shared)
@@ -295,9 +462,9 @@ class MultiDCEnv(gym.Env):
         and Markov as long as D_{t−1} is observable — which is why the running
         peak is added to the observation when this term is enabled.
 
-        Cost is sparse by construction: after the first days of a window most
-        steps set no record and pay nothing. That is faithful to the tariff but
-        hard on credit assignment, hence the daily default window.
+        Cost is sparse by construction: after the early records in a window,
+        most steps pay nothing. Training uses gamma=1.0 when this term is
+        enabled so record timing cannot change the value of an identical bill.
         """
         if not self.demand_charge_enabled:
             return 0.0
@@ -307,21 +474,65 @@ class MultiDCEnv(gym.Env):
         # ×1000: MW → kW, since the rate is quoted per kW.
         return self._period_rate * excess_mw * 1000.0
 
-    def _roll_billing_period(self, t: int) -> None:
-        """Open a new billing window: clear the running peak and set its rate.
+    def _start_billing_period(self, t: int, *, force: bool = False) -> None:
+        """Prepare billing state before the policy observes step ``t``.
 
-        The window's rate is prorated by its actual length, so the total charge
-        over an episode is `demand_charge_rate × (max_steps / STEPS_PER_MONTH)`
-        $/kW of billed peak regardless of how the episode divides into windows.
+        Every configured period is complete; partial trailing periods are
+        rejected at construction because their future rate/reset state would
+        otherwise require additional episode-position state. Resetting here
+        before observation prevents the first action of a period from seeing
+        the previous period's peak.
         """
-        if not self.demand_charge_enabled:
+        if t >= self.max_steps:
             return
-        if t % self.demand_charge_period_steps == 0:
-            self._billed_peak_mw[:] = 0.0
-            window_len = min(self.demand_charge_period_steps, self.max_steps - t)
-            self._period_rate = self.demand_charge_rate * (
-                max(window_len, 0) / STEPS_PER_MONTH
-            )
+        if not force and t % self.demand_charge_period_steps != 0:
+            return
+        self._billed_peak_mw[:] = 0.0
+        self._billing_period_start = t
+        self._billing_period_length = self.demand_charge_period_steps
+        self._billing_period_index = t // self.demand_charge_period_steps
+        self._period_rate = self.demand_charge_rate
+
+    def _billing_context(self, t: int) -> tuple[float, float]:
+        """Return observable period progress and active-rate fraction."""
+        elapsed = max(0, t - self._billing_period_start)
+        progress = elapsed / max(self._billing_period_length, 1)
+        rate_fraction = (
+            self._period_rate / self.demand_charge_rate
+            if self.demand_charge_rate > 0.0
+            else 0.0
+        )
+        return float(progress), float(rate_fraction)
+
+    def _billing_info(self, t: int) -> dict[str, Any]:
+        progress, rate_fraction = self._billing_context(t)
+        return {
+            "demand_charge_enabled": self.demand_charge_enabled,
+            "demand_charge_rate": float(self.demand_charge_rate),
+            "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+            "demand_charge_period_steps": int(self.demand_charge_period_steps),
+            "demand_charge_period_index": int(self._billing_period_index),
+            "demand_charge_period_length": int(self._billing_period_length),
+            "demand_charge_period_rate": float(self._period_rate),
+            "demand_charge_period_progress": progress,
+            "demand_charge_period_rate_fraction": rate_fraction,
+            "demand_charge_penalty_guard": self.demand_charge_penalty_guard,
+            "economic_penalty_floor": float(self.economic_penalty_floor),
+            "configured_backlog_weight": float(
+                self.configured_backlog_weight
+            ),
+            "effective_backlog_weight": float(self.backlog_weight),
+            "configured_deadline_penalty_weight": float(
+                self.configured_deadline_penalty_weight
+            ),
+            "effective_deadline_penalty_weight": float(
+                self.deadline_penalty_weight
+            ),
+            "reward_scale": float(self.reward_scale),
+            "batch_completion_shaping_enabled": (
+                self.batch_completion_shaping_enabled
+            ),
+        }
 
     def _compute_dc_cost(
         self,
@@ -358,10 +569,10 @@ class MultiDCEnv(gym.Env):
                 cap_penalty, demand_charge)
 
     # ------------------------------------------------------------------
-    # Legacy step (spatial routing only)
+    # Spatial-only step
     # ------------------------------------------------------------------
 
-    def _step_legacy(
+    def _step_spatial(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         t = self.step_index
@@ -372,8 +583,6 @@ class MultiDCEnv(gym.Env):
         fractions = exp_a / exp_a.sum()
 
         total_demand = sum(s.get_local_demand(t) for s in self.sites)
-
-        self._roll_billing_period(t)
 
         total_cost = 0.0
         total_energy = 0.0
@@ -425,11 +634,14 @@ class MultiDCEnv(gym.Env):
                 }
             )
 
-        reward = -total_cost
+        billing_info = self._billing_info(t)
+        reward = -total_cost * self.reward_scale
 
         self.step_index += 1
         terminated = self.step_index >= self.max_steps
         truncated = False
+        if not terminated:
+            self._start_billing_period(self.step_index)
 
         info = {
             "total_demand": float(total_demand),
@@ -440,6 +652,7 @@ class MultiDCEnv(gym.Env):
             "total_demand_charge": float(total_demand_charge),
             "total_grid_mw": float(total_grid_mw),
             "per_dc": info_per_dc,
+            **billing_info,
         }
 
         obs = (
@@ -479,8 +692,10 @@ class MultiDCEnv(gym.Env):
             batch_fractions = None
 
         # Phase 1: inject new batch demand into each DC's local pool
+        batch_arrivals = []
         for i, site in enumerate(self.sites):
             new_batch = site.get_batch_demand(t)
+            batch_arrivals.append(new_batch)
             if new_batch > 0:
                 site.batch_pool.add(new_batch, t + self._deadline_offsets[i])
             # Track arrival in rolling buffer for burst-severity observation
@@ -503,7 +718,7 @@ class MultiDCEnv(gym.Env):
 
         # Phase 4: spatially route the requested batch.
         #   routing on : pool all requested batch and re-split by batch_fractions
-        #   routing off: each DC executes its own requested batch (legacy behavior)
+        #   routing off: each DC executes its own requested batch (home-site behavior)
         if self.batch_spatial_routing:
             total_request = float(sum(drain_request))
             batch_assigned = [batch_fractions[j] * total_request for j in range(N)]
@@ -514,8 +729,6 @@ class MultiDCEnv(gym.Env):
         total_service = sum(s.get_service_demand(t) for s in self.sites)
 
         # Phase 6: per-DC serve (service first, then assigned batch) + cost
-        self._roll_billing_period(t)
-
         total_cost = 0.0
         total_energy = 0.0
         total_peak = 0.0
@@ -543,7 +756,11 @@ class MultiDCEnv(gym.Env):
 
             (dc_cost, energy, peak, grid_mw, nd, backlog_cost, cap_cost,
              dem_charge) = self._compute_dc_cost(site, served, new_backlog, t, i)
-            deadline_cost = self.deadline_penalty_weight * expired_per_dc[i]
+            deadline_cost = (
+                0.0
+                if self.batch_completion_shaping_enabled
+                else self.deadline_penalty_weight * expired_per_dc[i]
+            )
             dc_cost += deadline_cost
 
             site.backlog = new_backlog
@@ -562,6 +779,7 @@ class MultiDCEnv(gym.Env):
                     "name": site.name,
                     "service_assigned": float(service_assigned),
                     "service_served": float(service_served),
+                    "batch_arrival": float(batch_arrivals[i]),
                     "batch_assigned": float(batch_work),     # routed to this DC to execute
                     "batch_served": float(batch_served),
                     "served": float(served),
@@ -601,17 +819,39 @@ class MultiDCEnv(gym.Env):
             info_per_dc[i]["batch_drained"] = float(served_from_i)  # served & removed from pool
             info_per_dc[i]["batch_pool_size"] = float(site.batch_pool.total_demand)
 
-        reward = -total_cost
+        total_batch_accounting_cost = 0.0
+        if self.batch_completion_shaping_enabled:
+            # With gamma=1 this telescopes exactly:
+            # Σ λ(arrivals_t - completed_t) = λ(expired + terminal_pool).
+            # It preserves the finite-horizon objective while crediting
+            # completion immediately instead of only at the terminal step.
+            total_batch_accounting_cost = self.deadline_penalty_weight * (
+                float(sum(batch_arrivals)) - total_served_sum
+            )
+            total_cost += total_batch_accounting_cost
+
+        total_terminal_batch_cost = 0.0
+        for i, site in enumerate(self.sites):
+            info_per_dc[i]["terminal_batch_cost"] = 0.0
+
+        billing_info = self._billing_info(t)
+        reward = -total_cost * self.reward_scale
 
         self.step_index += 1
         terminated = self.step_index >= self.max_steps
         truncated = False
+        if not terminated:
+            self._start_billing_period(self.step_index)
 
         info = {
             "total_demand": float(total_service),
             "total_batch_expired": float(sum(expired_per_dc)),
             "total_batch_pool": float(
                 sum(s.batch_pool.total_demand for s in self.sites)
+            ),
+            "total_terminal_batch_cost": float(total_terminal_batch_cost),
+            "total_batch_accounting_cost": float(
+                total_batch_accounting_cost
             ),
             "fractions": fractions.tolist(),
             "drain_rates": drain_rates.tolist(),
@@ -622,6 +862,7 @@ class MultiDCEnv(gym.Env):
             "total_demand_charge": float(total_demand_charge),
             "total_grid_mw": float(total_grid_mw),
             "per_dc": info_per_dc,
+            **billing_info,
         }
 
         obs = (
@@ -704,5 +945,8 @@ class MultiDCEnv(gym.Env):
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_demand, hour_of_day])
+
+        if self.demand_charge_enabled:
+            obs_parts.extend(self._billing_context(t))
 
         return np.array(obs_parts, dtype=np.float32)

@@ -1,4 +1,4 @@
-"""CFWS-style flattened-index discrete action wrapper for MultiDCEnv.
+"""Compact flattened-index DQN action wrapper, inspired by CFWS encoding.
 
 Adapts the action-encoding idea from Zhao et al. 2025 (CFWS, IEEE TSC 10(1))
 to our cell-aggregate multi-DC routing formulation. CFWS's original
@@ -55,7 +55,7 @@ def _fractions_to_logits(fractions: np.ndarray) -> np.ndarray:
 
 
 class CFWSStyleDiscretizedEnv(gym.Wrapper):
-    """Wraps MultiDCEnv with a CFWS-style flattened-index action space.
+    """Wrap MultiDCEnv with a compact CFWS-inspired action encoding.
 
     The underlying MultiDCEnv exposes a continuous Box action space (routing
     logits + optional drain logits); this wrapper converts a single Discrete

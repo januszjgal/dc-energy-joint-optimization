@@ -19,13 +19,17 @@ Two headline quantities:
   touch because sites never power off in this model.
 
 CAVEAT on the floors: they are conditional on SERVING the binding step's load.
-A policy that leaves work unserved prints a lower billed peak while paying for it
-in backlog and deadline penalties — Cheapest Price First reaches 261.7 MW, below
-every floor, at 3-4x the total cost. Compare billed peak only among policies that
-serve all demand (check `service_served_total` / `service_demand_total` ≈ 1).
+A policy that leaves work unfinished prints a lower billed peak while paying
+backlog, expiry, or terminal-pool penalties. Compare billed peak only among
+policies with `work_completed_fraction` ≈ 1 (batch mode), or service completion
+≈ 1 in spatial-only mode.
 
 Usage:
     python scripts/analyze_demand_charge.py [--rate 15.0] [--models-dir models/review_ctx/s101]
+
+`--rate` is applied once to the complete 8,917-step study episode, which is
+treated as one billing cycle. The default is a US C&I sensitivity input, not a
+claim that every site and geography has the same tariff.
 """
 
 from __future__ import annotations
@@ -75,7 +79,10 @@ def min_billed_peak(idle, slope, R, kappa, load) -> float:
 def analyze(scen_name: str, scen_path: Path, batch: bool, rate: float,
             models_dir: Path | None) -> dict:
     mode = "batch" if batch else "spatial"
-    print(f"\n{'='*74}\n{scen_name} [{mode}]  demand charge @ ${rate}/kW-month\n{'='*74}")
+    print(
+        f"\n{'='*74}\n{scen_name} [{mode}]  "
+        f"demand charge @ ${rate}/kW-cycle\n{'='*74}"
+    )
 
     def fresh():
         return _make_env(scen_path, batch_enabled=batch, peak_penalty_weight=ALPHA)
@@ -102,12 +109,24 @@ def analyze(scen_name: str, scen_path: Path, batch: bool, rate: float,
             print(f"  SKIP {name}: {e}")
             continue
         s = compute_summary(hist, batch_enabled=batch)
-        served_frac = (s["service_served_total"] / s["service_demand_total"]
-                       if s["service_demand_total"] > 0 else 0.0)
+        served_frac = (
+            s.get("work_completed_fraction", 0.0)
+            if batch
+            else (
+                s["service_served_total"] / s["service_demand_total"]
+                if s["service_demand_total"] > 0
+                else 0.0
+            )
+        )
         rows[name] = {
             # Below ~1.0 the billed peak is bought with unserved work, not
             # shaping, and is not comparable to the floors.
             "served_fraction": served_frac,
+            "batch_completion_fraction": s.get(
+                "batch_completion_fraction", 1.0
+            ),
+            "batch_expired": s.get("total_batch_expired", 0.0),
+            "terminal_batch_pool": s.get("terminal_batch_pool", 0.0),
             "total_cost": s["total_cost"],
             "energy_cost": s["total_energy_cost"],
             "peak_penalty": s["total_peak_penalty"],
@@ -173,21 +192,32 @@ def analyze(scen_name: str, scen_path: Path, batch: bool, rate: float,
         captured = (sq_peak - ppo_peak) / (sq_peak - best) * 100 if sq_peak > best else 0.0
         print(f"    PPO captures {captured:.0f}% of that prize with the term NOT in its reward")
 
-    return {"policies": rows, "bounds": bounds, "rate": rate,
-            "worst_step": worst, "deferrable_at_worst_step": float(bat[worst]),
-            "load_at_worst_step": float(load[worst])}
+    return {
+        "policies": rows,
+        "bounds": bounds,
+        "rate": rate,
+        "rate_unit": "USD_per_kW_per_full_episode_billing_cycle",
+        "rate_basis": "US_C_and_I_reference_sensitivity",
+        "billing_period_steps": env.max_steps,
+        "metering_interval_steps": 1,
+        "worst_step": worst,
+        "deferrable_at_worst_step": float(bat[worst]),
+        "load_at_worst_step": float(load[worst]),
+    }
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--rate", type=float, default=REFERENCE_DEMAND_CHARGE_RATE,
-                    help="demand charge in $/kW-month")
+                    help="demand charge in $/kW per full-episode billing cycle")
     ap.add_argument("--models-dir", type=Path,
                     default=ROOT / "models" / "review_ctx" / "s101",
                     help="directory holding ppo_<scenario>[_batch].zip")
     ap.add_argument("--output", type=Path,
                     default=ROOT / "output" / "demand_charge_analysis.json")
     args = ap.parse_args()
+    if args.rate < 0:
+        ap.error("--rate must be non-negative")
 
     out = {}
     for scen_name, scen_path in SCENARIOS:

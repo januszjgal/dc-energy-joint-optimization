@@ -1,6 +1,6 @@
 # MARKET-SHIFT generalization variant (peer-review M2b): cells a-d and
-# (synthetic) prices unchanged; NET DEMAND swapped to real EIA-930 May-2024
-# (genuine 2019->2024 duck-curve shift, corr~0.74). Frozen policies trained
+# (synthetic) prices unchanged; US NET DEMAND swapped to real EIA-930 May-2024,
+# while NL/Singapore use matching-year documented approximations. Frozen policies trained
 # on 2019 net demand are evaluated here without retraining. Prices are the
 # documented synthetic series (real hourly LMP is unavailable for GA/SC; see
 # M7 provenance) and are held fixed, isolating the net-demand axis.

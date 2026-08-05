@@ -26,7 +26,7 @@ Output: data/cells/cell_{x}_tiers.csv with columns
   timestep, cpu_demand_norm, batch_share, service_demand_norm, batch_demand_norm
 
 Sanity property: service + batch == measured aggregate at every timestep, so a
-serve-everything-now policy reproduces the legacy demand curve exactly.
+serve-everything-now policy reproduces the original aggregate demand exactly.
 """
 
 from __future__ import annotations

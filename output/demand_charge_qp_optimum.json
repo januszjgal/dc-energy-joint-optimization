@@ -1,0 +1,52 @@
+{
+  "us_spatial": {
+    "status": "Solved",
+    "optimum_total": 13820210.266713262,
+    "objective_constant_idle_and_phi": 6108986.48702932,
+    "demand_charge_rate": 15.0,
+    "n_vars": 107008,
+    "n_constraints": 222929,
+    "solve_seconds": 4.4,
+    "billed_peak_sum_mw": 290.2090907316383,
+    "total_demand_charge": 4353136.360974574
+  },
+  "us_batch": {
+    "status": "Solved",
+    "optimum_total": 13676131.345946804,
+    "objective_constant_idle_and_phi": 6108986.48702932,
+    "demand_charge_rate": 15.0,
+    "n_vars": 249684,
+    "n_constraints": 552796,
+    "solve_seconds": 22.3,
+    "total_batch_expired": 1.31856484834614e-09,
+    "terminal_batch_pool": 2.0114159881079368e-13,
+    "total_batch_uncompleted": 1.3192220649216324e-09,
+    "billed_peak_sum_mw": 281.3084375079842,
+    "total_demand_charge": 4219626.5626197625
+  },
+  "global_spatial": {
+    "status": "Solved",
+    "optimum_total": 16289769.377324602,
+    "objective_constant_idle_and_phi": 8449258.67718127,
+    "demand_charge_rate": 15.0,
+    "n_vars": 107008,
+    "n_constraints": 222929,
+    "solve_seconds": 4.9,
+    "billed_peak_sum_mw": 289.40095212624476,
+    "total_demand_charge": 4341014.2818936715
+  },
+  "global_batch": {
+    "status": "Solved",
+    "optimum_total": 16138917.118001398,
+    "objective_constant_idle_and_phi": 8449258.67718127,
+    "demand_charge_rate": 15.0,
+    "n_vars": 249684,
+    "n_constraints": 552796,
+    "solve_seconds": 18.8,
+    "total_batch_expired": 2.443102527636814e-09,
+    "terminal_batch_pool": 3.756649890753882e-13,
+    "total_batch_uncompleted": 2.4439259505015798e-09,
+    "billed_peak_sum_mw": 280.49935778717327,
+    "total_demand_charge": 4207490.366807599
+  }
+}
