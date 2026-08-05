@@ -233,7 +233,7 @@ P("Our synthetic batch generator descends directly from Da Costa, Grange & "
   "to the 2019 trace under the no-SLO definition, selected by minimum "
   "Kolmogorov–Smirnov distance (the p-value saturates at n ≈ 10⁵), "
   "with discrete negative-binomial task counts. Grange's SLA-flexibility knob "
-  "becomes our deadline model, Eq. (5). Critically, in the final environment the "
+  "becomes our deadline model, Eq. (7). Critically, in the final environment the "
   "generator is demoted to sensitivity analysis: measured per-tier curves are "
   "the primary input, after we found single-timestep job pulses inflated batch "
   "burstiness by two orders of magnitude (Sec. VII).")
@@ -330,18 +330,43 @@ P("where uᵢ,ₜ is served CPU, Pᵢⁱᵈˡᵉ is cell i's idle power (its dra
 EQ("Eₜ = Σᵢ πᵢ,ₜ · gᵢ,ₜ · 1000 · Δh", 3)
 EQ("Φₜ = α · Σᵢ gᵢ,ₜ² · dᵢ,ₜ,   α = 0.015", 4)
 P("The quadratic form penalizes concentration; the d-weighting makes draw "
-  "near the duck-curve neck expensive and slack-hour draw nearly free [13].")
+  "near the duck-curve neck expensive and slack-hour draw nearly free [13]. "
+  "Φ is a grid-stress SHADOW PRICE, not a tariff: α is calibrated to a target "
+  "share of total cost (Sec. V-A), not derived from a rate schedule, and Φ "
+  "differs from a commercial demand charge in all three respects that matter — "
+  "it is summed over every interval rather than taken as a maximum, it is "
+  "quadratic rather than linear in kW, and it is weighted by grid net demand, "
+  "which no tariff observes.")
+P("Because that distinction is easy to lose, the operator's actual tariff term "
+  "is modeled separately. Commercial and industrial customers are billed on the "
+  "single highest demand interval of each billing period, per meter — routinely "
+  "30-50% of a large customer's bill [9], [13] — so the billed quantity is the "
+  "sum of per-SITE maxima, not the fleet coincident peak:")
+EQ("Ψ = c · Σᵢ maxₜ gᵢ,ₜ · 1000,   c in $/kW-month", 5)
+P("A maximum over the period is not a per-step cost, so Ψ is charged in the "
+  "telescoping form below, where Dᵢ,ₜ = maxₜ′≤ₜ gᵢ,ₜ′ is the running billed peak. "
+  "Each step pays exactly the amount by which it raises the running maximum, "
+  "and the sum over a period is exactly Ψ:")
+EQ("ψᵢ,ₜ = c · max(0, gᵢ,ₜ − Dᵢ,ₜ₋₁) · 1000,   Σₜ ψᵢ,ₜ = c · maxₜ gᵢ,ₜ · 1000", 6)
+P("This keeps the cost Markov provided Dᵢ,ₜ₋₁ is observable, which is why the "
+  "running billed peak is added to the observation whenever the term is active; "
+  "without it, identical (load, price, net-demand) states carry different "
+  "marginal costs depending on unobserved history. Ψ is reported for every "
+  "policy in Sec. VI-G but is DISABLED in the reward (c = 0) for all results in "
+  "this paper, so the trained policies and the shaped objective they optimize "
+  "are unchanged; Sec. VI-G quantifies what including it would and would not "
+  "buy.")
 H2("B. Deferrable batch dynamics")
 P("Each site maintains a pool Qᵢ,ₜ of batch work with per-entry deadlines. The "
   "per-cell deadline horizon (in steps) follows the fitted mean duration μᵢ and "
   "flexibility factor φ = 1 (after [4]); an arrival entering at step t is due "
   "by t + Hᵢ:")
-EQ("Hᵢ = ⌈ μᵢ (1 + φ) / Δ ⌉", 5)
-EQ("Qᵢ,ₜ₊₁ = Qᵢ,ₜ + aᵢ,ₜ − Sᵢ,ₜ − Xᵢ,ₜ", 6)
+EQ("Hᵢ = ⌈ μᵢ (1 + φ) / Δ ⌉", 7)
+EQ("Qᵢ,ₜ₊₁ = Qᵢ,ₜ + aᵢ,ₜ − Sᵢ,ₜ − Xᵢ,ₜ", 8)
 P("where Sᵢ,ₜ is batch actually served (run) at i this step and Xᵢ,ₜ is batch "
   "that expired. Two semantics are essential and were validated by invariant "
   "(Sec. V-C): a drain is an intended *release to run* — the released work runs "
-  "only insofar as it fits under capacity (Eq. 7), and the part that does not "
+  "only insofar as it fits under capacity (Eq. 9), and the part that does not "
   "fit stays in the pool with its original deadline (it queues, as Borg's batch "
   "scheduler does [1], rather than expiring on a one-step fuse). Only served "
   "work Sᵢ,ₜ leaves the pool; only deadline-passed work expires as Xᵢ,ₜ.")
@@ -352,8 +377,8 @@ P("The agent outputs a ∈ [−3,3]³ᴺ, decoded as service routing "
   "execute anywhere. Service has first claim on capacity; batch runs only in "
   "the remainder. Writing σᵢ,ₜ for service served and Sᵢ,ₜ for batch served, the "
   "serving rule is")
-EQ("σᵢ,ₜ = min(fᵢ,ₜDₜ + Bᵢ,ₜ₋₁, κᵢ);   Sᵢ,ₜ = min(hᵢ,ₜΣⱼδⱼ,ₜQⱼ,ₜ, κᵢ−σᵢ,ₜ);   uᵢ,ₜ = σᵢ,ₜ + Sᵢ,ₜ", 7)
-P("Reading Eq. (7): service served = service routed in (fᵢ,ₜDₜ) plus carried "
+EQ("σᵢ,ₜ = min(fᵢ,ₜDₜ + Bᵢ,ₜ₋₁, κᵢ);   Sᵢ,ₜ = min(hᵢ,ₜΣⱼδⱼ,ₜQⱼ,ₜ, κᵢ−σᵢ,ₜ);   uᵢ,ₜ = σᵢ,ₜ + Sᵢ,ₜ", 9)
+P("Reading Eq. (9): service served = service routed in (fᵢ,ₜDₜ) plus carried "
   "backlog (Bᵢ,ₜ₋₁), capped at capacity κᵢ; the batch term hᵢ,ₜ Σⱼ δⱼ,ₜ Qⱼ,ₜ is "
   "site i's share (hᵢ,ₜ) of the fleet-wide drained pool — the sum over every "
   "site j of its released batch δⱼ,ₜ Qⱼ,ₜ — and runs only in the capacity "
@@ -363,7 +388,7 @@ P("Reading Eq. (7): service served = service routed in (fᵢ,ₜDₜ) plus carri
   "every drain rate to [27%, 73%], making full concentration and multi-hour "
   "holding impossible by construction; ±3 restores parity with the discrete "
   "baselines (shares to ~98.5%). The reward is the negative per-step cost:")
-EQ("rₜ = −[ Eₜ + Φₜ + λ_b Σᵢ Bᵢ,ₜ + λ_κ Σᵢ max(0, uᵢ,ₜ−κᵢ) + λ_x Σᵢ Xᵢ,ₜ ]", 8)
+EQ("rₜ = −[ Eₜ + Φₜ + λ_b Σᵢ Bᵢ,ₜ + λ_κ Σᵢ max(0, uᵢ,ₜ−κᵢ) + λ_x Σᵢ Xᵢ,ₜ ]", 10)
 P("with backlog weight λ_b = 25, capacity weight λ_κ = 5, and deadline "
   "(expiry) weight λ_x = 250 — the last renamed from a bare w to avoid clashing "
   "with the demand symbol wᵢ,ₜ. Both λ_x and λ_b are calibrated to the energy "
@@ -378,27 +403,30 @@ H2("D. Problem formulation")
 P("Putting the terms together, the agent solves a constrained cost-"
   "minimization over the full episode. With the per-step controls fₜ (service-"
   "routing fractions), δₜ (drain rates), and hₜ (batch placement) of Sec. III-C:")
-EQ("minimize  J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + λ_x·Xᵢ,ₜ ]", 9)
+EQ("minimize  J = Σₜ Σᵢ [ Eᵢ,ₜ + Φᵢ,ₜ + λ_b·Bᵢ,ₜ + λ_x·Xᵢ,ₜ ]", 11)
 P("subject to, for all i, t: the power model (1)–(2); the serving rule (7) with "
   "capacity uᵢ,ₜ ≤ κᵢ; the routing simplex Σᵢ fᵢ,ₜ = 1, fᵢ,ₜ ≥ 0 and drain/"
   "placement δ, h ∈ [0,1]; service-backlog conservation "
-  "Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜDₜ − σᵢ,ₜ; the batch queue (6); and deadline feasibility "
+  "Bᵢ,ₜ = Bᵢ,ₜ₋₁ + fᵢ,ₜDₜ − σᵢ,ₜ; the batch queue (8); and deadline feasibility "
   "Σ_{τ≤t} Sᵢ,τ ≥ Σ of arrivals at i due by t (an arrival at τ is due by "
-  "τ + Hᵢ, Eq. 5) — i.e. cumulative batch completed must cover everything whose "
+  "τ + Hᵢ, Eq. 7) — i.e. cumulative batch completed must cover everything whose "
   "deadline has passed. Here Eᵢ,ₜ (Eq. 3) is energy cost and Φᵢ,ₜ (Eq. 4) the "
   "grid peak-contribution penalty. In words: route inflexible service and defer "
   "flexible batch to minimize electricity cost plus grid-peak contribution, "
   "while serving all demand within capacity and completing batch on time.")
-P("Eq. (9) is an offline, full-information statement; the deployed controller "
+P("Eq. (11) is an offline, full-information statement; the deployed controller "
   "is causal (it cannot observe future prices or demand). We therefore solve it "
   "with model-free RL — PPO maximizes 𝔼[Σₜ γᵗ rₜ] with rₜ the negative per-step "
-  "cost (Eq. 8) — and bound it with the clairvoyant convex-QP relaxation of J "
+  "cost (Eq. 10) — and bound it with the clairvoyant convex-QP relaxation of J "
   "(Sec. VI-F), whose optimum lower-bounds any policy.")
 P("The formulation follows CICS's aggregate flexible/inflexible load-shaping "
   "problem [3], retargeted from carbon to grid net-demand and electricity cost, "
   "with the cost-minimization-over-distributed-DCs structure of geographic load "
   "balancing [23]–[25], a linear idle+slope power model [14], [17], a "
-  "demand-charge-style peak term [9], [13], and aggregate batch-with-deadline "
+  "peak-contribution term in the peak-shaving and demand-response tradition "
+  "[9], [13] — though Φ is a per-interval quadratic shadow price, not a demand "
+  "charge in the tariff sense; the tariff term Ψ is modeled separately "
+  "(Eq. 5) and reported in Sec. VI-G — and aggregate batch-with-deadline "
   "dynamics [4], [9].")
 
 # ---------------- IV. DATA ----------------
@@ -475,7 +503,7 @@ P("We state the price and net-demand provenance precisely, since it bounds the "
   "differences between policies, which are what we report. Second, the price "
   "DYNAMICS the agent exploits (diurnal spread, cross-region differences) are "
   "structurally realistic even if the absolute levels are modeled. The "
-  "generalization study (Sec. VI-G) additionally shifts net demand to real "
+  "generalization study (Sec. VI-H) additionally shifts net demand to real "
   "EIA-930 May-2024 data, testing transfer on the one fully-real market signal.")
 
 # ---------------- V. EXPERIMENTAL SETUP ----------------
@@ -486,7 +514,7 @@ P("PPO (Stable-Baselines3, MLP 128×128, lr 3e-4, 500k steps) acts in the "
   "state (demand, price, net demand, pool/backlog) AND static site context "
   "(per-DC idle power, slope, capacity, deferrable fraction) — the latter "
   "added so that per-site heterogeneity is exploitable as a function of "
-  "observed parameters rather than memorized by slot (Sec. VI-G). Two DQN "
+  "observed parameters rather than memorized by slot (Sec. VI-H). Two DQN "
   "variants share hyperparameters (MLP 256×256, replay 100k, target update "
   "1k): a 759-action routing grid, and a 48-action CFWS-style flattened index "
   "decoding to (source DC, destination DC, drain level) [6]. Nine heuristics "
@@ -567,7 +595,7 @@ P("At the measured deferrable fractions (16–26% of usage), batch deferral adds
   "spatial routing, and it is scenario-dependent. (Earlier drafts' inflated "
   "+6% estimates were artifacts L1–L3, Sec. VII.)")
 H2("E. Deadline and backlog audit")
-P("Because every policy is scored on the shaped objective (Eq. 8), we audit "
+P("Because every policy is scored on the shaped objective (Eq. 10), we audit "
   "that PPO's savings are genuine scheduling, not penalty-dodging. Across all "
   "ten PPO batch-mode seeds: service served / demand = 1.0000, terminal "
   "backlog = 0, terminal batch pool ≤ 0.95 units, ZERO expired batch, peak "
@@ -589,7 +617,49 @@ P("The environment is convex in the serving decisions (linear power and energy "
   "smaller still. A useful by-product: the QP's spatial-only and batch optima "
   "differ by only ~0.2%, confirming the intrinsic value of temporal "
   "flexibility at these deferrable fractions is small (Sec. VI-D).")
-H2("G. Generalization: transfer tracks observability")
+H2("G. The demand charge: a real cost the objective does not see")
+P("Φ is a grid-stress shadow price, not the operator's tariff (Sec. III-A). "
+  "Because a demand charge is the single largest line item that our objective "
+  "omits, we quantify it for every policy from the grid-draw traces, at a "
+  "reference c = $15/kW-month, WITHOUT putting it in the reward — so the "
+  "policies compared are exactly those of Sec. VI-A. Billing is per meter, so "
+  "the billed quantity is Σᵢ maxₜ gᵢ,ₜ, not the fleet coincident peak.")
+P("The charge is large: $4.69M/month under the status quo, 39% of that "
+  "scenario's $12.06M energy bill and 2.3× the Φ term already in the "
+  "objective — in line with the 30–50% share demand charges hold in real "
+  "commercial bills. PPO reduces it to $4.32M (−8.0%, Global batch) and "
+  "$4.35M (−7.3%, US batch) as a SIDE EFFECT of routing for energy price, with "
+  "the term absent from its reward.")
+P("Two findings temper the obvious next step of adding it to the reward. "
+  "First, the headroom is small, because most of the charge is not shapeable: "
+  "sites never power off, so Σᵢ Pᵢⁱᵈˡᵉ·R = 189.8 MW = $2.85M is irreducible — "
+  "66% of the best charge any policy could achieve. Solving for the "
+  "peak-minimizing feasible allocation (the clairvoyant LP collapses to a "
+  "greedy lowest-sᵢ·R fill, since only the busiest step binds) gives a floor of "
+  "267.1 MW = $4.01M, so the entire prize is $0.69M and PPO already captures "
+  "about half of it incidentally. What remains — roughly $0.31M, 2.5% of J — "
+  "sits inside our seed-to-seed spread and would not survive as a headline "
+  "result. Second, a demand charge would PENALIZE part of PPO's current "
+  "strategy: concentrating load on the cheap, efficient sites raises their "
+  "site peaks (Global batch: US-West +9%, US-Central +15%) even as EU and Asia "
+  "fall, so a retrained policy would trade energy saving for peak relief "
+  "rather than adding to it.")
+P("The genuinely interesting consequence is for the temporal lever. Energy "
+  "arbitrage pays only if timing is right CONTINUOUSLY for a month; clipping a "
+  "demand charge pays if timing is right at ONE interval. At the busiest step, "
+  "17% of load is deferrable batch, and vacating it drops the floor from 289.4 "
+  "to 267.1 MW — a larger single lever than all spatial reoptimization "
+  "combined, and well within the Hᵢ = 8–26 step deadline horizons. A demand "
+  "charge is thus the one cost term that would give deferral real value at "
+  "these deferrable fractions, where the shaped objective values it at ~0.2% "
+  "(Sec. VI-F). The obstacle is credit assignment: at γ = 0.99 the effective "
+  "horizon is ~100 steps, while a monthly billing period is 8917 — 89× longer "
+  "— so the once-a-period record-setting reward is invisible to the agent. "
+  "Daily billing (288 steps), which real tariffs also use and which "
+  "lower-bounds the monthly charge exactly, is the tractable form; the "
+  "environment implements it (Eq. 6) and it is left disabled here. We flag "
+  "this as the most promising extension rather than a completed result.")
+H2("H. Generalization: transfer tracks observability")
 P("We test the frozen policies (no retraining) on two distribution shifts "
   "(Fig. 6). On an UNOBSERVED shift — held-out cells e–h, with workload, tier "
   "mix, and per-cell power the policy never saw — context-aware PPO fails "
@@ -613,7 +683,7 @@ FIG(FIGS / "fig6_generalization.png",
     "Fig. 6. Held-out transfer. Red: unobserved cell shift breaks context-only "
     "policies. Green: domain randomization restores it. Blue: the observed "
     "net-demand-year shift transfers without any special treatment.")
-H2("H. Robustness to movement cost")
+H2("I. Robustness to movement cost")
 P("The spatial lever assumes free inter-site movement; we test how much "
   "survives a per-unit cost on work routed away from its home cell (the "
   "SustainCluster transmission-cost idea [27]). Charging existing policies "
@@ -664,7 +734,7 @@ P("Threats to validity. (i) PRICES are documented synthetic, not real LMP "
   "MW magnitude bridges cell scale to grid relevance; results should be swept "
   "over R, and a 300 MW fleet would plausibly move LMPs (the price-taker "
   "assumption). (iv) The measured tier curves make episodes deterministic; "
-  "Sec. VI-G addresses the resulting memorization concern directly and shows "
+  "Sec. VI-H addresses the resulting memorization concern directly and shows "
   "transfer along observed axes. (v) May is the deepest duck-curve month in "
   "CAISO; seasonal generalization is untested. (vi) Cooling and PUE are "
   "excluded by scope; a multiplicative PUE would scale, not reorder, results. "

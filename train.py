@@ -30,6 +30,8 @@ def make_env(
     dynamic_arrivals: bool = True,
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
+    demand_charge_rate: float = 0.0,
+    demand_charge_period_steps: int = 288,
     burst_aware: bool = False,
     batch_spatial_routing: bool = True,
     domain_randomization: bool = False,
@@ -61,6 +63,8 @@ def make_env(
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
+        demand_charge_rate=demand_charge_rate,
+        demand_charge_period_steps=demand_charge_period_steps,
         burst_aware=burst_aware,
         batch_spatial_routing=batch_spatial_routing,
         domain_randomization=domain_randomization,
@@ -166,6 +170,23 @@ def main(argv: list[str] | None = None) -> None:
              "concentrated during peak grid stress (default: 0.0 = disabled)",
     )
     parser.add_argument(
+        "--demand-charge-rate",
+        type=float,
+        default=0.0,
+        help="Demand charge in $/kW-month, billed on the highest demand "
+             "interval of each billing period (the real commercial tariff "
+             "term). Default 0.0 = not in the reward; evaluation reports the "
+             "charge at a reference rate either way",
+    )
+    parser.add_argument(
+        "--demand-charge-period-steps",
+        type=int,
+        default=288,
+        help="Billing window in steps (default 288 = daily). Monthly (8640) "
+             "is the realistic tariff but far exceeds the gamma=0.99 credit "
+             "horizon (~100 steps)",
+    )
+    parser.add_argument(
         "--burst-aware",
         action="store_true",
         help="Augment observation with per-DC burst_severity = current_arrival / "
@@ -205,6 +226,8 @@ def main(argv: list[str] | None = None) -> None:
         dynamic_arrivals=not args.no_dynamic_arrivals,
         seed=args.seed,
         peak_penalty_weight=args.peak_penalty_weight,
+        demand_charge_rate=args.demand_charge_rate,
+        demand_charge_period_steps=args.demand_charge_period_steps,
         burst_aware=args.burst_aware,
         batch_spatial_routing=args.batch_spatial_routing,
         domain_randomization=args.domain_rand,

@@ -43,10 +43,16 @@ def main() -> None:
         urgency_horizon_steps=batch_config.get("urgency_horizon_steps", 12),
     )
     print(f"n_dc: {env.n_dc}")
+    # Derived rather than hardcoded: the hardcoded 47 went stale when
+    # site_context became default-on (M2), which adds 4 dims/DC.
+    ctx = 4 if env.site_context else 0
+    dc = 1 if env.demand_charge_enabled else 0
+    expected = (8 + 2 + 1 + ctx + dc) * env.n_dc + 3
     print(f"obs dim: {env.observation_space.shape[0]}  "
-          f"(expected: (8 + 2 mem + 1 burst)*4 + 3 = 47)")
-    assert env.observation_space.shape[0] == 47, (
-        f"Expected 47, got {env.observation_space.shape[0]}"
+          f"(expected: (8 + 2 mem + 1 burst + {ctx} ctx + {dc} demand-charge)"
+          f"*{env.n_dc} + 3 = {expected})")
+    assert env.observation_space.shape[0] == expected, (
+        f"Expected {expected}, got {env.observation_space.shape[0]}"
     )
 
     # Reset and step

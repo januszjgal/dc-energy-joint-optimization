@@ -22,7 +22,7 @@ from stable_baselines3 import DQN, PPO
 
 from baselines import ALL_BASELINES
 from env.data_loader import load_scenario
-from env.multi_dc_env import MultiDCEnv
+from env.multi_dc_env import REFERENCE_DEMAND_CHARGE_RATE, MultiDCEnv
 
 
 def run_episode(
@@ -91,6 +91,25 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         for i in range(n_dc)
     }
 
+    # Demand charge (EVALUATION-ONLY unless demand_charge_rate > 0 in the env).
+    # Commercial/industrial customers are billed on the highest demand interval
+    # of the billing period, per meter — so the billed quantity is the SUM of
+    # per-site peaks, not the fleet coincident peak. Reported for every policy
+    # regardless of whether the term was in the reward, because it is a real
+    # cost the operator pays and the shaped peak penalty Φ does not represent
+    # it (Φ is a per-step quadratic grid-stress shadow price; see §3.3).
+    per_dc_billed_peak = {
+        history[0]["per_dc"][i]["name"]: float(max(
+            h["per_dc"][i].get("grid_mw", 0.0) for h in history
+        ))
+        for i in range(n_dc)
+    }
+    billed_peak_sum_mw = float(sum(per_dc_billed_peak.values()))
+    # Episodes are ~31 days, so the episode max is the monthly billed peak.
+    demand_charge_ref = billed_peak_sum_mw * 1000.0 * REFERENCE_DEMAND_CHARGE_RATE
+    # In-reward charge actually paid (0.0 when the term is disabled).
+    total_demand_charge = sum(h.get("total_demand_charge", 0.0) for h in history)
+
     # Normalized power-draw profile (demand-smoothing KPI). load_factor = mean/peak
     # aggregate grid draw; higher = flatter (less peaky). Status Quo should have the
     # lowest load_factor; the optimizer should raise it by shaving peaks.
@@ -133,10 +152,15 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         "service_demand_total": demand_total,
         "service_served_total": served_total,
         "total_peak_penalty": float(total_peak_penalty),
+        "total_demand_charge": float(total_demand_charge),
+        "billed_peak_sum_mw": billed_peak_sum_mw,
+        "demand_charge_ref": float(demand_charge_ref),
+        "demand_charge_ref_rate": float(REFERENCE_DEMAND_CHARGE_RATE),
         "total_grid_mw_steps": float(total_grid_mw),
         "nd_weighted_load": float(nd_weighted_load),
         "per_dc_energy_cost": dc_costs,
         "per_dc_peak_penalty": dc_peak,
+        "per_dc_billed_peak_mw": per_dc_billed_peak,
         "per_dc_avg_backlog": dc_backlogs,
     }
 
@@ -176,6 +200,8 @@ def _make_env(
     dynamic_arrivals: bool = True,
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
+    demand_charge_rate: float = 0.0,
+    demand_charge_period_steps: int = 288,
     batch_spatial_routing: bool = True,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
@@ -197,6 +223,8 @@ def _make_env(
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
+        demand_charge_rate=demand_charge_rate,
+        demand_charge_period_steps=demand_charge_period_steps,
         batch_spatial_routing=batch_spatial_routing,
     )
 
@@ -268,6 +296,23 @@ def main(argv: list[str] | None = None) -> None:
         help="Peak-contribution penalty weight α (must match training value)",
     )
     parser.add_argument(
+        "--demand-charge-rate",
+        type=float,
+        default=0.0,
+        help="Demand charge in $/kW-month, billed on the highest demand "
+             "interval of each billing period (the real commercial tariff "
+             "term). Default 0.0 = not in the reward; evaluation reports the "
+             "charge at a reference rate either way",
+    )
+    parser.add_argument(
+        "--demand-charge-period-steps",
+        type=int,
+        default=288,
+        help="Billing window in steps (default 288 = daily). Monthly (8640) "
+             "is the realistic tariff but far exceeds the gamma=0.99 credit "
+             "horizon (~100 steps)",
+    )
+    parser.add_argument(
         "--no-batch-spatial-routing",
         dest="batch_spatial_routing",
         action="store_false",
@@ -305,6 +350,8 @@ def main(argv: list[str] | None = None) -> None:
         memory_enabled=args.memory,
         dynamic_arrivals=not args.no_dynamic_arrivals,
         peak_penalty_weight=args.peak_penalty_weight,
+        demand_charge_rate=args.demand_charge_rate,
+        demand_charge_period_steps=args.demand_charge_period_steps,
         batch_spatial_routing=args.batch_spatial_routing,
     )
     if args.algorithm == "dqn":
@@ -328,6 +375,8 @@ def main(argv: list[str] | None = None) -> None:
             memory_enabled=args.memory,
             dynamic_arrivals=not args.no_dynamic_arrivals,
             peak_penalty_weight=args.peak_penalty_weight,
+        demand_charge_rate=args.demand_charge_rate,
+        demand_charge_period_steps=args.demand_charge_period_steps,
         )
         env2 = DiscretizedMultiDCEnv(env2)
         dqn_reward, dqn_history = run_episode(env2, dqn_model.predict, is_sb3=True)
@@ -349,6 +398,8 @@ def main(argv: list[str] | None = None) -> None:
             memory_enabled=args.memory,
             dynamic_arrivals=not args.no_dynamic_arrivals,
             peak_penalty_weight=args.peak_penalty_weight,
+        demand_charge_rate=args.demand_charge_rate,
+        demand_charge_period_steps=args.demand_charge_period_steps,
         )
         env3 = CFWSStyleDiscretizedEnv(env3)
         df_reward, df_history = run_episode(env3, dqn_flat.predict, is_sb3=True)
@@ -369,6 +420,8 @@ def main(argv: list[str] | None = None) -> None:
             flexibility_factor=args.flexibility_factor,
             deadline_penalty_weight=args.deadline_penalty,
             peak_penalty_weight=args.peak_penalty_weight,
+        demand_charge_rate=args.demand_charge_rate,
+        demand_charge_period_steps=args.demand_charge_period_steps,
             batch_spatial_routing=args.batch_spatial_routing,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)

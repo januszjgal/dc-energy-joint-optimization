@@ -1,0 +1,698 @@
+{
+  "us_model_spatial": {
+    "policies": {
+      "PPO": {
+        "served_fraction": 1.0,
+        "total_cost": 9537762.922661759,
+        "energy_cost": 7680014.223078376,
+        "peak_penalty": 1844184.426907077,
+        "billed_peak_sum_mw": 287.71128572203634,
+        "demand_charge": 4315669.285830545,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 56.53898392879988,
+          "US-Southeast-2": 55.684646569160925
+        },
+        "fleet_coincident_peak_mw": 287.360885595956,
+        "load_factor": 0.9653181519154181
+      },
+      "Status Quo (local, no deferral)": {
+        "served_fraction": 1.0,
+        "total_cost": 9847535.831561957,
+        "energy_cost": 7970670.514555024,
+        "peak_penalty": 1876865.317006932,
+        "billed_peak_sum_mw": 312.93779237209094,
+        "demand_charge": 4694066.885581364,
+        "per_dc_billed_peak_mw": {
+          "US-West": 76.34710730402334,
+          "US-Central": 80.04162493313463,
+          "US-Southeast-1": 80.70637076691366,
+          "US-Southeast-2": 75.84268936801928
+        },
+        "fleet_coincident_peak_mw": 302.82305637068345,
+        "load_factor": 0.9519148581746627
+      },
+      "Round Robin": {
+        "served_fraction": 1.0,
+        "total_cost": 9845529.289140787,
+        "energy_cost": 7969871.67113116,
+        "peak_penalty": 1875657.6180096273,
+        "billed_peak_sum_mw": 302.8305370330129,
+        "demand_charge": 4542458.055495193,
+        "per_dc_billed_peak_mw": {
+          "US-West": 74.00093858463835,
+          "US-Central": 78.26690407195042,
+          "US-Southeast-1": 76.76711368441012,
+          "US-Southeast-2": 73.79558069201398
+        },
+        "fleet_coincident_peak_mw": 302.83053703301283,
+        "load_factor": 0.9526559730774555
+      },
+      "Cheapest Price First": {
+        "served_fraction": 0.7453188288364313,
+        "total_cost": 533730592.5472776,
+        "energy_cost": 6966632.6810363885,
+        "peak_penalty": 1636567.279268228,
+        "billed_peak_sum_mw": 261.6718609614305,
+        "demand_charge": 3925077.914421458,
+        "per_dc_billed_peak_mw": {
+          "US-West": 60.963756773053824,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 56.59164916341537,
+          "US-Southeast-2": 51.90739976286538
+        },
+        "fleet_coincident_peak_mw": 261.6718609614305,
+        "load_factor": 0.9832800475417247
+      },
+      "Avoid the Ramp": {
+        "served_fraction": 0.9540876244417615,
+        "total_cost": 122585589.55146168,
+        "energy_cost": 7964406.037994246,
+        "peak_penalty": 1849241.4496975555,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 96.53436845860685,
+          "US-Southeast-2": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 329.7983254005579,
+        "load_factor": 0.8650364396267999
+      },
+      "Local Only (No Routing)": {
+        "served_fraction": 1.0,
+        "total_cost": 9847535.831561957,
+        "energy_cost": 7970670.514555024,
+        "peak_penalty": 1876865.317006932,
+        "billed_peak_sum_mw": 312.93779237209094,
+        "demand_charge": 4694066.885581364,
+        "per_dc_billed_peak_mw": {
+          "US-West": 76.34710730402334,
+          "US-Central": 80.04162493313463,
+          "US-Southeast-1": 80.70637076691366,
+          "US-Southeast-2": 75.84268936801928
+        },
+        "fleet_coincident_peak_mw": 302.82305637068345,
+        "load_factor": 0.9519148581746627
+      },
+      "Random": {
+        "served_fraction": 1.0,
+        "total_cost": 9905221.676697224,
+        "energy_cost": 7970391.863409409,
+        "peak_penalty": 1917792.804271481,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 96.53436845860685,
+          "US-Southeast-2": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 331.8634075698451,
+        "load_factor": 0.8694774590984712
+      },
+      "Drain Immediately": {
+        "served_fraction": 1.0,
+        "total_cost": 9845529.289140787,
+        "energy_cost": 7969871.67113116,
+        "peak_penalty": 1875657.6180096273,
+        "billed_peak_sum_mw": 302.8305370330129,
+        "demand_charge": 4542458.055495193,
+        "per_dc_billed_peak_mw": {
+          "US-West": 74.00093858463835,
+          "US-Central": 78.26690407195042,
+          "US-Southeast-1": 76.76711368441012,
+          "US-Southeast-2": 73.79558069201398
+        },
+        "fleet_coincident_peak_mw": 302.83053703301283,
+        "load_factor": 0.9526559730774555
+      },
+      "Defer to Low Net Demand": {
+        "served_fraction": 1.0,
+        "total_cost": 9845529.289140787,
+        "energy_cost": 7969871.67113116,
+        "peak_penalty": 1875657.6180096273,
+        "billed_peak_sum_mw": 302.8305370330129,
+        "demand_charge": 4542458.055495193,
+        "per_dc_billed_peak_mw": {
+          "US-West": 74.00093858463835,
+          "US-Central": 78.26690407195042,
+          "US-Southeast-1": 76.76711368441012,
+          "US-Southeast-2": 73.79558069201398
+        },
+        "fleet_coincident_peak_mw": 302.83053703301283,
+        "load_factor": 0.9526559730774555
+      },
+      "Trough-Slot Lookahead": {
+        "served_fraction": 0.9984457871754613,
+        "total_cost": 11234733.90773748,
+        "energy_cost": 8017734.532332905,
+        "peak_penalty": 1833401.3482124992,
+        "billed_peak_sum_mw": 335.9905238225812,
+        "demand_charge": 5039857.857338718,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 78.52872360952435,
+          "US-Southeast-1": 87.70730529174465,
+          "US-Southeast-2": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 332.05619609145685,
+        "load_factor": 0.8694456441756581
+      }
+    },
+    "bounds": {
+      "spatial_only": 289.4009521253923,
+      "defer_batch_out_of_worst_step": 289.4009521253923,
+      "perfect_flatten_to_mean": 272.75787690045075,
+      "irreducible_idle_floor": 189.78479488946766
+    },
+    "rate": 15.0,
+    "worst_step": 4453,
+    "deferrable_at_worst_step": 0.0,
+    "load_at_worst_step": 2.496042847633362
+  },
+  "us_model_batch": {
+    "policies": {
+      "PPO": {
+        "served_fraction": 1.0,
+        "total_cost": 9542044.176327923,
+        "energy_cost": 7669058.378127095,
+        "peak_penalty": 1860536.2110166876,
+        "billed_peak_sum_mw": 289.96705207753837,
+        "demand_charge": 4349505.781163076,
+        "per_dc_billed_peak_mw": {
+          "US-West": 81.07947398822999,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 59.14714463430455,
+          "US-Southeast-2": 57.53137819290788
+        },
+        "fleet_coincident_peak_mw": 289.6678862317484,
+        "load_factor": 0.9605902259608505
+      },
+      "Status Quo (local, no deferral)": {
+        "served_fraction": 1.0,
+        "total_cost": 9847534.39018294,
+        "energy_cost": 7970669.477705464,
+        "peak_penalty": 1876864.912477477,
+        "billed_peak_sum_mw": 312.9344886984575,
+        "demand_charge": 4694017.330476863,
+        "per_dc_billed_peak_mw": {
+          "US-West": 76.34663448058168,
+          "US-Central": 80.04183294573477,
+          "US-Southeast-1": 80.70382884409362,
+          "US-Southeast-2": 75.84219242804744
+        },
+        "fleet_coincident_peak_mw": 302.82104031747355,
+        "load_factor": 0.9519211305099698
+      },
+      "Round Robin": {
+        "served_fraction": 1.0,
+        "total_cost": 9845346.835469134,
+        "energy_cost": 7969736.144283913,
+        "peak_penalty": 1875610.6911852218,
+        "billed_peak_sum_mw": 303.0837951757943,
+        "demand_charge": 4546256.927636914,
+        "per_dc_billed_peak_mw": {
+          "US-West": 74.04843188173804,
+          "US-Central": 78.31943478779249,
+          "US-Southeast-1": 76.8406111123411,
+          "US-Southeast-2": 73.8753173939227
+        },
+        "fleet_coincident_peak_mw": 303.0837951757943,
+        "load_factor": 0.9518510405896355
+      },
+      "Cheapest Price First": {
+        "served_fraction": 0.8610002867409208,
+        "total_cost": 231650015.37591392,
+        "energy_cost": 7394238.819012188,
+        "peak_penalty": 1786313.6399923102,
+        "billed_peak_sum_mw": 286.80985728304097,
+        "demand_charge": 4302147.859245615,
+        "per_dc_billed_peak_mw": {
+          "US-West": 66.91155546702032,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 65.79606183958985,
+          "US-Southeast-2": 61.89318471433487
+        },
+        "fleet_coincident_peak_mw": 286.809857283041,
+        "load_factor": 0.9492647923916406
+      },
+      "Avoid the Ramp": {
+        "served_fraction": 0.9972385410054194,
+        "total_cost": 21573728.683988445,
+        "energy_cost": 7912941.38457712,
+        "peak_penalty": 1809050.2030656384,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 96.53436845860685,
+          "US-Southeast-2": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 336.1865643382975,
+        "load_factor": 0.8461366743977434
+      },
+      "Local Only (No Routing)": {
+        "served_fraction": 1.0,
+        "total_cost": 9847462.811467528,
+        "energy_cost": 7970617.438112436,
+        "peak_penalty": 1876845.373355091,
+        "billed_peak_sum_mw": 312.7756956475118,
+        "demand_charge": 4691635.434712677,
+        "per_dc_billed_peak_mw": {
+          "US-West": 76.33487520792548,
+          "US-Central": 80.04216415863085,
+          "US-Southeast-1": 80.5946094170967,
+          "US-Southeast-2": 75.80404686385876
+        },
+        "fleet_coincident_peak_mw": 302.7111584587516,
+        "load_factor": 0.9522631767372394
+      },
+      "Random": {
+        "served_fraction": 1.0,
+        "total_cost": 9876842.36934386,
+        "energy_cost": 7968509.761036379,
+        "peak_penalty": 1906193.9056237123,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 92.20905526209593,
+          "US-Southeast-1": 96.53436845860685,
+          "US-Southeast-2": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 320.17234324272863,
+        "load_factor": 0.9010424655903109
+      },
+      "Drain Immediately": {
+        "served_fraction": 1.0,
+        "total_cost": 9845527.89074822,
+        "energy_cost": 7969870.662271778,
+        "peak_penalty": 1875657.228476442,
+        "billed_peak_sum_mw": 302.8375398192384,
+        "demand_charge": 4542563.097288575,
+        "per_dc_billed_peak_mw": {
+          "US-West": 74.00225181154225,
+          "US-Central": 78.26835658743235,
+          "US-Southeast-1": 76.76914594592112,
+          "US-Southeast-2": 73.79778547434263
+        },
+        "fleet_coincident_peak_mw": 302.8375398192384,
+        "load_factor": 0.9526338837062109
+      },
+      "Defer to Low Net Demand": {
+        "served_fraction": 1.0,
+        "total_cost": 9845065.90488894,
+        "energy_cost": 7957575.0566647425,
+        "peak_penalty": 1869168.077450174,
+        "billed_peak_sum_mw": 302.6470926747429,
+        "demand_charge": 4539706.390121143,
+        "per_dc_billed_peak_mw": {
+          "US-West": 73.96653741074954,
+          "US-Central": 78.2288541069966,
+          "US-Southeast-1": 76.71387674460942,
+          "US-Southeast-2": 73.73782441238735
+        },
+        "fleet_coincident_peak_mw": 302.6470926747429,
+        "load_factor": 0.9519358375961222
+      },
+      "Trough-Slot Lookahead": {
+        "served_fraction": 0.9999307141172027,
+        "total_cost": 10089586.273016414,
+        "energy_cost": 8026531.033635923,
+        "peak_penalty": 1846639.0612006865,
+        "billed_peak_sum_mw": 341.9358957518449,
+        "demand_charge": 5129038.436277674,
+        "per_dc_billed_peak_mw": {
+          "US-West": 83.2785999619796,
+          "US-Central": 81.82167588891248,
+          "US-Southeast-1": 90.35972494162016,
+          "US-Southeast-2": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 335.90761808208146,
+        "load_factor": 0.8620694309498717
+      }
+    },
+    "bounds": {
+      "spatial_only": 289.4090811714363,
+      "defer_batch_out_of_worst_step": 267.1184561603662,
+      "perfect_flatten_to_mean": 272.75785572143036,
+      "irreducible_idle_floor": 189.78479488946766
+    },
+    "rate": 15.0,
+    "worst_step": 4453,
+    "deferrable_at_worst_step": 0.42398584551915747,
+    "load_at_worst_step": 2.496197468710991
+  },
+  "global_model_spatial": {
+    "policies": {
+      "PPO": {
+        "served_fraction": 0.9994951898948008,
+        "total_cost": 12979129.419674423,
+        "energy_cost": 10146677.155898882,
+        "peak_penalty": 1919817.07602088,
+        "billed_peak_sum_mw": 283.1787925662542,
+        "demand_charge": 4247681.888493813,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 65.36783617148365,
+          "Global-Asia": 42.323301170695
+        },
+        "fleet_coincident_peak_mw": 283.17077790058585,
+        "load_factor": 0.9660075540831653
+      },
+      "Status Quo (local, no deferral)": {
+        "served_fraction": 1.0,
+        "total_cost": 14061554.383309688,
+        "energy_cost": 12056446.316691289,
+        "peak_penalty": 2005108.0666183985,
+        "billed_peak_sum_mw": 312.93779237209094,
+        "demand_charge": 4694066.885581364,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 76.34710730402334,
+          "Global-US-Central": 80.04162493313463,
+          "Global-EU": 80.70637076691366,
+          "Global-Asia": 75.84268936801928
+        },
+        "fleet_coincident_peak_mw": 302.82305637068345,
+        "load_factor": 0.9519148581746627
+      },
+      "Round Robin": {
+        "served_fraction": 1.0,
+        "total_cost": 14094783.939465253,
+        "energy_cost": 12088005.937487425,
+        "peak_penalty": 2006778.001977827,
+        "billed_peak_sum_mw": 302.8305370330129,
+        "demand_charge": 4542458.055495193,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 74.00093858463835,
+          "Global-US-Central": 78.26690407195042,
+          "Global-EU": 76.76711368441012,
+          "Global-Asia": 73.79558069201398
+        },
+        "fleet_coincident_peak_mw": 302.83053703301283,
+        "load_factor": 0.9526559730774555
+      },
+      "Cheapest Price First": {
+        "served_fraction": 0.7453188288364313,
+        "total_cost": 536799916.96937865,
+        "energy_cost": 9965768.05357876,
+        "peak_penalty": 1706756.328826871,
+        "billed_peak_sum_mw": 261.6718609614305,
+        "demand_charge": 3925077.914421458,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 60.963756773053824,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 56.59164916341537,
+          "Global-Asia": 51.90739976286538
+        },
+        "fleet_coincident_peak_mw": 261.6718609614305,
+        "load_factor": 0.9832800475417247
+      },
+      "Avoid the Ramp": {
+        "served_fraction": 0.9924013542291732,
+        "total_cost": 28257380.342841566,
+        "energy_cost": 11271057.711724626,
+        "peak_penalty": 1954845.4839468093,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 96.53436845860685,
+          "Global-Asia": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 358.49791864201507,
+        "load_factor": 0.7875100384571937
+      },
+      "Local Only (No Routing)": {
+        "served_fraction": 1.0,
+        "total_cost": 14061554.383309688,
+        "energy_cost": 12056446.316691289,
+        "peak_penalty": 2005108.0666183985,
+        "billed_peak_sum_mw": 312.93779237209094,
+        "demand_charge": 4694066.885581364,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 76.34710730402334,
+          "Global-US-Central": 80.04162493313463,
+          "Global-EU": 80.70637076691366,
+          "Global-Asia": 75.84268936801928
+        },
+        "fleet_coincident_peak_mw": 302.82305637068345,
+        "load_factor": 0.9519148581746627
+      },
+      "Random": {
+        "served_fraction": 1.0,
+        "total_cost": 14164616.503768275,
+        "energy_cost": 12093643.748457128,
+        "peak_penalty": 2053935.746294814,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 96.53436845860685,
+          "Global-Asia": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 331.8634075698451,
+        "load_factor": 0.8694774590984712
+      },
+      "Drain Immediately": {
+        "served_fraction": 1.0,
+        "total_cost": 14094783.939465253,
+        "energy_cost": 12088005.937487425,
+        "peak_penalty": 2006778.001977827,
+        "billed_peak_sum_mw": 302.8305370330129,
+        "demand_charge": 4542458.055495193,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 74.00093858463835,
+          "Global-US-Central": 78.26690407195042,
+          "Global-EU": 76.76711368441012,
+          "Global-Asia": 73.79558069201398
+        },
+        "fleet_coincident_peak_mw": 302.83053703301283,
+        "load_factor": 0.9526559730774555
+      },
+      "Defer to Low Net Demand": {
+        "served_fraction": 1.0,
+        "total_cost": 14094783.939465253,
+        "energy_cost": 12088005.937487425,
+        "peak_penalty": 2006778.001977827,
+        "billed_peak_sum_mw": 302.8305370330129,
+        "demand_charge": 4542458.055495193,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 74.00093858463835,
+          "Global-US-Central": 78.26690407195042,
+          "Global-EU": 76.76711368441012,
+          "Global-Asia": 73.79558069201398
+        },
+        "fleet_coincident_peak_mw": 302.83053703301283,
+        "load_factor": 0.9526559730774555
+      },
+      "Trough-Slot Lookahead": {
+        "served_fraction": 0.9994227159918083,
+        "total_cost": 14324406.742728718,
+        "energy_cost": 11783494.112825353,
+        "peak_penalty": 1930847.4928133232,
+        "billed_peak_sum_mw": 354.4128235237682,
+        "demand_charge": 5316192.352856523,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 88.12396014384917,
+          "Global-EU": 96.53436845860685,
+          "Global-Asia": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 333.3988262182405,
+        "load_factor": 0.857779632137817
+      }
+    },
+    "bounds": {
+      "spatial_only": 289.4009521253923,
+      "defer_batch_out_of_worst_step": 289.4009521253923,
+      "perfect_flatten_to_mean": 272.75787690045075,
+      "irreducible_idle_floor": 189.78479488946766
+    },
+    "rate": 15.0,
+    "worst_step": 4453,
+    "deferrable_at_worst_step": 0.0,
+    "load_at_worst_step": 2.496042847633362
+  },
+  "global_model_batch": {
+    "policies": {
+      "PPO": {
+        "served_fraction": 1.0,
+        "total_cost": 12150066.898815421,
+        "energy_cost": 10220788.121609462,
+        "peak_penalty": 1921192.2862171063,
+        "billed_peak_sum_mw": 287.95661902520726,
+        "demand_charge": 4319349.285378109,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 67.3878069597282,
+          "Global-Asia": 45.081156841403555
+        },
+        "fleet_coincident_peak_mw": 287.9550679801826,
+        "load_factor": 0.9513841492442637
+      },
+      "Status Quo (local, no deferral)": {
+        "served_fraction": 1.0,
+        "total_cost": 14061553.495361215,
+        "energy_cost": 12056445.997911314,
+        "peak_penalty": 2005107.4974499,
+        "billed_peak_sum_mw": 312.9344886984575,
+        "demand_charge": 4694017.330476863,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 76.34663448058168,
+          "Global-US-Central": 80.04183294573477,
+          "Global-EU": 80.70382884409362,
+          "Global-Asia": 75.84219242804744
+        },
+        "fleet_coincident_peak_mw": 302.82104031747355,
+        "load_factor": 0.9519211305099698
+      },
+      "Round Robin": {
+        "served_fraction": 1.0,
+        "total_cost": 14094728.07146854,
+        "energy_cost": 12088015.410148043,
+        "peak_penalty": 2006712.6613204968,
+        "billed_peak_sum_mw": 303.0837951757943,
+        "demand_charge": 4546256.927636914,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 74.04843188173804,
+          "Global-US-Central": 78.31943478779249,
+          "Global-EU": 76.8406111123411,
+          "Global-Asia": 73.8753173939227
+        },
+        "fleet_coincident_peak_mw": 303.0837951757943,
+        "load_factor": 0.9518510405896355
+      },
+      "Cheapest Price First": {
+        "served_fraction": 0.8610002867409208,
+        "total_cost": 235080141.02591154,
+        "energy_cost": 10741285.51767592,
+        "peak_penalty": 1870266.4372941577,
+        "billed_peak_sum_mw": 287.16529839644267,
+        "demand_charge": 4307479.47594664,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 66.99565493791789,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 65.92620851667468,
+          "Global-Asia": 62.03437967975416
+        },
+        "fleet_coincident_peak_mw": 287.16529839644267,
+        "load_factor": 0.9481443270961027
+      },
+      "Avoid the Ramp": {
+        "served_fraction": 0.9975844117427852,
+        "total_cost": 17968226.516933613,
+        "energy_cost": 11279016.802047385,
+        "peak_penalty": 1875009.6882212455,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 96.53436845860685,
+          "Global-Asia": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 358.49791864201507,
+        "load_factor": 0.7781815965421456
+      },
+      "Local Only (No Routing)": {
+        "served_fraction": 1.0,
+        "total_cost": 14061514.130175237,
+        "energy_cost": 12056434.483379208,
+        "peak_penalty": 2005079.646796029,
+        "billed_peak_sum_mw": 312.7756956475118,
+        "demand_charge": 4691635.434712677,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 76.33487520792548,
+          "Global-US-Central": 80.04216415863085,
+          "Global-EU": 80.5946094170967,
+          "Global-Asia": 75.80404686385876
+        },
+        "fleet_coincident_peak_mw": 302.7111584587516,
+        "load_factor": 0.9522631767372394
+      },
+      "Random": {
+        "served_fraction": 1.0,
+        "total_cost": 14121523.514560776,
+        "energy_cost": 12078819.844452564,
+        "peak_penalty": 2040564.967424444,
+        "billed_peak_sum_mw": 358.497918642015,
+        "demand_charge": 5377468.779630225,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 92.20905526209593,
+          "Global-EU": 96.53436845860685,
+          "Global-Asia": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 320.17234324272863,
+        "load_factor": 0.9010424655903109
+      },
+      "Drain Immediately": {
+        "served_fraction": 1.0,
+        "total_cost": 14094783.31105721,
+        "energy_cost": 12088005.8406603,
+        "peak_penalty": 2006777.4703969108,
+        "billed_peak_sum_mw": 302.8375398192384,
+        "demand_charge": 4542563.097288575,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 74.00225181154225,
+          "Global-US-Central": 78.26835658743235,
+          "Global-EU": 76.76914594592112,
+          "Global-Asia": 73.79778547434263
+        },
+        "fleet_coincident_peak_mw": 302.8375398192384,
+        "load_factor": 0.9526338837062109
+      },
+      "Defer to Low Net Demand": {
+        "served_fraction": 1.0,
+        "total_cost": 14089464.914059382,
+        "energy_cost": 12068384.404989257,
+        "peak_penalty": 2000336.4123979409,
+        "billed_peak_sum_mw": 303.40536509435225,
+        "demand_charge": 4551080.476415283,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 74.10873563155104,
+          "Global-US-Central": 78.38613470839364,
+          "Global-EU": 76.9339331341107,
+          "Global-Asia": 73.97656162029685
+        },
+        "fleet_coincident_peak_mw": 303.4053650943522,
+        "load_factor": 0.9494167319909741
+      },
+      "Trough-Slot Lookahead": {
+        "served_fraction": 1.0,
+        "total_cost": 13757404.999293372,
+        "energy_cost": 11814965.288416317,
+        "peak_penalty": 1940546.9136639396,
+        "billed_peak_sum_mw": 354.4717272096973,
+        "demand_charge": 5317075.908145459,
+        "per_dc_billed_peak_mw": {
+          "Global-US-West": 83.2785999619796,
+          "Global-US-Central": 88.18286382977821,
+          "Global-EU": 96.53436845860685,
+          "Global-Asia": 86.47589495933263
+        },
+        "fleet_coincident_peak_mw": 309.4041338752454,
+        "load_factor": 0.9259927717952372
+      }
+    },
+    "bounds": {
+      "spatial_only": 289.4090811714363,
+      "defer_batch_out_of_worst_step": 267.1184561603662,
+      "perfect_flatten_to_mean": 272.75785572143036,
+      "irreducible_idle_floor": 189.78479488946766
+    },
+    "rate": 15.0,
+    "worst_step": 4453,
+    "deferrable_at_worst_step": 0.42398584551915747,
+    "load_at_worst_step": 2.496197468710991
+  }
+}

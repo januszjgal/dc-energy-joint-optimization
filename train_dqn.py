@@ -47,6 +47,8 @@ def make_env(
     seed: int = 42,
     granularity: int = 5,
     peak_penalty_weight: float = 0.0,
+    demand_charge_rate: float = 0.0,
+    demand_charge_period_steps: int = 288,
     action_scheme: str = "routing-grid",
     burst_aware: bool = False,
     batch_spatial_routing: bool = True,
@@ -82,6 +84,8 @@ def make_env(
         urgency_horizon_steps=uh,
         memory_enabled=memory_enabled,
         peak_penalty_weight=peak_penalty_weight,
+        demand_charge_rate=demand_charge_rate,
+        demand_charge_period_steps=demand_charge_period_steps,
         burst_aware=burst_aware,
         batch_spatial_routing=batch_spatial_routing,
     )
@@ -168,6 +172,23 @@ def main(argv: list[str] | None = None) -> None:
         help="Weight on peak-contribution penalty (default: 0.0)",
     )
     parser.add_argument(
+        "--demand-charge-rate",
+        type=float,
+        default=0.0,
+        help="Demand charge in $/kW-month, billed on the highest demand "
+             "interval of each billing period (the real commercial tariff "
+             "term). Default 0.0 = not in the reward; evaluation reports the "
+             "charge at a reference rate either way",
+    )
+    parser.add_argument(
+        "--demand-charge-period-steps",
+        type=int,
+        default=288,
+        help="Billing window in steps (default 288 = daily). Monthly (8640) "
+             "is the realistic tariff but far exceeds the gamma=0.99 credit "
+             "horizon (~100 steps)",
+    )
+    parser.add_argument(
         "--action-scheme",
         choices=["routing-grid", "cfws-style"],
         default="routing-grid",
@@ -210,6 +231,8 @@ def main(argv: list[str] | None = None) -> None:
         seed=args.seed,
         granularity=args.granularity,
         peak_penalty_weight=args.peak_penalty_weight,
+        demand_charge_rate=args.demand_charge_rate,
+        demand_charge_period_steps=args.demand_charge_period_steps,
         action_scheme=args.action_scheme,
         burst_aware=args.burst_aware,
         batch_spatial_routing=args.batch_spatial_routing,
