@@ -16,7 +16,7 @@ from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.env_checker import check_env
 
 from env.data_loader import load_scenario
-from env.multi_dc_env import MultiDCEnv
+from env.multi_dc_env import MultiDCEnv, resolve_training_gamma
 
 
 def make_env(
@@ -31,7 +31,7 @@ def make_env(
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
-    demand_charge_period_steps: int = 288,
+    demand_charge_period_steps: int | None = None,
     burst_aware: bool = False,
     batch_spatial_routing: bool = True,
     domain_randomization: bool = False,
@@ -111,6 +111,14 @@ def main(argv: list[str] | None = None) -> None:
         help="Steps per PPO update (default: 2048)",
     )
     parser.add_argument(
+        "--gamma",
+        type=float,
+        default=None,
+        help="RL discount factor. Defaults to 0.99 when demand charges are "
+             "disabled and 1.0 when enabled. Demand-charge training requires "
+             "1.0 so incremental peak costs equal the billed maximum.",
+    )
+    parser.add_argument(
         "--batch-size",
         type=int,
         default=64,
@@ -165,26 +173,25 @@ def main(argv: list[str] | None = None) -> None:
         "--peak-penalty-weight",
         type=float,
         default=0.0,
-        help="Weight α on the grid demand-smoothing term: "
-             "α × grid_mw² × net_demand_normalized[t]. Penalizes load "
+        help="Weight alpha on the grid demand-smoothing term: "
+             "alpha * grid_mw^2 * net_demand_normalized[t]. Penalizes load "
              "concentrated during peak grid stress (default: 0.0 = disabled)",
     )
     parser.add_argument(
         "--demand-charge-rate",
         type=float,
         default=0.0,
-        help="Demand charge in $/kW-month, billed on the highest demand "
-             "interval of each billing period (the real commercial tariff "
-             "term). Default 0.0 = not in the reward; evaluation reports the "
-             "charge at a reference rate either way",
+        help="Demand charge in $/kW per configured billing period, billed on "
+             "the highest demand interval. Default 0.0 = not in the reward; "
+             "evaluation reports a full-episode reference charge either way.",
     )
     parser.add_argument(
         "--demand-charge-period-steps",
         type=int,
-        default=288,
-        help="Billing window in steps (default 288 = daily). Monthly (8640) "
-             "is the realistic tariff but far exceeds the gamma=0.99 credit "
-             "horizon (~100 steps)",
+        default=None,
+        help="Billing period in steps. Default: the full episode is one "
+             "billing cycle. A shorter value is a different tariff and needs "
+             "a rate quoted for that period; it must divide max_steps exactly.",
     )
     parser.add_argument(
         "--burst-aware",
@@ -207,12 +214,20 @@ def main(argv: list[str] | None = None) -> None:
              "Drained batch executes at its home DC; action space drops 3N->2N.",
     )
     args = parser.parse_args(argv)
+    try:
+        training_gamma = resolve_training_gamma(
+            args.gamma, args.demand_charge_rate
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     scenario_name = args.scenario.stem
     if args.batch_mode:
         scenario_name += "_batch"
     if args.burst_aware:
         scenario_name += "_burst"
+    if args.demand_charge_rate > 0.0:
+        scenario_name += "_demand_charge"
     print(f"=== Training PPO on scenario: {scenario_name} ===")
 
     # Create environment
@@ -236,6 +251,19 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Action space: {env.action_space}")
     print(f"Number of DCs: {env.n_dc}")
     print(f"Max steps per episode: {env.max_steps}")
+    print(f"Gamma: {training_gamma}")
+    if env.demand_charge_enabled:
+        print(
+            "Demand charge: "
+            f"${env.demand_charge_rate:g}/kW per "
+            f"{env.demand_charge_period_steps}-step billing period"
+        )
+        print(
+            "Economic safety: "
+            f"backlog=${env.backlog_weight:,.2f}/unit-step, "
+            f"expiry=${env.deadline_penalty_weight:,.2f}/unit, "
+            f"reward_scale={env.reward_scale:g}"
+        )
     if args.batch_mode:
         for site in env.sites:
             print(
@@ -255,6 +283,7 @@ def main(argv: list[str] | None = None) -> None:
         learning_rate=args.lr,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
+        gamma=training_gamma,
         policy_kwargs=dict(net_arch=args.net_arch),
         verbose=1,
         seed=args.seed,

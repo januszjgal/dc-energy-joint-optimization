@@ -57,6 +57,7 @@ def run_episode(
 
 def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
     """Compute summary metrics from episode history."""
+    first_step = history[0]
     total_cost = sum(h["total_cost"] for h in history)
     total_energy_cost = sum(h.get("total_energy_cost", 0.0) for h in history)
     total_peak_penalty = sum(h.get("total_peak_penalty", 0.0) for h in history)
@@ -91,13 +92,9 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         for i in range(n_dc)
     }
 
-    # Demand charge (EVALUATION-ONLY unless demand_charge_rate > 0 in the env).
-    # Commercial/industrial customers are billed on the highest demand interval
-    # of the billing period, per meter — so the billed quantity is the SUM of
-    # per-site peaks, not the fleet coincident peak. Reported for every policy
-    # regardless of whether the term was in the reward, because it is a real
-    # cost the operator pays and the shaped peak penalty Φ does not represent
-    # it (Φ is a per-step quadratic grid-stress shadow price; see §3.3).
+    # Full-episode reference charge. Billing is per meter, so the quantity is
+    # the sum of site maxima rather than the coincident fleet peak. It is
+    # reported even when disabled because Φ is a different grid-stress term.
     per_dc_billed_peak = {
         history[0]["per_dc"][i]["name"]: float(max(
             h["per_dc"][i].get("grid_mw", 0.0) for h in history
@@ -105,10 +102,22 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         for i in range(n_dc)
     }
     billed_peak_sum_mw = float(sum(per_dc_billed_peak.values()))
-    # Episodes are ~31 days, so the episode max is the monthly billed peak.
+    # The 31-day study episode is treated as one reference billing cycle.
     demand_charge_ref = billed_peak_sum_mw * 1000.0 * REFERENCE_DEMAND_CHARGE_RATE
-    # In-reward charge actually paid (0.0 when the term is disabled).
+    # In-reward charge actually paid under the environment's configured
+    # period(s) and rate (0.0 when the term is disabled).
     total_demand_charge = sum(h.get("total_demand_charge", 0.0) for h in history)
+    demand_charge_enabled = bool(first_step.get("demand_charge_enabled", False))
+    demand_charge_rate = float(first_step.get("demand_charge_rate", 0.0))
+    demand_charge_period_steps = int(
+        first_step.get("demand_charge_period_steps", len(history))
+    )
+    demand_charge_period_count = len({
+        int(h.get("demand_charge_period_index", 0)) for h in history
+    })
+    economic_penalty_floor = float(
+        first_step.get("economic_penalty_floor", 0.0)
+    )
 
     # Normalized power-draw profile (demand-smoothing KPI). load_factor = mean/peak
     # aggregate grid draw; higher = flatter (less peaky). Status Quo should have the
@@ -153,9 +162,37 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         "service_served_total": served_total,
         "total_peak_penalty": float(total_peak_penalty),
         "total_demand_charge": float(total_demand_charge),
+        "demand_charge_enabled": demand_charge_enabled,
+        "demand_charge_rate": demand_charge_rate,
+        "demand_charge_rate_unit": first_step.get(
+            "demand_charge_rate_unit", "USD_per_kW_per_billing_period"
+        ),
+        "demand_charge_period_steps": demand_charge_period_steps,
+        "demand_charge_period_count": demand_charge_period_count,
+        "demand_charge_penalty_guard": bool(
+            first_step.get("demand_charge_penalty_guard", False)
+        ),
+        "economic_penalty_floor": economic_penalty_floor,
+        "configured_backlog_weight": float(
+            first_step.get("configured_backlog_weight", 25.0)
+        ),
+        "effective_backlog_weight": float(
+            first_step.get("effective_backlog_weight", 25.0)
+        ),
+        "configured_deadline_penalty_weight": float(
+            first_step.get("configured_deadline_penalty_weight", 2.0)
+        ),
+        "effective_deadline_penalty_weight": float(
+            first_step.get("effective_deadline_penalty_weight", 2.0)
+        ),
+        "reward_scale": float(first_step.get("reward_scale", 1.0)),
+        "batch_completion_shaping_enabled": bool(
+            first_step.get("batch_completion_shaping_enabled", False)
+        ),
         "billed_peak_sum_mw": billed_peak_sum_mw,
         "demand_charge_ref": float(demand_charge_ref),
         "demand_charge_ref_rate": float(REFERENCE_DEMAND_CHARGE_RATE),
+        "demand_charge_ref_period_steps": len(history),
         "total_grid_mw_steps": float(total_grid_mw),
         "nd_weighted_load": float(nd_weighted_load),
         "per_dc_energy_cost": dc_costs,
@@ -170,6 +207,32 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
             sum(dc.get("deadline_cost", 0) for dc in h["per_dc"])
             for h in history
         )
+        total_terminal_batch_cost = sum(
+            h.get("total_terminal_batch_cost", 0.0) for h in history
+        )
+        total_batch_accounting_cost = sum(
+            h.get("total_batch_accounting_cost", 0.0) for h in history
+        )
+        batch_arrival_total = float(sum(
+            sum(dc.get("batch_arrival", 0.0) for dc in h["per_dc"])
+            for h in history
+        ))
+        batch_completed_total = float(sum(
+            sum(dc.get("batch_drained", 0.0) for dc in h["per_dc"])
+            for h in history
+        ))
+        batch_completion_fraction = (
+            batch_completed_total / batch_arrival_total
+            if batch_arrival_total > 0.0
+            else 1.0
+        )
+        work_demand_total = demand_total + batch_arrival_total
+        work_completed_total = served_total + batch_completed_total
+        work_completed_fraction = (
+            work_completed_total / work_demand_total
+            if work_demand_total > 0.0
+            else 1.0
+        )
         avg_batch_pool = float(
             np.mean([h.get("total_batch_pool", 0) for h in history])
         )
@@ -183,6 +246,21 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
             {
                 "total_batch_expired": total_expired,
                 "total_deadline_cost": total_deadline_cost,
+                "total_terminal_batch_cost": total_terminal_batch_cost,
+                "total_batch_accounting_cost": total_batch_accounting_cost,
+                "total_unfinished_batch_cost": (
+                    total_batch_accounting_cost
+                    if first_step.get(
+                        "batch_completion_shaping_enabled", False
+                    )
+                    else total_deadline_cost + total_terminal_batch_cost
+                ),
+                "batch_arrival_total": batch_arrival_total,
+                "batch_completed_total": batch_completed_total,
+                "batch_completion_fraction": batch_completion_fraction,
+                "work_demand_total": work_demand_total,
+                "work_completed_total": work_completed_total,
+                "work_completed_fraction": work_completed_fraction,
                 "avg_batch_pool_size": avg_batch_pool,
                 "avg_drain_rates": avg_drain_rates,
             }
@@ -201,7 +279,7 @@ def _make_env(
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
-    demand_charge_period_steps: int = 288,
+    demand_charge_period_steps: int | None = None,
     batch_spatial_routing: bool = True,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
@@ -287,30 +365,29 @@ def main(argv: list[str] | None = None) -> None:
         "--dqn-flatidx-model",
         type=Path,
         default=None,
-        help="Path to a third (DQN CFWS-style flattened-index) model for comparison",
+        help="Path to a third compact-action DQN model (CFWS-inspired encoding)",
     )
     parser.add_argument(
         "--peak-penalty-weight",
         type=float,
         default=0.0,
-        help="Peak-contribution penalty weight α (must match training value)",
+        help="Peak-contribution penalty weight alpha (must match training value)",
     )
     parser.add_argument(
         "--demand-charge-rate",
         type=float,
         default=0.0,
-        help="Demand charge in $/kW-month, billed on the highest demand "
-             "interval of each billing period (the real commercial tariff "
-             "term). Default 0.0 = not in the reward; evaluation reports the "
-             "charge at a reference rate either way",
+        help="Demand charge in $/kW per configured billing period, billed on "
+             "the highest demand interval. Default 0.0 = not in the reward; "
+             "evaluation reports a full-episode reference charge either way.",
     )
     parser.add_argument(
         "--demand-charge-period-steps",
         type=int,
-        default=288,
-        help="Billing window in steps (default 288 = daily). Monthly (8640) "
-             "is the realistic tariff but far exceeds the gamma=0.99 credit "
-             "horizon (~100 steps)",
+        default=None,
+        help="Billing period in steps. Default: the full episode is one "
+             "billing cycle. A shorter value is a different tariff and needs "
+             "a rate quoted for that period; it must divide max_steps exactly.",
     )
     parser.add_argument(
         "--no-batch-spatial-routing",
@@ -325,6 +402,8 @@ def main(argv: list[str] | None = None) -> None:
     scenario_name = args.scenario.stem
     if args.batch_mode:
         scenario_name += "_batch"
+    if args.demand_charge_rate > 0.0:
+        scenario_name += "_demand_charge"
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     results: dict[str, Any] = {}
@@ -375,8 +454,9 @@ def main(argv: list[str] | None = None) -> None:
             memory_enabled=args.memory,
             dynamic_arrivals=not args.no_dynamic_arrivals,
             peak_penalty_weight=args.peak_penalty_weight,
-        demand_charge_rate=args.demand_charge_rate,
-        demand_charge_period_steps=args.demand_charge_period_steps,
+            demand_charge_rate=args.demand_charge_rate,
+            demand_charge_period_steps=args.demand_charge_period_steps,
+            batch_spatial_routing=args.batch_spatial_routing,
         )
         env2 = DiscretizedMultiDCEnv(env2)
         dqn_reward, dqn_history = run_episode(env2, dqn_model.predict, is_sb3=True)
@@ -384,11 +464,11 @@ def main(argv: list[str] | None = None) -> None:
         print(f"  DQN total cost: {dqn_summary['total_cost']:.2f}")
         results["DQN"] = {"reward": dqn_reward, "summary": dqn_summary, "history": dqn_history}
 
-    # Optionally load a third model (CFWS-style flattened-index DQN)
+    # Optionally load a third compact-action DQN model.
     if args.dqn_flatidx_model is not None:
         from env.cfws_style_wrapper import CFWSStyleDiscretizedEnv
 
-        print(f"Loading DQN (CFWS flat-index) model from {args.dqn_flatidx_model}...")
+        print(f"Loading DQN (compact 48-action) model from {args.dqn_flatidx_model}...")
         dqn_flat = DQN.load(args.dqn_flatidx_model)
         env3 = _make_env(
             args.scenario,
@@ -398,14 +478,15 @@ def main(argv: list[str] | None = None) -> None:
             memory_enabled=args.memory,
             dynamic_arrivals=not args.no_dynamic_arrivals,
             peak_penalty_weight=args.peak_penalty_weight,
-        demand_charge_rate=args.demand_charge_rate,
-        demand_charge_period_steps=args.demand_charge_period_steps,
+            demand_charge_rate=args.demand_charge_rate,
+            demand_charge_period_steps=args.demand_charge_period_steps,
+            batch_spatial_routing=args.batch_spatial_routing,
         )
         env3 = CFWSStyleDiscretizedEnv(env3)
         df_reward, df_history = run_episode(env3, dqn_flat.predict, is_sb3=True)
         df_summary = compute_summary(df_history, batch_enabled=args.batch_mode)
-        print(f"  DQN-flatidx total cost: {df_summary['total_cost']:.2f}")
-        results["DQN-flatidx"] = {
+        print(f"  DQN-compact total cost: {df_summary['total_cost']:.2f}")
+        results["DQN-compact"] = {
             "reward": df_reward, "summary": df_summary, "history": df_history,
         }
 
@@ -420,8 +501,8 @@ def main(argv: list[str] | None = None) -> None:
             flexibility_factor=args.flexibility_factor,
             deadline_penalty_weight=args.deadline_penalty,
             peak_penalty_weight=args.peak_penalty_weight,
-        demand_charge_rate=args.demand_charge_rate,
-        demand_charge_period_steps=args.demand_charge_period_steps,
+            demand_charge_rate=args.demand_charge_rate,
+            demand_charge_period_steps=args.demand_charge_period_steps,
             batch_spatial_routing=args.batch_spatial_routing,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
@@ -441,11 +522,55 @@ def main(argv: list[str] | None = None) -> None:
         f"# Evaluation Report: {scenario_name}\n",
         "## Summary\n",
     ]
+    if rl_summary["demand_charge_enabled"]:
+        report_lines.append(
+            "Demand charge is included in total cost at "
+            f"${rl_summary['demand_charge_rate']:g}/kW per "
+            f"{rl_summary['demand_charge_period_steps']}-step billing period "
+            f"({rl_summary['demand_charge_period_count']} period(s)). "
+            "Tariff-aware backlog/expiry floor: "
+            f"${rl_summary['economic_penalty_floor']:,.2f}/unit; "
+            f"RL reward scale: {rl_summary['reward_scale']:g}.\n"
+        )
+        charge_heading = "Demand Charge (In Reward)"
+    else:
+        report_lines.append(
+            "Demand charge is not included in total cost. The table reports "
+            f"the full-episode reference charge at "
+            f"${REFERENCE_DEMAND_CHARGE_RATE:g}/kW per billing cycle.\n"
+        )
+        charge_heading = "Reference Demand Charge"
+
+    def demand_charge_for_report(summary: dict[str, Any]) -> float:
+        if summary["demand_charge_enabled"]:
+            return float(summary["total_demand_charge"])
+        return float(summary["demand_charge_ref"])
 
     if args.batch_mode:
         report_lines.extend(
             [
-                "| Policy | Total Cost | Energy Cost | Peak Penalty | ND-weighted Load | Batch Expired | Deadline Cost | Avg Pool Size |",
+                f"| Policy | Total Cost | Energy Cost | Peak Penalty | Full-Cycle Billed Peak (MW) | {charge_heading} | ND-weighted Load | Batch Complete | Batch Expired | Unfinished Batch Cost | Avg Pool Size |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for name, data in results.items():
+            s = data["summary"]
+            report_lines.append(
+                f"| {name} | {s['total_cost']:.2f} | "
+                f"{s.get('total_energy_cost', 0):.2f} | "
+                f"{s.get('total_peak_penalty', 0):.2f} | "
+                f"{s.get('billed_peak_sum_mw', 0):.2f} | "
+                f"{demand_charge_for_report(s):.2f} | "
+                f"{s.get('nd_weighted_load', 0):.0f} | "
+                f"{s.get('batch_completion_fraction', 0):.4f} | "
+                f"{s.get('total_batch_expired', 0):.4f} | "
+                f"{s.get('total_unfinished_batch_cost', 0):.2f} | "
+                f"{s.get('avg_batch_pool_size', 0):.4f} |"
+            )
+    else:
+        report_lines.extend(
+            [
+                f"| Policy | Total Cost | Energy Cost | Peak Penalty | Full-Cycle Billed Peak (MW) | {charge_heading} | ND-weighted Load | Total Grid (MW-steps) |",
                 "| --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
@@ -455,24 +580,8 @@ def main(argv: list[str] | None = None) -> None:
                 f"| {name} | {s['total_cost']:.2f} | "
                 f"{s.get('total_energy_cost', 0):.2f} | "
                 f"{s.get('total_peak_penalty', 0):.2f} | "
-                f"{s.get('nd_weighted_load', 0):.0f} | "
-                f"{s.get('total_batch_expired', 0):.4f} | "
-                f"{s.get('total_deadline_cost', 0):.2f} | "
-                f"{s.get('avg_batch_pool_size', 0):.4f} |"
-            )
-    else:
-        report_lines.extend(
-            [
-                "| Policy | Total Cost | Energy Cost | Peak Penalty | ND-weighted Load | Total Grid (MW-steps) |",
-                "| --- | --- | --- | --- | --- | --- |",
-            ]
-        )
-        for name, data in results.items():
-            s = data["summary"]
-            report_lines.append(
-                f"| {name} | {s['total_cost']:.2f} | "
-                f"{s.get('total_energy_cost', 0):.2f} | "
-                f"{s.get('total_peak_penalty', 0):.2f} | "
+                f"{s.get('billed_peak_sum_mw', 0):.2f} | "
+                f"{demand_charge_for_report(s):.2f} | "
                 f"{s.get('nd_weighted_load', 0):.0f} | "
                 f"{s['total_grid_mw_steps']:.2f} |"
             )

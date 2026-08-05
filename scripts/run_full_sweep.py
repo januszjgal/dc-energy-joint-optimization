@@ -1,7 +1,7 @@
 """Sequentially train all 8 RL models under the new demand-smoothing formulation.
 
 Sweep:
-  - {PPO, DQN} x {US, Global} x {legacy, batch}  -> 8 runs
+  - {PPO, DQN} x {US, Global} x {spatial, spatial+temporal}  -> 8 runs
   - peak_penalty_weight = 0.015 across all (calibrated so peak penalty is
     ~15-20% of total cost on the Round Robin baseline; see
     scripts/smoke_test_env.py for the calibration probe)
@@ -29,18 +29,18 @@ LOG_DIR.mkdir(exist_ok=True)
 
 # Each run: (algorithm, scenario_yaml, label, extra_flags)
 SWEEP = [
-    # PPO - US (priority: batch is the headline thesis result)
-    ("ppo", "env/scenarios/us_model.yaml",     "ppo_us_batch",         ["--batch-mode"]),
-    ("ppo", "env/scenarios/us_model.yaml",     "ppo_us_legacy",        []),
+    # PPO - US
+    ("ppo", "env/scenarios/us_model.yaml",     "ppo_us_spatial",              []),
+    ("ppo", "env/scenarios/us_model.yaml",     "ppo_us_spatial_temporal",     ["--batch-mode"]),
     # PPO - Global
-    ("ppo", "env/scenarios/global_model.yaml", "ppo_global_batch",     ["--batch-mode"]),
-    ("ppo", "env/scenarios/global_model.yaml", "ppo_global_legacy",    []),
+    ("ppo", "env/scenarios/global_model.yaml", "ppo_global_spatial",          []),
+    ("ppo", "env/scenarios/global_model.yaml", "ppo_global_spatial_temporal", ["--batch-mode"]),
     # DQN - US
-    ("dqn", "env/scenarios/us_model.yaml",     "dqn_us_batch",         ["--batch-mode"]),
-    ("dqn", "env/scenarios/us_model.yaml",     "dqn_us_legacy",        []),
+    ("dqn", "env/scenarios/us_model.yaml",     "dqn_us_spatial",              []),
+    ("dqn", "env/scenarios/us_model.yaml",     "dqn_us_spatial_temporal",     ["--batch-mode"]),
     # DQN - Global
-    ("dqn", "env/scenarios/global_model.yaml", "dqn_global_batch",     ["--batch-mode"]),
-    ("dqn", "env/scenarios/global_model.yaml", "dqn_global_legacy",    []),
+    ("dqn", "env/scenarios/global_model.yaml", "dqn_global_spatial",          []),
+    ("dqn", "env/scenarios/global_model.yaml", "dqn_global_spatial_temporal", ["--batch-mode"]),
 ]
 
 

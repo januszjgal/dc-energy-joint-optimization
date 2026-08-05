@@ -8,8 +8,9 @@ Two discretization schemes are supported via --action-scheme:
       env/discrete_wrapper.py.
 
   cfws-style:
-      48-action CFWS-style flattened-index scheme adapted to our env
-      (Zhao et al. 2025, IEEE TSC 10(1)). Each action decodes to
+      48-action compact flattened-index scheme inspired by CFWS encoding
+      (Zhao et al. 2025, IEEE TSC 10(1)); this is not a CFWS reproduction.
+      Each action decodes to
       (src_dc, dst_dc, drain_level) via division/modulo; src==dst means
       "uniform allocation", else "migrate 15% from src to dst". See
       env/cfws_style_wrapper.py and thesis_overview.md §8.6.
@@ -32,7 +33,7 @@ from stable_baselines3 import DQN
 from env.cfws_style_wrapper import CFWSStyleDiscretizedEnv
 from env.data_loader import load_scenario
 from env.discrete_wrapper import DiscretizedMultiDCEnv
-from env.multi_dc_env import MultiDCEnv
+from env.multi_dc_env import MultiDCEnv, resolve_training_gamma
 
 
 def make_env(
@@ -48,7 +49,7 @@ def make_env(
     granularity: int = 5,
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
-    demand_charge_period_steps: int = 288,
+    demand_charge_period_steps: int | None = None,
     action_scheme: str = "routing-grid",
     burst_aware: bool = False,
     batch_spatial_routing: bool = True,
@@ -57,7 +58,7 @@ def make_env(
 
     action_scheme:
       'routing-grid'  -> DiscretizedMultiDCEnv (759 actions)
-      'cfws-style'    -> CFWSStyleDiscretizedEnv (48 actions)
+      'cfws-style'    -> compact CFWS-inspired wrapper (48 actions)
     """
     sites, power_model, batch_config = load_scenario(
         scenario_path,
@@ -141,6 +142,14 @@ def main(argv: list[str] | None = None) -> None:
         help="Steps between target network updates",
     )
     parser.add_argument(
+        "--gamma",
+        type=float,
+        default=None,
+        help="RL discount factor. Defaults to 0.99 when demand charges are "
+             "disabled and 1.0 when enabled. Demand-charge training requires "
+             "1.0 so incremental peak costs equal the billed maximum.",
+    )
+    parser.add_argument(
         "--granularity",
         type=int,
         default=5,
@@ -175,25 +184,25 @@ def main(argv: list[str] | None = None) -> None:
         "--demand-charge-rate",
         type=float,
         default=0.0,
-        help="Demand charge in $/kW-month, billed on the highest demand "
-             "interval of each billing period (the real commercial tariff "
-             "term). Default 0.0 = not in the reward; evaluation reports the "
-             "charge at a reference rate either way",
+        help="Demand charge in $/kW per configured billing period, billed on "
+             "the highest demand interval. Default 0.0 = not in the reward; "
+             "evaluation reports a full-episode reference charge either way.",
     )
     parser.add_argument(
         "--demand-charge-period-steps",
         type=int,
-        default=288,
-        help="Billing window in steps (default 288 = daily). Monthly (8640) "
-             "is the realistic tariff but far exceeds the gamma=0.99 credit "
-             "horizon (~100 steps)",
+        default=None,
+        help="Billing period in steps. Default: the full episode is one "
+             "billing cycle. A shorter value is a different tariff and needs "
+             "a rate quoted for that period; it must divide max_steps exactly.",
     )
     parser.add_argument(
         "--action-scheme",
         choices=["routing-grid", "cfws-style"],
         default="routing-grid",
         help="Action discretization: routing-grid (759 actions, default) or "
-             "cfws-style (48-action flattened-index, CFWS Zhao 2025 analog).",
+             "cfws-style (48-action compact encoding inspired by CFWS; not a "
+             "CFWS reproduction).",
     )
     parser.add_argument(
         "--burst-aware",
@@ -210,6 +219,12 @@ def main(argv: list[str] | None = None) -> None:
              "service routing, so the discrete action count is unchanged.",
     )
     args = parser.parse_args(argv)
+    try:
+        training_gamma = resolve_training_gamma(
+            args.gamma, args.demand_charge_rate
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     scenario_name = args.scenario.stem
     if args.batch_mode:
@@ -218,6 +233,8 @@ def main(argv: list[str] | None = None) -> None:
         scenario_name += "_flatidx"
     if args.burst_aware:
         scenario_name += "_burst"
+    if args.demand_charge_rate > 0.0:
+        scenario_name += "_demand_charge"
     print(f"=== Training DQN on scenario: {scenario_name} ===")
 
     env = make_env(
@@ -243,6 +260,19 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Action scheme: {args.action_scheme}")
     print(f"Number of DCs: {env.env.n_dc}")
     print(f"Max steps per episode: {env.env.max_steps}")
+    print(f"Gamma: {training_gamma}")
+    if env.env.demand_charge_enabled:
+        print(
+            "Demand charge: "
+            f"${env.env.demand_charge_rate:g}/kW per "
+            f"{env.env.demand_charge_period_steps}-step billing period"
+        )
+        print(
+            "Economic safety: "
+            f"backlog=${env.env.backlog_weight:,.2f}/unit-step, "
+            f"expiry=${env.env.deadline_penalty_weight:,.2f}/unit, "
+            f"reward_scale={env.env.reward_scale:g}"
+        )
 
     model = DQN(
         "MlpPolicy",
@@ -253,6 +283,7 @@ def main(argv: list[str] | None = None) -> None:
         exploration_fraction=args.exploration_fraction,
         exploration_final_eps=args.exploration_final_eps,
         target_update_interval=args.target_update_interval,
+        gamma=training_gamma,
         policy_kwargs=dict(net_arch=args.net_arch),
         verbose=1,
         seed=args.seed,
