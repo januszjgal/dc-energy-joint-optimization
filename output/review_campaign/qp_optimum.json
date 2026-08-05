@@ -3,40 +3,50 @@
     "status": "Solved",
     "optimum_total": 9461871.991667543,
     "objective_constant_idle_and_phi": 6108986.48702932,
+    "demand_charge_rate": 0.0,
     "n_vars": 107004,
     "n_constraints": 187257,
-    "solve_seconds": 0.9,
+    "solve_seconds": 1.6,
     "ppo_mean": 9613950.753669292,
     "ppo_optimality_gap_pct": 1.6072798504954944
   },
   "us_batch": {
     "status": "Solved",
-    "optimum_total": 9443367.080889873,
+    "optimum_total": 9443826.037181057,
     "objective_constant_idle_and_phi": 6108986.48702932,
-    "n_vars": 214008,
-    "n_constraints": 410116,
-    "solve_seconds": 6.3,
+    "demand_charge_rate": 0.0,
+    "n_vars": 249680,
+    "n_constraints": 517124,
+    "solve_seconds": 13.5,
+    "total_batch_expired": 2.2899271884914247,
+    "terminal_batch_pool": 10.158011718866298,
+    "total_batch_uncompleted": 12.447938907357297,
     "ppo_mean": 9566751.377384555,
-    "ppo_optimality_gap_pct": 1.306571008389251
+    "ppo_optimality_gap_pct": 1.3016476555109253
   },
   "global_spatial": {
     "status": "Solved",
     "optimum_total": 11947301.34890167,
     "objective_constant_idle_and_phi": 8449258.67718127,
+    "demand_charge_rate": 0.0,
     "n_vars": 107004,
     "n_constraints": 187257,
-    "solve_seconds": 1.1,
+    "solve_seconds": 1.6,
     "ppo_mean": 12628682.954931706,
     "ppo_optimality_gap_pct": 5.7032260770142535
   },
   "global_batch": {
     "status": "Solved",
-    "optimum_total": 11921269.259247653,
+    "optimum_total": 11885482.12203257,
     "objective_constant_idle_and_phi": 8449258.67718127,
-    "n_vars": 214008,
-    "n_constraints": 410116,
-    "solve_seconds": 3.4,
+    "demand_charge_rate": 0.0,
+    "n_vars": 249680,
+    "n_constraints": 517124,
+    "solve_seconds": 14.6,
+    "total_batch_expired": 1576.9577896493724,
+    "terminal_batch_pool": 10.158011717387248,
+    "total_batch_uncompleted": 1587.1158013667593,
     "ppo_mean": 12251396.893185265,
-    "ppo_optimality_gap_pct": 2.7692322583983513
+    "ppo_optimality_gap_pct": 3.078669989115423
   }
 }
