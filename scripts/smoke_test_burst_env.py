@@ -47,10 +47,11 @@ def main() -> None:
     # site_context became default-on (M2), which adds 4 dims/DC.
     ctx = 4 if env.site_context else 0
     dc = 1 if env.demand_charge_enabled else 0
-    expected = (8 + 2 + 1 + ctx + dc) * env.n_dc + 3
+    billing = 2 if env.demand_charge_enabled else 0
+    expected = (8 + 2 + 1 + ctx + dc) * env.n_dc + 3 + billing
     print(f"obs dim: {env.observation_space.shape[0]}  "
-          f"(expected: (8 + 2 mem + 1 burst + {ctx} ctx + {dc} demand-charge)"
-          f"*{env.n_dc} + 3 = {expected})")
+          f"(expected: (8 + 2 mem + 1 burst + {ctx} ctx + {dc} peak)"
+          f"*{env.n_dc} + 3 + {billing} billing = {expected})")
     assert env.observation_space.shape[0] == expected, (
         f"Expected {expected}, got {env.observation_space.shape[0]}"
     )

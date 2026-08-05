@@ -1,4 +1,5 @@
-"""Run evaluate.py for all 4 scenarios (US/Global x legacy/batch) once
+"""Run evaluate.py for all 4 scenarios
+(US/Global x spatial-only/spatial+temporal) once
 the full training sweep has completed.
 """
 
@@ -23,6 +24,10 @@ CONFIGS = [
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--alpha", type=float, default=0.015)
+    parser.add_argument("--models-dir", type=Path, default=ROOT / "models")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "output")
+    parser.add_argument("--demand-charge-rate", type=float, default=0.0)
+    parser.add_argument("--demand-charge-period-steps", type=int, default=None)
     parser.add_argument(
         "--python",
         type=Path,
@@ -31,11 +36,15 @@ def main() -> None:
     args = parser.parse_args()
 
     for scenario, batch, ppo_stem, dqn_stem, dqn_flatidx_stem in CONFIGS:
-        ppo_path = ROOT / "models" / f"{ppo_stem}.zip"
-        dqn_path = ROOT / "models" / f"{dqn_stem}.zip"
-        dqn_flatidx_path = ROOT / "models" / f"{dqn_flatidx_stem}.zip"
+        suffix = "_demand_charge" if args.demand_charge_rate > 0.0 else ""
+        ppo_path = args.models_dir / f"{ppo_stem}{suffix}.zip"
+        dqn_path = args.models_dir / f"{dqn_stem}{suffix}.zip"
+        dqn_flatidx_path = (
+            args.models_dir / f"{dqn_flatidx_stem}{suffix}.zip"
+        )
+        mode = "spatial+temporal" if batch else "spatial-only"
         if not ppo_path.exists():
-            print(f"SKIP {scenario} batch={batch}: missing {ppo_path}")
+            print(f"SKIP {scenario} mode={mode}: missing {ppo_path}")
             continue
 
         cmd = [
@@ -44,7 +53,18 @@ def main() -> None:
             "--scenario", scenario,
             "--model", str(ppo_path),
             "--peak-penalty-weight", str(args.alpha),
+            "--output-dir", str(args.output_dir),
         ]
+        if args.demand_charge_rate > 0.0:
+            cmd.extend([
+                "--demand-charge-rate",
+                str(args.demand_charge_rate),
+            ])
+        if args.demand_charge_period_steps is not None:
+            cmd.extend([
+                "--demand-charge-period-steps",
+                str(args.demand_charge_period_steps),
+            ])
         if batch:
             cmd.append("--batch-mode")
         if dqn_path.exists():
@@ -52,7 +72,7 @@ def main() -> None:
         if dqn_flatidx_path.exists():
             cmd.extend(["--dqn-flatidx-model", str(dqn_flatidx_path)])
 
-        print(f"\n>>> Evaluating {scenario} batch={batch}")
+        print(f"\n>>> Evaluating {scenario} mode={mode}")
         print(f"    cmd: {' '.join(cmd)}")
         proc = subprocess.run(cmd, cwd=ROOT, env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
         if proc.returncode != 0:

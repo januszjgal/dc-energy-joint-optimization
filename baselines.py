@@ -24,8 +24,9 @@ def _with_drain(
 ) -> np.ndarray:
     """Assemble the env action vector for a baseline.
 
-    Legacy mode -> ``routing`` only. Batch mode -> ``[routing, drain]``. With
-    batch spatial routing enabled -> ``[routing, drain, batch_routing]``;
+    Spatial-only mode -> ``routing`` only. Spatial+temporal mode ->
+    ``[routing, drain]``. With batch spatial routing enabled, the action is
+    ``[routing, drain, batch_routing]``;
     ``batch_routing`` defaults to the service ``routing`` (route deferred work
     the same way as service — e.g. toward the slack/cheap grid).
     """

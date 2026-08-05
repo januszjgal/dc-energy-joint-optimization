@@ -1,4 +1,4 @@
-"""Train DQN with the CFWS-style flattened-index action scheme across all 4 configs.
+"""Train compact-action DQN across all four configurations.
 
 Same training budget as the main sweep (500K steps each, alpha=0.015) so
 the results are directly comparable to the existing routing-grid DQN.
@@ -21,10 +21,10 @@ LOG_DIR.mkdir(exist_ok=True)
 
 SWEEP = [
     # (scenario_yaml, label, extra_flags)
-    ("env/scenarios/us_model.yaml",     "dqn_us_batch_flatidx",     ["--batch-mode"]),
-    ("env/scenarios/us_model.yaml",     "dqn_us_legacy_flatidx",    []),
-    ("env/scenarios/global_model.yaml", "dqn_global_batch_flatidx", ["--batch-mode"]),
-    ("env/scenarios/global_model.yaml", "dqn_global_legacy_flatidx",[]),
+    ("env/scenarios/us_model.yaml",     "dqn_us_spatial_flatidx",              []),
+    ("env/scenarios/us_model.yaml",     "dqn_us_spatial_temporal_flatidx",     ["--batch-mode"]),
+    ("env/scenarios/global_model.yaml", "dqn_global_spatial_flatidx",          []),
+    ("env/scenarios/global_model.yaml", "dqn_global_spatial_temporal_flatidx", ["--batch-mode"]),
 ]
 
 
@@ -73,9 +73,9 @@ def main() -> None:
     args = parser.parse_args()
 
     print("=" * 70)
-    print(f"CFWS-style DQN sweep: {len(SWEEP)} runs at {args.timesteps:,} steps each")
+    print(f"Compact-action DQN sweep: {len(SWEEP)} runs at {args.timesteps:,} steps each")
     print(f"alpha (peak_penalty_weight) = {args.alpha}")
-    print(f"action scheme = cfws-style (48-action flattened index)")
+    print("action scheme = compact 48-action flattened index (CFWS-inspired)")
     print("=" * 70)
 
     results = []
@@ -89,7 +89,7 @@ def main() -> None:
     total_elapsed = time.time() - total_start
     summary_path = LOG_DIR / "sweep_cfws_flatidx_summary.txt"
     lines = [
-        "# CFWS-style DQN sweep summary",
+        "# Compact-action DQN sweep summary (CFWS-inspired encoding)",
         f"# timesteps = {args.timesteps}",
         f"# alpha = {args.alpha}",
         f"# total elapsed: {total_elapsed/60:.1f} min ({total_elapsed/3600:.2f} h)",

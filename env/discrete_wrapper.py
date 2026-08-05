@@ -83,8 +83,8 @@ def _build_drain_actions(n_dc: int) -> np.ndarray:
 class DiscretizedMultiDCEnv(gym.Wrapper):
     """Wraps MultiDCEnv with a Discrete action space for DQN.
 
-    In legacy mode: actions index into routing allocations.
-    In batch mode: actions index into (routing, drain) combinations.
+    In spatial-only mode: actions index into routing allocations.
+    In spatial+temporal mode: actions index into (routing, drain) combinations.
     """
 
     def __init__(self, env: MultiDCEnv, granularity: int = 5):
