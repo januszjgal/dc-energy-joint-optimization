@@ -223,6 +223,43 @@ This load-squared, net-demand-weighted term operationalizes **demand response / 
 
 The peak-contribution term is **quadratic in load** (so concentrating draw is penalized more than spreading it out) and **scaled by current net demand** (so the penalty only bites near the duck-curve neck — sleepy 3 AM consumption is essentially free). The weight `α` is calibrated so that, at peak net demand and full DC load, the penalty contributes roughly 20% of total reward magnitude — making demand smoothing a meaningful but not dominant objective. Exact calibration is determined empirically during reward-shaping experiments (§4.3).
 
+**Φ is a shadow price, not a tariff.** This distinction matters and was previously blurred (the paper's lineage paragraph called Φ a "demand-charge-style peak term"; it is now stated correctly). Φ differs from a commercial demand charge in all three respects that matter:
+
+| | Φ = α·g²·d (in the reward) | demand charge (real tariff) |
+|---|---|---|
+| aggregation | **summed** over every 5-min step | **max** over the billing period |
+| shape in load | quadratic | linear in kW |
+| grid coupling | weighted by grid net demand `d` | indifferent to grid state |
+| calibration | α set to hit ~15–20% of total cost | published $/kW-month rate |
+
+Φ is thesis-original (no reference has a quadratic per-interval grid cost; Radovanović et al. is linear on daily peak). It represents the **social** cost of grid stress. The **operator's** tariff cost is a separate term — see §3.3.1.
+
+### 3.3.1 Demand Charge (the operator's tariff term)
+
+Commercial and industrial customers are billed not only for energy consumed but on their **highest demand interval** of each billing period, at a $/kW-month rate — routinely **30–50% of a large customer's bill**. Billing is per meter, so the billed quantity is the **sum of per-site maxima**, not the fleet coincident peak:
+
+```
+Ψ = c × Σᵢ maxₜ gᵢ,ₜ × 1000        c in $/kW-month
+```
+
+A max over the period is not a per-step cost, so it is charged in **telescoping form**, where `Dᵢ,ₜ = maxₜ′≤ₜ gᵢ,ₜ′` is the running billed peak:
+
+```python
+ψ[i,t] = c_period × max(0, grid_mw[i,t] − D[i,t-1]) × 1000
+# Σₜ ψ[i,t] == c_period × maxₜ grid_mw[i,t]   (exact; verified to 1e-6)
+```
+
+Each step pays exactly the amount by which it *raises* the running maximum. Properties:
+
+- **Exact.** Verified against the closed form for both single-window and daily billing (`scripts/smoke_test_demand_charge.py`).
+- **Markov only if `D` is observed.** Without the running peak in the observation, identical (load, price, net-demand) states carry different marginal costs depending on unobserved history. Enabling the term therefore adds **one observation dim per DC**.
+- **Prorated windows.** A partial trailing window (episodes are 8917 steps; a 30-day window is 8640) is charged by its true length, not a full period — otherwise a 31-day episode would be billed nearly twice.
+- **Daily ≤ monthly.** Prorated daily billing lower-bounds monthly billing, with equality iff every day's peak is equal (measured: −2.8%).
+
+**Configuration.** `demand_charge_rate` (default **0.0 = disabled**) and `demand_charge_period_steps` (default 288 = daily). The default keeps every result predating this term reproducible — the reward is bit-identical, verified against the committed Status Quo cost to 3×10⁻⁸ relative. **All results in this document and the paper have the term disabled.** Evaluation reports the charge regardless, at a reference `c = $15/kW-month`, via `billed_peak_sum_mw` / `demand_charge_ref` in every summary. See §7.15 for what it is worth.
+
+**Why daily rather than monthly.** γ is never set in `train.py`, so it is SB3's default 0.99 → effective horizon `1/(1−γ) ≈ 100` steps ≈ 8.3 h. A monthly billing period is 8917 steps, **89× that**: the once-a-period record-setting reward is structurally invisible to the agent. Daily billing (288 steps) keeps the same total magnitude for flat load while firing often enough to carry gradient, and daily-demand tariffs are themselves real.
+
 ### 3.4 Observation Space
 
 **Legacy mode** (spatial routing only): `6N + 2 = 26` dimensions
@@ -315,7 +352,9 @@ total_cost += Σᵢ (deadline_penalty_weight × expired_demand[i])
 |---|---|---|
 | `backlog_weight` (λ_b) | 25 (calibrated; §7.14) | Penalize unserved service demand |
 | `capacity_penalty_weight` (λ_κ) | 5.0 | Hard penalty for exceeding DC capacity |
-| `peak_penalty_weight` (α) | 0.015 (calibrated) | Weight on `grid_mw² × net_demand_normalized` peak-contribution term |
+| `peak_penalty_weight` (α) | 0.015 (calibrated) | Weight on `grid_mw² × net_demand_normalized` peak-contribution term (grid-stress **shadow price**, §3.3) |
+| `demand_charge_rate` (c) | **0.0 = disabled** | Operator tariff in $/kW-month on the per-site billed peak (§3.3.1). Reported at $15/kW-month in evaluation regardless |
+| `demand_charge_period_steps` | 288 (daily) | Billing window; monthly (8640) far exceeds the γ=0.99 credit horizon |
 | `deadline_penalty_weight` (λ_x) | 250 (calibrated; §7.8) | Penalty per unit of batch work that expires past deadline |
 
 The `renewable_bonus` term from the prior on-site-solar formulation has been removed — with grid-only DCs, there is no "renewable fraction" to reward. Demand smoothing is now expressed directly through `peak_penalty`, which carries the same intent but targets the actual quantity (grid stress) rather than a proxy (local solar self-consumption).
@@ -343,7 +382,7 @@ where `Eᵢ,ₜ = πᵢ,ₜ·gᵢ,ₜ·1000·Δh` is energy cost (§3.3), `Φᵢ
 
 **How we solve it.** Problem (P) is an *offline, full-information* statement; the deployed controller is **causal** — it cannot see future prices or demand. So we solve it with **model-free RL**: PPO maximizes the expected discounted return `E[Σₜ γᵗ rₜ]` with per-step reward `rₜ = −(`the bracketed cost`)` — i.e. the reward function (§3.6) is the negative per-step integrand of J. A **clairvoyant convex relaxation** of the same J (fluid allocation, known future) is a quadratic program whose optimum lower-bounds any policy — this is the optimality bound of §7.11.
 
-**Lineage of the formulation (what to cite).** Problem (P) follows the **aggregate flexible/inflexible load-shaping problem of Google's CICS** (Radovanović et al. 2023) — retargeted from carbon to grid net-demand smoothing + electricity cost — with the **cost-minimization-over-distributed-DCs** structure of geographic load balancing (Qureshi 2009; Rao 2010; Liu-Wierman 2011), a **linear idle+slope power model** (Fan 2007; Dayarathna 2016), a **demand-charge-style peak term** (Liu et al. 2012; Vasques 2019), and **aggregate batch-with-deadline dynamics** (Grange 2018; Liu et al. 2012). The contribution is unifying these under a single learned policy with a grid-net-demand objective, rather than CICS's day-ahead carbon caps or the GLB papers' static convex programs (§8.6).
+**Lineage of the formulation (what to cite).** Problem (P) follows the **aggregate flexible/inflexible load-shaping problem of Google's CICS** (Radovanović et al. 2023) — retargeted from carbon to grid net-demand smoothing + electricity cost — with the **cost-minimization-over-distributed-DCs** structure of geographic load balancing (Qureshi 2009; Rao 2010; Liu-Wierman 2011), a **linear idle+slope power model** (Fan 2007; Dayarathna 2016), a **peak-contribution term** in the peak-shaving/demand-response tradition (Liu et al. 2012; Vasques 2019) — though `Φ` is a per-interval quadratic shadow price, *not* a demand charge in the tariff sense (§3.3); the tariff term is modeled separately as `Ψ` (§3.3.1) — and **aggregate batch-with-deadline dynamics** (Grange 2018; Liu et al. 2012). The contribution is unifying these under a single learned policy with a grid-net-demand objective, rather than CICS's day-ahead carbon caps or the GLB papers' static convex programs (§8.6).
 
 ### 3.7 Batch Scheduling Mechanism
 
@@ -713,6 +752,44 @@ The 10–13% Global advantage **survives until movement costs reach 35–53% of 
 - **Service-backlog weight λ_b: 1.5 → 25.** At 1.5, parking a unit of SLO service for 3 hours cost ~$54 against ~$180 of price arbitrage — an exploitable loophole (delay interactive work when it's expensive). At 25 a 3-hour hold costs ~$900 ≫ $180, closing it; the audit above confirms it is closed.
 - **Continuous action bound: ±1 → ±3** ([env/multi_dc_env.py](env/multi_dc_env.py) `ACTION_LOGIT_BOUND`). SB3 clips actions to the action box *before* the softmax/sigmoid decode, so the default ±1 structurally capped routing shares to [4.3%, 71%] and drain rates to [27%, 73%] — full concentration and multi-hour holding were impossible by construction, while the discrete wrappers (logits ±2/±3) were not so limited. ±3 restores expressiveness parity (shares to ~98.5%, drain 4.7–95.3%). Baselines and DQN bypass the box and are unaffected.
 
+### 7.15 The demand charge — a real cost the objective does not see
+
+Reproduce with `python scripts/analyze_demand_charge.py` → [output/demand_charge_analysis.json](output/demand_charge_analysis.json). The term is **disabled in the reward** for every number below, so the policies are exactly those of §7.1; the charge is computed post hoc from grid-draw traces at `c = $15/kW-month`. Billing is per meter → the billed quantity is `Σᵢ maxₜ gᵢ,ₜ`.
+
+**The charge is the single largest cost the objective omits.** Global batch, status quo: **$4.69M/month**, which is **39% of that scenario's $12.06M energy bill** and **2.3× the Φ term** already in the reward — matching the 30–50% share demand charges hold in real commercial bills.
+
+**Global scenario, batch mode** (`served` = service served / demand; below 1.0 the low peak is bought with unserved work, not shaping):
+
+| Policy | Billed peak | Charge @ $15/kW-mo | vs SQ | Energy | Served |
+|---|---|---|---|---|---|
+| Cheapest Price First | 287.2 MW | $4.307M | −8.2% | $10.741M | **0.861** ⚠ |
+| **PPO** | **288.0 MW** | **$4.319M** | **−8.0%** | $10.221M | 1.0000 |
+| Drain Immediately | 302.8 MW | $4.543M | −3.2% | $12.088M | 1.0000 |
+| Round Robin | 303.1 MW | $4.546M | −3.1% | $12.088M | 1.0000 |
+| Local Only | 312.8 MW | $4.692M | −0.1% | $12.056M | 1.0000 |
+| Status Quo | 312.9 MW | $4.694M | 0.0% | $12.056M | 1.0000 |
+| Trough-Slot Lookahead | 354.5 MW | $5.317M | +13.3% | $11.815M | 1.0000 |
+| Avoid the Ramp / Random | 358.5 MW | $5.377M | +14.6% | — | — |
+
+PPO reduces the charge **8.0%** (Global batch) and **7.3%** (US batch) purely as a side effect of routing for energy price.
+
+**But the headroom is small, because most of the charge is not shapeable.** Sites never power off, so `Σᵢ Pᵢⁱᵈˡᵉ·R = 189.8 MW = $2.85M` is irreducible — **66% of the best charge any policy could achieve**. The clairvoyant floor collapses to a greedy lowest-`sᵢ·R` fill (the objective depends only on the peak vector, and only the busiest step binds):
+
+| Floor on billed peak | MW | Charge | vs SQ |
+|---|---|---|---|
+| spatial reoptimization only | 289.4 | $4.341M | −7.5% |
+| **+ defer batch out of the worst step** | **267.1** | **$4.007M** | **−14.6%** |
+| + perfect flatten to monthly mean | 272.8 | $4.091M | −12.8% |
+| irreducible idle floor | 189.8 | $2.847M | −39.4% |
+
+So the entire prize is **$0.687M**, of which **PPO already captures ~55% incidentally**. The remaining ~$0.31M is **2.5% of J** — inside the seed-to-seed spread (§7.14 notes seed 103's backlog alone is $337k). It would not survive as a headline result.
+
+**And it would penalize part of PPO's current strategy.** Concentrating load on the cheap, efficient sites raises *their* site peaks even as the others fall (Global batch, PPO vs SQ): US-West 76.3 → 83.3 MW (**+9%**), US-Central 80.0 → 92.2 MW (**+15%**), EU 80.7 → 67.4 MW (−16%), Asia 75.8 → 45.1 MW (−41%). A retrained policy would trade energy saving for peak relief rather than adding to it.
+
+**The real argument for adding it: it is the only cost term that would give the temporal lever value.** Energy arbitrage pays only if timing is right *continuously* for a month; clipping a demand charge pays if timing is right at **one** interval. At the busiest step, **17% of load is deferrable batch** (0.424 of 2.496 units), and vacating it drops the floor 289.4 → 267.1 MW — a larger single lever than all spatial reoptimization combined, and comfortably inside the `Hᵢ = 8–26` step deadline horizons. Under the current objective the drain lever is worthless (QP bounds temporal value at ~0.2% of J, §7.11), which is why all ten batch seeds park drain at ≈0.5.
+
+**Obstacle: credit assignment.** γ is never set (SB3 default 0.99) → effective horizon ~100 steps ≈ 8.3 h, against a monthly billing period of 8917 steps — **89× longer**. The record-setting reward fires a handful of times per month and then never. Daily billing (288 steps) is the tractable form and is what `demand_charge_period_steps` defaults to. **Status: implemented and verified, left disabled; flagged as the most promising extension, not a completed result.**
+
 ## 8. Comparison with Related Work
 
 The combination explored in this thesis — multi-DC spatial routing + temporal batch scheduling, with RL, against grid demand-smoothing as a first-class objective, using cell-aggregated ClusterData 2019 — is not directly anchored to a single prior paper. The framing below triangulates across several lines of work: each citation supports the specific subclaim it can actually support, rather than overclaiming a single-paper methodology lineage.
@@ -1061,6 +1138,21 @@ python scripts/run_burst_sweep.py --timesteps 500000 --alpha 0.015
 # Burst-window diagnostic analysis (§7.6)
 python scripts/analyze_burst_routing.py
 python scripts/analyze_burst_drain_diff.py
+
+# Demand-charge audit (§7.15) — post hoc, term stays disabled in the reward
+python scripts/analyze_demand_charge.py            # -> output/demand_charge_analysis.json
+python scripts/analyze_demand_charge.py --rate 25  # charge scales linearly
+
+# Verify the demand-charge formulation (default-off regression, exact
+# telescoping, window proration, observability) — §3.3.1
+python scripts/smoke_test_demand_charge.py
+
+# To TRAIN with the demand charge in the reward (no results in this document
+# do; note the obs space gains 1 dim/DC, so such models are not
+# interchangeable with the committed ones):
+python train.py --scenario env/scenarios/global_model.yaml --batch-mode \
+    --timesteps 500000 --peak-penalty-weight 0.015 \
+    --demand-charge-rate 15.0 --demand-charge-period-steps 288
 ```
 
 ---
@@ -1120,6 +1212,7 @@ The results in §7 were not produced by a single clean run; they are the product
 | 16 | **Real 2019→2024 net-demand shift** (M2b) + **movement-cost sweep** (M6) | Test transfer on a real market signal; test free-fungibility assumption | Observed-axis transfer +3–13%; Global savings survive to 0.35–0.53× unit energy (§7.13) |
 | 17 | **Prices found synthetic, not real LMP** (M7): committed CSVs byte-identical to the generator; EIA has no hourly price route; GA/SC have no market | Tried to fetch real prices for M2b; discovered the fetch path never worked | Provenance corrected (§2.4): net demand real, **prices documented synthetic**; real LMP is top future work |
 | 18 | **Related work + novelty softened** (M8): Qureshi/Rao/Liu-Wierman geographic-load-balancing lineage; SustainDC/SustainCluster differentiated | Reviewer noted missing lineages and too-strong novelty claim | Novelty narrowed to measured per-tier demand + per-cell power + grid-net-demand objective (§8.7–§8.9) |
+| 19 | **Demand charge separated from Φ** (§3.3.1, §7.15): telescoping per-step tariff term `Ψ`, prorated billing windows, running peak in the observation; **disabled by default**, reported in evaluation always | "When we shift demand, are we reducing the cost of energy too?" — Φ was being described as "demand-charge-style" but is a per-step quadratic shadow price, not a tariff | No result changed (default-off reward is bit-identical). Quantified the omission: **$4.69M/mo = 39% of the energy bill**, of which only **$0.69M is shapeable** (66% of the floor is irreducible idle) and PPO already captures ~55% incidentally. Identified as the one term that would make the **temporal lever** valuable — blocked by γ=0.99 vs an 8917-step billing period |
 
 **The arc in one sentence:** every correction moved the environment *toward the measured trace* — and each step toward reality first *shrank* an inflated finding (the temporal lever, the burst concentration) and then *revealed* a genuine one (slope arbitrage, the steady-state advantage), ending with PPO winning all four configurations on an environment whose batch machinery is provably demand-neutral.
 
