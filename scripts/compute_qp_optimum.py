@@ -1,13 +1,14 @@
 """Offline full-information optimum (peer-review M3): a convex QP lower bound.
 
 The environment's episode cost is convex in the serving decisions: power is
-linear in served CPU, energy cost linear in power, the peak penalty a convex
-quadratic (alpha * d * g^2), and the service-backlog / batch-queue dynamics
+linear in served CPU, energy cost linear in power, the grid-stress penalty a
+convex quadratic (alpha * max(d,0) * g^2), and the service-backlog / batch-queue dynamics
 are linear. A clairvoyant planner with perfect information over the full
 31-day episode and unconstrained (fluid) allocation therefore solves a QP
-whose optimum LOWER-BOUNDS the cost of any policy in the environment.
-Reporting PPO's gap to this bound replaces "beats the best heuristic we
-wrote" with a defensible optimality statement.
+whose optimum LOWER-BOUNDS the cost of any policy in the environment. Before
+training, the bound establishes whether the frozen system has opportunity; after
+training, it can contextualize a causal policy without becoming a causal
+competitor.
 
 Formulation (batch mode). Variables per (t, i), all nonnegative:
   asg  service assigned to site i at t          (sum_i asg[t,i] = D_t)
@@ -26,7 +27,7 @@ environment's soft deadline penalty instead of replacing it with a hard
 deadline constraint.
 
 Objective (matches MultiDCEnv, incl. always-paid idle power):
-  sum [ pi * g * 1000 * dt_h + alpha * d * g^2 + lambda_b * B ]
+  sum [ pi * g * 1000 * dt_h + alpha * max(d,0) * g^2 + lambda_b * B ]
   + lambda_x * expired
   + terminal_penalty_weight * terminal-pool work (demand-enabled runs)
   + demand_charge_rate * 1000 * sum_i max_t(g[t,i])  (when enabled),
@@ -38,9 +39,9 @@ Clarabel solver; a small-T cvxpy cross-check validates the assembly
 (--validate).
 
 Usage:
-  python scripts/compute_qp_optimum.py                 # all four configs
+  python scripts/compute_qp_optimum.py                 # all eight v2 configs
   python scripts/compute_qp_optimum.py --validate      # T=240 cross-check
-Writes output/review_campaign/qp_optimum.json
+Writes output/energy_model_v2/2025/qp_optimum_standalone.json
 """
 
 from __future__ import annotations
@@ -58,14 +59,25 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from evaluate import _make_env  # noqa: E402
+from env.protocol import load_protocol  # noqa: E402
 
-ALPHA = 0.015
+ALPHA = float(load_protocol()["objective"]["peak_penalty_weight"])
 DT_H = 5.0 / 60.0
 CONFIGS = {
-    "us_spatial": ("env/scenarios/us_model.yaml", False),
-    "us_batch": ("env/scenarios/us_model.yaml", True),
-    "global_spatial": ("env/scenarios/global_model.yaml", False),
-    "global_batch": ("env/scenarios/global_model.yaml", True),
+    "us_spatial": ("env/scenarios/us_model_v2_2025.yaml", False),
+    "us_batch": ("env/scenarios/us_model_v2_2025.yaml", True),
+    "us_eh_spatial": ("env/scenarios/us_model_eh_v2_2025.yaml", False),
+    "us_eh_batch": ("env/scenarios/us_model_eh_v2_2025.yaml", True),
+    "global_spatial": ("env/scenarios/global_model_v2_2025.yaml", False),
+    "global_batch": ("env/scenarios/global_model_v2_2025.yaml", True),
+    "global_eh_spatial": (
+        "env/scenarios/global_model_eh_v2_2025.yaml",
+        False,
+    ),
+    "global_eh_batch": (
+        "env/scenarios/global_model_eh_v2_2025.yaml",
+        True,
+    ),
 }
 
 
@@ -74,18 +86,28 @@ def build_inputs(
     batch: bool,
     t_cap: int | None = None,
     demand_charge_rate: float = 0.0,
+    enforce_batch_completion: bool = False,
+    completion_penalty_weight: float | None = None,
+    flexibility_factor: float | None = None,
+    peak_penalty_weight: float = ALPHA,
 ):
     env = _make_env(
         Path(scenario),
         batch_enabled=batch,
-        peak_penalty_weight=ALPHA,
+        peak_penalty_weight=peak_penalty_weight,
         demand_charge_rate=demand_charge_rate,
+        enforce_batch_completion=enforce_batch_completion,
+        completion_penalty_weight=completion_penalty_weight,
+        flexibility_factor=flexibility_factor,
     )
     T = env.max_steps if t_cap is None else min(t_cap, env.max_steps)
     N = env.n_dc
     sites = env.sites
     pi = np.array([[s.get_price(t) for s in sites] for t in range(T)])
-    d = np.array([[s.get_net_demand(t) for s in sites] for t in range(T)])
+    d_signed = np.array(
+        [[s.get_net_demand(t) for s in sites] for t in range(T)]
+    )
+    d = np.maximum(d_signed, 0.0)
     kappa = np.array([s.capacity for s in sites])
     idle = np.array([(s.power_model or env.power_model).idle_power for s in sites])
     slope = np.array([(s.power_model or env.power_model).slope for s in sites])
@@ -103,6 +125,7 @@ def build_inputs(
         N=N,
         pi=pi,
         d=d,
+        d_signed=d_signed,
         kappa=kappa,
         idle=idle,
         slope=slope,
@@ -118,6 +141,7 @@ def build_inputs(
             else 0.0
         ),
         demand_charge_rate=float(demand_charge_rate),
+        alpha=float(peak_penalty_weight),
     )
 
 
@@ -165,11 +189,12 @@ def solve_clarabel(inp: dict, batch: bool) -> dict:
     # energy: pi*1000*dt*g  -> linear in u
     lin_u = pi_f * 1000.0 * DT_H * sR
     const_cost = float(np.sum(pi_f * 1000.0 * DT_H * iR))
-    # peak: alpha*d*g^2 = alpha*d*(iR + sR*u)^2
+    # stress: alpha*max(d,0)*g^2 = alpha*d_stress*(iR + sR*u)^2
     #   quad coef on u^2: alpha*d*sR^2 ; linear: 2*alpha*d*iR*sR ; const: alpha*d*iR^2
-    qcoef = ALPHA * d_f * sR**2
-    lin_u = lin_u + 2.0 * ALPHA * d_f * iR * sR
-    const_cost += float(np.sum(ALPHA * d_f * iR**2))
+    alpha = inp["alpha"]
+    qcoef = alpha * d_f * sR**2
+    lin_u = lin_u + 2.0 * alpha * d_f * iR * sR
+    const_cost += float(np.sum(alpha * d_f * iR**2))
 
     c = np.zeros(n)
     s_idx = idx(S, tt, ii, T, N)
@@ -456,7 +481,7 @@ def solve_cvxpy_small(inp: dict, batch: bool) -> float:
     g = cp.multiply(u, np.tile(inp["slope"] * inp["R"], (T, 1))) + \
         np.tile(inp["idle"] * inp["R"], (T, 1))
     obj = (cp.sum(cp.multiply(inp["pi"] * 1000.0 * DT_H, g))
-           + ALPHA * cp.sum(cp.multiply(inp["d"], cp.square(g)))
+           + inp["alpha"] * cp.sum(cp.multiply(inp["d"], cp.square(g)))
            + inp["lam_b"] * cp.sum(B))
     if batch:
         obj += inp["lam_x"] * (
@@ -486,11 +511,35 @@ def main() -> None:
     ap.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "output" / "review_campaign" / "qp_optimum.json",
+        default=(
+            ROOT
+            / "output"
+            / "energy_model_v2"
+            / "2025"
+            / "qp_optimum_standalone.json"
+        ),
+    )
+    ap.add_argument(
+        "--enforce-batch-completion",
+        action="store_true",
+        help="Use dense completion accounting and terminal-pool value.",
+    )
+    ap.add_argument(
+        "--completion-penalty",
+        type=float,
+        default=None,
+        help="Fixed completion coefficient shared with PPO evaluation.",
     )
     args = ap.parse_args()
     if args.demand_charge_rate < 0:
         ap.error("--demand-charge-rate must be non-negative")
+    if (
+        args.completion_penalty is not None
+        and not args.enforce_batch_completion
+    ):
+        ap.error(
+            "--completion-penalty requires --enforce-batch-completion"
+        )
 
     if args.validate:
         for key in ["us_spatial", "us_batch"]:
@@ -500,6 +549,12 @@ def main() -> None:
                 batch,
                 t_cap=240,
                 demand_charge_rate=args.demand_charge_rate,
+                enforce_batch_completion=(
+                    args.enforce_batch_completion and batch
+                ),
+                completion_penalty_weight=(
+                    args.completion_penalty if batch else None
+                ),
             )
             ours = solve_clarabel(inp, batch)["optimum_total"]
             ref = solve_cvxpy_small(inp, batch)
@@ -507,13 +562,6 @@ def main() -> None:
             print(f"[validate {key}] manual={ours:,.2f} cvxpy={ref:,.2f} "
                   f"rel_diff={rel:.2e} {'OK' if rel < 1e-5 else 'MISMATCH'}")
         return
-
-    stats_path = ROOT / "output" / "review_campaign" / "stats.json"
-    ppo_means = {}
-    if stats_path.exists():
-        st = json.load(open(stats_path, encoding="utf-8"))
-        ppo_means = {k: v["per_algo"]["ppo"]["mean"] for k, v in st.items()
-                     if "ppo" in v.get("per_algo", {})}
 
     results = {}
     for key in args.configs:
@@ -523,17 +571,15 @@ def main() -> None:
             scenario,
             batch,
             demand_charge_rate=args.demand_charge_rate,
+            enforce_batch_completion=(
+                args.enforce_batch_completion and batch
+            ),
+            completion_penalty_weight=(
+                args.completion_penalty if batch else None
+            ),
         )
         print(f"[{key}] solving (T={inp['T']}, batch={batch}) ...", flush=True)
         res = solve_clarabel(inp, batch)
-        if (
-            args.demand_charge_rate == 0.0
-            and key in ppo_means
-            and res["optimum_total"] > 0
-        ):
-            res["ppo_mean"] = ppo_means[key]
-            res["ppo_optimality_gap_pct"] = float(
-                100 * (ppo_means[key] - res["optimum_total"]) / res["optimum_total"])
         results[key] = res
         print(f"[{key}] {res['status']}  optimum={res['optimum_total']:,.0f}  "
               f"({res['solve_seconds']}s, {res['n_vars']:,} vars)"

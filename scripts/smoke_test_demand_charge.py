@@ -41,7 +41,7 @@ from env.multi_dc_env import (
 from env.power_model import PowerModel
 from evaluate import _make_env, compute_summary, run_episode
 
-SCEN = ROOT / "env" / "scenarios" / "global_model.yaml"
+SCEN = ROOT / "env" / "scenarios" / "global_model_v2_2025.yaml"
 ALPHA = 0.015
 RATE = REFERENCE_DEMAND_CHARGE_RATE
 
