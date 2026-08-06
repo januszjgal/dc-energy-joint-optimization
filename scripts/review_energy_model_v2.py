@@ -456,11 +456,13 @@ def build(year: int) -> dict[str, Any]:
         "rate. Evaluation reports per-region 1h/3h maximum and p95 upward "
         "ramps; a ramp penalty is future work only if those KPIs worsen.",
         "",
-        "## Gate status",
+        "## Downstream frozen campaign",
         "",
-        "**The objective, 501,760-step budget, folds, seeds, and v2 runner are "
-        "frozen; no PPO training has begun. Commit this checkpoint, then run "
-        "the runner's clean-tree preflight before launch.**",
+        "**The energy gate was consumed by the completed 80-model frozen OOF "
+        "campaign. The joint-shaping headline criterion failed; only Global "
+        "spatial PPO produced positive held-out optimizer CIs in both folds.**",
+        "",
+        "See [the canonical OOF results](../../oof_v2_2025/results_report.md).",
     ]
     (output / "report.md").write_text(
         "\n".join(report) + "\n", encoding="utf-8"

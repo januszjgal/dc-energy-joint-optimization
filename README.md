@@ -1,11 +1,11 @@
 # Grid-Aware Spatio-Temporal Load Shaping
 
-This repository is transitioning from the retired mixed/synthetic energy model
-to a single-source CAISO energy archetype.
+This repository implements and evaluates a controlled single-source CAISO
+energy archetype for geo-distributed workload shaping.
 
-## Current status: v2 objective frozen; training protocol not launched
+## Current status: frozen v2 campaign complete
 
-**Do not launch PPO retraining yet.**
+**80/80 PPO models trained; all eight held-out evaluations completed.**
 
 The completed v1 campaigns, exact energy inputs, models, logs, outputs, and
 manuscript snapshot are archived under:
@@ -54,6 +54,22 @@ The source build and market diagnostics are complete:
 The corrected gate finds 8.0–17.4% joint headroom and 0.6–2.3% incremental
 temporal headroom. Spatial routing remains the dominant lever.
 
+## Frozen held-out result
+
+The broad joint-shaping headline criterion **failed**.
+
+- **Global spatial PPO is the only robust learned success:** +0.90% and +1.19%
+  mean savings on the two held-out workload folds, with positive optimizer CIs
+  and complete service.
+- **US spatial savings are not established:** −0.29% and +0.07%; both CIs cross
+  zero, and the negative fold also loses to Round Robin.
+- **Joint batch control is unstable:** only 9/40 batch seeds meet the frozen
+  99.99% completion floor; it does not reliably improve over spatial-only PPO.
+- Spatial PPO lowers the secondary demand-charge reference; joint PPO raises it
+  and worsens rare maximum three-hour ramps.
+
+Canonical results: `output/oof_v2_2025/results_report.md`.
+
 Time-zone shifts are continuous, not circular. Each slot has equal duration,
 but adjacent real boundary hours can produce small monthly-mean differences.
 Singapore's 0.59% higher mean is such a boundary effect, not a regional price
@@ -71,16 +87,15 @@ v2 has 8,928 steps) but is not valid evidence of synchronized real market
 economics. Its OOF campaign failed the frozen joint-shaping headline criterion
 and is retained only for historical analysis.
 
-## Training-ready checkpoint
+## Frozen campaign protocol
 
 The protocol freezes **501,760 steps = 245 PPO rollouts**, 10 seeds per fold,
 `gamma=1`, domain randomization, and every objective/assumption above.
 
-1. Commit this checkpoint.
-2. Run `python scripts/run_oof_campaign_v2.py --phase preflight`; it refuses
-   dirty tracked source and writes the immutable hash/provenance record.
-3. Launch with `python scripts/run_oof_campaign_v2.py --phase train --workers N`.
-4. Evaluate only after all 80 completion records exist.
+- `output/oof_v2_2025/protocol.json` — frozen source/data/package provenance.
+- `models/oof_v2_2025/manifest.json` — 80 model hashes and completion records.
+- `output/oof_v2_2025/summary.json` — raw canonical held-out evaluation.
+- `output/oof_v2_2025/canonical_results.json` — compact publication source.
 
 ## Frozen simplifying assumptions
 
@@ -104,7 +119,6 @@ dominant Global lever, while per-cell power heterogeneity materially increases
 US headroom. Lower-slope routing is treated as a direct model consequence, not
 a novel RL discovery. Fixed-α headroom is also reported for 50/100/200 MW.
 
-`output/thesis_overview.md` is the living technical reference.
+`output/thesis_overview.md` is the living end-to-end technical reference.
 `thesis_paper.docx` is regenerated from `scripts/build_thesis_paper.py`; v1
-learned-policy sections remain explicitly historical until v2 results replace
-them.
+results remain explicitly historical.
