@@ -1,0 +1,31 @@
+{
+  "protocol_sha256": "00de81a3c402f029d69dfe915976ac5928a2cacfc5d27f7f35c6e66519ee630e",
+  "fold": "ad_to_eh",
+  "config": "global_batch",
+  "region": "global",
+  "batch": true,
+  "seed": 109,
+  "timesteps": 501760,
+  "train_scenario": "env/scenarios/global_model.yaml",
+  "test_scenario": "env/scenarios/global_model_eh.yaml",
+  "domain_randomization": true,
+  "enforce_batch_completion": true,
+  "completion_penalty": 1000.0,
+  "gamma": 1.0,
+  "alpha": 0.015,
+  "baseline_scope": {
+    "primary": "Status Quo (local, no deferral)",
+    "routing_sanity": "Round Robin",
+    "batch_no_deferral_ablation": "Drain Immediately",
+    "headroom_only": "clairvoyant fluid QP lower bound",
+    "excluded_from_headline": "DQN/CFWS and algorithm-superiority tests"
+  },
+  "job_fingerprint": "fe477b37cc69196665207595b3b1ddf51f0bf2d5f1d7bc7581a2389c955d9da4",
+  "completed_at_utc": "2026-08-05T22:48:25.382267+00:00",
+  "elapsed_seconds": 1307.973564863205,
+  "model_path": "models/oof/ad_to_eh/s109/ppo_global_model_batch_completion_guard.zip",
+  "model_bytes": 609897,
+  "model_sha256": "499836e469680318fc7a907b8511fb09cbe519f905fb10e63750461ae62cfe9e",
+  "log_path": "logs/oof/ad_to_eh/global_batch_s109.log",
+  "log_sha256": "0a9bf952111d5969de0f42c75f9d175c7d5309a41dfd9ee1ea197468f2846a2e"
+}

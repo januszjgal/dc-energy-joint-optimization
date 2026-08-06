@@ -1,8 +1,8 @@
-"""Train a PPO agent on the Multi-DC environment using Stable-Baselines3.
+"""Train PPO on the Multi-DC environment using Stable-Baselines3.
 
-Usage:
-    python train.py --scenario env/scenarios/us_model.yaml --timesteps 200000
-    python train.py --scenario env/scenarios/us_model.yaml --batch-mode --timesteps 200000
+This is the low-level trainer, not the frozen v2 campaign entry point. Do not
+launch v2 results from ad hoc CLI flags; use the versioned OOF orchestrator once
+the pretraining system gate is approved.
 """
 
 from __future__ import annotations
@@ -23,8 +23,8 @@ def make_env(
     scenario_path: Path,
     max_steps: int | None = None,
     batch_enabled: bool = False,
-    flexibility_factor: float = 1.0,
-    deadline_penalty_weight: float = 2.0,
+    flexibility_factor: float | None = None,
+    deadline_penalty_weight: float | None = None,
     urgency_horizon_steps: int = 12,
     memory_enabled: bool = False,
     dynamic_arrivals: bool = True,
@@ -32,6 +32,8 @@ def make_env(
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
     demand_charge_period_steps: int | None = None,
+    enforce_batch_completion: bool = False,
+    completion_penalty_weight: float | None = None,
     burst_aware: bool = False,
     batch_spatial_routing: bool = True,
     domain_randomization: bool = False,
@@ -45,12 +47,14 @@ def make_env(
     )
 
     # Merge YAML batch config with CLI overrides (CLI takes precedence)
-    ff = flexibility_factor
-    dp = deadline_penalty_weight
+    ff = 1.0 if flexibility_factor is None else flexibility_factor
+    dp = 2.0 if deadline_penalty_weight is None else deadline_penalty_weight
     uh = urgency_horizon_steps
     if batch_enabled and batch_config:
-        ff = batch_config.get("flexibility_factor", ff)
-        dp = batch_config.get("deadline_penalty_weight", dp)
+        if flexibility_factor is None:
+            ff = batch_config.get("flexibility_factor", ff)
+        if deadline_penalty_weight is None:
+            dp = batch_config.get("deadline_penalty_weight", dp)
         uh = batch_config.get("urgency_horizon_steps", uh)
 
     return MultiDCEnv(
@@ -65,6 +69,8 @@ def make_env(
         peak_penalty_weight=peak_penalty_weight,
         demand_charge_rate=demand_charge_rate,
         demand_charge_period_steps=demand_charge_period_steps,
+        enforce_batch_completion=enforce_batch_completion,
+        completion_penalty_weight=completion_penalty_weight,
         burst_aware=burst_aware,
         batch_spatial_routing=batch_spatial_routing,
         domain_randomization=domain_randomization,
@@ -150,14 +156,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--flexibility-factor",
         type=float,
-        default=1.0,
-        help="Deadline flexibility factor (default: 1.0). Higher = more slack.",
+        default=None,
+        help="Override scenario deadline flexibility. Higher = more slack.",
     )
     parser.add_argument(
         "--deadline-penalty",
         type=float,
-        default=2.0,
-        help="Penalty weight for batch deadline violations (default: 2.0)",
+        default=None,
+        help="Override the scenario deadline penalty.",
     )
     parser.add_argument(
         "--memory",
@@ -174,7 +180,7 @@ def main(argv: list[str] | None = None) -> None:
         type=float,
         default=0.0,
         help="Weight alpha on the grid demand-smoothing term: "
-             "alpha * grid_mw^2 * net_demand_normalized[t]. Penalizes load "
+             "alpha * grid_mw^2 * max(net_demand_signed[t], 0). Penalizes load "
              "concentrated during peak grid stress (default: 0.0 = disabled)",
     )
     parser.add_argument(
@@ -192,6 +198,21 @@ def main(argv: list[str] | None = None) -> None:
         help="Billing period in steps. Default: the full episode is one "
              "billing cycle. A shorter value is a different tariff and needs "
              "a rate quoted for that period; it must divide max_steps exactly.",
+    )
+    parser.add_argument(
+        "--enforce-batch-completion",
+        action="store_true",
+        help="Use gamma=1 dense completion shaping, terminal-pool value, and "
+             "an economic penalty floor even without a demand charge. Batch "
+             "mode only.",
+    )
+    parser.add_argument(
+        "--completion-penalty",
+        type=float,
+        default=None,
+        help="Fixed $/unit completion coefficient shared by training and "
+             "evaluation. Requires --enforce-batch-completion and must exceed "
+             "the environment's modeled economic floor.",
     )
     parser.add_argument(
         "--burst-aware",
@@ -214,9 +235,18 @@ def main(argv: list[str] | None = None) -> None:
              "Drained batch executes at its home DC; action space drops 3N->2N.",
     )
     args = parser.parse_args(argv)
+    if (
+        args.completion_penalty is not None
+        and not args.enforce_batch_completion
+    ):
+        parser.error(
+            "--completion-penalty requires --enforce-batch-completion"
+        )
     try:
         training_gamma = resolve_training_gamma(
-            args.gamma, args.demand_charge_rate
+            args.gamma,
+            args.demand_charge_rate,
+            args.enforce_batch_completion,
         )
     except ValueError as exc:
         parser.error(str(exc))
@@ -228,6 +258,8 @@ def main(argv: list[str] | None = None) -> None:
         scenario_name += "_burst"
     if args.demand_charge_rate > 0.0:
         scenario_name += "_demand_charge"
+    if args.enforce_batch_completion:
+        scenario_name += "_completion_guard"
     print(f"=== Training PPO on scenario: {scenario_name} ===")
 
     # Create environment
@@ -243,6 +275,8 @@ def main(argv: list[str] | None = None) -> None:
         peak_penalty_weight=args.peak_penalty_weight,
         demand_charge_rate=args.demand_charge_rate,
         demand_charge_period_steps=args.demand_charge_period_steps,
+        enforce_batch_completion=args.enforce_batch_completion,
+        completion_penalty_weight=args.completion_penalty,
         burst_aware=args.burst_aware,
         batch_spatial_routing=args.batch_spatial_routing,
         domain_randomization=args.domain_rand,
@@ -258,11 +292,13 @@ def main(argv: list[str] | None = None) -> None:
             f"${env.demand_charge_rate:g}/kW per "
             f"{env.demand_charge_period_steps}-step billing period"
         )
+    if env.economic_penalty_guard_enabled:
         print(
             "Economic safety: "
             f"backlog=${env.backlog_weight:,.2f}/unit-step, "
             f"expiry=${env.deadline_penalty_weight:,.2f}/unit, "
-            f"reward_scale={env.reward_scale:g}"
+            f"reward_scale={env.reward_scale:g}, "
+            f"dense_completion={env.batch_completion_shaping_enabled}"
         )
     if args.batch_mode:
         for site in env.sites:

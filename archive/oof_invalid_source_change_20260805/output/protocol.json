@@ -1,0 +1,290 @@
+{
+  "protocol": "cross-cell-two-fold-v1",
+  "frozen_at_utc": "2026-08-05T21:17:27.466456+00:00",
+  "folds": {
+    "ad_to_eh": {
+      "train": {
+        "us": "env/scenarios/us_model.yaml",
+        "global": "env/scenarios/global_model.yaml"
+      },
+      "test": {
+        "us": "env/scenarios/us_model_eh.yaml",
+        "global": "env/scenarios/global_model_eh.yaml"
+      }
+    },
+    "eh_to_ad": {
+      "train": {
+        "us": "env/scenarios/us_model_eh.yaml",
+        "global": "env/scenarios/global_model_eh.yaml"
+      },
+      "test": {
+        "us": "env/scenarios/us_model.yaml",
+        "global": "env/scenarios/global_model.yaml"
+      }
+    }
+  },
+  "configs": [
+    "us_spatial",
+    "us_batch",
+    "global_spatial",
+    "global_batch"
+  ],
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110
+  ],
+  "timesteps": 501760,
+  "algorithm": "PPO",
+  "ppo": {
+    "learning_rate": 0.0003,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "net_arch": [
+      128,
+      128
+    ],
+    "gamma": 1.0,
+    "action_logit_bound": 3.0
+  },
+  "domain_randomization": true,
+  "domain_randomization_bounds": {
+    "ad_to_eh": {
+      "us_spatial": {
+        "idle": [
+          0.3820385383043128,
+          0.5481899557638172
+        ],
+        "slope": [
+          0.3397277846039694,
+          0.5703704468908332
+        ],
+        "computed_economic_floor": 0.0,
+        "fixed_completion_penalty": 0.0
+      },
+      "us_batch": {
+        "idle": [
+          0.3820385383043128,
+          0.5481899557638172
+        ],
+        "slope": [
+          0.3397277846039694,
+          0.5703704468908332
+        ],
+        "computed_economic_floor": 512.6484323065988,
+        "fixed_completion_penalty": 1000.0
+      },
+      "global_spatial": {
+        "idle": [
+          0.3820385383043128,
+          0.5481899557638172
+        ],
+        "slope": [
+          0.3397277846039694,
+          0.5703704468908332
+        ],
+        "computed_economic_floor": 0.0,
+        "fixed_completion_penalty": 0.0
+      },
+      "global_batch": {
+        "idle": [
+          0.3820385383043128,
+          0.5481899557638172
+        ],
+        "slope": [
+          0.3397277846039694,
+          0.5703704468908332
+        ],
+        "computed_economic_floor": 924.1059215280815,
+        "fixed_completion_penalty": 1000.0
+      }
+    },
+    "eh_to_ad": {
+      "us_spatial": {
+        "idle": [
+          0.38382746978513954,
+          0.4562184643266739
+        ],
+        "slope": [
+          0.39282089097337736,
+          0.6011158680727895
+        ],
+        "computed_economic_floor": 0.0,
+        "fixed_completion_penalty": 0.0
+      },
+      "us_batch": {
+        "idle": [
+          0.38382746978513954,
+          0.4562184643266739
+        ],
+        "slope": [
+          0.39282089097337736,
+          0.6011158680727895
+        ],
+        "computed_economic_floor": 528.6891403992453,
+        "fixed_completion_penalty": 1000.0
+      },
+      "global_spatial": {
+        "idle": [
+          0.38382746978513954,
+          0.4562184643266739
+        ],
+        "slope": [
+          0.39282089097337736,
+          0.6011158680727895
+        ],
+        "computed_economic_floor": 0.0,
+        "fixed_completion_penalty": 0.0
+      },
+      "global_batch": {
+        "idle": [
+          0.38382746978513954,
+          0.4562184643266739
+        ],
+        "slope": [
+          0.39282089097337736,
+          0.6011158680727895
+        ],
+        "computed_economic_floor": 962.3259586402169,
+        "fixed_completion_penalty": 1000.0
+      }
+    }
+  },
+  "alpha": 0.015,
+  "batch_completion_guard": {
+    "enabled": true,
+    "dense_cost": "lambda_x * (arrivals - completions)",
+    "terminal_pool_penalized": true,
+    "economic_penalty_floor": true,
+    "fixed_completion_penalty_usd_per_unit": 1000.0
+  },
+  "validation_selection": null,
+  "test_scope": "full 8,917-step month on opposite four-cell fold",
+  "headline_metrics": [
+    "held_out_total_cost",
+    "held_out_savings_vs_status_quo_pct",
+    "service_completion",
+    "batch_completion",
+    "batch_expired",
+    "terminal_batch_pool",
+    "billed_peak_sum_mw",
+    "load_factor",
+    "gap_to_held_out_qp_pct"
+  ],
+  "success_rule": {
+    "savings": "95% optimizer-bootstrap CI lower bound is positive in both folds",
+    "service_completion_floor": 0.9999,
+    "batch_completion_floor": 0.9999
+  },
+  "interpretation": "Cross-cell out-of-fold evaluation with 10 optimizer seeds per fold. Bootstrap intervals describe optimizer variability only; no population-level significance claim or cross-algorithm pairing.",
+  "provenance": {
+    "git_head": "678dd045fbbe363d7c64164ddd688f59f06f2929",
+    "git_diff_binary_sha256": "da4eb1f6b7e1b9edfbea7a3349cd7702bcb5721dd22c886a8300b82b3f003c5d",
+    "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+    "packages": {
+      "numpy": "2.4.4",
+      "pandas": "3.0.5",
+      "torch": "2.11.0",
+      "gymnasium": "1.3.0",
+      "stable-baselines3": "2.9.0",
+      "scipy": "1.17.1"
+    },
+    "source_sha256": {
+      "baselines.py": "563fa685990d9c016dc9c69d0e2073cab2e55cd4d8384eacb69a9a6a487ab650",
+      "evaluate.py": "e85dd36f5b7e94e98f78f19613c6ffd52e1d261ba2bd0baee634ae0e2a9c043b",
+      "train.py": "50f2238e5ea1af6dd7beaf39427e2c59399fcd3e13cc438b914ed193c17348a4",
+      "env/data_loader.py": "e7787f1729d9a0593b6484030fa5a4c0f350320adc2f76c9890a6ccee270a947",
+      "env/dc_site.py": "bd5abdafeb5cb36d6909c0d4b703373c2924b60a90142ec3a9270822c7af8a36",
+      "env/multi_dc_env.py": "719c07689e6b8f5f165aff4e63b2d62a370cfffdba5a21c2489b601ccfdbf8d2",
+      "env/power_model.py": "58e40b951a2a959cf682c177931548e21ff330aab8ce55cd0dc7f6bed89b97a1",
+      "env/workload_generator.py": "81d89eec84714bb4f90d6bb62e7ab154990987e0906b99209ff77c0d98907b74",
+      "scripts/compute_qp_optimum.py": "0be06fd320c0a4677e36bb022986c4bfde67b5b8d475f8c55b882481fe037bf3",
+      "scripts/run_oof_campaign.py": "f70448c081f91bbbb7251099db9d21e88ef7eafcb9b88262e1001401c365eef7",
+      "requirements.txt": "addb720d108dbf08ddac9eb8f503e2b7e1a136f5556652b44565070c154b0f55",
+      "env/scenarios/us_model.yaml": "3fd2bd83abf2bbad2120992ad4723660b2890f3d6c8053be6feb880464eb693e",
+      "env/scenarios/us_model_eh.yaml": "f08c310e03b4906a7d907f60e19e3fc8319c5aa348427f21cf3a298abcb2aeff",
+      "env/scenarios/global_model.yaml": "629adf240fa70f98a26a1fa2f50ff0ebab8d447203842a4e0b6f382f6c4104aa",
+      "env/scenarios/global_model_eh.yaml": "0efab1a3ba6d36edf0a927dbb8149c740676a2b307f86deb1932ef56e78c09e0"
+    },
+    "data_sha256": {
+      "data/cells/cell_a.csv": "4ad3697e0239112dbc2c1b1cbc87689686adfe0d377f1c47e9aa371e04f65ae6",
+      "data/cells/cell_a_tiers.csv": "5ca5143656c031ac62715a1629dc3ef45df8dd635b62888a4c31bad0e36eece8",
+      "data/cells/cell_b.csv": "6893d301298faf8bbbf0d337885c296bb837321c757745221edd154851bf943e",
+      "data/cells/cell_b_tiers.csv": "a986254e717e568f9b5b0119d18a26ac18ac35f8b9503dca3cbcb19fa3ed3368",
+      "data/cells/cell_c.csv": "757cba809342d378d176d11b26aad13281703eeadedd869251de37bf8402305b",
+      "data/cells/cell_c_tiers.csv": "b85ce22da8a70f34cf741ea985cbd8d8e93ce80c29be1d67318e95524c2fd652",
+      "data/cells/cell_d.csv": "fdf45fe0742872313266a7ef9d4daa80caa5115fa34ae4c84797975713bfaedc",
+      "data/cells/cell_d_tiers.csv": "4edc94c9c57aefe5753751a05647c3823bec69ed395219f1066afc53a354a795",
+      "data/cells/cell_e.csv": "1c2322386c5adc4a12d841e74cda704dd8e7bfb35925198aa5a8a75ab4d44aa4",
+      "data/cells/cell_e_tiers.csv": "86381fbc93aa9aed5c2e3fbc5a3eb915c10238a39a4119bc619eae4d6ae4a85e",
+      "data/cells/cell_f.csv": "fb19f6441cb9a8a73fdf93390dc1915ad1b36d6f3e5b8873be956d273facd507",
+      "data/cells/cell_f_tiers.csv": "f3cfdd137188300b54a1aa23ae7545ec84194821cee6244c3ff816800076a514",
+      "data/cells/cell_g.csv": "c8491fb1f5b51ef652f8bbadbff55c63dba6ccfae683e9ec53f00cb72a6b6731",
+      "data/cells/cell_g_tiers.csv": "90d4778cae8810fd4fa5c41f3eb9e18fb3fd8069d8ccb381e58585a062722a7a",
+      "data/cells/cell_h.csv": "48b8f73a3e61bbad8c66d061b0731f253247d7dc91330762e6e04e9e52ff7448",
+      "data/cells/cell_h_tiers.csv": "dafb1d5007eddcfb27183c343ee0586c64ac6e2128516e44c8e8b291c859a759",
+      "data/jobs/batch_distributions_a.json": "68aa4ddbb8b2cfe76698d3c1ed58a7058af0d6b52c74c3b54fdd335893f47e09",
+      "data/jobs/batch_distributions_b.json": "0d7d415a7d0f3388d21398c6a7d6f84ac62150e6dfc04fae9578c0e1449a5ec2",
+      "data/jobs/batch_distributions_c.json": "b1027f86519bc1ab5755e0a9ce56079c648496ea1ee2923821366553fa745358",
+      "data/jobs/batch_distributions_d.json": "6ed6389c7da970ff60b30537c44ff04e565e9c904811813ce8a2d774e879f008",
+      "data/jobs/batch_distributions_e.json": "3afd71cdbdb7c44ec2f10f04e46704884201a0d15dcb3acff41a08faf7312e4c",
+      "data/jobs/batch_distributions_f.json": "4dd0a0403694d89ac0794d84a802f5e7fecaef8a849b9422d9fec6616f417715",
+      "data/jobs/batch_distributions_g.json": "e32ddfabc4bb4ac01f526be3306968910a5c3b1716ee08a806729a332687dad2",
+      "data/jobs/batch_distributions_h.json": "b6efc9a58fac9bc1d366ff76a6b8bb8a6314f3cee827d0385f9f5d840541b5e6",
+      "data/jobs/batch_raw_a.csv": "c125f8d6a10c0b63e02bab6a189472edc6ffd03cc0b386423f3766acf034d0be",
+      "data/jobs/batch_raw_b.csv": "1fb6a104ff480489183b11e3e597368119a2caac2345d66096a0058f51ad8a7b",
+      "data/jobs/batch_raw_c.csv": "180e8bfd47c6120b1cd8c790bd92de11fa0ab8cf60a09298961aac6afb349a82",
+      "data/jobs/batch_raw_d.csv": "f27bbcce3e43a94d5cbbfa3a831a6a3e1b8a109ed9a05a2cedc4de1c558e176c",
+      "data/jobs/durations_eh.json": "92ba260ce3d133d118016248a96b6bbb48e13e6f23f9e6504b51c1b6436b7323",
+      "data/jobs/jobs_a_truncated.csv": "1c6213d66faa79ba7713072c26f2adcdf4ad304aa2d4bd38a0739448739c5c9a",
+      "data/jobs/jobs_b_truncated.csv": "9a35d29d70aceef52e7ff9900a39ad31113d3ebbbf904c278a25dfafe24b6af0",
+      "data/jobs/jobs_c_truncated.csv": "edfc5e843983ddf6ef767249f27ce5c6798ba0f70419f3354b97fa5c74cb6c84",
+      "data/jobs/jobs_d_truncated.csv": "92b449cee9a21162c834ed73de3d6c85305d677d5fd4a66518c55a5ac38aede2",
+      "data/machines/machines_a.csv": "52d136b1568db28e4d3979393b39120c9c750017b161b0ff6ff4f0400ed59d8d",
+      "data/machines/machines_all.csv": "3d1f69ad102c753615f81f07ef5c6b33d1a4c411b6a5ffb7dd0bc05a620df718",
+      "data/machines/machines_b.csv": "948335e8ecf95cf4216109f2d1d7d4d76c269ab05517bd7ee113bda22a7b1364",
+      "data/machines/machines_c.csv": "0c19f460f4a4052f6cc712d670a5db44a7ffa001e18a79aede40943b6b02764d",
+      "data/machines/machines_d.csv": "d3aa151c8ec03a56500a353b28b9ee11214d9d6c1e14ae823d9a42484900dd80",
+      "data/machines/machines_e.csv": "48d818083e2103f47dab6a982a92096a5508f99a199ccb4746e9c9f33d3d1da5",
+      "data/machines/machines_f.csv": "1592a35ca837e159290f2f7b0f988beb1029efd3402edb4e77258ba4fbba0baf",
+      "data/machines/machines_g.csv": "3446eae641f3fe425c28bb36739f3a5fbc4b8d5b6f1a60682576ff2d08760c6c",
+      "data/machines/machines_h.csv": "cab181be0cc671a0ef3b7d13d18484b84e71bb64263af297b43dee64ff5b29c8",
+      "data/metadata.json": "bac455477320793cd64ec025df8e9cad27c5b147d17ec4bfd9d8f7f155f6b7d2",
+      "data/net_demand/caiso.csv": "5598112022f554a2b9a958cefcfbfbcff033f0e23cddb54013496f44a2c13ecb",
+      "data/net_demand/duke_carolinas.csv": "d8c88445e6a150b543f49b57c79dddc7439a3c2b8455944e937123084e433534",
+      "data/net_demand/ema_singapore.csv": "4c3cdd40cf163be19c0ef041ca35837d623be73fc7e81c79971f062b39c1a7e4",
+      "data/net_demand/entso_e_nl.csv": "11776dc0421edec43c996e569ada4c698d35299af7f5855f9e416015f2cbb77c",
+      "data/net_demand/miso.csv": "e77a504599141f684b9079977cb2e6c9772e6c9744c9bd84987c638f44a3a381",
+      "data/net_demand/southern_co.csv": "d6c4c772653354bb9fe5a4466132dae41c98f4ff7dba51ac692bf6bbf439d327",
+      "data/net_demand_2024/caiso.csv": "b4ebed92ae9fa88d190eaf19ddedfd4b642c7c7bf5903c76eacac52f86d38773",
+      "data/net_demand_2024/duke_carolinas.csv": "fdbdaf866b68bd7c9950f26e95fdc349cffd3704a8f36840cf538ba03dd4d4dd",
+      "data/net_demand_2024/ema_singapore.csv": "4c3cdd40cf163be19c0ef041ca35837d623be73fc7e81c79971f062b39c1a7e4",
+      "data/net_demand_2024/entso_e_nl.csv": "11776dc0421edec43c996e569ada4c698d35299af7f5855f9e416015f2cbb77c",
+      "data/net_demand_2024/miso.csv": "936b921a3cd9ff7750cd505769fe593052b02783bda53779ba98b2ca2c70330b",
+      "data/net_demand_2024/southern_co.csv": "bc4d4a8e4670a8202727ed5db0595b123a6808bafd2ff1b00c6b50141e1495ad",
+      "data/power_model_eh.json": "71321af09bd1132f779e4b75e2af4716785cf12859946cf61746c5c7238eae36",
+      "data/power_model_params.json": "1b956ee2b369aa4f61a5e65c10ba86c1be5cfa01ffeea201defad4b7067dbd94",
+      "data/power_model_scatter.csv": "f5f4aa318e3fb8f3a6d2e133d07c9562b47d3e8bbfb32039cd537e30ee4e05e6",
+      "data/prices/caiso.csv": "6feea0ed308b17ba44e1f25a279d48996460420b6c428bb2933e4d81cb22bf9e",
+      "data/prices/duke_carolinas.csv": "bab822adaef72167f8a359f666f8d98773c13ef3b0569b1420267d3e25a64ed0",
+      "data/prices/ema_singapore.csv": "330261d89ca42b7f424f0f23e9920f874fdb949dc6d410f94b6241a98d7984ca",
+      "data/prices/entso_e_nl.csv": "27141a9c267c465b816cc9120b9f05b5b787aa6d3a1c028a33bea2d924d60a4a",
+      "data/prices/miso.csv": "d5be2310916b0faeb9a9f8b6a626f65a9eded1deaf6e15f0c88feaf6fa390d18",
+      "data/prices/southern_co.csv": "6520f65fd4376ae71cf1e9a65466cb16f81e3c9352cf3a7b7c66958654863dc5",
+      "data/solar/berkeley_county_sc.csv": "b9a75216cb38801c48fa5ef64928bc1f469461c76c8ed2f0e6ab9facb9bf16a4",
+      "data/solar/council_bluffs_ia.csv": "6f7f135cf7ccc76c9a65ca09b6f08820aa838b315e1f3f86177ac9b144dac22a",
+      "data/solar/douglas_county_ga.csv": "8805baecc9e59a767ab5eaef182a8eaf0adf5cc889efbd539d187e88090053a6",
+      "data/solar/eemshaven_nl.csv": "b90b1fe1308baf5d4d7addb3fd7f1d8f4b25d2dcb1f1c2c84b1636895c8c703a",
+      "data/solar/singapore.csv": "de7fd2ad682a937427d955d72c8c0c97bc35da19427252b0fb729e86ef95ce93",
+      "data/solar/the_dalles_or.csv": "211c13de3d47c50e6520e318d64db7db0c524162615b19228dcf65447c81c628",
+      "data/workload_generator_params.json": "a7f204d0c8ff3ba70c532414c1688594c5a991d4f3d8861cfa0f5193890ff69a"
+    }
+  }
+}

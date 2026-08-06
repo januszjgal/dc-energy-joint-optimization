@@ -39,6 +39,17 @@ def _with_drain(
     return np.concatenate(parts)
 
 
+def _routing_logits(values: np.ndarray) -> np.ndarray:
+    """Return logits whose softmax reproduces non-negative shares exactly."""
+    values = np.asarray(values, dtype=np.float64)
+    total = float(values.sum())
+    if total <= 0.0:
+        return np.zeros(values.shape, dtype=np.float32)
+    shares = np.clip(values / total, 1e-12, None)
+    logits = np.log(shares)
+    return (logits - logits.mean()).astype(np.float32)
+
+
 # ----------------------------------------------------------------------
 # Simple baselines
 # ----------------------------------------------------------------------
@@ -141,18 +152,40 @@ class StatusQuoPolicy:
 
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
         t = env.step_index
-        demands = np.array(
-            [site.get_local_demand(t) for site in env.sites], dtype=np.float32
-        )
-        total = demands.sum()
-        if total > 0:
-            fracs = np.clip(demands / total, 1e-6, None)
-            logits = np.log(fracs)
-            routing = np.clip(logits - logits.mean(), -1.0, 1.0).astype(np.float32)
+        if env.batch_enabled:
+            service = np.array(
+                [
+                    site.get_service_demand(t) + site.backlog
+                    for site in env.sites
+                ],
+                dtype=np.float64,
+            )
+            pending_batch = np.array(
+                [
+                    site.batch_pool.total_demand + site.get_batch_demand(t)
+                    for site in env.sites
+                ],
+                dtype=np.float64,
+            )
+            routing = _routing_logits(service)
+            batch_routing = _routing_logits(pending_batch)
         else:
-            routing = np.zeros(env.n_dc, dtype=np.float32)
-        drain = np.full(env.n_dc, 5.0, dtype=np.float32)  # sigmoid(5) ≈ 0.993, immediate
-        return _with_drain(routing, drain, env)
+            local = np.array(
+                [
+                    site.get_local_demand(t) + site.backlog
+                    for site in env.sites
+                ],
+                dtype=np.float64,
+            )
+            routing = _routing_logits(local)
+            batch_routing = None
+        drain = np.full(env.n_dc, 20.0, dtype=np.float32)
+        return _with_drain(
+            routing,
+            drain,
+            env,
+            batch_routing=batch_routing,
+        )
 
 
 class RandomPolicy:
@@ -183,7 +216,7 @@ class DrainImmediatelyPolicy:
 
     def predict(self, obs: np.ndarray, env: MultiDCEnv) -> np.ndarray:
         routing = np.zeros(env.n_dc, dtype=np.float32)
-        drain = np.full(env.n_dc, 5.0, dtype=np.float32)  # sigmoid(5) ≈ 0.993
+        drain = np.full(env.n_dc, 20.0, dtype=np.float32)
         return _with_drain(routing, drain, env)
 
 

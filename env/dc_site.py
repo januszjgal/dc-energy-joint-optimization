@@ -24,11 +24,15 @@ class DataCenterSite:
         workload: Normalized CPU demand timeseries [0, 1]
         solar: Solar capacity factor timeseries [0, 1] (forecast feature only)
         price: Electricity price timeseries ($/kWh)
-        net_demand: Regional grid net demand, normalized to [0, 1] by
-            region historical peak. Drives the peak-contribution penalty.
+        net_demand: Regional grid net demand on a documented signed [-1, 1]
+            scale. Positive values represent residual grid load; negative
+            values represent renewable oversupply.
+        net_demand_mw: Raw regional net demand in MW for physical KPI reporting.
         rated_power_mw: Total DC rated power capacity in MW
-        capacity: Max normalized CPU utilization (from fleet data or 1.0)
-        memory_capacity: Normalized memory capacity (from fleet data or 1.0)
+        capacity: Max normalized CPU utilization. Energy model v2 uses 1.0
+            because every source utilization shape is mapped to an equal-sized
+            100 MW proxy DC.
+        memory_capacity: Normalized memory capacity; 1.0 for v2 proxy DCs.
         memory_cpu_ratio: Ratio of memory demand to CPU demand for workloads
         batch_fraction: Fraction of workload that is deferrable batch [0, 1]
             (Borg no-SLO tiers: priority <= 115 = free + beb; trace docs v3)
@@ -46,7 +50,8 @@ class DataCenterSite:
     workload: np.ndarray  # shape: (T,)
     solar: np.ndarray  # shape: (T,)
     price: np.ndarray  # shape: (T,)
-    net_demand: np.ndarray  # shape: (T,), normalized to [0, 1]
+    net_demand: np.ndarray  # shape: (T,), signed scale [-1, 1]
+    net_demand_mw: np.ndarray | None = None  # shape: (T,), physical MW
     rated_power_mw: float = 100.0
     capacity: float = 1.0
     memory_capacity: float = 1.0
@@ -68,9 +73,9 @@ class DataCenterSite:
     batch_generator: BatchArrivalGenerator | None = field(
         default=None, init=False, repr=False
     )
-    # Real per-tier demand curves derived from the trace (see
-    # scripts/derive_tier_curves.py). When set, they take precedence over the
-    # synthetic generator / static split; service + batch = measured aggregate.
+    # Measured per-tier demand curves derived from instance_usage. When set,
+    # they are the complete primary demand path and bypass the synthetic
+    # generator/static split; service + batch = measured aggregate.
     service_curve: np.ndarray | None = field(default=None, init=False, repr=False)
     batch_curve: np.ndarray | None = field(default=None, init=False, repr=False)
     # Per-cell calibrated power model (PowerModel); when set, the env uses it for
@@ -150,8 +155,14 @@ class DataCenterSite:
         return float(self.price[t])
 
     def get_net_demand(self, t: int) -> float:
-        """Regional grid net demand at t, normalized to [0, 1] by region peak."""
+        """Regional grid net demand at t on the signed [-1, 1] scale."""
         return float(self.net_demand[t])
+
+    def get_net_demand_mw(self, t: int) -> float | None:
+        """Raw regional grid net demand in MW, when supplied."""
+        if self.net_demand_mw is None:
+            return None
+        return float(self.net_demand_mw[t])
 
     def record_arrival(self, t: int) -> None:
         """Append the current timestep's batch arrival into the rolling buffer.

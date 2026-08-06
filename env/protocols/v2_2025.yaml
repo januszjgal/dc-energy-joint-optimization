@@ -1,0 +1,118 @@
+name: energy-model-v2-2025
+status: training-ready-unlaunched
+year: 2025
+
+proxy_dc:
+  count: 4
+  rated_power_mw: 100.0
+  capacity: 1.0
+  memory_capacity: 1.0
+  capacity_semantics: >-
+    Each Google cell curve is already normalized by its own source capacity.
+    The curve is used as a utilization shape on an equal 100 MW proxy DC.
+
+net_demand:
+  column: net_demand_signed
+  scale: >-
+    Divide MW by the maximum absolute net demand in the Pacific May-2025
+    reference window and clip to [-1, 1].
+  grid_stress_transform: max(net_demand_signed, 0)
+  negative_trough_incentive: real low-or-negative NP15 DAM price
+
+objective:
+  energy_cost: true
+  peak_penalty_weight: 0.015
+  peak_penalty_form: alpha * grid_mw^2 * max(net_demand_signed, 0)
+  primary_demand_charge_rate_usd_per_kw_cycle: 0.0
+  secondary_demand_charge_reference_rate_usd_per_kw_cycle: 15.0
+  configured_backlog_weight: 25.0
+  deadline_penalty_weight: 250.0
+  enforce_batch_completion: true
+  completion_penalty_weight: 1000.0
+  gamma: 1.0
+
+batch:
+  primary_flexibility_factor: 1.0
+  sensitivity_flexibility_factors:
+  - 0.0
+  - 2.0
+  deadline_semantics: >-
+    Experimental control deadline H = ceil(mean_duration *
+    (1 + flexibility_factor) / 300 seconds); not a trace-provided SLO.
+  current_arrival_observed: true
+  urgency_horizon_steps: 12
+
+routing:
+  service_unrestricted: true
+  batch_unrestricted: true
+  latency_modeled: false
+  residency_modeled: false
+  movement_cost_modeled: false
+  interpretation: >-
+    Optimistic controlled upper-bound assumption. No claim of deployment
+    feasibility or conservative movement-cost robustness is permitted.
+
+ramp:
+  direct_penalty_in_primary_reward: false
+  evaluation_horizons_steps:
+    1h: 12
+    3h: 36
+  metrics:
+  - maximum_upward_ramp_mw
+  - p95_upward_ramp_mw
+  comparison: raw regional net demand versus regional net demand plus DC load
+  interpretation: >-
+    The primary objective penalizes high net-demand exposure, not the
+    derivative of net demand. Add a ramp-aware objective only if the first v2
+    campaign worsens independently reported physical ramp KPIs.
+
+attribution:
+  claims:
+    shifted_market_phase: diagnosed by synchronous-market ablation
+    power_heterogeneity: diagnosed by pooled-power ablation
+    alpha: diagnosed by alpha=0 objective sensitivity
+    rated_power: diagnosed at 50, 100, and 200 MW
+  interpretation: >-
+    Ablations diagnose interacting mechanisms and are not additive causal
+    decompositions. Lower-slope routing is a direct power-model consequence,
+    not a novel RL discovery.
+
+baselines:
+  active:
+  - status_quo
+  - round_robin
+  - drain_immediately
+  diagnostic:
+  - clairvoyant_qp
+  future_work:
+  - causal_mpc
+
+oof:
+  folds:
+  - train: a-d
+    evaluate: e-h
+  - train: e-h
+    evaluate: a-d
+  seeds:
+  - 101
+  - 102
+  - 103
+  - 104
+  - 105
+  - 106
+  - 107
+  - 108
+  - 109
+  - 110
+  energy_calendar_held_out: false
+  claim_scope: held-out workload cells on one controlled May-2025 energy month
+  training_timesteps: 501760
+  ppo:
+    learning_rate: 0.0003
+    n_steps: 2048
+    batch_size: 64
+    net_arch:
+    - 128
+    - 128
+    gamma: 1.0
+    domain_randomization: true

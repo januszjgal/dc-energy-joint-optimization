@@ -1,0 +1,242 @@
+{
+  "generated_at_utc": "2026-08-06T03:23:00.366714+00:00",
+  "model": "one real CAISO price/net-demand archetype shifted by target local wall time; price level unchanged",
+  "protocol": {
+    "path": "env/protocols/v2_2025.yaml",
+    "sha256": "2f744d644e1ea3a2648ef433b8c460ca073d5d191e5aa55d8787ec505dd02c46"
+  },
+  "capacity_model": "Each Google cell curve is already normalized by its own source capacity. The curve is used as a utilization shape on an equal 100 MW proxy DC.",
+  "reference_zone": "America/Los_Angeles",
+  "calendar": {
+    "start_utc": "2025-05-01 07:00:00+00:00",
+    "end_utc": "2025-06-01 07:00:00+00:00",
+    "rows": 8928,
+    "cadence": "5 minutes"
+  },
+  "slots": {
+    "us": [
+      [
+        "pacific",
+        "America/Los_Angeles"
+      ],
+      [
+        "mountain",
+        "America/Denver"
+      ],
+      [
+        "central",
+        "America/Chicago"
+      ],
+      [
+        "eastern",
+        "America/New_York"
+      ]
+    ],
+    "global": [
+      [
+        "pacific",
+        "America/Los_Angeles"
+      ],
+      [
+        "central",
+        "America/Chicago"
+      ],
+      [
+        "amsterdam",
+        "Europe/Amsterdam"
+      ],
+      [
+        "singapore",
+        "Asia/Singapore"
+      ]
+    ]
+  },
+  "workload_anchor": "workload timestep 0 is assigned to experiment start UTC as a modeling convention; original Google UTC anchor was discarded",
+  "net_demand_source": {
+    "url_pattern": "https://www.caiso.com/outlook/history/YYYYMMDD/netdemand.csv",
+    "fuel_url_pattern": "https://www.caiso.com/outlook/history/YYYYMMDD/fuelsource.csv",
+    "native_interval": "5 minutes",
+    "timezone": "America/Los_Angeles",
+    "raw_files": {
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250430_fuelsource.csv": "686c4ba63ee4ba94e1d6e74c44c18e73287ca4e3d5d5647f080bd4a6cf7f6448",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250430_netdemand.csv": "46c7e54ab388080ce4f45427b078326a68eec50a3682ed92b3b7dbc12d87a7c6",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250501_fuelsource.csv": "c65961616be4512e60df21fe973876e8d51e799f366928713326dce74dfb4276",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250501_netdemand.csv": "406a7cd573edca92e2ab99815379d350ecf47e5f8701a8313f5a1ce49cc999e4",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250502_fuelsource.csv": "2ae780255f81dc981511190b6b2bc73dec3edd5990a0d65554b68f3717c748e3",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250502_netdemand.csv": "1090e2363be00fa5e3d662bb3f2347b21c0918b319762eb6e4abfbc3e52581a7",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250503_fuelsource.csv": "d4602f36a3a8fb4cfc263f08172286cb8cf7844198f2af6268851d5a82d13c4e",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250503_netdemand.csv": "1b82e68904984c0c7b978e43166f77a3c41cd0b026c4e01bc4dd0f5c4dc88397",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250504_fuelsource.csv": "10bad3fc782490a349c1179795c9cb46aaad1db2692439434f8610fda84eef12",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250504_netdemand.csv": "3cb48da90f5a46ecfbbdd0d706bf749c282028f25923cdcf32668abe904ffb20",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250505_fuelsource.csv": "bbf060b30c15bbb1a56ff93a9282ab0a0ac47d0f82713130fdde720eae79d883",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250505_netdemand.csv": "7dccc63fdb46837854e0e5557d104a40b526647537325c01099121cd005651a6",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250506_fuelsource.csv": "57deaafb527765df862937c859cd8d03d2f5249901196bf2183797912c263333",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250506_netdemand.csv": "06ee1f16fea0570426ba892b0a5dacbcb5fd27303f5b8fcd8f34a0feaf939651",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250507_fuelsource.csv": "fd25dcc0d0c8c654ac90c0f73fbbe0cfd0c7ed2ee4fdef0fb34da75cfc5b70d8",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250507_netdemand.csv": "ae6dfa9b6987c0aec990fcbb75839da8eafdb4906ac222963f99eae146265c40",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250508_fuelsource.csv": "a9198f61783f58b69679770edcfe8a4ab95b930794002ac4aa5285c313f4d26e",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250508_netdemand.csv": "d6577bf03828ce7f536405973b7e67e1d9997c2663adab4e6366bf116f2aba78",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250509_fuelsource.csv": "1c6e61d988e960ee70f9fcb92b0ff648002a4c49f8230a585735fab803f128eb",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250509_netdemand.csv": "33801b6a44c0474b17f68644975d0bf5634cd9793bae450475d7a9c1d5feb708",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250510_fuelsource.csv": "b2cfa22670d721512b4e3d5f0526d86c162cad1a2d9c4c8c76ac73e5600d7a81",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250510_netdemand.csv": "2e31109ba2191cfc4376d9a6f69e790cc416d13e80119ddb0332106a7f551c70",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250511_fuelsource.csv": "e9716248f85cc0099cb439eb7e4e2d43d7cf30dd6e7ee869fe42eff036326ce7",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250511_netdemand.csv": "e1a052fca98204b954853a92ea643970e305c25198393b7387d303d197924be7",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250512_fuelsource.csv": "62fc91548dcd7e198974843d78e8ea2848f5fb1d8b0cb6830a7d4e0342545275",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250512_netdemand.csv": "d4e4129365e8f0a896db8dc28199cc69a3a9ebd440149c3f07e55840087e0f22",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250513_fuelsource.csv": "bc9674cf9544d5e629395ef28fb6e577fbc26fdb4a05e30a5ae70f304e5360ad",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250513_netdemand.csv": "f9b04e6ccfad6237b86d9f5300477bd85aea2b7a314c33b098beffa59fbe4f79",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250514_fuelsource.csv": "912b0eae291d78041a943eaa711216956cb88998de0b47c62582d0958236a156",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250514_netdemand.csv": "b70c67910b6eabb5e2fd709047d19aebeb4a6c475b7ecf76abad844462292019",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250515_fuelsource.csv": "20c3ae2865e8a63666a453870e3dbdd1db99bfb94ac321a80d724c08ec1c207f",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250515_netdemand.csv": "51775f8259acbbd12802c141937a16c7c573469b8c66febcc49d5c393af36081",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250516_fuelsource.csv": "e941024d2f2f13c93fccc9fa462303863c0aed2a62f1c51cae0acb60d29580e7",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250516_netdemand.csv": "4812ca2966014d0d470cb425a6b9ff6d1996605672b6338ba9f414a16a60252f",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250517_fuelsource.csv": "770fac4083a2df2e7b6276f8002cea9e7bc878d766c731fda06aea0319b00b1b",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250517_netdemand.csv": "ec3f9855034bc1348c43b89d972480eb7fe8e7cc587e3b5660557da61637f1aa",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250518_fuelsource.csv": "bc96652008bf95421d23d2ba2a6351e33bd9f3cbd745bac27348271c84a47380",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250518_netdemand.csv": "fa00066088fe184ecf42bb67bbc5ec3d222f7ba9e0a28cd1f91dd8f15d65c19f",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250519_fuelsource.csv": "8dd637e43aaf729b0f98c113f29277079bce72fa9504cf95b951b571340662ac",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250519_netdemand.csv": "85265a89666e1fafc0ac49b44d3dc970a7e697d04ffb108adbc3061f6688c373",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250520_fuelsource.csv": "d067d1a75caa78cbe21d8f3bf7672dc84ded50a2c686de90902bd9178d04d3b4",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250520_netdemand.csv": "9ed5bac03ed443f8d027c8582b6f9a5f5c25809446c3e36c48262de4ab765597",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250521_fuelsource.csv": "909b4cdce3c83144ec18660475f76559feb9647ca9a9a63bc17336b10aaf614a",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250521_netdemand.csv": "b5b4ed9633838e16447629dea4ff5ff546021f75c47da8c14d95e220205be7ea",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250522_fuelsource.csv": "f4654c3275277224e4678c60d85e6f3a64d37ad993e08d13a6722d80f246e620",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250522_netdemand.csv": "d2801eccd7982515618a58cd1a198a38814a6ba77015ffcbfee99f377480b46a",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250523_fuelsource.csv": "c510b2d0e2b59ee012d14013956220c6f0d2dee025d6e97bd0fe16ff46f2176a",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250523_netdemand.csv": "0c2acd1de9ec2e2e9e06d26e5759faf6e2ad87f53d6d15f454efc9e915dae4af",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250524_fuelsource.csv": "3d5ad059bfa61dd5ebdcf20be636d2e3af11136c78d3fc0c38709a9c601b9a2f",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250524_netdemand.csv": "8b48954bc12563b90aa94a2b77385a31e81e00f338f32e48f691b113c0652aea",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250525_fuelsource.csv": "91d8e049e796561edbd1ba06402b4d3d002e41eeda4fd72bf14afa584f089206",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250525_netdemand.csv": "73699b05ad6037abdb76a6ee3d4d7d03ea38a85d705d74160a8cfa0396a51a1d",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250526_fuelsource.csv": "2f4aadad836a335f8d995f9bc042224cdb1c8d5780959a0f2db1ea8bab3a3325",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250526_netdemand.csv": "38ff5159a41af614968b18d75196aa355c1bfed07e52dbc6709ede8b57893cfc",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250527_fuelsource.csv": "8400393372785e5edfb4fa2da8ffecb879a71a738c95d8a8e9b60092153a317a",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250527_netdemand.csv": "0c635b06b0f751fa92a605fb55a183b77907c60c772e32af50d1b2d184e41b82",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250528_fuelsource.csv": "afe55e8bf45b68f002fe101e2a07d02bbd3e3873f3dc91d58a6599884a57fc98",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250528_netdemand.csv": "9228e07f02731425be32ca8e656c08d9b3fc92d57c9afbb305e305f4df6e70e8",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250529_fuelsource.csv": "8920274a0156cfce3eb86d397b8438009c606139f230cfab140388fc6c35d9e2",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250529_netdemand.csv": "a762b3f168e87fa0aaa85af071d349aad31c50b28355190d7b398aa5ae9f1011",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250530_fuelsource.csv": "4e8279b545fe2b2aa4b1b189815d4d4aeeacda3c6b19dac2a56ca1422f3d1aa5",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250530_netdemand.csv": "3586db108c398c59be95ed05d4bb07e2e4c0ae92d95a644db6c26942b1f33046",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250531_fuelsource.csv": "5dc0e5190858d040baa99070fbe459de59929c57831f1133c248200d962270f1",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250531_netdemand.csv": "2bdd0f011e12f5cac84f2417ccb20eb9bb5b644d9b3398b3a5c2274c2885ca4e",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250601_fuelsource.csv": "2e9d005305c0752dc076cdf9de31bffc10b813a8b2adaeeefcbc6ca13de3a5b4",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250601_netdemand.csv": "55d04fec43e33954d5e0bb9bcab020589ca5dc75c449aeb6aca7ca3c6d8b1218",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250602_fuelsource.csv": "71edf8c891932d15e6a046d7be8031eacacd607173f2a5f7098911ca1dd0f498",
+      "data/energy_model_v2/2025/raw/caiso_outlook/20250602_netdemand.csv": "2c9041732c6be41998b5b4a808ec7d2f7b98af2112866280f117ac67cf2b88ee"
+    }
+  },
+  "price_source": {
+    "source": "CAISO OASIS",
+    "url": "https://oasis.caiso.com/oasisapi/SingleZip",
+    "queryname": "PRC_LMP",
+    "version": 12,
+    "market": "DAM",
+    "node": "TH_NP15_GEN-APND",
+    "native_interval": "1 hour",
+    "timestamp_semantics": "interval_start",
+    "retrieved_at_utc": "2026-08-06T00:31:54.120274+00:00",
+    "units": "USD/MWh",
+    "query_window": "2025-04-30 through 2025-06-01 local delivery days",
+    "raw_sha256": "1d1553093938083e25e60ed695a065ac23de14bc178585cca75b6b0ea6eebed7"
+  },
+  "net_demand_signed_scale_mw": 33361.0,
+  "net_demand_signed_scale": "net_demand_mw divided by the maximum absolute net demand in the Pacific May-2025 reference window; clipped to [-1, 1]",
+  "processed": {
+    "data/energy_model_v2/2025/processed/global_amsterdam.csv": "ff4b845502b1ad7fb5b2d116dcf1060a3b9be52fe5ec0a797dd4427c1141ecf0",
+    "data/energy_model_v2/2025/processed/global_central.csv": "9221bf3fe6666059f62e62179b1104aa3d5291945cdcc117ccbeaa2862080cff",
+    "data/energy_model_v2/2025/processed/global_pacific.csv": "474803784969cc4f2d15ccfcfb2e65e4c86f6e2899866253a8da07431337fa34",
+    "data/energy_model_v2/2025/processed/global_singapore.csv": "42b9e314c623689c41970141f48803303dea9f4619883b38bad86cf11a11df47",
+    "data/energy_model_v2/2025/processed/us_central.csv": "9221bf3fe6666059f62e62179b1104aa3d5291945cdcc117ccbeaa2862080cff",
+    "data/energy_model_v2/2025/processed/us_eastern.csv": "63d35f8b163f9fc1aad1ad9138527c6902db5b6c7752d4a46e42c9502da52426",
+    "data/energy_model_v2/2025/processed/us_mountain.csv": "04430d46e2e5f4cae65e9102d613bee869de18e98010f8767a5a65b42e453e93",
+    "data/energy_model_v2/2025/processed/us_pacific.csv": "474803784969cc4f2d15ccfcfb2e65e4c86f6e2899866253a8da07431337fa34"
+  },
+  "scenarios": [
+    "env/scenarios/us_model_v2_2025.yaml",
+    "env/scenarios/us_model_eh_v2_2025.yaml",
+    "env/scenarios/global_model_v2_2025.yaml",
+    "env/scenarios/global_model_eh_v2_2025.yaml"
+  ],
+  "figures": [
+    "output/energy_model_v2/2025/reference_month.png",
+    "output/energy_model_v2/2025/us_shifted_daily_profiles.png",
+    "output/energy_model_v2/2025/global_shifted_daily_profiles.png"
+  ],
+  "diagnostics": {
+    "us_pacific": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.932996411290326,
+      "price_std_usd_mwh": 16.48177319320807,
+      "net_demand_mean_signed": 0.35697235206069283,
+      "price_net_demand_correlation": 0.8947514926990867,
+      "average_price_peak_utc_hour": 3,
+      "average_net_demand_peak_utc_hour": 3
+    },
+    "us_mountain": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.93228879032258,
+      "price_std_usd_mwh": 16.481410894395058,
+      "net_demand_mean_signed": 0.35710186150333934,
+      "price_net_demand_correlation": 0.8945807803696898,
+      "average_price_peak_utc_hour": 2,
+      "average_net_demand_peak_utc_hour": 2
+    },
+    "us_central": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.936423306451612,
+      "price_std_usd_mwh": 16.48299032804968,
+      "net_demand_mean_signed": 0.3571702254601799,
+      "price_net_demand_correlation": 0.8946151899699445,
+      "average_price_peak_utc_hour": 1,
+      "average_net_demand_peak_utc_hour": 1
+    },
+    "us_eastern": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.940634596774192,
+      "price_std_usd_mwh": 16.484477862114364,
+      "net_demand_mean_signed": 0.35722472659520554,
+      "price_net_demand_correlation": 0.8946661590539223,
+      "average_price_peak_utc_hour": 0,
+      "average_net_demand_peak_utc_hour": 0
+    },
+    "global_pacific": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.932996411290326,
+      "price_std_usd_mwh": 16.48177319320807,
+      "net_demand_mean_signed": 0.35697235206069283,
+      "price_net_demand_correlation": 0.8947514926990867,
+      "average_price_peak_utc_hour": 3,
+      "average_net_demand_peak_utc_hour": 3
+    },
+    "global_central": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.936423306451612,
+      "price_std_usd_mwh": 16.48299032804968,
+      "net_demand_mean_signed": 0.3571702254601799,
+      "price_net_demand_correlation": 0.8946151899699445,
+      "average_price_peak_utc_hour": 1,
+      "average_net_demand_peak_utc_hour": 1
+    },
+    "global_amsterdam": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 25.941150295698925,
+      "price_std_usd_mwh": 16.472579488506955,
+      "net_demand_mean_signed": 0.35726814150169334,
+      "price_net_demand_correlation": 0.8942853508401477,
+      "average_price_peak_utc_hour": 18,
+      "average_net_demand_peak_utc_hour": 18
+    },
+    "global_singapore": {
+      "rows": 8928,
+      "price_mean_usd_mwh": 26.086546532258062,
+      "price_std_usd_mwh": 16.39199138084785,
+      "net_demand_mean_signed": 0.35879258186135615,
+      "price_net_demand_correlation": 0.8918971798287142,
+      "average_price_peak_utc_hour": 12,
+      "average_net_demand_peak_utc_hour": 12
+    }
+  }
+}
