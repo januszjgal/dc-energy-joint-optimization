@@ -1,0 +1,1823 @@
+{
+  "fold": "ad_to_eh",
+  "config": "us_spatial",
+  "train_scenario": "env\\scenarios\\us_model_v2_2025.yaml",
+  "test_scenario": "env\\scenarios\\us_model_eh_v2_2025.yaml",
+  "baselines": {
+    "Status Quo (local, no deferral)": {
+      "total_cost": 6218995.615642358,
+      "peak_grid_mw": 297.96657596288844,
+      "mean_grid_mw": 276.8210858762236,
+      "load_factor": 0.9290340199455844,
+      "total_energy_cost": 5294680.6179360645,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 924314.9977062925,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 308.41333341739727,
+      "demand_charge_ref": 4626200.00126096,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2471458.6547029237,
+      "nd_weighted_load": 870042.6738411923,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1364403.2872235586,
+        "US-Mountain": 1294353.4276668623,
+        "US-Central": 1477072.7689654646,
+        "US-Eastern": 1158851.1340801793
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 241621.6106770884,
+        "US-Mountain": 220483.9417490971,
+        "US-Central": 288332.75871774333,
+        "US-Eastern": 173876.68656236376
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 82.37419431369314,
+        "US-Mountain": 74.80259322988417,
+        "US-Central": 82.52909793898822,
+        "US-Eastern": 68.70744793483175
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11466.114062036244,
+          "max_up_delta_mw": 1.1140620362439222,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6826.693270281412,
+          "p95_up_delta_mw": -3.2567297185778443,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11462.958883624766,
+              "max_up_delta_mw": -2.0411163752341963,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6820.102087185065,
+              "p95_up_delta_mw": -5.647912814934898
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11466.114062036244,
+              "max_up_delta_mw": 1.1140620362439222,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.671273119601,
+              "p95_up_delta_mw": -0.07872688039878994
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.986607602821,
+              "max_up_delta_mw": -0.013392397178904503,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6823.257432958091,
+              "p95_up_delta_mw": -2.492567041908842
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11461.373294082112,
+              "max_up_delta_mw": -3.6267059178881027,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.771354379742,
+              "p95_up_delta_mw": -0.9786456202582485
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22270.779936899977,
+          "max_up_delta_mw": 1.7799368999767466,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17467.663614286263,
+          "p95_up_delta_mw": -3.3363857137374,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22270.779936899977,
+              "max_up_delta_mw": 1.7799368999767466,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17460.790407133096,
+              "p95_up_delta_mw": -3.0595928668881243
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22268.82510958668,
+              "max_up_delta_mw": -0.17489041332009947,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17465.24524489773,
+              "p95_up_delta_mw": 1.395244897747034
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22269.350571553656,
+              "max_up_delta_mw": 0.35057155365575454,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17467.528803033114,
+              "p95_up_delta_mw": 3.6788030331299524
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22262.983223669984,
+              "max_up_delta_mw": -6.016776330016,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17461.143021965523,
+              "p95_up_delta_mw": -2.706978034460917
+            }
+          }
+        }
+      }
+    },
+    "Round Robin": {
+      "total_cost": 6210884.398110852,
+      "peak_grid_mw": 298.3039771739414,
+      "mean_grid_mw": 277.04395332820536,
+      "load_factor": 0.9287303372648655,
+      "total_energy_cost": 5292227.173639238,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 918657.2244716133,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 298.3039771739414,
+      "demand_charge_ref": 4474559.657609121,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2473448.4153142176,
+      "nd_weighted_load": 869244.2361250547,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1406146.8970422044,
+        "US-Mountain": 1303947.8649613387,
+        "US-Central": 1414806.4853659894,
+        "US-Eastern": 1167325.9262697054
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 258008.5631691423,
+        "US-Mountain": 221968.57666353858,
+        "US-Central": 261009.67444312133,
+        "US-Eastern": 177670.41019581113
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 80.22247469641374,
+        "US-Mountain": 73.09073763433489,
+        "US-Central": 79.54195447534012,
+        "US-Eastern": 65.44881036785266
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.57581985733,
+          "max_up_delta_mw": 0.5758198573294067,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.561381794266,
+          "p95_up_delta_mw": -1.3886182057240148,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.804023862187,
+              "max_up_delta_mw": -1.195976137812977,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.521814622994,
+              "p95_up_delta_mw": -0.22818537700641173
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.57581985733,
+              "max_up_delta_mw": 0.5758198573294067,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.699484826219,
+              "p95_up_delta_mw": 0.9494848262193045
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.94883317735,
+              "max_up_delta_mw": -1.051166822649975,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.32460818007,
+              "p95_up_delta_mw": -1.4253918199301552
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.698696418016,
+              "max_up_delta_mw": -0.30130358198402973,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.087984855367,
+              "p95_up_delta_mw": -1.6620151446331874
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.0066849394,
+          "max_up_delta_mw": -1.9933150606011623,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.863582383638,
+          "p95_up_delta_mw": -2.1364176163624506,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.0066849394,
+              "max_up_delta_mw": -1.9933150606011623,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.091993449514,
+              "p95_up_delta_mw": -1.7580065504698723
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.111028738946,
+              "max_up_delta_mw": -2.888971261054394,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.127013609606,
+              "p95_up_delta_mw": -0.7229863903776277
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22264.96793831883,
+              "max_up_delta_mw": -4.03206168116958,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.198534195515,
+              "p95_up_delta_mw": -0.6514658044688986
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.134547280362,
+              "max_up_delta_mw": -2.8654527196376876,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.98261732764,
+              "p95_up_delta_mw": -0.8673826723425009
+            }
+          }
+        }
+      }
+    }
+  },
+  "ppo_seeds": {
+    "101": {
+      "total_cost": 6183513.80133142,
+      "peak_grid_mw": 296.75269617156374,
+      "mean_grid_mw": 275.97137425325735,
+      "load_factor": 0.929970907808393,
+      "total_energy_cost": 5273353.755209569,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 910160.046121852,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 298.2306573334257,
+      "demand_charge_ref": 4473459.860001385,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2463872.4293330815,
+      "nd_weighted_load": 866250.219013472,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1381015.857770356,
+        "US-Mountain": 1371142.7541183282,
+        "US-Central": 1328831.3644465432,
+        "US-Eastern": 1192363.7788743414
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 249224.4806673286,
+        "US-Mountain": 245527.36554932946,
+        "US-Central": 230735.6463920475,
+        "US-Eastern": 184672.55351314638
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 78.59128864562209,
+        "US-Mountain": 77.61558824247605,
+        "US-Central": 73.8293812995133,
+        "US-Eastern": 68.19439914581426
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.773837545903,
+          "max_up_delta_mw": 0.7738375459030067,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.166442256626,
+          "p95_up_delta_mw": -1.783557743363417,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.888743456584,
+              "max_up_delta_mw": -1.1112565434159478,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.585149163178,
+              "p95_up_delta_mw": -0.1648508368216426
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.773837545903,
+              "max_up_delta_mw": 0.7738375459030067,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6827.00431995152,
+              "p95_up_delta_mw": 1.2543199515203014
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.188666980896,
+              "max_up_delta_mw": -0.8113330191044952,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.627690658897,
+              "p95_up_delta_mw": -1.122309341102664
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.309102536186,
+              "max_up_delta_mw": -0.6908974638135987,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6823.663635363014,
+              "p95_up_delta_mw": -2.086364636986218
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.251191087395,
+          "max_up_delta_mw": -1.7488089126054547,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.931616496655,
+          "p95_up_delta_mw": -2.0683835033451032,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.251191087395,
+              "max_up_delta_mw": -1.7488089126054547,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.28983729599,
+              "p95_up_delta_mw": -1.5601627039941377
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.085081465055,
+              "max_up_delta_mw": -2.9149185349451727,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.278412855438,
+              "p95_up_delta_mw": -0.5715871445463563
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.834606433124,
+              "max_up_delta_mw": -3.165393566876446,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.504704737574,
+              "p95_up_delta_mw": -0.34529526241021813
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.072587563656,
+              "max_up_delta_mw": -3.9274124363437295,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.078177442003,
+              "p95_up_delta_mw": -1.7718225579810678
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": 0.5705393041553428,
+      "feasible": true
+    },
+    "102": {
+      "total_cost": 6245841.476743024,
+      "peak_grid_mw": 290.1494544508044,
+      "mean_grid_mw": 274.22915941718793,
+      "load_factor": 0.9451307083663126,
+      "total_energy_cost": 5239804.108543481,
+      "total_backlog_cost": 95721.12370269185,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 3.7991667375779787,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 910316.244496852,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 290.9258764773903,
+      "demand_charge_ref": 4363888.147160854,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2448317.9352766536,
+      "nd_weighted_load": 860706.7610146932,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1224838.1887593635,
+        "US-Mountain": 1579892.7114351678,
+        "US-Central": 1311796.363244948,
+        "US-Eastern": 1123276.8451040012
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 196048.88443510418,
+        "US-Mountain": 324848.1803798266,
+        "US-Central": 224473.3920952325,
+        "US-Eastern": 164945.78758668873
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 68.3723058310995,
+        "US-Mountain": 86.79693395505264,
+        "US-Central": 73.0878246414747,
+        "US-Eastern": 62.66881204976351
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.42885808110525026,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.814688977638,
+          "max_up_delta_mw": 0.8146889776380704,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.692673208697,
+          "p95_up_delta_mw": -1.2573267912930532,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.090033333396,
+              "max_up_delta_mw": -0.9099666666043049,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.610003782905,
+              "p95_up_delta_mw": -0.1399962170953586
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.814688977638,
+              "max_up_delta_mw": 0.8146889776380704,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.987610633227,
+              "p95_up_delta_mw": 0.2376106332267227
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.093532508947,
+              "max_up_delta_mw": -0.9064674910532631,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.485243561836,
+              "p95_up_delta_mw": -1.2647564381641132
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.86540949365,
+              "max_up_delta_mw": -0.1345905063499231,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.413639509021,
+              "p95_up_delta_mw": -1.336360490979132
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.337525755698,
+          "max_up_delta_mw": -1.6624742443018476,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17469.259885357333,
+          "p95_up_delta_mw": -1.7401146426673222,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.337525755698,
+              "max_up_delta_mw": -1.6624742443018476,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.40620027749,
+              "p95_up_delta_mw": -1.4437997224922583
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22263.804852029225,
+              "max_up_delta_mw": -5.195147970774997,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.849999999984,
+              "p95_up_delta_mw": 0.0
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.511456261593,
+              "max_up_delta_mw": -3.4885437384073157,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.073685085896,
+              "p95_up_delta_mw": -0.7763149140882888
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.79800541281,
+              "max_up_delta_mw": -2.201994587190711,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.43253179143,
+              "p95_up_delta_mw": -0.4174682085540553
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": -0.4316751893688757,
+      "feasible": true
+    },
+    "103": {
+      "total_cost": 6185907.156150627,
+      "peak_grid_mw": 297.0273422362895,
+      "mean_grid_mw": 276.04916906065415,
+      "load_factor": 0.9293729223118224,
+      "total_energy_cost": 5273053.568251542,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 912853.5878990847,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 298.0899354759952,
+      "demand_charge_ref": 4471349.032139929,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2464566.98137352,
+      "nd_weighted_load": 866096.4050783918,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1341873.5143787034,
+        "US-Mountain": 1210886.9919235175,
+        "US-Central": 1483100.7879580571,
+        "US-Eastern": 1237192.2739912637
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 234889.2919242663,
+        "US-Mountain": 191740.57831669305,
+        "US-Central": 287230.2249226173,
+        "US-Eastern": 198993.49273550796
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 76.30430048988266,
+        "US-Mountain": 66.8793712952826,
+        "US-Central": 84.31466211368148,
+        "US-Eastern": 70.5916015771485
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.441225705059,
+          "max_up_delta_mw": 0.44122570505896874,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.073636758745,
+          "p95_up_delta_mw": -1.8763632412446896,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.862564743835,
+              "max_up_delta_mw": -1.1374352561651904,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.454230269703,
+              "p95_up_delta_mw": -0.29576973029725195
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.441225705059,
+              "max_up_delta_mw": 0.44122570505896874,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.482399612571,
+              "p95_up_delta_mw": 0.7323996125705889
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.058838834402,
+              "max_up_delta_mw": -0.9411611655978049,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.243551560099,
+              "p95_up_delta_mw": -1.5064484399008506
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.463186091974,
+              "max_up_delta_mw": -0.5368139080255787,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6823.621638335464,
+              "p95_up_delta_mw": -2.128361664535987
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22266.932145259765,
+          "max_up_delta_mw": -2.067854740234907,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17469.180551204314,
+          "p95_up_delta_mw": -1.819448795686185,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.932145259765,
+              "max_up_delta_mw": -2.067854740234907,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.123844178856,
+              "p95_up_delta_mw": -1.7261558211284864
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.81689283996,
+              "max_up_delta_mw": -2.1831071600390715,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.36180832099,
+              "p95_up_delta_mw": -0.4881916789927345
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.01105550839,
+              "max_up_delta_mw": -3.988944491611619,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.792724533843,
+              "p95_up_delta_mw": -0.057275466140708886
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.202880239423,
+              "max_up_delta_mw": -3.7971197605766065,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.397416841242,
+              "p95_up_delta_mw": -1.4525831587416178
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": 0.5320547164964189,
+      "feasible": true
+    },
+    "104": {
+      "total_cost": 6194182.890160187,
+      "peak_grid_mw": 297.5625809898796,
+      "mean_grid_mw": 276.28148128274074,
+      "load_factor": 0.9284819360137804,
+      "total_energy_cost": 5275255.917882468,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 918926.9722777198,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 298.90759435991714,
+      "demand_charge_ref": 4483613.915398757,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2466641.0648923093,
+      "nd_weighted_load": 866279.7520087921,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1280958.1043851855,
+        "US-Mountain": 1398712.8042816878,
+        "US-Central": 1499508.0077136317,
+        "US-Eastern": 1096077.0015019623
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 213943.60884582324,
+        "US-Mountain": 255751.67626561204,
+        "US-Central": 292350.85566718114,
+        "US-Eastern": 156880.8314991033
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 72.77620706994956,
+        "US-Mountain": 79.63107384170209,
+        "US-Central": 85.8468307183436,
+        "US-Eastern": 60.653482729921905
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.912237082966,
+          "max_up_delta_mw": 0.9122370829663851,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.996999889869,
+          "p95_up_delta_mw": -0.9530001101211383,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.91198635028,
+              "max_up_delta_mw": -1.0880136497198691,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.399804174398,
+              "p95_up_delta_mw": -0.35019582560198614
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.912237082966,
+              "max_up_delta_mw": 0.9122370829663851,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6827.188945058673,
+              "p95_up_delta_mw": 1.4389450586731982
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.488478464848,
+              "max_up_delta_mw": -1.5115215351524967,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6823.711608107447,
+              "p95_up_delta_mw": -2.0383918925526814
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.753890476299,
+              "max_up_delta_mw": -0.2461095237013069,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.427585229088,
+              "p95_up_delta_mw": -1.3224147709115641
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22266.846115266562,
+          "max_up_delta_mw": -2.153884733437735,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.42469804691,
+          "p95_up_delta_mw": -2.5753019530893653,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.846115266562,
+              "max_up_delta_mw": -2.153884733437735,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.08717000241,
+              "p95_up_delta_mw": -1.7628299975731352
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.26076864623,
+              "max_up_delta_mw": -2.7392313537711743,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.54623477448,
+              "p95_up_delta_mw": -0.3037652255043213
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22263.439278520014,
+              "max_up_delta_mw": -5.560721479985659,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.327716349973,
+              "p95_up_delta_mw": -1.5222836500106496
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.69464322205,
+              "max_up_delta_mw": -2.3053567779497826,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.195859139596,
+              "p95_up_delta_mw": -0.6541408603879972
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": 0.3989828424988779,
+      "feasible": true
+    },
+    "105": {
+      "total_cost": 6253228.899665154,
+      "peak_grid_mw": 300.53165235484187,
+      "mean_grid_mw": 278.5983741368714,
+      "load_factor": 0.9270184087229737,
+      "total_energy_cost": 5318765.010600646,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 934463.8890645078,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 301.5320917050412,
+      "demand_charge_ref": 4522981.375575618,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2487326.2842939883,
+      "nd_weighted_load": 873367.8783951413,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1499116.525328796,
+        "US-Mountain": 1161930.9267342328,
+        "US-Central": 1466353.7129710254,
+        "US-Eastern": 1191363.845566592
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 292176.37867309555,
+        "US-Mountain": 176592.6568348902,
+        "US-Central": 280308.0818103101,
+        "US-Eastern": 185386.771746212
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 87.71865852872396,
+        "US-Mountain": 63.76309251456669,
+        "US-Central": 82.86118034365155,
+        "US-Eastern": 67.18916031809898
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.360007158843,
+          "max_up_delta_mw": 0.3600071588425635,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.592066853144,
+          "p95_up_delta_mw": -1.3579331468454257,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.276906986706,
+              "max_up_delta_mw": -1.723093013293692,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.140423254632,
+              "p95_up_delta_mw": -0.609576745368031
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.360007158843,
+              "max_up_delta_mw": 0.3600071588425635,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.325702428464,
+              "p95_up_delta_mw": 0.5757024284639556
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.905136182435,
+              "max_up_delta_mw": -1.0948638175650558,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.190190133793,
+              "p95_up_delta_mw": -1.559809866206706
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.8044001441,
+              "max_up_delta_mw": -0.19559985590058204,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.122174232343,
+              "p95_up_delta_mw": -1.6278257676567591
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.030682320205,
+          "max_up_delta_mw": -1.9693176797954948,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.478841051256,
+          "p95_up_delta_mw": -2.5211589487444144,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.639758606623,
+              "max_up_delta_mw": -3.360241393376782,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17460.914728077485,
+              "p95_up_delta_mw": -2.9352719224989414
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.030682320205,
+              "max_up_delta_mw": -1.9693176797954948,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.400494239453,
+              "p95_up_delta_mw": -0.449505760530883
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22264.691899501297,
+              "max_up_delta_mw": -4.308100498703425,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.248813929225,
+              "p95_up_delta_mw": -0.6011860707585583
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.329675648576,
+              "max_up_delta_mw": -2.6703243514239148,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.342913214616,
+              "p95_up_delta_mw": -0.5070867853683012
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": -0.5504632281246595,
+      "feasible": true
+    },
+    "106": {
+      "total_cost": 6244259.3510192325,
+      "peak_grid_mw": 300.1757565991139,
+      "mean_grid_mw": 278.3543864401841,
+      "load_factor": 0.9273046884060249,
+      "total_energy_cost": 5314795.2048614025,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 929464.1461578298,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 302.41114005063207,
+      "demand_charge_ref": 4536167.100759481,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2485147.9621379636,
+      "nd_weighted_load": 872789.4513229618,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1503774.4472389799,
+        "US-Mountain": 1299863.834309704,
+        "US-Central": 1363767.694532634,
+        "US-Eastern": 1147389.2287800848
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 294166.55305045896,
+        "US-Mountain": 219781.8704852457,
+        "US-Central": 243093.1318495974,
+        "US-Eastern": 172422.5907725277
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 87.65775071696389,
+        "US-Mountain": 74.05191955014989,
+        "US-Central": 76.13967547624075,
+        "US-Eastern": 64.56179430727755
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.272742844112,
+          "max_up_delta_mw": 0.27274284411214467,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.884952618889,
+          "p95_up_delta_mw": -1.065047381101067,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.38319658289,
+              "max_up_delta_mw": -1.6168034171096224,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.247308496728,
+              "p95_up_delta_mw": -0.5026915032722172
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.272742844112,
+              "max_up_delta_mw": 0.27274284411214467,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.362069315897,
+              "p95_up_delta_mw": 0.6120693158973154
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.23304620982,
+              "max_up_delta_mw": -0.7669537901801959,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.697922601725,
+              "p95_up_delta_mw": -1.0520773982752871
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.028539756388,
+              "max_up_delta_mw": 0.028539756387544912,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.419059255724,
+              "p95_up_delta_mw": -1.330940744275722
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.039893125442,
+          "max_up_delta_mw": -1.9601068745578232,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17467.83060473739,
+          "p95_up_delta_mw": -3.1693952626083046,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.952032953075,
+              "max_up_delta_mw": -3.047967046924896,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17461.136310188995,
+              "p95_up_delta_mw": -2.713689810989308
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.093719876317,
+              "max_up_delta_mw": -3.9062801236832456,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.21408386815,
+              "p95_up_delta_mw": -1.6359161318323459
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.036801667076,
+              "max_up_delta_mw": -2.963198332923639,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.798317361227,
+              "p95_up_delta_mw": -0.0516826387574838
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.039893125442,
+              "max_up_delta_mw": -1.9601068745578232,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.80153748663,
+              "p95_up_delta_mw": -0.04846251335402485
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": -0.4062349764860774,
+      "feasible": true
+    },
+    "107": {
+      "total_cost": 6294712.54066719,
+      "peak_grid_mw": 301.4496460908957,
+      "mean_grid_mw": 279.7330013683573,
+      "load_factor": 0.9279592960079633,
+      "total_energy_cost": 5344322.870164708,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 950389.6705024814,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 302.71005147191113,
+      "demand_charge_ref": 4540650.772078667,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2497456.2362166946,
+      "nd_weighted_load": 877797.4574662877,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1576048.0868485223,
+        "US-Mountain": 1137980.249784858,
+        "US-Central": 1468025.0769422585,
+        "US-Eastern": 1162269.4565890697
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 323648.09564470133,
+        "US-Mountain": 169720.86909514156,
+        "US-Central": 281445.90787128644,
+        "US-Eastern": 175574.79789135212
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 91.2361683485487,
+        "US-Mountain": 62.20948863653278,
+        "US-Central": 83.18365194692312,
+        "US-Eastern": 66.0807425399065
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.470335127933,
+          "max_up_delta_mw": 0.47033512793314003,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.19513241235,
+          "p95_up_delta_mw": -1.7548675876396373,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.300745201428,
+              "max_up_delta_mw": -1.6992547985719284,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.341682214752,
+              "p95_up_delta_mw": -0.40831778524807305
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.470335127933,
+              "max_up_delta_mw": 0.47033512793314003,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.41101167048,
+              "p95_up_delta_mw": 0.6610116704796383
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.090721014203,
+              "max_up_delta_mw": -0.9092789857968455,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.389322736852,
+              "p95_up_delta_mw": -1.3606772631483182
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.349019590467,
+              "max_up_delta_mw": -0.6509804095330765,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6823.831694379107,
+              "p95_up_delta_mw": -1.9183056208930793
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.618530802854,
+          "max_up_delta_mw": -1.381469197145634,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.55007014587,
+          "p95_up_delta_mw": -2.4499298541304597,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.1650080688,
+              "max_up_delta_mw": -2.8349919311986014,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17461.1521980264,
+              "p95_up_delta_mw": -2.6978019735834096
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.618530802854,
+              "max_up_delta_mw": -1.381469197145634,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.867149448535,
+              "p95_up_delta_mw": 0.01714944855120848
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.28060857615,
+              "max_up_delta_mw": -3.7193914238487196,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.795987562335,
+              "p95_up_delta_mw": -0.054012437649362255
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.32784748872,
+              "max_up_delta_mw": -3.6721525112807285,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.16657511103,
+              "p95_up_delta_mw": -1.6834248889535957
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": -1.2175105065902483,
+      "feasible": true
+    },
+    "108": {
+      "total_cost": 6241560.096675809,
+      "peak_grid_mw": 300.2338149231933,
+      "mean_grid_mw": 278.3049176517575,
+      "load_factor": 0.9269606014331007,
+      "total_energy_cost": 5312979.916996141,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 928580.1796796668,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 302.1924551203098,
+      "demand_charge_ref": 4532886.826804646,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2484706.304794891,
+      "nd_weighted_load": 872420.9128784923,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1479363.8338930358,
+        "US-Mountain": 1302644.8452047694,
+        "US-Central": 1394123.9653074031,
+        "US-Eastern": 1136847.2725909331
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 283789.57138341793,
+        "US-Mountain": 221756.53292364976,
+        "US-Central": 254220.72654863892,
+        "US-Eastern": 168813.3488239601
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 87.27346226215165,
+        "US-Mountain": 72.9504306019916,
+        "US-Central": 78.46766098248773,
+        "US-Eastern": 63.50090127367882
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.66459428095,
+          "max_up_delta_mw": 0.6645942809500411,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.774753935003,
+          "p95_up_delta_mw": -1.1752460649868226,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.051156169315,
+              "max_up_delta_mw": -1.9488438306852913,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.842049479084,
+              "p95_up_delta_mw": -0.9079505209156196
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.66459428095,
+              "max_up_delta_mw": 0.6645942809500411,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.782895324257,
+              "p95_up_delta_mw": 1.0328953242569696
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.27683017797,
+              "max_up_delta_mw": -0.7231698220293765,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.657428836914,
+              "p95_up_delta_mw": -1.092571163086177
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.777591492115,
+              "max_up_delta_mw": -0.22240850788512034,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.276754547579,
+              "p95_up_delta_mw": -1.473245452420997
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22266.510566553545,
+          "max_up_delta_mw": -2.489433446455223,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.276679650397,
+          "p95_up_delta_mw": -2.723320349603455,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22264.871878400347,
+              "max_up_delta_mw": -4.128121599653241,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17460.187418656576,
+              "p95_up_delta_mw": -3.66258134340751
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.428041307896,
+              "max_up_delta_mw": -2.57195869210409,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.405492571525,
+              "p95_up_delta_mw": -0.4445074284594739
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.936294167845,
+              "max_up_delta_mw": -3.0637058321553923,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17464.047804875827,
+              "p95_up_delta_mw": 0.19780487584284856
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.510566553545,
+              "max_up_delta_mw": -2.489433446455223,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.232613793978,
+              "p95_up_delta_mw": -0.6173862060059037
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": -0.36283159577561863,
+      "feasible": true
+    },
+    "109": {
+      "total_cost": 6325239.662198757,
+      "peak_grid_mw": 302.6244366718944,
+      "mean_grid_mw": 280.5433529366576,
+      "load_factor": 0.9270346969396357,
+      "total_energy_cost": 5361868.073447831,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 963371.5887509258,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 305.85589689987137,
+      "demand_charge_ref": 4587838.45349807,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2504691.0550184795,
+      "nd_weighted_load": 880862.4360923688,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1551246.6195905397,
+        "US-Mountain": 1328579.6077996239,
+        "US-Central": 1494496.0617916856,
+        "US-Eastern": 987545.7842659819
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 315244.39697178005,
+        "US-Mountain": 229364.83713369776,
+        "US-Central": 291493.3069775724,
+        "US-Eastern": 127269.04766787565
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 90.52001975722281,
+        "US-Mountain": 76.11752789664259,
+        "US-Central": 84.87201155439922,
+        "US-Eastern": 54.34633769160677
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.248939065248,
+          "max_up_delta_mw": 0.24893906524812337,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6829.064485408348,
+          "p95_up_delta_mw": -0.8855145916413676,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.804817852546,
+              "max_up_delta_mw": -1.1951821474540338,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.910765913641,
+              "p95_up_delta_mw": 0.16076591364071646
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.248939065248,
+              "max_up_delta_mw": 0.24893906524812337,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.33438303375,
+              "p95_up_delta_mw": 0.584383033749873
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.960609185711,
+              "max_up_delta_mw": -1.0393908142887085,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.264904075622,
+              "p95_up_delta_mw": -1.4850959243776742
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.585173600068,
+              "max_up_delta_mw": -0.41482639993228076,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.720974145335,
+              "p95_up_delta_mw": -1.0290258546647237
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22267.802189940106,
+          "max_up_delta_mw": -1.197810059893527,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.374350435013,
+          "p95_up_delta_mw": -2.6256495649868157,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.802189940106,
+              "max_up_delta_mw": -1.197810059893527,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.621214110055,
+              "p95_up_delta_mw": -1.2287858899289859
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22264.70090299192,
+              "max_up_delta_mw": -4.299097008079116,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17461.934545761873,
+              "p95_up_delta_mw": -1.9154542381111241
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22264.988359326868,
+              "max_up_delta_mw": -4.011640673132206,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.65839064408,
+              "p95_up_delta_mw": -0.19160935590480221
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.905420759867,
+              "max_up_delta_mw": -2.094579240132589,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.84710583157,
+              "p95_up_delta_mw": -1.002894168414059
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": -1.708379505674009,
+      "feasible": true
+    },
+    "110": {
+      "total_cost": 6199930.822147522,
+      "peak_grid_mw": 297.35659376013575,
+      "mean_grid_mw": 276.38370483198725,
+      "load_factor": 0.9294688957021535,
+      "total_energy_cost": 5279102.569969816,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 20666.15157133341,
+      "service_served_total": 20666.15157133341,
+      "total_peak_penalty": 920828.2521777063,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 0.0,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 25.0,
+      "configured_deadline_penalty_weight": 2.0,
+      "effective_deadline_penalty_weight": 2.0,
+      "reward_scale": 1.0,
+      "batch_completion_shaping_enabled": false,
+      "billed_peak_sum_mw": 299.6921548679872,
+      "demand_charge_ref": 4495382.323019808,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2467553.7167399824,
+      "nd_weighted_load": 867027.0819767806,
+      "per_dc_energy_cost": {
+        "US-Pacific": 1287911.4433059774,
+        "US-Mountain": 1373156.5530143634,
+        "US-Central": 1522016.6226324185,
+        "US-Eastern": 1096017.951017057
+      },
+      "per_dc_peak_penalty": {
+        "US-Pacific": 217562.18794837678,
+        "US-Mountain": 245583.3930895712,
+        "US-Central": 300584.3710027552,
+        "US-Eastern": 157098.30013700316
+      },
+      "per_dc_billed_peak_mw": {
+        "US-Pacific": 72.7584511948221,
+        "US-Mountain": 78.13128960255044,
+        "US-Central": 87.90179973584438,
+        "US-Eastern": 60.900614334770275
+      },
+      "per_dc_avg_backlog": {
+        "US-Pacific": 0.0,
+        "US-Mountain": 0.0,
+        "US-Central": 0.0,
+        "US-Eastern": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11465.511518740594,
+          "max_up_delta_mw": 0.5115187405936013,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6828.960612745137,
+          "p95_up_delta_mw": -0.9893872548527725,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.379576179475,
+              "max_up_delta_mw": -0.6204238205245929,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.934434710223,
+              "p95_up_delta_mw": 0.18443471022328595
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.511518740594,
+              "max_up_delta_mw": 0.5115187405936013,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.7092704861925,
+              "p95_up_delta_mw": 0.9592704861925085
+            },
+            "US-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.335947781807,
+              "max_up_delta_mw": -1.6640522181933193,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6823.586958328514,
+              "p95_up_delta_mw": -2.1630416714860985
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.832321687109,
+              "max_up_delta_mw": -0.16767831289143942,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.470848808351,
+              "p95_up_delta_mw": -1.2791511916493619
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22268.486576094976,
+          "max_up_delta_mw": -0.5134239050239557,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17468.17878384811,
+          "p95_up_delta_mw": -2.82121615188953,
+          "per_dc": {
+            "US-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22268.486576094976,
+              "max_up_delta_mw": -0.5134239050239557,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.429942490216,
+              "p95_up_delta_mw": -0.4200575097675028
+            },
+            "US-Mountain": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.150192388028,
+              "max_up_delta_mw": -3.84980761197221,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.497521828136,
+              "p95_up_delta_mw": -1.3524781718479062
+            },
+            "US-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22262.988959720173,
+              "max_up_delta_mw": -6.011040279827284,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17461.940489089975,
+              "p95_up_delta_mw": -1.9095109100089758
+            },
+            "US-Eastern": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22266.853939305063,
+              "max_up_delta_mw": -2.1460606949367502,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.358108135457,
+              "p95_up_delta_mw": -0.4918918645271333
+            }
+          }
+        }
+      },
+      "savings_vs_status_quo_pct": 0.3065574358483657,
+      "feasible": true
+    }
+  },
+  "qp": {
+    "status": "Solved",
+    "optimum_total": 5767796.83773124,
+    "objective_constant_idle_and_phi": 3531401.063658017,
+    "demand_charge_rate": 0.0,
+    "n_vars": 107136,
+    "n_constraints": 187488,
+    "solve_seconds": 0.9
+  },
+  "summary": {
+    "status_quo_cost": 6218995.615642358,
+    "ppo_mean_cost": 6236837.669675892,
+    "ppo_std_cost": 47387.802416102546,
+    "ppo_mean_savings_pct": -0.28689607030204833,
+    "ppo_std_savings_pct": 0.7619848178845818,
+    "ppo_mean_savings_ci95_optimizer": [
+      -0.760092874429771,
+      0.146445450884611
+    ],
+    "ppo_min_savings_pct": -1.708379505674009,
+    "ppo_max_savings_pct": 0.5705393041553428,
+    "all_seeds_positive": false,
+    "minimum_service_completion": 1.0,
+    "minimum_batch_completion": 1.0,
+    "all_seeds_feasible": true,
+    "best_feasible_baseline": "Round Robin",
+    "best_feasible_baseline_cost": 6210884.398110852,
+    "ppo_gap_to_qp_pct": 8.132062295889549
+  }
+}

@@ -20,6 +20,7 @@ from docx.shared import Inches, Pt, RGBColor
 ROOT = Path(__file__).resolve().parent.parent
 FIGS = ROOT / "output" / "paper_figs"
 ENERGY_FIGS = ROOT / "output" / "energy_model_v2" / "2025"
+OOF_FIGS = ROOT / "output" / "oof_v2_2025"
 OUT = ROOT / "thesis_paper.docx"
 
 doc = Document()
@@ -138,10 +139,9 @@ P("Grid-Aware Spatio-Temporal Load Shaping for Geo-Distributed Data Centers "
 P("A Cell-Aggregate Study on Google ClusterData 2019", bold=True, size=13,
   align=WD_ALIGN_PARAGRAPH.CENTER, space_after=8)
 P("Janusz Gal", size=11, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
-P("Master's Thesis Draft — energy-model v2 design gate. The real May-2025 "
-  "CAISO source and corrected QP gate are current. Prior learned-policy results "
-  "are archived separately as energy-model v1 evidence and are not final v2 "
-  "claims.",
+P("Master's Thesis Draft — frozen energy-model v2 campaign: 80 PPO models, "
+  "two symmetric held-out workload folds, and 10 optimizer seeds/configuration. "
+  "The broad joint-shaping headline criterion failed; v1 remains historical.",
   italic=True, size=8, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
 
 P("Abstract — Hyperscale data centers are now grid-scale electrical loads whose "
@@ -159,11 +159,19 @@ P("Abstract — Hyperscale data centers are now grid-scale electrical loads whos
   "equal 100 MW/unit-capacity proxies, and current batch arrivals are observed "
   "before same-step release. Routing is unrestricted and therefore represents "
   "an optimistic upper bound, not a deployment claim. The corrected "
-  "clairvoyant-QP gate finds 8.0–17.4% "
-  "joint headroom, of which only 0.6–2.3% is incremental temporal value. "
-  "An a–d-only coefficient sweep supports α=0.015 for the convex positive-grid-"
-  "stress term; a standardized demand charge remains secondary. No v2 PPO "
-  "training has begun.", size=9)
+  "clairvoyant-QP gate finds 8.0–17.4% joint headroom, of which only 0.6–2.3% "
+  "is incremental temporal value. We then train 80 PPO models under a frozen "
+  "two-fold a–d/e–h protocol with 10 seeds/configuration and no test-fold "
+  "selection. Global spatial PPO is the only robust learned success, saving "
+  "0.90% and 1.19% on the two held-out folds; both optimizer-bootstrap CIs and "
+  "wider t-interval sensitivities remain positive. US spatial savings are not "
+  "established (−0.29% and +0.07%). Joint batch control fails the frozen "
+  "headline: only 9/40 batch seeds meet the 99.99% completion floor, and joint "
+  "PPO does not reliably improve over separately trained spatial PPO. Spatial "
+  "PPO lowers the secondary demand-charge reference, whereas joint PPO raises "
+  "it and worsens rare maximum three-hour ramps. Thus the evidence supports a "
+  "small optimistic Global spatial effect, not reliable joint spatio-temporal "
+  "optimization.", size=9)
 P("Index Terms — data centers, demand response, reinforcement learning, workload "
   "scheduling, duck curve, Google cluster trace, load shaping.",
   italic=True, size=9, space_after=10)
@@ -195,11 +203,12 @@ P("Data centers consumed roughly 415 TWh of electricity in 2024, and the IEA "
   "net-demand (duck-curve) objective; those are the gaps this thesis fills.")
 P("This thesis asks: can a model-free reinforcement-learning agent, observing "
   "only per-site demand, prices, and grid net demand, learn a joint spatial-"
-  "temporal load-shaping policy that beats the grid-unaware status quo? This "
-  "revision deliberately does not answer that question with a learned v2 policy "
-  "yet. It first freezes and audits the real energy surface on which the answer "
-  "will depend, then uses a clairvoyant QP to verify that measurable headroom "
-  "exists before spending another training campaign.")
+  "temporal load-shaping policy that beats the grid-unaware status quo? The "
+  "frozen evidence gives a qualified answer: Global spatial routing transfers "
+  "with a small positive effect, US spatial savings are not established, and "
+  "joint batch control is unstable and fails the completion criterion. The "
+  "energy/system construction succeeds as a reproducible test bed; the broad "
+  "learned joint-optimization claim does not.")
 P("Contributions. (C1) A reproducible Gymnasium environment for multi-data-center "
   "grid-aware load shaping at cell-aggregate granularity, grounded in Google "
   "ClusterData 2019 [1] and PowerData2019 [2]. (C2) Ground-truth measured per-tier demand "
@@ -209,8 +218,11 @@ P("Contributions. (C1) A reproducible Gymnasium environment for multi-data-cente
   "whose paired signals are shifted by IANA local wall time across US and global "
   "slots. (C4) A no-training QP gate that sizes the opportunity before policy "
   "selection and shows that spatial diversity dominates temporal flexibility. "
-  "(C5) A preserved audit trail of the retired mixed/synthetic model and the "
-  "simulator corrections that prevented invalid results from being promoted.")
+  "(C5) A provenance-locked 80-model held-out campaign showing a robust but "
+  "small Global spatial effect and a negative result for reliable joint batch "
+  "control. (C6) A preserved audit trail of the retired mixed/synthetic model "
+  "and the simulator corrections that prevented invalid results from being "
+  "promoted.")
 
 # ---------------- II. RELATED WORK ----------------
 H1("II. RELATED WORK AND METHODOLOGICAL LINEAGE")
@@ -527,7 +539,7 @@ P("The primary demand path starts in instance_usage, not the job table and not "
   "into 300-second buckets, and divide by measured cell CPU capacity. Priority "
   "≤115 is no-SLO batch; all higher priorities are service. We then define "
   "w = normalized total usage, a = normalized batch usage, and v = w − a. "
-  "Consequently v + a = w at every interval to machine precision (Fig. 2).")
+  "Consequently v + a = w at every interval to machine precision (Fig. 1).")
 P("Each cell produces 8,929 ordinal workload rows. The v2 energy calendar has "
   "8,928 rows, so the loader removes the one extra workload boundary row and "
   "uses a complete 744-hour control episode. The source's discarded absolute "
@@ -572,7 +584,7 @@ P("The frozen v2 evaluation will be symmetric and out of fold: train on a–d an
   "completion, batch completion, expiry, and terminal backlog/pool so savings "
   "cannot be obtained by dropping work.")
 FIG(FIGS / "fig2_tiers.png",
-    "Fig. 2. Measured per-tier decomposition of cell b (3 of 31 days): "
+    "Fig. 1. Measured per-tier decomposition of cell b (3 of 31 days): "
     "service + batch equals the measured aggregate at every step.")
 H2("C. Per-cell power calibration")
 P("We adopt the standard linear idle+slope server model (Eq. 1) — the form "
@@ -608,7 +620,7 @@ TABLE(["Cell", "idle", "slope", "R²"],
       "TABLE II. POWER MODEL CALIBRATION (POWERDATA2019)",
       widths=[0.6, 0.7, 0.7, 0.6])
 FIG(FIGS / "fig3_power.png",
-    "Fig. 3. Per-cell power calibration: four distinct idle/slope lines; the "
+    "Fig. 2. Per-cell power calibration: four distinct idle/slope lines; the "
     "pooled fit (dashed) blurs them into R² = 0.43.")
 energy_gate = doc.add_section(WD_SECTION.CONTINUOUS)
 set_cols(energy_gate, 1)
@@ -686,7 +698,7 @@ P("The standardized $15/kW-cycle demand charge is excluded from the primary "
   "tariff. Demand-aware training remains a separate extension.")
 FIG(
     ENERGY_FIGS / "objective_sensitivity.png",
-    "Objective sensitivity on a–d calibration cells only: component share and "
+    "Fig. 3. Objective sensitivity on a–d calibration cells only: component share and "
     "clairvoyant headroom across α.",
     width=6.6,
 )
@@ -716,7 +728,7 @@ P("Shifted market phase is the dominant Global lever; calibrated per-cell power 
   "14.81–17.35% Global headroom.")
 FIG(
     ENERGY_FIGS / "structure_ablation.png",
-    "No-training structural and rated-power sensitivity on a–d calibration "
+    "Fig. 4. No-training structural and rated-power sensitivity on a–d calibration "
     "cells. Mechanisms interact; bars are not additive attributions.",
     width=6.6,
 )
@@ -728,19 +740,19 @@ P("ClusterData 2019 supplies no deadlines. The primary φ=1 gives H=2μ. "
 H2("Figures")
 FIG(
     ENERGY_FIGS / "reference_month.png",
-    "Energy model v2 reference month: real May-2025 CAISO day-ahead price, "
+    "Fig. 5. Energy model v2 reference month: real May-2025 CAISO day-ahead price, "
     "net demand, and solar.",
     width=6.6,
 )
 FIG(
     ENERGY_FIGS / "us_shifted_daily_profiles.png",
-    "Energy model v2 average daily profiles shifted across Pacific, Mountain, "
+    "Fig. 6. Energy model v2 average daily profiles shifted across Pacific, Mountain, "
     "Central, and Eastern slots.",
     width=6.6,
 )
 FIG(
     ENERGY_FIGS / "global_shifted_daily_profiles.png",
-    "Energy model v2 average daily profiles shifted across Pacific, Central, "
+    "Fig. 7. Energy model v2 average daily profiles shifted across Pacific, Central, "
     "Amsterdam, and Singapore slots.",
     width=6.6,
 )
@@ -762,14 +774,154 @@ P("The primary experiment is a controlled CAISO archetype, not a real multi-"
   "latency, residency, and movement are future work. MPC is future work; the "
   "QP is a clairvoyant diagnostic only.")
 H2("Gate status")
-P("The α=0.015 primary objective and secondary demand-charge treatment are "
-  "frozen with a 501,760-step, 10-seed, two-fold runner. No PPO training has "
-  "begun; the committed checkpoint must pass the runner's clean-tree preflight "
-  "before launch.",
+P("The energy gate was consumed by the completed 80-model frozen OOF campaign. "
+  "The joint-shaping headline criterion failed; only Global spatial PPO "
+  "produced positive held-out optimizer CIs in both folds.",
   bold=True)
 
 body_after_gate = doc.add_section(WD_SECTION.CONTINUOUS)
-set_cols(body_after_gate, 2)
+set_cols(body_after_gate, 1)
+
+# ---------------- V. FROZEN V2 PROTOCOL ----------------
+H1("V. END-TO-END FROZEN V2 EXPERIMENTAL PROTOCOL")
+P("Figure 5 materializes the complete research chain for a reader unfamiliar "
+  "with PPO training. Every arrow corresponds to a persisted, hashed source, "
+  "transformation, scenario, model, or result artifact; no v2 result is selected "
+  "on the held-out fold.")
+FIG(
+    OOF_FIGS / "end_to_end_pipeline.png",
+    "Fig. 8. End-to-end v2 pipeline: public workload/power/market traces are "
+    "transformed into an equal-proxy Gymnasium system, frozen PPO training, "
+    "opposite-cell evaluation, and canonical thesis evidence.",
+    width=6.6,
+)
+H2("A. Workload materialization")
+P("ClusterData2019 instance_usage is joined to collection priority and "
+  "aggregated into five-minute curves. Priority ≤115 supplies measured no-SLO "
+  "batch; the remainder supplies service, with service+batch=aggregate exactly. "
+  "Each own-cell-normalized shape maps to a unit-capacity 100 MW proxy. The "
+  "synthetic generator is bypassed; fitted mean duration only parameterizes the "
+  "experimental deadline.")
+H2("B. Physical and market materialization")
+P("PowerData2019 supplies per-cell idle/slope models. CAISO Today's Outlook "
+  "supplies May-2025 five-minute signed net demand/solar, and OASIS NP15 supplies "
+  "real hourly DAM price. The price/demand pair is shifted together across US "
+  "and Global local clocks, retaining one controlled price level. Routing is "
+  "unrestricted and therefore represents an optimistic upper bound.")
+H2("C. State, action, and objective")
+P("At each step PPO observes measured service, the current measured batch "
+  "arrival, carried EDF pool/urgency, backlog, real price, signed net demand, "
+  "solar, current load, and site context. It outputs service-routing fractions, "
+  "batch-release rates, and batch-placement fractions. Service receives first "
+  "capacity; only completed batch leaves its origin queue. The primary objective "
+  "is real energy + α=0.015 positive-grid-stress cost + service/completion "
+  "safeguards. Demand charge and 1h/3h ramp rate are independent outcomes.")
+H2("D. Frozen training protocol")
+TABLE(
+    ["Element", "Frozen value"],
+    [
+        ["Algorithm", "PPO; MLP [128,128]; lr=3e-4"],
+        ["Rollout / minibatch", "2,048 / 64"],
+        ["Budget", "501,760 steps = 245 rollouts/model"],
+        ["Discount", "γ=1"],
+        ["Seeds", "101–110"],
+        ["Fold A", "train a–d; test frozen policy on e–h"],
+        ["Fold B", "train e–h; test frozen policy on a–d"],
+        ["Configs", "US/Global × spatial-only/joint batch"],
+        ["Total", "2 × 4 × 10 = 80 models"],
+        ["Selection", "none; no validation/test-fold tuning"],
+    ],
+    "TABLE III. FROZEN ENERGY-MODEL V2 PPO PROTOCOL",
+    widths=[1.8, 4.7],
+)
+P("The runner enforces a clean committed tree; hashes source, data, package "
+  "versions, protocol, models, and logs; publishes each model atomically; and "
+  "requires all 80 completion records before evaluation.")
+H2("E. Held-out evaluation and statistics")
+P("Every policy executes one deterministic complete held-out month. References "
+  "are Status Quo, Round Robin, Drain Immediately (joint mode), and the "
+  "clairvoyant QP diagnostic. The frozen 95% interval is a 20,000-resample "
+  "percentile bootstrap over n=10 optimizer seeds. This interval describes "
+  "optimizer variability, not workload- or market-population uncertainty; a "
+  "Student-t sensitivity is also reported.")
+
+# ---------------- VI. FROZEN V2 RESULTS ----------------
+H1("VI. FROZEN ENERGY-MODEL V2 HELD-OUT RESULTS")
+P("Frozen verdict — JOINT-SHAPING HEADLINE NOT SUPPORTED.", bold=True)
+TABLE(
+    ["Fold", "Config", "Savings [95% CI]", "+ seeds", "Feasible", "QP head", "PPO gap"],
+    [
+        ["a–d→e–h", "US spatial", "−0.29% [−0.76,+0.15]", "4/10", "10/10", "7.26%", "8.13%"],
+        ["a–d→e–h", "US joint", "−4.30% [−12.45,+0.20]", "4/10", "3/10", "9.36%", "15.07%"],
+        ["a–d→e–h", "Global spatial", "+0.90% [+0.34,+1.42]", "8/10", "10/10", "16.42%", "18.57%"],
+        ["a–d→e–h", "Global joint", "+0.17% [−1.00,+1.19]", "6/10", "2/10", "17.38%", "20.84%"],
+        ["e–h→a–d", "US spatial", "+0.07% [−0.27,+0.42]", "5/10", "10/10", "7.24%", "7.74%"],
+        ["e–h→a–d", "US joint", "+0.04% [−0.59,+0.71]", "4/10", "2/10", "7.95%", "8.60%"],
+        ["e–h→a–d", "Global spatial", "+1.19% [+0.81,+1.58]", "10/10", "10/10", "15.75%", "17.29%"],
+        ["e–h→a–d", "Global joint", "+1.38% [+0.82,+1.87]", "9/10", "2/10", "16.26%", "17.77%"],
+    ],
+    "TABLE IV. HELD-OUT PPO SAVINGS VS STATUS QUO (10 SEEDS/FOLD)",
+    widths=[0.85, 0.85, 1.85, 0.55, 0.65, 0.65, 0.65],
+)
+FIG(
+    OOF_FIGS / "held_out_savings.png",
+    "Fig. 9. Held-out seed savings, means, and frozen 95% optimizer-bootstrap "
+    "intervals. Only Global spatial is positive in both folds.",
+    width=6.6,
+)
+H2("A. The only robust learned success: Global spatial")
+P("Global spatial PPO saves 0.90% and 1.19% on the two held-out folds, with "
+  "complete service and positive optimizer-bootstrap intervals. Wider n=10 "
+  "Student-t intervals remain positive: [0.24,1.55]% and [0.71,1.66]%. The "
+  "effect is real within this frozen optimizer-seed experiment but small and "
+  "optimistic because routing is unrestricted. PPO captures only 5.47% and "
+  "7.55% of available QP savings.")
+H2("B. US spatial savings are not established")
+P("US a–d→e–h averages −0.29% [−0.76,+0.15] and its PPO mean also loses to "
+  "Round Robin. The reverse fold averages +0.07% [−0.27,+0.42]. Thus US spatial "
+  "is consistent with a small loss in one direction and indistinguishable from "
+  "zero in the other.")
+H2("C. Joint batch control fails the frozen criterion")
+P("Joint PPO does not reliably improve over separately trained spatial PPO. It "
+  "is worse in both US folds and Global a–d→e–h, and only 0.19% better in the "
+  "remaining Global fold. This is not a clean estimate of pure temporal value "
+  "because completion fails in 31/40 batch seeds. Only 9/40 seeds (2 configs × "
+  "2 folds × 10) meet the 99.99% floor; no joint configuration reaches 4/10 "
+  "feasible seeds in a fold.")
+P("All 80 policies complete 100% of service. Global joint e–h→a–d seed 103 "
+  "expires 0.889 normalized units. US joint a–d→e–h seed 101 leaves the largest "
+  "terminal pool (7.690 units) and accumulates $2.289M of transient service-"
+  "backlog cost, producing the −39.77% outlier. The QP proves temporal "
+  "opportunity exists; PPO does not capture it reliably.")
+FIG(
+    OOF_FIGS / "qp_capture.png",
+    "Fig. 10. Clairvoyant opportunity versus learned held-out savings. Large QP "
+    "headroom does not translate into comparable PPO gains.",
+    width=6.6,
+)
+H2("D. Secondary billing and physical-grid effects")
+P("Spatial PPO lowers the standardized secondary demand charge by 1.4–3.0% "
+  "across folds. Joint PPO raises it by 5.3–8.1%, showing that unstable temporal "
+  "control can reduce the primary objective while worsening a site peak tariff. "
+  "Ramp rate is not optimized: joint PPO worsens the rare maximum three-hour "
+  "ramp across all sites in every fold by +1.09 to +3.05 MW, although typical "
+  "p95 three-hour ramps improve. Spatial ramp effects are small and mixed.")
+FIG(
+    OOF_FIGS / "secondary_effects.png",
+    "Fig. 11. Secondary demand-charge and physical ramp effects versus held-out "
+    "Status Quo. Negative values indicate improvement.",
+    width=6.6,
+)
+H2("E. Empirical conclusion and claim boundary")
+P("The frozen campaign supports a narrow conclusion: one real CAISO archetype "
+  "contains substantial optimistic spatial opportunity, and PPO captures a "
+  "small reproducible part only in the Global spatial setting. It does not "
+  "establish US savings or reliable joint spatio-temporal optimization. Claims "
+  "are limited to optimizer-seed variability, one Google workload month, one "
+  "CAISO energy month, equal 100 MW proxies, unrestricted routing, and the "
+  "constructed Φ metric. This negative headline result is scientifically useful: "
+  "it identifies batch-safe constrained control and stronger spatial policy "
+  "optimization as the next algorithmic problems.")
 
 # ---------------- V. EXPERIMENTAL SETUP ----------------
 EMIT_CONTENT = False
@@ -1029,42 +1181,42 @@ P("Threats to validity. (i) The active v2 experiment is a controlled CAISO "
 
 # ---------------- VIII. FUTURE WORK ----------------
 EMIT_CONTENT = True
-H1("V. FURTHER TOPICS OF CONSIDERATION")
-P("(1) Market robustness: compare the primary NP15 DAM archetype with CAISO "
-  "five-minute RTM and, later, a documented real multi-market replay with "
-  "regional price levels and demand shapes. (2) Historical comparison: quantify "
-  "how the 2025 duck curve deepened from 2019/2024 and test extrapolated future "
-  "curves. (3) Sensitivity sweeps: deferrable fraction, rated power R, "
-  "flexibility factor φ, peak weight α, and workload seasonality. (4) Bound "
-  "global routing with latency, residency, and movement-cost constraints. "
-  "(5) Add marginal carbon intensity to compare directly with CICS [3]. "
-  "(6) Add a causal receding-horizon MPC comparator with day-ahead price and "
-  "net-demand forecasts. (7) Explore "
-  "constrained RL for completion guarantees. (8) Add a job-level inner "
-  "scheduler below the aggregate controller. (9) Extend the action space to "
-  "storage and demand response. (10) Transfer to other public workload traces. "
-  "(11) Test peak-aware policy designs against the demand-charge QP. "
-  "(12) Add a ramp-aware objective only if the first v2 policies worsen the "
-  "reported one-hour/three-hour physical ramp KPIs.")
+body_after_results = doc.add_section(WD_SECTION.CONTINUOUS)
+set_cols(body_after_results, 2)
+H1("VII. FURTHER TOPICS OF CONSIDERATION")
+P("(1) Batch-safe constrained control is first priority: enforce terminal "
+  "completion/deadline feasibility during policy optimization rather than "
+  "accepting a penalty-mediated 31/40 seed failure rate. (2) Improve spatial "
+  "policy optimization, especially for Global where PPO captures only 5.47–"
+  "7.55% of QP savings, and diagnose the asymmetric US transfer. (3) Add "
+  "ramp-aware training or constraints because joint PPO worsens rare maximum "
+  "three-hour ramps, while preserving the observed p95 improvement. (4) Add "
+  "the secondary demand charge to a true multi-objective/Pareto study because "
+  "joint PPO raises the reference bill 5.3–8.1%. (5) Bound Global routing with "
+  "latency, residency, network capacity, and movement costs. (6) Add a causal "
+  "receding-horizon MPC comparator. (7) Test CAISO five-minute RTM, other "
+  "energy months/years, and other workload traces. (8) Add carbon intensity, "
+  "storage, and demand-response participation only after the core control "
+  "problem is stable.")
 
 # ---------------- IX. CONCLUSION ----------------
-H1("VI. CONCLUSION")
-P("The active thesis experiment now begins with a reproducible real energy "
-  "model rather than a mixture of synthetic regional inputs. One May-2025 "
-  "CAISO net-demand/solar series and one NP15 day-ahead price series are shifted "
-  "together across four US and four global local-time slots. The 8,928-step "
-  "calendar preserves negative prices, aligns the average trough near noon and "
-  "the average peak near 20:00 PDT, and yields price/net-demand correlation of "
-  "approximately 0.895. Continuous boundary handling keeps real chronology: "
-  "Singapore's slightly higher monthly mean comes from substituting 15 real "
-  "June boundary hours, not extra duration or a regional premium. Equal 100 MW "
-  "unit-capacity proxies and observed current batch arrivals now pass the "
-  "preflight. The corrected QP gate shows 8.0–17.4% joint headroom but only "
-  "0.6–2.3% incremental temporal value. α=0.015 makes grid stress about 18% of "
-  "energy cost; the standardized demand charge remains secondary. The "
-  "mixed/synthetic v1 campaigns remain archived; no learned-policy claim will "
-  "be promoted until the frozen v2 out-of-fold campaign is trained and "
-  "evaluated.")
+H1("VIII. CONCLUSION")
+P("This thesis builds a reproducible chain from measured Google service/batch "
+  "usage and PowerData2019 calibration to one real May-2025 CAISO energy "
+  "archetype, equal 100 MW proxy DCs, a joint PPO controller, and a frozen "
+  "two-fold held-out evaluation. The system exposes substantial clairvoyant "
+  "spatial headroom (7.2–16.4%) and modest incremental temporal headroom "
+  "(0.6–2.3%). Learned performance is much narrower. Global spatial PPO saves "
+  "0.90% and 1.19% on the two held-out folds with positive optimizer CIs and "
+  "complete service, but captures only 5.47–7.55% of QP savings. US spatial "
+  "does not establish savings. Joint batch PPO fails the frozen headline: only "
+  "9/40 seeds meet the completion floor, gains are fold-dependent, and rare "
+  "maximum ramps and the secondary demand-charge reference worsen. The "
+  "defensible contribution is therefore the real, audited experimental system; "
+  "the modest optimistic Global spatial result; and the negative evidence that "
+  "unconstrained PPO does not yet solve reliable joint spatio-temporal shaping. "
+  "The next step is not a stronger claim but safer batch control and better "
+  "capture of demonstrable spatial opportunity.")
 
 # ---------------- REFERENCES ----------------
 H1("REFERENCES")

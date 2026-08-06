@@ -2,12 +2,12 @@
 
 ## Thesis Overview & Technical Reference
 
-> **Current evidence state (August 2026).** Energy model v2 is the active
-> pre-retraining design. It uses a real May-2025 CAISO energy archetype, equal
-> 100 MW/unit-capacity proxy DCs, observed current batch arrivals, and the
-> no-training QP gate documented in §2.3. Later v1 training results are retained
-> as archived historical evidence, not as final v2 claims. No v2 PPO retraining
-> has been launched.
+> **Current evidence state (August 2026).** The frozen energy-model v2 campaign
+> is complete: 80 PPO models, two symmetric held-out workload folds, and ten
+> optimizer seeds/configuration. The broad joint-shaping headline **failed**.
+> Global spatial PPO is the only robust learned success (~0.9–1.2% held-out
+> savings); US spatial is not established and joint batch control is unstable.
+> Energy-model v1 remains historical evidence only.
 
 ---
 
@@ -787,9 +787,8 @@ economically irrational to appear cheaper by dropping or parking work.
 
 #### 3.8.4 Training and rating
 
-> **Planned protocol, not an executed result.** No v2 PPO training has begun;
-> these rules must be frozen in the campaign orchestrator after the remaining
-> research-design decisions are resolved.
+> **Executed frozen protocol.** All 80 models and eight held-out evaluations
+> completed without validation/test-fold selection.
 
 The measured month is deterministic. PPO training therefore replays complete
 episodes; training-only domain randomization may permute compute bundles and
@@ -834,16 +833,17 @@ Our primary RL agent uses **PPO** from Stable-Baselines3, operating in the conti
 | Learning rate | 3 × 10⁻⁴ |
 | Rollout steps (n_steps) | 2,048 |
 | Minibatch size | 64 |
-| Training timesteps | **To be frozen after the remaining design review** |
-| Seeds | **10 per fold/configuration (planned)** |
+| Training timesteps | **501,760/model** |
+| Seeds | **10 per fold/configuration** |
 
 PPO was chosen for its:
 - **Continuous action space** support — natural for the softmax routing formulation
 - **Stability** — clipped objective prevents catastrophic policy updates
 - **Sample efficiency** — on-policy but with multiple epochs per rollout
 
-PPO will be evaluated across US/Global × spatial-only/spatial+temporal under the
-symmetric a–d↔e–h held-out protocol. No v2 PPO model exists yet.
+PPO was evaluated across US/Global × spatial-only/spatial+temporal under the
+symmetric a–d↔e–h held-out protocol. All 80 model hashes and completion records
+are in `models/oof_v2_2025/manifest.json`.
 
 ### 4.2 Archived DQN/CFWS sensitivity
 
@@ -876,7 +876,204 @@ clairvoyant QP is retained only to measure optimistic headroom.
 
 ---
 
-## 6. Archived Energy-Model v1 Scenarios
+## 6. End-to-End v2 Workflow: From Public Traces to Held-Out Evidence
+
+![End-to-end pipeline](oof_v2_2025/end_to_end_pipeline.png)
+
+This section is the operational guide to the complete thesis experiment. Each
+arrow above corresponds to a persisted source file, transformation, scenario,
+model, or frozen result artifact.
+
+### 6.1 Measure the workload rather than generate it
+
+ClusterData2019 `instance_usage` records are joined to collection priority and
+aggregated into five-minute cell curves. Priority `≤115` becomes measured
+no-SLO batch demand; the remainder becomes measured service. For every cell and
+timestep:
+
+```text
+service_demand_norm + batch_demand_norm = cpu_demand_norm
+```
+
+The synthetic generator is bypassed whenever these tier curves are present.
+Fitted job duration remains only as metadata for the experimental deadline.
+
+### 6.2 Convert normalized cell shapes into equal proxy data centers
+
+Each source curve is already divided by its own cell capacity. We map that
+utilization shape onto an equal **100 MW, capacity-1.0 proxy DC**. Raw machine
+totals remain provenance/calibration metadata and do not shrink capacity again.
+PowerData2019 provides a separate idle/slope power model for each cell.
+
+### 6.3 Build one real controlled energy system
+
+CAISO May-2025 native five-minute net demand/solar and NP15 hourly DAM price are
+co-timestamped. Net demand retains a signed `[-1,1]` scale; negative prices are
+preserved. The pair is shifted together by IANA local wall time across:
+
+- US: Pacific, Mountain, Central, Eastern;
+- Global: Pacific, Central, Amsterdam, Singapore.
+
+All slots use the same CAISO price level. This is a controlled time-zone
+experiment, not a real multi-market replay.
+
+### 6.4 Materialize the Gymnasium state and action
+
+At each step the PPO observation contains measured service, the current
+measured batch arrival, carried EDF pool/urgency, backlog, real price, signed net
+demand, solar context, current load, and static power/capacity context. PPO emits:
+
+1. service-routing fractions;
+2. per-origin batch release rates; and
+3. batch-placement fractions.
+
+Service consumes destination capacity first. Only completed batch leaves its
+origin queue; blocked work retains its original deadline. The experiment
+assumes unrestricted routing and is therefore an optimistic upper bound.
+
+### 6.5 Optimize the frozen primary objective
+
+The primary cost is:
+
+```text
+real energy cost
++ 0.015 × grid_mw² × max(net_demand_signed, 0)
++ service backlog and batch completion safeguards
+```
+
+The standardized `$15/kW-cycle` demand charge is reported only as a secondary
+sensitivity. Ramp rate is also an independent physical KPI, not a reward term.
+
+### 6.6 Train without selecting on the test fold
+
+The frozen protocol is:
+
+| Element | Frozen value |
+|---|---|
+| Algorithm | PPO, MLP `[128,128]`, learning rate `3e-4` |
+| Rollout/minibatch | `2,048` / `64` |
+| Budget | `501,760` steps = 245 complete rollouts/model |
+| Discount | `γ=1` |
+| Seeds | `101–110` |
+| Fold A | train a–d; evaluate frozen models on e–h |
+| Fold B | train e–h; evaluate frozen models on a–d |
+| Configurations | US/Global × spatial-only/joint batch |
+| Total | 2 folds × 4 configs × 10 seeds = **80 models** |
+| Selection | none; no validation checkpoint or test-fold tuning |
+
+The runner hashes source, data, packages, and each model; writes models
+atomically; and requires all completion records before evaluation.
+
+### 6.7 Score held-out policies against fixed references
+
+Every frozen policy runs one complete held-out month with deterministic actions.
+It is compared with Status Quo, Round Robin, Drain Immediately (joint mode), and
+the clairvoyant QP diagnostic. Reports include objective components, service and
+batch completion, secondary demand charge, load factor, billed peaks, and
+per-region one-hour/three-hour physical ramp KPIs.
+
+Canonical artifacts:
+
+- [protocol](oof_v2_2025/protocol.json)
+- [canonical results](oof_v2_2025/canonical_results.json)
+- [full results report](oof_v2_2025/results_report.md)
+- `models/oof_v2_2025/manifest.json` (80 model hashes and completion records)
+
+---
+
+## 7. Frozen Energy-Model v2 Held-Out Results
+
+> **Frozen verdict: the joint-shaping headline criterion failed.** Only Global
+> spatial PPO satisfies the positive-CI and feasibility criteria in both folds.
+
+### 7.1 Held-out results
+
+| Fold | Config | Status Quo | PPO mean ± sd | Savings (95% optimizer-bootstrap CI) | Positive seeds | Feasible seeds | QP headroom | PPO gap |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| a–d→e–h | US spatial | $6.219M | $6.237M ± $0.047M | −0.29% [−0.76, +0.15] | 4/10 | 10/10 | 7.26% | 8.13% |
+| a–d→e–h | US joint | $6.219M | $6.486M ± $0.779M | −4.30% [−12.45, +0.20] | 4/10 | 3/10 | 9.36% | 15.07% |
+| a–d→e–h | Global spatial | $6.276M | $6.220M ± $0.058M | **+0.90% [+0.34, +1.42]** | 8/10 | 10/10 | 16.42% | 18.57% |
+| a–d→e–h | Global joint | $6.276M | $6.265M ± $0.119M | +0.17% [−1.00, +1.19] | 6/10 | 2/10 | 17.38% | 20.84% |
+| e–h→a–d | US spatial | $6.568M | $6.563M ± $0.039M | +0.07% [−0.27, +0.42] | 5/10 | 10/10 | 7.24% | 7.74% |
+| e–h→a–d | US joint | $6.568M | $6.565M ± $0.073M | +0.04% [−0.59, +0.71] | 4/10 | 2/10 | 7.95% | 8.60% |
+| e–h→a–d | Global spatial | $6.598M | $6.520M ± $0.044M | **+1.19% [+0.81, +1.58]** | 10/10 | 10/10 | 15.75% | 17.29% |
+| e–h→a–d | Global joint | $6.598M | $6.508M ± $0.059M | +1.38% [+0.82, +1.87] | 9/10 | 2/10 | 16.26% | 17.77% |
+
+The frozen CI is a percentile bootstrap over 10 optimizer seeds with 20,000
+resamples. A wider Student-*t* sensitivity leaves both Global-spatial intervals
+positive: `[+0.24,+1.55]%` and `[+0.71,+1.66]%`.
+
+![Held-out savings](oof_v2_2025/held_out_savings.png)
+
+### 7.2 What succeeded
+
+**Global spatial routing is the only robust learned result.** It saves 0.90% and
+1.19% over held-out Status Quo with complete service in both folds. It reduces
+both real energy cost and the constructed positive-grid-stress component, but
+captures only **5.47% and 7.55%** of available clairvoyant-QP savings.
+
+US spatial does not establish savings. The a–d→e–h fold is consistent with a
+small loss and its PPO mean also loses to Round Robin; the reverse fold is
+indistinguishable from zero.
+
+### 7.3 What failed
+
+**Joint batch control does not reliably improve over separately trained
+spatial-only PPO.** It is worse in both US folds and in Global a–d→e–h; it
+improves Global e–h→a–d by only 0.19%. This is not a clean estimate of pure
+temporal value because batch feasibility fails in **31 of 40 seeds**.
+
+Only **9/40 batch seeds** (2 joint configs × 2 folds × 10 seeds) meet the frozen
+99.99% completion floor; no joint configuration reaches 4/10 feasible seeds in
+a fold. All 80 policies complete 100% of service, but:
+
+- Global joint e–h→a–d seed 103 expires 0.889 normalized units;
+- US joint a–d→e–h seed 101 leaves the largest terminal pool (7.690 units);
+- that same US seed incurs $2.289M of transient service-backlog cost and drives
+  the −39.77% seed outlier.
+
+The QP proves temporal opportunity exists, but PPO did not learn to capture it
+reliably under the frozen budget and parameterization.
+
+![Available versus learned opportunity](oof_v2_2025/qp_capture.png)
+
+### 7.4 Independent physical and billing outcomes
+
+Spatial PPO lowers the secondary demand-charge reference by **1.4–3.0%** across
+folds. Joint PPO raises it by **5.3–8.1%**, showing that the primary
+energy/grid-stress objective can worsen the operator peak tariff when temporal
+control is unstable.
+
+Ramp rate was not optimized. Joint PPO worsens the rare maximum three-hour ramp
+across all sites in every fold by **+1.09 to +3.05 MW** versus Status Quo,
+although its typical p95 three-hour ramp improves. Spatial ramp effects are
+small and mixed. This supports reporting ramp as an independent KPI rather than
+claiming direct ramp reduction.
+
+![Secondary effects](oof_v2_2025/secondary_effects.png)
+
+### 7.5 Thesis conclusion from the frozen campaign
+
+The defensible empirical conclusion is narrower than the original thesis
+hypothesis:
+
+1. A real, aligned CAISO archetype provides substantial clairvoyant spatial
+   opportunity, especially under optimistic Global routing.
+2. PPO captures a small but reproducible portion only for Global spatial
+   routing.
+3. US spatial savings are not established.
+4. Learned joint batch control is unstable and fails the frozen completion
+   criterion; no reliable incremental temporal benefit is demonstrated.
+5. Unrestricted routing, one energy month, one workload month, optimizer-seed
+   uncertainty, and the constructed Φ metric bound all physical claims.
+
+This is a negative result for the broad joint-optimization headline, not a
+failure of the data/system contribution. It identifies batch-safe constrained
+control and stronger spatial policy optimization as the next algorithmic work.
+
+---
+
+## Appendix A — Archived Energy-Model v1 Scenarios
 
 > The scenarios in this section use the retired mixed/synthetic energy model and
 > are retained for auditability. The active v2 slots and provenance are defined
@@ -908,10 +1105,10 @@ All DCs: `rated_power_mw = 100`. No on-site solar.
 
 ---
 
-## 7. Archived Energy-Model v1 Results
+## Appendix B — Archived Energy-Model v1 Results
 
 > These learned-policy results are historical v1 evidence. They are not current
-> v2 headline results and will be replaced only after the frozen v2 campaign.
+> v2 headline results; the current frozen evidence is in §7 above.
 
 All numbers below come from the default-off demand-smoothing formulation: grid-only DCs, reward = −(energy cost + α × grid_mw² × net demand + service backlog [+ batch expiry]), with α = 0.015. Demand charges are reported post hoc but are not in these policies' training reward. Each policy is run for one full 8,917-step episode (~31 days) under the same seed.
 
@@ -1250,13 +1447,16 @@ The active contribution is:
 2. per-cell power models calibrated from PowerData2019;
 3. one real May-2025 CAISO net-demand/price archetype shifted across four US and four Global local-time slots;
 4. continuous joint spatial routing and temporal release control; and
-5. a clairvoyant QP gate that sizes spatial and temporal opportunity before PPO training.
+5. a clairvoyant QP gate that sizes opportunity before training; and
+6. a frozen 80-model held-out campaign that finds a small robust Global spatial
+   effect but rejects reliable joint batch control.
 
 This is **not** a real multi-market replay, a CICS reproduction, a VM/job
 scheduler, or a benchmark against archived DQN/CFWS code. No v1 learned-policy
 result is promoted as v2 evidence. The current defensible claim is narrower:
-the real controlled energy model has meaningful total headroom, spatial routing
-is likely dominant, and v2 policy performance remains to be measured.
+the real controlled energy model has meaningful total headroom, Global spatial
+PPO captures a small reproducible fraction, US savings are not established,
+and joint batch control fails the frozen completion/headline criteria.
 
 ---
 
@@ -1313,12 +1513,12 @@ The authoritative map of the repository — grouped by role. Paths are clickable
 - [env/dc_site.py](env/dc_site.py) — `DataCenterSite`: per-DC demand/price/net-demand accessors, the real per-tier `service_curve`/`batch_curve`, the per-cell `power_model`, the `BatchPool` deferrable queue, and `batch_fraction` (Tirmazi-cited).
 - [env/power_model.py](env/power_model.py) — linear idle+slope `PowerModel`; `per_cell_from_json` builds the four per-cell models (§3.2).
 - [env/data_loader.py](env/data_loader.py) — `load_scenario`: reads scenario CSVs, applies explicit unit proxy capacity, and wires measured tier curves, fleet metadata, and per-cell power onto each site.
-- [env/protocol.py](env/protocol.py) + [env/protocols/v2_2025.yaml](env/protocols/v2_2025.yaml) — single pretraining source of truth for proxy capacity, signed-demand semantics, objective coefficients, deadline sensitivity, routing assumptions, baselines, seeds, and claim scope.
+- [env/protocol.py](env/protocol.py) + [env/protocols/v2_2025.yaml](env/protocols/v2_2025.yaml) — frozen source of truth for proxy capacity, signed-demand semantics, objective coefficients, deadline sensitivity, routing assumptions, baselines, seeds, and claim scope.
 - `archive/dqn_cfws_20260805/env/` — retired DQN wrappers, preserved with the v1 lineage.
 - [env/scenarios/](env/scenarios/) — active `us_model_v2_2025.yaml`, `us_model_eh_v2_2025.yaml`, `global_model_v2_2025.yaml`, and `global_model_eh_v2_2025.yaml`; unsuffixed scenarios are v1 inputs.
 
 **Agents, baselines, training, evaluation**
-- [train.py](train.py) — active PPO trainer; no v2 training should run until the review gate is approved.
+- [train.py](train.py) — low-level PPO trainer used by the completed frozen runner.
 - [baselines.py](baselines.py) — active comparison scope: Status Quo, Round Robin, and Drain Immediately.
 - [evaluate.py](evaluate.py) — PPO-only learned-policy evaluation plus active baselines, component/backlog accounting, and per-region one-hour/three-hour physical ramp KPIs.
 - `archive/dqn_cfws_20260805/` — retired DQN/CFWS trainers, models, logs, and orchestration.
@@ -1330,6 +1530,7 @@ The authoritative map of the repository — grouped by role. Paths are clickable
 - [scripts/review_flexibility_v2.py](scripts/review_flexibility_v2.py) — φ∈{0,1,2} QP deadline sensitivity.
 - [scripts/preflight_energy_model_v2.py](scripts/preflight_energy_model_v2.py) — failing-closed source/hash/unit-capacity/tier/observation/Status-Quo invariant gate.
 - [scripts/run_oof_campaign_v2.py](scripts/run_oof_campaign_v2.py) — frozen 80-model PPO campaign with clean-tree enforcement, source/data/package hashes, atomic publication, completion records, held-out evaluation, and canonical summary generation.
+- [scripts/build_oof_v2_results.py](scripts/build_oof_v2_results.py) — derives the compact canonical result, statistical disclosures, publication figures, and end-to-end pipeline from the immutable OOF summary.
 - [scripts/compute_qp_optimum.py](scripts/compute_qp_optimum.py) — clairvoyant lower-bound implementation used by the v2 gate.
 - Historical review-response scripts and outputs are preserved under `archive/energy_model_v1_mixed_20260805/`.
 
@@ -1375,11 +1576,11 @@ python scripts/review_energy_model_v2.py --year 2025
 
 ### Training
 
-The active runner is `scripts/run_oof_campaign_v2.py`. The frozen budget is
+The completed runner is `scripts/run_oof_campaign_v2.py`. The frozen budget was
 **501,760 steps (245 complete 2,048-step PPO rollouts)** per model.
 
 ```bash
-# Must run from a clean committed checkpoint.
+# Reproduce only from the frozen committed source and matching package set.
 python scripts/run_oof_campaign_v2.py --phase preflight
 
 # Train 2 folds × 4 configs × 10 seeds = 80 models.
@@ -1389,9 +1590,9 @@ python scripts/run_oof_campaign_v2.py --phase train --workers 16
 python scripts/run_oof_campaign_v2.py --phase evaluate
 ```
 
-The runner hashes source/data/package versions, rejects tracked changes after
-freeze, writes each model atomically, and validates completion records before
-evaluation.
+The runner hashed source/data/package versions, rejected tracked changes after
+freeze, wrote each model atomically, and validated all 80 completion records
+before evaluation. The current outputs already contain the completed campaign.
 
 All v1 training/evaluation commands, scenarios, models, and outputs are retained
 under `archive/energy_model_v1_mixed_20260805/` and
@@ -1404,12 +1605,15 @@ under `archive/energy_model_v1_mixed_20260805/` and
 ### Current energy-model v2
 
 1. **The thesis now starts with a real energy model.** May-2025 CAISO native five-minute net demand/solar and NP15 DAM LMP are co-timestamped and shifted together across the US and Global slots.
-2. **The corrected opportunity is 8.0–17.4% joint, dominated by spatial routing.** Incremental temporal headroom is only 0.6–2.3% at the primary deadline and remains secondary across the φ sweep.
+2. **The QP opportunity is 8.0–17.4% joint, dominated by spatial routing.** Incremental temporal headroom is only 0.6–2.3% at the primary deadline and remains secondary across the φ sweep.
 3. **Every slot has equal duration, not necessarily an identical finite-window mean.** Each has 8,928 intervals/744 hours. Singapore's 0.59% higher mean is caused by substituting 15 real June boundary hours for 15 May hours.
 4. **Continuous boundary handling is deliberate.** Circularizing May would create an artificial May 31-to-May 1 discontinuity.
 5. **The primary objective recommendation is real energy + α=0.015 positive-grid stress.** Signed demand is observable; real low/negative prices drive trough execution. The standardized demand charge is secondary.
 6. **Ramp reduction is a reported physical KPI, not a reward term.** One-hour and three-hour regional upward ramps are measured before/after DC load; a ramp penalty is added only if v2 policies worsen them.
-7. **No v2 learned-policy claim exists yet.** The mixed/synthetic campaigns below are archived methodological history until the frozen v2 campaign is approved, trained, and evaluated.
+7. **Global spatial PPO is the only robust learned success.** It saves 0.90% and 1.19% on the two held-out folds; wider t-interval sensitivity remains positive.
+8. **US spatial savings are not established.** One fold is consistent with a small loss and the other is indistinguishable from zero.
+9. **The joint-shaping headline failed.** Only 9/40 batch seeds meet the frozen completion floor; joint PPO does not reliably improve over spatial PPO.
+10. **Secondary effects matter.** Spatial PPO lowers the reference demand charge, while joint PPO raises it and worsens rare maximum three-hour ramps.
 
 ### Archived energy-model v1 takeaways
 
@@ -1476,12 +1680,14 @@ The results in §7 were not produced by a single clean run; they are the product
 | 21 | **Status Quo locality corrected and unit-capacity proxy contract frozen** | The batch baseline moved held-out load and exposed a unit mismatch between own-cell utilization and largest-fleet-relative capacity | All sites now use equal 100 MW/unit capacity; all four spatial/batch Status Quo costs agree within $0.001 and complete all work |
 | 22 | **Signed net demand, current batch arrival, and one protocol source added** | Negative troughs were clipped, same-step arrivals were hidden, and objective constants lived in separate scripts | Signed `[-1,1]` demand is observable, current arrivals are in state, convex stress uses `max(d,0)`, and `env/protocols/v2_2025.yaml` centralizes assumptions |
 | 23 | **Ramp rate separated from high-demand exposure** (§3.3.1) | Peer review correctly noted that `Φ` penalizes level, not `Δ` net demand | Primary reward remains simple; evaluation now reports per-region 1h/3h maximum and p95 raw-grid versus grid-plus-DC upward ramps |
+| 24 | **Frozen v2 OOF campaign completed** (§6–§7): 80 PPO models, two symmetric held-out folds, 10 seeds/config | Pretraining review demanded one immutable protocol and no test-fold selection | Global spatial shows a small robust effect; US spatial is not established; joint batch control fails the frozen completion/headline criteria |
 
 ## Verification Summary
 
-**52 high-impact factual claims were checked:** 32 confirmed, 20 corrected,
-and 0 left unverifiable. The objective/tariff treatment, PPO budget, folds,
-seeds, and provenance rules are frozen; training remains unlaunched.
+**52 pretraining high-impact factual claims were checked:** 32 confirmed, 20
+corrected, and 0 left unverifiable. The frozen campaign then completed 80/80
+models and all eight held-out evaluations; its canonical result was separately
+audited against raw seed records and protocol hashes.
 
 Corrections made during verification:
 
@@ -1504,6 +1710,11 @@ Corrections made during verification:
   reproduction paths out of the active tree.
 - Simplified related work to the four active lineages and removed archived v1
   experimental/results sections from the generated DOCX.
+- Verified all 80 v2 model hashes/completion records and all frozen result
+  calculations. Added a wider Student-*t* CI sensitivity; it does not change the
+  positive Global-spatial conclusion.
+- Narrowed “temporal value” language to joint batch control because 31/40 batch
+  seeds fail completion and confound a pure timing interpretation.
 
 Validated source limitations remain explicit: the active energy model is a
 controlled CAISO archetype rather than a real multi-market replay; DAM prices
@@ -1513,6 +1724,8 @@ calendar.
 
 **Current evidence boundary:** the CAISO source model, workload conservation,
 unit-capacity mapping, signed-demand observation, Status Quo invariant, QP gate,
-and deadline sensitivity are verified. No v2 PPO result exists yet.
+deadline sensitivity, 80-model campaign, and canonical held-out results are
+verified. The evidence supports only the narrow Global-spatial learned result;
+the broad joint headline fails.
 
 **Reproducibility of the lineage:** the current measured tier curves are regenerable via `extract_tier_curves.ipynb`, and per-cell power via the enhanced Dataset 2 extraction in `extract_clusterdata2019_full.ipynb`. Superseded local approximations are preserved in the v1 archive.
