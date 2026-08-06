@@ -1,11 +1,10 @@
-"""Evaluate a trained PPO agent against all baselines.
+"""Evaluate a trained PPO agent against the active baseline set.
 
 Runs one full episode for the PPO agent and each baseline policy,
 collects per-timestep metrics, and produces a summary report with plots.
 
-Usage:
-    python evaluate.py --scenario env/scenarios/us_model.yaml --model models/ppo_us_model
-    python evaluate.py --scenario env/scenarios/us_model.yaml --model models/ppo_us_model_batch --batch-mode
+The frozen v2 campaign must supply objective/completion flags from its protocol;
+ad hoc defaults are not a valid headline evaluation.
 """
 
 from __future__ import annotations
@@ -18,9 +17,13 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from stable_baselines3 import DQN, PPO
+from stable_baselines3 import PPO
 
-from baselines import ALL_BASELINES
+from baselines import (
+    DrainImmediatelyPolicy,
+    RoundRobinPolicy,
+    StatusQuoPolicy,
+)
 from env.data_loader import load_scenario
 from env.multi_dc_env import REFERENCE_DEMAND_CHARGE_RATE, MultiDCEnv
 
@@ -53,6 +56,80 @@ def run_episode(
             break
 
     return total_reward, history
+
+
+def compute_ramp_metrics(
+    history: list[dict[str, Any]],
+    horizon_steps: int,
+) -> dict[str, Any] | None:
+    """Compare raw-grid and grid-plus-DC upward ramps across physical sites."""
+    if len(history) <= horizon_steps:
+        return None
+
+    per_dc: dict[str, Any] = {}
+    all_base: list[np.ndarray] = []
+    all_combined: list[np.ndarray] = []
+    n_dc = len(history[0]["per_dc"])
+
+    for i in range(n_dc):
+        name = history[0]["per_dc"][i]["name"]
+        raw = [h["per_dc"][i].get("net_demand_mw") for h in history]
+        if any(value is None for value in raw):
+            return None
+        base = np.asarray(raw, dtype=np.float64)
+        dc_load = np.asarray(
+            [h["per_dc"][i].get("grid_mw", 0.0) for h in history],
+            dtype=np.float64,
+        )
+        combined = base + dc_load
+        base_up = np.maximum(
+            base[horizon_steps:] - base[:-horizon_steps],
+            0.0,
+        )
+        combined_up = np.maximum(
+            combined[horizon_steps:] - combined[:-horizon_steps],
+            0.0,
+        )
+        all_base.append(base_up)
+        all_combined.append(combined_up)
+        per_dc[name] = {
+            "base_max_up_mw": float(base_up.max()),
+            "with_dc_max_up_mw": float(combined_up.max()),
+            "max_up_delta_mw": float(
+                combined_up.max() - base_up.max()
+            ),
+            "base_p95_up_mw": float(np.percentile(base_up, 95)),
+            "with_dc_p95_up_mw": float(
+                np.percentile(combined_up, 95)
+            ),
+            "p95_up_delta_mw": float(
+                np.percentile(combined_up, 95)
+                - np.percentile(base_up, 95)
+            ),
+        }
+
+    base_all = np.concatenate(all_base)
+    combined_all = np.concatenate(all_combined)
+    return {
+        "interpretation": (
+            "Distribution across separate physical sites; regional net demand "
+            "is not summed into a fictitious global grid."
+        ),
+        "base_max_up_mw": float(base_all.max()),
+        "with_dc_max_up_mw": float(combined_all.max()),
+        "max_up_delta_mw": float(
+            combined_all.max() - base_all.max()
+        ),
+        "base_p95_up_mw": float(np.percentile(base_all, 95)),
+        "with_dc_p95_up_mw": float(
+            np.percentile(combined_all, 95)
+        ),
+        "p95_up_delta_mw": float(
+            np.percentile(combined_all, 95)
+            - np.percentile(base_all, 95)
+        ),
+        "per_dc": per_dc,
+    }
 
 
 def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
@@ -200,6 +277,12 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
         "per_dc_billed_peak_mw": per_dc_billed_peak,
         "per_dc_avg_backlog": dc_backlogs,
     }
+    ramp_metrics = {}
+    for label, steps in (("1h", 12), ("3h", 36)):
+        metrics = compute_ramp_metrics(history, steps)
+        if metrics is not None:
+            ramp_metrics[label] = metrics
+    summary["physical_ramp_metrics"] = ramp_metrics
 
     if batch_enabled:
         total_expired = sum(h.get("total_batch_expired", 0) for h in history)
@@ -272,14 +355,16 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
 def _make_env(
     scenario_path: Path,
     batch_enabled: bool = False,
-    flexibility_factor: float = 1.0,
-    deadline_penalty_weight: float = 2.0,
+    flexibility_factor: float | None = None,
+    deadline_penalty_weight: float | None = None,
     memory_enabled: bool = False,
     dynamic_arrivals: bool = True,
     seed: int = 42,
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
     demand_charge_period_steps: int | None = None,
+    enforce_batch_completion: bool = False,
+    completion_penalty_weight: float | None = None,
     batch_spatial_routing: bool = True,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
@@ -289,8 +374,16 @@ def _make_env(
         dynamic_arrivals=dynamic_arrivals,
         seed=seed,
     )
-    ff = batch_config.get("flexibility_factor", flexibility_factor)
-    dp = batch_config.get("deadline_penalty_weight", deadline_penalty_weight)
+    ff = (
+        batch_config.get("flexibility_factor", 1.0)
+        if flexibility_factor is None
+        else flexibility_factor
+    )
+    dp = (
+        batch_config.get("deadline_penalty_weight", 2.0)
+        if deadline_penalty_weight is None
+        else deadline_penalty_weight
+    )
     uh = batch_config.get("urgency_horizon_steps", 12)
     return MultiDCEnv(
         sites=sites,
@@ -303,6 +396,8 @@ def _make_env(
         peak_penalty_weight=peak_penalty_weight,
         demand_charge_rate=demand_charge_rate,
         demand_charge_period_steps=demand_charge_period_steps,
+        enforce_batch_completion=enforce_batch_completion,
+        completion_penalty_weight=completion_penalty_weight,
         batch_spatial_routing=batch_spatial_routing,
     )
 
@@ -329,14 +424,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--flexibility-factor",
         type=float,
-        default=1.0,
-        help="Deadline flexibility factor (default: 1.0)",
+        default=None,
+        help="Override scenario deadline flexibility.",
     )
     parser.add_argument(
         "--deadline-penalty",
         type=float,
-        default=2.0,
-        help="Deadline violation penalty weight (default: 2.0)",
+        default=None,
+        help="Override scenario deadline penalty weight.",
     )
     parser.add_argument(
         "--memory",
@@ -347,25 +442,6 @@ def main(argv: list[str] | None = None) -> None:
         "--no-dynamic-arrivals",
         action="store_true",
         help="Disable dynamic batch arrivals (use static fraction split)",
-    )
-    parser.add_argument(
-        "--algorithm",
-        type=str,
-        default="ppo",
-        choices=["ppo", "dqn"],
-        help="RL algorithm used for the trained model (default: ppo)",
-    )
-    parser.add_argument(
-        "--dqn-model",
-        type=Path,
-        default=None,
-        help="Path to a second (DQN routing-grid) model for comparison",
-    )
-    parser.add_argument(
-        "--dqn-flatidx-model",
-        type=Path,
-        default=None,
-        help="Path to a third compact-action DQN model (CFWS-inspired encoding)",
     )
     parser.add_argument(
         "--peak-penalty-weight",
@@ -390,6 +466,18 @@ def main(argv: list[str] | None = None) -> None:
              "a rate quoted for that period; it must divide max_steps exactly.",
     )
     parser.add_argument(
+        "--enforce-batch-completion",
+        action="store_true",
+        help="Evaluate with gamma-equivalent dense completion accounting and "
+             "terminal-pool value. Batch mode only.",
+    )
+    parser.add_argument(
+        "--completion-penalty",
+        type=float,
+        default=None,
+        help="Fixed completion coefficient used during guarded training.",
+    )
+    parser.add_argument(
         "--no-batch-spatial-routing",
         dest="batch_spatial_routing",
         action="store_false",
@@ -398,6 +486,15 @@ def main(argv: list[str] | None = None) -> None:
              "was trained (action space differs: 3N with routing, 2N without).",
     )
     args = parser.parse_args(argv)
+    if args.enforce_batch_completion and not args.batch_mode:
+        parser.error("--enforce-batch-completion requires --batch-mode")
+    if (
+        args.completion_penalty is not None
+        and not args.enforce_batch_completion
+    ):
+        parser.error(
+            "--completion-penalty requires --enforce-batch-completion"
+        )
 
     scenario_name = args.scenario.stem
     if args.batch_mode:
@@ -409,15 +506,9 @@ def main(argv: list[str] | None = None) -> None:
     results: dict[str, Any] = {}
 
     # Load primary trained model
-    print(f"Loading {args.algorithm.upper()} model from {args.model}...")
-    if args.algorithm == "dqn":
-        from env.discrete_wrapper import DiscretizedMultiDCEnv
-
-        rl_model = DQN.load(args.model)
-        rl_label = "DQN"
-    else:
-        rl_model = PPO.load(args.model)
-        rl_label = "PPO"
+    print(f"Loading PPO model from {args.model}...")
+    rl_model = PPO.load(args.model)
+    rl_label = "PPO"
 
     # Evaluate primary model
     print(f"Evaluating {rl_label} agent...")
@@ -431,68 +522,21 @@ def main(argv: list[str] | None = None) -> None:
         peak_penalty_weight=args.peak_penalty_weight,
         demand_charge_rate=args.demand_charge_rate,
         demand_charge_period_steps=args.demand_charge_period_steps,
+        enforce_batch_completion=args.enforce_batch_completion,
+        completion_penalty_weight=args.completion_penalty,
         batch_spatial_routing=args.batch_spatial_routing,
     )
-    if args.algorithm == "dqn":
-        env = DiscretizedMultiDCEnv(env)
     rl_reward, rl_history = run_episode(env, rl_model.predict, is_sb3=True)
     rl_summary = compute_summary(rl_history, batch_enabled=args.batch_mode)
     print(f"  {rl_label} total cost: {rl_summary['total_cost']:.2f}")
     results[rl_label] = {"reward": rl_reward, "summary": rl_summary, "history": rl_history}
 
-    # Optionally load a second model (DQN routing-grid for comparison)
-    if args.dqn_model is not None and args.algorithm != "dqn":
-        from env.discrete_wrapper import DiscretizedMultiDCEnv
-
-        print(f"Loading DQN (routing-grid) model from {args.dqn_model}...")
-        dqn_model = DQN.load(args.dqn_model)
-        env2 = _make_env(
-            args.scenario,
-            batch_enabled=args.batch_mode,
-            flexibility_factor=args.flexibility_factor,
-            deadline_penalty_weight=args.deadline_penalty,
-            memory_enabled=args.memory,
-            dynamic_arrivals=not args.no_dynamic_arrivals,
-            peak_penalty_weight=args.peak_penalty_weight,
-            demand_charge_rate=args.demand_charge_rate,
-            demand_charge_period_steps=args.demand_charge_period_steps,
-            batch_spatial_routing=args.batch_spatial_routing,
-        )
-        env2 = DiscretizedMultiDCEnv(env2)
-        dqn_reward, dqn_history = run_episode(env2, dqn_model.predict, is_sb3=True)
-        dqn_summary = compute_summary(dqn_history, batch_enabled=args.batch_mode)
-        print(f"  DQN total cost: {dqn_summary['total_cost']:.2f}")
-        results["DQN"] = {"reward": dqn_reward, "summary": dqn_summary, "history": dqn_history}
-
-    # Optionally load a third compact-action DQN model.
-    if args.dqn_flatidx_model is not None:
-        from env.cfws_style_wrapper import CFWSStyleDiscretizedEnv
-
-        print(f"Loading DQN (compact 48-action) model from {args.dqn_flatidx_model}...")
-        dqn_flat = DQN.load(args.dqn_flatidx_model)
-        env3 = _make_env(
-            args.scenario,
-            batch_enabled=args.batch_mode,
-            flexibility_factor=args.flexibility_factor,
-            deadline_penalty_weight=args.deadline_penalty,
-            memory_enabled=args.memory,
-            dynamic_arrivals=not args.no_dynamic_arrivals,
-            peak_penalty_weight=args.peak_penalty_weight,
-            demand_charge_rate=args.demand_charge_rate,
-            demand_charge_period_steps=args.demand_charge_period_steps,
-            batch_spatial_routing=args.batch_spatial_routing,
-        )
-        env3 = CFWSStyleDiscretizedEnv(env3)
-        df_reward, df_history = run_episode(env3, dqn_flat.predict, is_sb3=True)
-        df_summary = compute_summary(df_history, batch_enabled=args.batch_mode)
-        print(f"  DQN-compact total cost: {df_summary['total_cost']:.2f}")
-        results["DQN-compact"] = {
-            "reward": df_reward, "summary": df_summary, "history": df_history,
-        }
-
     ppo_summary = rl_summary  # for dc_names later
 
-    for baseline_cls in ALL_BASELINES:
+    baseline_classes = [StatusQuoPolicy, RoundRobinPolicy]
+    if args.batch_mode:
+        baseline_classes.append(DrainImmediatelyPolicy)
+    for baseline_cls in baseline_classes:
         baseline = baseline_cls()
         print(f"Evaluating {baseline.name}...")
         env = _make_env(
@@ -503,6 +547,8 @@ def main(argv: list[str] | None = None) -> None:
             peak_penalty_weight=args.peak_penalty_weight,
             demand_charge_rate=args.demand_charge_rate,
             demand_charge_period_steps=args.demand_charge_period_steps,
+            enforce_batch_completion=args.enforce_batch_completion,
+            completion_penalty_weight=args.completion_penalty,
             batch_spatial_routing=args.batch_spatial_routing,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
@@ -637,7 +683,7 @@ def main(argv: list[str] | None = None) -> None:
         ax.plot(
             smoothed,
             label=name,
-            linewidth=1.5 if name in ("PPO", "DQN") else 0.8,
+            linewidth=1.5 if name == "PPO" else 0.8,
         )
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Σ grid_mw × net_demand_norm (smoothed)")

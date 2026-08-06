@@ -23,7 +23,7 @@ from env.multi_dc_env import MultiDCEnv
 
 def run(memory_enabled: bool) -> dict:
     sites, power_model, batch_config = load_scenario(
-        ROOT / "env" / "scenarios" / "us_model.yaml",
+        ROOT / "env" / "scenarios" / "us_model_v2_2025.yaml",
         batch_enabled=True,
     )
     env = MultiDCEnv(
