@@ -2,7 +2,8 @@
 """Build thesis_paper.docx — a two-column, IEEE-style thesis paper at repo root.
 
 DOCX is chosen for direct import into Google Docs. Math uses Unicode notation
-(editable text, survives import). Figures come from scripts/build_paper_figures.py.
+(editable text, survives import). Current energy figures come from the v2 gate;
+measured tier/power figures remain under output/paper_figs/.
 Regenerate with:  python scripts/build_thesis_paper.py
 """
 
@@ -18,9 +19,11 @@ from docx.shared import Inches, Pt, RGBColor
 
 ROOT = Path(__file__).resolve().parent.parent
 FIGS = ROOT / "output" / "paper_figs"
+ENERGY_FIGS = ROOT / "output" / "energy_model_v2" / "2025"
 OUT = ROOT / "thesis_paper.docx"
 
 doc = Document()
+EMIT_CONTENT = True
 zoom = doc.settings.element.find(qn("w:zoom"))
 if zoom is not None:
     zoom.set(qn("w:percent"), "100")
@@ -44,6 +47,8 @@ def set_cols(section, n: int, space: int = 240) -> None:
 
 
 def P(text: str, *, bold=False, italic=False, size=9.5, align=None, space_after=3):
+    if not EMIT_CONTENT:
+        return None
     p = doc.add_paragraph()
     r = p.add_run(text)
     r.bold, r.italic = bold, italic
@@ -59,6 +64,8 @@ def H1(text: str):
 
 
 def H2(text: str):
+    if not EMIT_CONTENT:
+        return None
     p = doc.add_paragraph()
     r = p.add_run(text)
     r.bold = True
@@ -68,6 +75,8 @@ def H2(text: str):
 
 
 def EQ(text: str, num: int):
+    if not EMIT_CONTENT:
+        return None
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run(text + "        (" + str(num) + ")")
@@ -76,10 +85,12 @@ def EQ(text: str, num: int):
     p.paragraph_format.space_after = Pt(4)
 
 
-def FIG(path: Path, caption: str):
+def FIG(path: Path, caption: str, *, width=3.2):
+    if not EMIT_CONTENT:
+        return None
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run().add_picture(str(path), width=Inches(3.2))
+    p.add_run().add_picture(str(path), width=Inches(width))
     c = doc.add_paragraph()
     c.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = c.add_run(caption)
@@ -88,6 +99,8 @@ def FIG(path: Path, caption: str):
 
 
 def TABLE(header: list[str], rows: list[list[str]], caption: str, widths=None):
+    if not EMIT_CONTENT:
+        return None
     c = doc.add_paragraph()
     c.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = c.add_run(caption)
@@ -125,42 +138,32 @@ P("Grid-Aware Spatio-Temporal Load Shaping for Geo-Distributed Data Centers "
 P("A Cell-Aggregate Study on Google ClusterData 2019", bold=True, size=13,
   align=WD_ALIGN_PARAGRAPH.CENTER, space_after=8)
 P("Janusz Gal", size=11, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
-P("Master's Thesis Draft — generated working paper; numbers correspond to the "
-  "multi-seed default-off campaign (5 seeds/config); the demand-charge extension "
-  "is explicitly labeled single-seed.",
+P("Master's Thesis Draft — energy-model v2 design gate. The real May-2025 "
+  "CAISO source and corrected QP gate are current. Prior learned-policy results "
+  "are archived separately as energy-model v1 evidence and are not final v2 "
+  "claims.",
   italic=True, size=8, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
 
 P("Abstract — Hyperscale data centers are now grid-scale electrical loads whose "
   "consumption coincides with regional net-demand peaks (the “duck curve”). "
   "We study whether a reinforcement-learning agent can route workload across "
   "geographically distributed data centers — spatially (where) and temporally "
-  "(when, for deferrable batch work) — to minimize electricity cost while reducing "
-  "the fleet's contribution to grid stress. Following the aggregate load-shaping "
-  "paradigm of Google's production Carbon-Intelligent Computing System rather than "
-  "job-level scheduling, we model four Borg cells from the Google ClusterData 2019 "
-  "trace as proxy data centers: measured per-tier demand curves (service vs. "
-  "no-SLO batch, extracted from instance-level usage by priority tier), per-cell "
-  "power models calibrated on the companion PowerData2019 measurements "
-  "(R² = 0.75–0.80 per cell vs. 0.43 pooled), regional net-demand series "
-  "(EIA-930 for US regions; documented approximations outside the US), and "
-  "documented synthetic regional price series (see provenance note, Sec. IV-D). "
-  "Across five training seeds per configuration, a continuous-action PPO policy "
-  "controlling routing fractions, batch drain rates, and batch placement beats the "
-  "grid-unaware status quo by 2.7–12.9%, a foresighted lookahead heuristic by "
-  "5.0–14.8%, and the best discrete DQN variant by 2.5–9.9% (winning 19 of 20 "
-  "seed-paired comparisons), and sits within 1.3–5.7% of a clairvoyant convex-QP "
-  "lower bound — with zero deadline violations and 100% of service demand served. "
-  "A three-stage generalization study shows transfer succeeds along an observed "
-  "net-demand-year shift (real EIA-930 for US regions; updated approximations "
-  "for non-US regions) but fails along an unobserved one "
-  "(held-out cells), until domain randomization restores it; and the spatial "
-  "advantage survives inter-site movement costs up to ~0.35–0.53× the energy cost "
-  "of serving a unit. We additionally contribute three experimentally validated "
-  "modeling lessons — deadline penalties must scale with the energy value of "
-  "deferred work; capacity-blocked work must queue, not expire; and synthetic "
-  "workload generators must conserve the demand-presentation process (requests "
-  "≠ usage) — each of which, while uncorrected, inverted the experimental "
-  "ranking.", size=9)
+  "(when, for deferrable batch work) — to minimize electricity cost while "
+  "reducing the fleet's contribution to grid stress. The active experiment "
+  "combines Google ClusterData 2019 workload shapes and PowerData2019-calibrated "
+  "power models with one co-timestamped, real May-2025 CAISO archetype: native "
+  "five-minute net demand and solar plus NP15 day-ahead LMP. Price and net "
+  "demand are shifted together by local wall time across four US slots and "
+  "four global slots, preserving negative prices and signed net demand over a "
+  "complete 8,928-step (744-hour) experiment. Measured workload shapes map to "
+  "equal 100 MW/unit-capacity proxies, and current batch arrivals are observed "
+  "before same-step release. Routing is unrestricted and therefore represents "
+  "an optimistic upper bound, not a deployment claim. The corrected "
+  "clairvoyant-QP gate finds 8.0–17.4% "
+  "joint headroom, of which only 0.6–2.3% is incremental temporal value. "
+  "An a–d-only coefficient sweep supports α=0.015 for the convex positive-grid-"
+  "stress term; a standardized demand charge remains secondary. No v2 PPO "
+  "training has begun.", size=9)
 P("Index Terms — data centers, demand response, reinforcement learning, workload "
   "scheduling, duck curve, Google cluster trace, load shaping.",
   italic=True, size=9, space_after=10)
@@ -192,64 +195,43 @@ P("Data centers consumed roughly 415 TWh of electricity in 2024, and the IEA "
   "net-demand (duck-curve) objective; those are the gaps this thesis fills.")
 P("This thesis asks: can a model-free reinforcement-learning agent, observing "
   "only per-site demand, prices, and grid net demand, learn a joint spatial-"
-  "temporal load-shaping policy that beats both the grid-unaware status quo and "
-  "foresighted scheduling heuristics? We answer affirmatively, on an environment "
-  "combining measured traces with explicitly identified modeled market inputs, "
-  "and we document — unusually, as a "
-  "first-class contribution — the modeling errors we made on the way, each of "
-  "which inverted the experimental ranking until found and fixed.")
+  "temporal load-shaping policy that beats the grid-unaware status quo? This "
+  "revision deliberately does not answer that question with a learned v2 policy "
+  "yet. It first freezes and audits the real energy surface on which the answer "
+  "will depend, then uses a clairvoyant QP to verify that measurable headroom "
+  "exists before spending another training campaign.")
 P("Contributions. (C1) A reproducible Gymnasium environment for multi-data-center "
   "grid-aware load shaping at cell-aggregate granularity, grounded in Google "
-  "ClusterData 2019 [1], PowerData2019 [2], EIA-930 US net demand, documented "
-  "non-US net-demand approximations, and synthetic regional prices. (C2) "
-  "Ground-truth measured per-tier demand "
+  "ClusterData 2019 [1] and PowerData2019 [2]. (C2) Ground-truth measured per-tier demand "
   "decomposition (SLO service vs. no-SLO batch) of four trace cells, with the "
   "finding that resource requests overestimate the deferrable usage share by "
-  "3–5×. (C3) A continuous-action PPO formulation (routing + drain + batch "
-  "placement) that, across five seeds per configuration, wins every evaluated "
-  "configuration against heuristic, DQN, and status-quo baselines with zero "
-  "deadline violations, and lands within 1.3–5.7% of a clairvoyant QP lower "
-  "bound. (C4) Identification of marginal-power (slope) arbitrage as an emergent "
-  "routing strategy enabled by per-cell power calibration. (C5) A three-stage "
-  "generalization result establishing that transfer tracks observability, with "
-  "domain randomization closing the unobserved axis. (C6) Three transferable "
-  "modeling lessons for deferral-with-deadlines simulators, each validated by "
-  "ranking inversion.")
+  "3–5×. (C3) A real, reproducible May-2025 CAISO duck-curve/price archetype "
+  "whose paired signals are shifted by IANA local wall time across US and global "
+  "slots. (C4) A no-training QP gate that sizes the opportunity before policy "
+  "selection and shows that spatial diversity dominates temporal flexibility. "
+  "(C5) A preserved audit trail of the retired mixed/synthetic model and the "
+  "simulator corrections that prevented invalid results from being promoted.")
 
 # ---------------- II. RELATED WORK ----------------
 H1("II. RELATED WORK AND METHODOLOGICAL LINEAGE")
-P("This work deliberately assembles its methodology from prior art; this section "
-  "states precisely what is taken from where.")
-H2("A. The trace and its semantics")
-P("ClusterData 2019, documented by Tirmazi et al. [1], covers eight Borg cells "
-  "for May 2019 (~96k machines). We adopt three of its definitions wholesale: "
-  "the cell as the natural management unit (§2 of [1]); priority tiers, from "
-  "which we define deferrable work as the union of the two no-SLO tiers — "
-  "free (priority ≤ 99) and best-effort batch (100–115, per the normative trace "
-  "documentation [22]; Tirmazi et al. [1] describe the range as 110–115) — "
-  "production work (120–359) is explicitly protected by eviction "
-  "of lower tiers and is never deferred; and Normalized Compute Units. The "
-  "companion PowerData2019 trace provides measured per-PDU power utilization "
-  "[2], used here for calibration. "
-  "Tirmazi's heavy-tail observation (top 1% of jobs consume >99% of resources) "
-  "informs our distribution fits; notably we find the tail does not survive "
-  "aggregation (Sec. VII).")
-H2("B. Workload-generation lineage")
-P("Our synthetic batch generator descends directly from Da Costa, Grange & "
-  "De Courchelle [5], instantiated as the scipy-based Listing 1 of Grange et "
-  "al. [4], in the Feitelson workload-modeling tradition [21]. Those works use "
-  "the 2011 Google trace; we retain the generator family but re-fit every "
-  "distribution to ClusterData2019. We reproduce "
-  "Listing 1 verbatim (scripts/grange_generator.py recovers their published "
-  "lognormal s = 1.634, scale = 447), then extend it: distributions are re-fit "
-  "to the 2019 trace under the no-SLO definition, selected by minimum "
-  "Kolmogorov–Smirnov distance (the p-value saturates at n ≈ 10⁵), "
-  "with discrete negative-binomial task counts. Grange's SLA-flexibility knob "
-  "becomes our deadline model, Eq. (7). Critically, in the final environment the "
-  "generator is demoted to sensitivity analysis: measured per-tier curves are "
-  "the primary input, after we found single-timestep job pulses inflated batch "
-  "burstiness by two orders of magnitude (Sec. VII).")
-H2("C. Geographic load balancing for electricity cost")
+P("The current thesis combines four established ideas rather than claiming a "
+  "new scheduling paradigm: measured aggregate workload shaping, geographic "
+  "load balancing, deadline-constrained deferral, and model-free control. This "
+  "section identifies only the lineage that remains active in energy-model v2.")
+H2("A. Aggregate workload shaping and trace semantics")
+P("ClusterData 2019 [1] defines a Borg cell as one management unit and reports "
+  "five-minute, normalized resource usage across eight heterogeneous cells. We "
+  "use those measured cell aggregates directly. Collection priority separates "
+  "the no-SLO free/best-effort tiers (priority ≤115 [22]) from SLO-bearing "
+  "service; no synthetic arrival stream is used in the primary experiment. "
+  "PowerData2019 [2] supplies the companion per-cell power calibration.")
+P("Google's CICS [3] is the main production precedent for this granularity. It "
+  "shapes aggregate flexible and inflexible cluster demand independently of the "
+  "real-time job scheduler, using cluster-specific forecasts and power models. "
+  "Our temporal abstraction follows that aggregate view, while the objective "
+  "changes from carbon to electricity cost and grid net demand. CICS is a "
+  "precedent, not a reproduced system, and it does not supply our spatial head.")
+H2("B. Geographic load balancing for electricity cost")
 P("Spatial electricity-price arbitrage across internet-scale systems predates "
   "the renewable-aware literature: Qureshi et al. quantified the savings from "
   "routing request load toward cheap electricity markets [23]; Rao et al. "
@@ -261,64 +243,43 @@ P("Spatial electricity-price arbitrage across internet-scale systems predates "
   "displacements: the objective targets grid net demand (the duck-curve "
   "quantity) rather than price alone, and the routed quantity is measured "
   "aggregate tier demand rather than request traffic.")
-H2("D. Single-DC renewable-aware scheduling")
-P("The deferral-with-deadlines pattern originates in single-DC work: GreenSlot "
-  "[10] delays jobs toward predicted cheap/green slots; Grange et al. [4] add "
-  "due-date constraints and an infrastructure-agnostic objective signal; Xu et "
-  "al. [7] split workloads into brownout-able "
-  "interactive and deferrable batch; Haghshenas et al. [8] schedule heterogeneous "
-  "workloads against rate structures; Liu et al. [9] forecast-then-plan. We "
-  "benchmark against this lineage at the level of objectives and effects — cost, "
-  "peak contribution, deferral value — not mechanism: our Trough-Slot baseline "
-  "retargets GreenSlot's slot valuation from solar supply to grid net demand, "
-  "and our service/batch split operationalizes Xu's taxonomy via measured tiers.")
-H2("E. Aggregate load shaping at hyperscale")
-P("Radovanović et al. [3] describe CICS, which shapes aggregate cluster "
-  "load via day-ahead Virtual Capacity Curves and operates independently from "
-  "real-time job-level scheduling, using cluster demand forecasts rather than "
-  "a job-level workload model. Our environment is a CICS-shaped formulation made "
-  "reproducible: aggregate flexible/inflexible demand curves per cluster, "
-  "power models trained separately per cluster, and both spatial and temporal "
-  "shifting — retargeted from carbon to grid demand smoothing, on public data.")
-H2("F. Reinforcement learning and open environments")
-P("RL for DC energy management is surveyed in [15]; DeepEE [16] jointly "
-  "schedules jobs and cooling with DRL (cooling is excluded from our scope). "
-  "At finer granularity, CFWS [6] applies DQN with a flattened-index action "
-  "encoding to VM/PM migration. We do not benchmark or reimplement CFWS; we "
-  "borrow only its compact index-decoding idea for a 48-action aggregate DQN "
-  "sensitivity, alongside a "
-  "759-action routing grid, against continuous-action PPO [18] (DQN [19]; "
-  "implementations via Stable-Baselines3 [20]). Energy-model form follows the "
-  "linear idle+slope server model surveyed in [14] and canonicalized by Fan et "
-  "al. [17]; the demand-response framing follows [13]; broader green-DC context "
-  "in [11], geo-distributed scheduling in [12].")
-P("Open benchmark environments for this problem class have recently emerged. "
-  "SustainDC [26] provides multi-agent Gymnasium environments for control "
-  "*within* a data center (workload shifting, cooling, battery). SustainCluster "
-  "[27] is a complementary geo-distributed environment: a centralized scheduler "
-  "dispatches or "
-  "defers *individual tasks* of the Alibaba 2020 GPU trace across 20+ global "
-  "locations every 15 minutes, optimizing energy cost, carbon, SLA, and "
-  "per-GB transmission overheads. Our environment is complementary on three "
-  "axes: granularity (CICS-style measured aggregate per-tier curves rather "
-  "than per-task dispatch), data grounding (Google ClusterData 2019 with "
-  "PowerData2019-calibrated per-cell power, rather than Alibaba GPU jobs with "
-  "carbon-intensity feeds), and objective (grid net-demand peak contribution "
-  "rather than carbon). We deliberately do not run our experiments inside "
-  "SustainCluster: answering our question there would require replacing both "
-  "its objective (carbon → grid net demand) and its action model (per-task "
-  "dispatch → aggregate tier control, the granularity Sec. II-E argues for), "
-  "while abandoning the Google-trace data contributions — at which point the "
-  "environment would no longer be SustainCluster. The two environments are "
-  "complementary benchmarks; SustainCluster's transmission-cost model is the "
-  "natural template for the movement-cost sensitivity analysis of Sec. VIII, "
-  "and cross-validation of our policies inside it is listed as future work.")
+H2("C. Deadline-constrained deferral")
+P("GreenSlot [10] and related single-DC work establish the basic temporal idea: "
+  "delay flexible work toward predicted cheap or renewable-rich intervals. "
+  "Grange et al. [4] add due-date constraints; Xu et al. [7] distinguish "
+  "interactive from deferrable work; Haghshenas et al. [8] and Liu et al. [9] "
+  "combine heterogeneous load with prices or forecasts. We borrow the pool-and-"
+  "deadline abstraction, not their job-level placement mechanisms. In our "
+  "aggregate model, measured no-SLO demand enters a queue and the controller "
+  "selects its release rate and execution site.")
+H2("D. Reinforcement learning and open environments")
+P("Model-free RL is established for data-center control [15], with DeepEE [16] "
+  "as one example of joint scheduling and infrastructure control. We use PPO "
+  "[18] because the current action is continuous: routing fractions, release "
+  "rates, and batch-placement fractions. The paper does not claim a new RL "
+  "algorithm; its contribution is the measured workload/energy formulation and "
+  "the controlled evaluation around it.")
+P("SustainDC [26] addresses multi-agent control within a data center, while "
+  "SustainCluster [27] dispatches individual Alibaba GPU tasks across many "
+  "locations with carbon, cost, SLA, and transmission objectives. They are "
+  "complementary rather than drop-in baselines: this thesis controls divisible "
+  "aggregate Google-cell demand and explicitly targets CAISO net-demand shape. "
+  "Reproducing the same question in either benchmark would require changing its "
+  "workload granularity or objective.")
+H2("E. Current positioning")
+P("The active contribution is a controlled geo-distributed workload-shaping "
+  "experiment that combines measured aggregate service/batch curves, per-cell "
+  "power models, and one real May-2025 CAISO net-demand/price archetype shifted "
+  "across US and global local-time slots. A clairvoyant QP sizes spatial and "
+  "temporal headroom before PPO is trained. This is not a real multi-market "
+  "replay, a CICS reproduction, or a VM/job scheduler, and no archived v1 "
+  "learned-policy result is promoted as v2 evidence.")
 
 # ---------------- III. SYSTEM MODEL ----------------
 H1("III. SYSTEM MODEL")
 P("N = 4 data centers, indexed by i, j ∈ {1,…,N} (i is the site under "
   "consideration; j is a running index used in fleet-wide sums), operate over "
-  "T = 8,917 five-minute steps, indexed by t, τ ∈ {1,…,T} (t is the current "
+  "T = 8,928 five-minute steps, indexed by t, τ ∈ {1,…,T} (t is the current "
   "step; τ is a running index over earlier steps), with Δ = 300 s and "
   "Δh = 1/12 h. Site i has measured aggregate demand curve wᵢ,ₜ ∈ [0,1] "
   "(fraction of cell capacity), decomposed by measured priority tier into "
@@ -326,29 +287,61 @@ P("N = 4 data centers, indexed by i, j ∈ {1,…,N} (i is the site under "
   "wᵢ,ₜ = vᵢ,ₜ + aᵢ,ₜ exactly. The total service demand pooled across the "
   "fleet at step t is Dₜ = Σᵢ vᵢ,ₜ — the quantity the routing fractions "
   "redistribute. Site inputs further include electricity price πᵢ,ₜ ($/kWh), "
-  "normalized grid net demand dᵢ,ₜ ∈ [0,1] (0 = grid slack; 1 = grid peak, the "
-  "duck-curve neck), and capacity κᵢ from fleet machine data.")
-H2("A. Power and cost")
+  "signed grid net demand dᵢ,ₜ ∈ [−1,1] (negative = renewable oversupply, "
+  "positive = residual grid load), and normalized proxy capacity κᵢ = 1.")
+H2("A. Equal-capacity proxy, power, and cost")
+P("Each wᵢ,ₜ is already measured CPU usage divided by its SOURCE cell's CPU "
+  "capacity. We use that real curve as a utilization shape and map it onto an "
+  "equal 100 MW proxy DC. Therefore every destination has κᵢ = 1: w = 0.70 "
+  "means 70% of that proxy's capacity. Raw machine totals remain provenance "
+  "metadata and support calibration; they do not shrink destination capacity "
+  "again. This avoids mixing own-cell utilization units with capacity expressed "
+  "relative to the largest source fleet.")
 P("Each site has a per-cell calibrated linear power model — the standard "
   "idle+slope server model [14], [17] (Sec. IV-C):")
 EQ("Pᵢ(u) = Pᵢⁱᵈˡᵉ + sᵢ · u", 1)
 EQ("gᵢ,ₜ = Pᵢ(uᵢ,ₜ) · R,   R = 100 MW", 2)
-P("where uᵢ,ₜ is served CPU, Pᵢⁱᵈˡᵉ is cell i's idle power (its draw at zero "
+P("where uᵢ,ₜ∈[0,1] is served utilization of the equal 100 MW proxy, "
+  "Pᵢⁱᵈˡᵉ is cell i's idle power (its draw at zero "
   "CPU, as a fraction of theoretical peak), sᵢ is its marginal power slope "
-  "(the extra power per unit of CPU — the per-cell quantity the agent "
-  "arbitrages, Sec. VI-B), R is rated power per site, and g is the grid draw "
+  "(the extra power per unit of CPU and an observable routing context), R is "
+  "rated power per site, and g is the grid draw "
   "(sites are pure grid loads; no on-site generation). Energy cost and the "
   "quadratic, net-demand-weighted peak-contribution penalty are")
 EQ("Eₜ = Σᵢ πᵢ,ₜ · gᵢ,ₜ · 1000 · Δh", 3)
-EQ("Φₜ = α · Σᵢ gᵢ,ₜ² · dᵢ,ₜ,   α = 0.015", 4)
+EQ("Φₜ = α · Σᵢ gᵢ,ₜ² · max(dᵢ,ₜ,0)", 4)
 P("The quadratic form penalizes concentration; the d-weighting makes draw "
-  "near the duck-curve neck expensive and slack-hour draw nearly free [13]. "
-  "Φ is a grid-stress SHADOW PRICE, not a tariff: α is calibrated to a target "
-  "share of total cost (Sec. V-A), not derived from a rate schedule, and Φ "
+  "near the duck-curve neck expensive. Signed d remains observable, while "
+  "max(d,0) keeps the QP convex. At negative net demand Φ is zero; the real "
+  "low or negative LMP provides the economic reward for moving work into the "
+  "duck-curve belly. Φ is a grid-stress SHADOW PRICE, not a tariff: α must be "
+  "selected by a documented v2 component/sensitivity study, not inherited from "
+  "v1 or derived from a rate schedule, and Φ "
   "differs from a commercial demand charge in all three respects that matter — "
   "it is summed over every interval rather than taken as a maximum, it is "
   "quadratic rather than linear in kW, and it is weighted by grid net demand, "
   "which no tariff observes.")
+P("All slots use the same CAISO archetype and signed MW denominator, so d is "
+  "comparable by construction inside this controlled experiment. This is not "
+  "a claim that real California, Amsterdam, and Singapore systems have equal "
+  "physical scarcity.")
+P("Ramp-rate treatment — evaluated, not optimized.", bold=True)
+P("The duck curve combines a deep midday trough with a steep upward evening "
+  "ramp. The primary objective addresses trough economics and HIGH net-demand "
+  "EXPOSURE, but contains no derivative dₜ−dₜ₋H; it does not directly optimize "
+  "ramp rate. Price is an incomplete proxy: its correlation is 0.895 with "
+  "net-demand level but only 0.206 with the one-hour ramp and 0.429 with the "
+  "three-hour ramp.")
+P("This omission is deliberate for the first v2 campaign. Concentrating work "
+  "during negative-demand, very-low-price intervals is acceptable within proxy "
+  "capacity, and Φ is zero there. Evaluation reports per-region maximum and "
+  "95th-percentile upward ramps for H=1 hour and H=3 hours, comparing "
+  "max(0,Nₜ−Nₜ₋H) with max(0,(Nₜ+gₜ)−(Nₜ₋H+gₜ₋H)). Regions are not summed into "
+  "a fictitious global grid. A ramp-aware reward is future work and will be "
+  "introduced only if the first v2 policies worsen these physical KPIs. Status "
+  "Quo changes the maximum one-hour regional ramp by only −0.4 to +1.7 MW "
+  "across scenarios against an 11,465 MW raw CAISO maximum; trained-policy "
+  "effects remain unknown.")
 P("Because that distinction is easy to lose, the operator's actual tariff term "
   "is modeled separately. Commercial and industrial customers are billed on the "
   "single highest demand interval of each billing period, per meter. Such charges "
@@ -361,7 +354,7 @@ P("A maximum over the period is not a per-step cost, so Ψ is charged in the "
   "Each step pays exactly the amount by which it raises the running maximum, "
   "and the sum over a period is exactly Ψ:")
 EQ("ψᵢ,ₜ = c · max(0, gᵢ,ₜ − Dᵢ,ₜ₋₁) · 1000,   Σₜ ψᵢ,ₜ = c · maxₜ gᵢ,ₜ · 1000", 6)
-P("The complete 8,917-step episode is one study billing cycle by default, so c "
+P("The complete 8,928-step episode is one study billing cycle by default, so c "
   "is applied exactly once and the in-reward quantity matches the post-hoc "
   "metric. A shorter configured period is a different tariff with its own "
   "$/kW-period rate, not a monthly proxy. The telescoping identity is exact "
@@ -370,10 +363,10 @@ P("The complete 8,917-step episode is one study billing cycle by default, so c "
   "discount. The observation then includes Dᵢ,ₜ₋₁ for every site plus billing-"
   "period progress and the active-rate fraction, and a new period is reset "
   "before its first observation. Together these make the tariff state Markov "
-  "and prevent actions from seeing a stale prior-period peak. Ψ is reported for "
-  "every policy in Sec. VI-G but is DISABLED in the reward (c = 0) for all "
-  "results in this paper, so the trained policies and their objective are "
-  "unchanged.")
+  "and prevent actions from seeing a stale prior-period peak. The v2 primary "
+  "protocol fixes c=0 in the reward and reports the standardized $15/kW-cycle "
+  "charge as a secondary sensitivity for every policy. Demand-aware training "
+  "is a separate extension.")
 P("The $15/kW reference is a sensitivity analysis rather than a reconstruction "
   "of four utility bills. It is a mid-range US commercial/industrial reference "
   "within the broad tariff range catalogued by the NREL demand-charge survey "
@@ -381,6 +374,9 @@ P("The $15/kW reference is a sensitivity analysis rather than a reconstruction "
   "five-minute trace sample as a demand interval, aligns the cycle to the "
   "episode, and omits site-specific time-of-use demand tiers, ratchets, "
   "contract demand, and power-factor clauses.")
+P("The reference charge is about $4.694M for Status Quo, large enough to "
+  "dominate the controlled objective, and it is not a real Dutch or Singapore "
+  "tariff. These are the reasons it is not primary.")
 H2("B. Deferrable batch dynamics")
 P("Each origin site maintains a batch pool with per-entry deadlines. Queue "
   "timing must be explicit: Q⁻ᵢ,ₜ is work carried into step t before the current "
@@ -389,6 +385,15 @@ P("Each origin site maintains a batch pool with per-entry deadlines. Queue "
   "horizon follows fitted mean duration μᵢ and flexibility factor φ = 1 (after "
   "[4]). An arrival at t is eligible during steps t,…,t+Hᵢ−1 and expires at the "
   "start of t+Hᵢ if unfinished:")
+P("Because the current action may release part of aᵢ,ₜ in the same step, "
+  "aᵢ,ₜ is included explicitly in the pre-action observation alongside Q⁻, "
+  "service demand, urgency, price, net demand, and site context. The decision "
+  "process therefore observes every state variable that determines its "
+  "same-step transition.")
+P("The trace contains no job deadlines. Hᵢ is therefore an experimental control "
+  "semantic, not a recovered SLO: μᵢ is fitted from observed duration and φ "
+  "sets counterfactual slack. The primary model freezes φ=1 (H=2μ); robustness "
+  "uses φ∈{0,2}, corresponding to H∈{μ,3μ}.")
 EQ("Hᵢ = ⌈ μᵢ (1 + φ) / Δ ⌉", 7)
 EQ("Q⁺ᵢ,ₜ = Q⁻ᵢ,ₜ + aᵢ,ₜ − Xᵢ,ₜ;   rᵢ,ₜ = δᵢ,ₜQ⁺ᵢ,ₜ;   Q⁻ᵢ,ₜ₊₁ = Q⁺ᵢ,ₜ − qᵢ,ₜ", 8)
 P("Here rᵢ,ₜ is origin i's requested release and qᵢ,ₜ is the amount of that "
@@ -404,7 +409,12 @@ P("The agent outputs a ∈ [−3,3]³ᴺ, decoded as service routing "
   "fractions f = softmax(a₁:ₙ), drain rates δ = sigmoid(aₙ₊₁:₂ₙ), and batch "
   "placement h = softmax(a₂ₙ₊₁:₃ₙ) — batch work, having no latency SLO, may "
   "execute anywhere. Indices now distinguish origin i from execution site j. "
-  "Service has first claim on destination capacity; batch runs in the remainder:")
+  "Service has first claim on each unit-capacity proxy; batch runs in the "
+  "remainder:")
+P("The primary controlled experiment assumes both service and batch are freely "
+  "routable among all four slots, including intercontinental Global routing. "
+  "Latency, data residency, and movement cost are not modeled. This is an "
+  "explicit optimistic assumption, not an operational deployment claim.")
 EQ("σⱼ,ₜ=min(fⱼ,ₜDₜ+Bⱼ,ₜ₋₁,κⱼ);  yⱼ,ₜ=min(hⱼ,ₜΣᵢrᵢ,ₜ,κⱼ−σⱼ,ₜ);  ρₜ=Σⱼyⱼ,ₜ/Σᵢrᵢ,ₜ;  qᵢ,ₜ=ρₜrᵢ,ₜ;  uⱼ,ₜ=σⱼ,ₜ+yⱼ,ₜ", 9)
 P("In Eq. (9), σ is service executed at destination j, y is batch executed "
   "there, and q is completed work removed from origin i's queue. The global "
@@ -434,7 +444,8 @@ P("With the tariff disabled, backlog weight λ_b = 25 and expiry weight λ_x = "
   "the mathematical objective (the implementation retains a zero-valued "
   "diagnostic guard). The zero-expiry audit is an observed result, not a hard "
   "constraint. The demand-smoothing metric reported alongside "
-  "cost is fleet load factor LF = mean(g)/max(g).")
+  "cost is fleet load factor LF = mean(g)/max(g); independent physical ramp "
+  "KPIs are reported separately and are not reward terms.")
 H2("D. Worked three-step example")
 P("A one-site slice makes the units concrete. Let κ=1, R=100 MW, "
   "P(u)=0.50+0.40u, α=0.015, c=$15/kW-cycle, and assume no backlog or expiry. "
@@ -465,6 +476,9 @@ P("Putting the terms together, the agent solves a constrained cost-"
   "minimization over the full episode. With the per-step controls fₜ (service-"
   "routing fractions), δₜ (drain rates), and hₜ (batch placement) of Sec. III-C:")
 EQ("minimize  J = Σₜ [ Eₜ + Φₜ + Σᵢ(ψᵢ,ₜ + λ_bBᵢ,ₜ) + χₜ ]", 11)
+P("J contains no direct ramp-rate penalty. Any ramp improvement is therefore "
+  "an independently measured outcome rather than a consequence built into the "
+  "training objective.")
 P("subject to, for all i,j,t: the power model (1)–(2); the serving and origin-"
   "completion rules (9) with uⱼ,ₜ≤κⱼ; routing and placement simplexes "
   "Σⱼfⱼ,ₜ=Σⱼhⱼ,ₜ=1 with f,h≥0 and δ∈[0,1]; service conservation "
@@ -482,37 +496,81 @@ P("Eq. (11) is an offline, full-information statement; the deployed controller "
   "trained with γ=0.99. Demand-charge-enabled runs set γ=1, aligning training "
   "and evaluation. The clairvoyant convex QP uses the same backlog and soft-"
   "expiry accounting, with fluid actions and perfect foresight; these relaxations "
-  "make its optimum a lower bound on the evaluated J (Sec. VI-F).")
+  "make its optimum a lower bound on the evaluated J (Sec. IV-D).")
 P("The formulation follows CICS's aggregate flexible/inflexible load-shaping "
   "problem [3], retargeted from carbon to grid net-demand and electricity cost, "
   "with the cost-minimization-over-distributed-DCs structure of geographic load "
   "balancing [23]–[25], a linear idle+slope power model [14], [17], a "
   "peak-contribution term in the peak-shaving and demand-response tradition "
   "[9], [13] — though Φ is a per-interval quadratic shadow price, not a demand "
-  "charge in the tariff sense; the tariff term Ψ is modeled separately "
-  "(Eq. 5) and reported in Sec. VI-G — and aggregate batch-with-deadline "
+  "charge in the tariff sense; the tariff term Ψ is modeled and reported "
+  "separately (Eq. 5) — and aggregate batch-with-deadline "
   "dynamics [4], [9].")
 
 # ---------------- IV. DATA ----------------
 H1("IV. DATA AND CALIBRATION")
 H2("A. Cells as proxy data centers")
 P("Cells a–d serve as four proxy DCs. Cell locations in the trace are "
-  "anonymized; the geographic assignment is a modeling choice (US scenario: a "
-  "CAISO-exposed Western DC + MISO/Southern/Duke territories; Global scenario: "
-  "US-West/US-Central/NL/Singapore). Tirmazi documents considerable inter-cell "
-  "workload variation but no geography. The normalized curve provides the "
-  "demand shape; R = 100 MW sets hyperscale magnitude (a real cell is ~3–5 MW, "
-  "invisible to a regional grid). Sensitivity to R is future work.")
+  "anonymized; assigning them to market slots is a modeling choice. Energy-"
+  "model v2 uses Pacific/Mountain/Central/Eastern slots for the US experiment "
+  "and Pacific/Central/Amsterdam/Singapore slots for the Global experiment, all "
+  "driven by the same shifted CAISO archetype. Tirmazi documents considerable "
+  "inter-cell workload variation but no geography. The normalized curve "
+  "provides the own-cell utilization shape; κ = 1 maps every shape to an equal "
+  "proxy destination; and R = 100 MW sets hyperscale magnitude (a real cell is "
+  "~3–5 MW, invisible to a regional grid). Raw machine totals are metadata, not "
+  "a second capacity normalization. Sensitivity to R is future work.")
 H2("B. Measured per-tier demand")
-P("The service/batch split is measured, not modeled: instance_usage is joined "
-  "to collection priority and aggregated per 5-minute bucket into service (SLO "
-  "tiers) and batch (no-SLO tiers, priority ≤ 115) curves with v + a = w to "
-  "machine precision (Fig. 2). Measured deferrable usage shares are 16.6% (a), "
-  "15.7% (b), 22.3% (c), 26.4% (d) — consistent with the ~20%-of-capacity "
-  "best-effort average reported for the trace [1]. Request-weighted proxies "
-  "(job counts × requested CPU) suggest 63–85%, an overestimate of 3–5×, "
-  "consistent with Borg's over-allocation of best-effort tiers. Requests "
-  "measure intent; usage measures schedulable reality.")
+P("The primary demand path starts in instance_usage, not the job table and not "
+  "a generator. For each cell, we join collection priority, keep top-level "
+  "instances with at least a five-minute usage record, group average CPU usage "
+  "into 300-second buckets, and divide by measured cell CPU capacity. Priority "
+  "≤115 is no-SLO batch; all higher priorities are service. We then define "
+  "w = normalized total usage, a = normalized batch usage, and v = w − a. "
+  "Consequently v + a = w at every interval to machine precision (Fig. 2).")
+P("Each cell produces 8,929 ordinal workload rows. The v2 energy calendar has "
+  "8,928 rows, so the loader removes the one extra workload boundary row and "
+  "uses a complete 744-hour control episode. The source's discarded absolute "
+  "timestamp is not reconstructed: workload timestep zero is explicitly "
+  "anchored to May 1, 2025 00:00 PDT as a cross-year counterfactual.")
+P("The source curves already equal measured usage divided by each cell's own "
+  "CPU capacity. Because the modeled sites are equal 100 MW proxies, the loader "
+  "sets destination capacity to 1.0 for every cell. Thus a source value of 0.70 "
+  "remains 70% utilization after mapping; machine-count differences do not "
+  "double-normalize it.")
+TABLE(
+    ["Cell", "Batch share", "Cell", "Batch share"],
+    [
+        ["a", "16.6%", "e", "23.5%"],
+        ["b", "15.7%", "f", "8.4%"],
+        ["c", "22.3%", "g", "37.7%"],
+        ["d", "26.4%", "h", "29.1%"],
+    ],
+    "MEASURED NO-SLO SHARE OF AGGREGATE CPU USAGE",
+    widths=[0.55, 0.95, 0.55, 0.95],
+)
+P("At runtime, v(t) is the must-serve input and a(t) is the measured arrival "
+  "placed into its origin queue. The four-site PPO action routes pooled service, "
+  "chooses each origin's release fraction, and places released batch across "
+  "destinations. Service consumes capacity first; only completed batch is "
+  "removed earliest-deadline-first, while capacity-blocked work keeps its "
+  "original deadline. The full-month batch_fraction reported to the policy is "
+  "context only; it never replaces the measured time-varying a(t) curve.")
+P("The fitted job-distribution JSON supplies mean duration for the experimental "
+  "deadline (and a memory ratio when memory modeling is enabled), but the "
+  "BatchArrivalGenerator is not constructed when tier_curves is present. It "
+  "therefore has no role in primary v2 training or scoring. Its only remaining "
+  "purpose is optional counterfactual sensitivity to batch volume or arrival "
+  "shape; it does not validate the measured trace.")
+P("The frozen v2 evaluation will be symmetric and out of fold: train on a–d and "
+  "score deterministic policies on e–h, then train on e–h and score on a–d, "
+  "with ten seeds per fold/configuration. Training-only randomization may "
+  "permute compute bundles and interpolate measured power parameters using only "
+  "the training fold. Scoring uses the untouched held-out curves, the same v2 "
+  "energy slots, Status Quo/Round Robin/Drain Immediately baselines, and the "
+  "clairvoyant QP diagnostic. Reports include objective components, service "
+  "completion, batch completion, expiry, and terminal backlog/pool so savings "
+  "cannot be obtained by dropping work.")
 FIG(FIGS / "fig2_tiers.png",
     "Fig. 2. Measured per-tier decomposition of cell b (3 of 31 days): "
     "service + batch equals the measured aggregate at every step.")
@@ -531,7 +589,9 @@ P("We adopt the standard linear idle+slope server model (Eq. 1) — the form "
   "CELL constants (not one pooled value) because the cells span a meaningful "
   "proportionality range — cell d (idle 0.38, slope 0.57) is far more energy-"
   "proportional than cell a (0.53, 0.34) — and that BETWEEN-cell spread is "
-  "precisely the routing signal the agent exploits (slope arbitrage, Sec. VI-B); "
+  "a routing signal available to the agent. Preferring lower marginal slope "
+  "when idle power is sunk is a direct consequence of this model, not a novel "
+  "RL mechanism; "
   "a single literature constant would erase it. This mirrors CICS's choice of "
   "per-cluster power models [3]. (R² is reported in Table II as a diagnostic "
   "only — 0.43 pooled vs 0.75–0.80 per cell, confirming the pooled residual is "
@@ -550,30 +610,173 @@ TABLE(["Cell", "idle", "slope", "R²"],
 FIG(FIGS / "fig3_power.png",
     "Fig. 3. Per-cell power calibration: four distinct idle/slope lines; the "
     "pooled fit (dashed) blurs them into R² = 0.43.")
-H2("D. Market-data provenance (prices and net demand)")
-P("We state the price and net-demand provenance precisely, since it bounds the "
-  "claims. NET DEMAND is real: hourly EIA-930 series (demand minus utility-"
-  "scale wind+solar) for the assigned US balancing authorities, normalized to "
-  "[0,1] by each region's window peak; the Global scenario's EU/Singapore net "
-  "demand is synthesized where EIA-930 does not apply. PRICES, by contrast, are "
-  "DOCUMENTED SYNTHETIC: a calibrated diurnal model anchored to plausible "
-  "May-2019 regional wholesale averages, NOT real locational marginal prices. "
-  "Real hourly LMP is not uniformly obtainable for this footprint — two US "
-  "scenario regions (Southern Co./GA, Duke/SC) are vertically integrated "
-  "utilities with no public wholesale market, and the EIA API exposes no hourly "
-  "price route — so a fully-real price series is not currently available. This "
-  "is a known limitation we intend to resolve (real CAISO/MISO LMP plus "
-  "documented proxies for the non-ISO territories) in future work. Two points "
-  "bound its interpretation. Every policy sees the same series, which makes the "
-  "experiment controlled, but bias does NOT algebraically cancel because policies "
-  "respond differently; rankings may change under real prices. The modeled price "
-  "DYNAMICS the agent exploits (diurnal spread, cross-region differences) are "
-  "structurally realistic even if the absolute levels are modeled. The "
-  "generalization study (Sec. VI-H) additionally shifts US net demand to "
-  "EIA-930 May-2024 data while updating documented non-US approximations.")
+energy_gate = doc.add_section(WD_SECTION.CONTINUOUS)
+set_cols(energy_gate, 1)
+H2("D. Energy Model v2 Review Gate — May 2025")
+P("No PPO retraining has been launched. This section validates the energy "
+  "system and theoretical headroom first.", bold=True)
+H2("Experimental energy model")
+P("The primary model is one co-timestamped, real CAISO archetype: CAISO Today's "
+  "Outlook native five-minute net demand; CAISO OASIS NP15 hourly day-ahead "
+  "total LMP expanded stepwise to five minutes; negative prices preserved; one "
+  "Pacific civil-time calendar with IANA/DST conversion; price and net demand "
+  "shifted together across market slots; and no regional price re-averaging.")
+P("US slots are Pacific, Mountain, Central, and Eastern. Global slots are "
+  "Pacific, Central, Amsterdam, and Singapore. Google's May-2019 workload "
+  "shapes are anchored to the May-2025 energy calendar as an explicit cross-"
+  "year counterfactual.")
+H2("Finite-window boundary handling")
+P("The time-zone transformation is continuous rather than circular. Every slot "
+  "contains exactly 8,928 five-minute intervals (744 hours), but shifted slots "
+  "can use adjacent real CAISO hours at the month boundary instead of wrapping "
+  "May 31 back to May 1. Singapore is 15 hours ahead of Pacific time, so its "
+  "reference window replaces CAISO's first 15 hours of May (mean $21.54/MWh) "
+  "with the first 15 hours of June (mean $29.16/MWh). Its monthly mean is "
+  "therefore $26.09/MWh instead of Pacific's $25.93/MWh: a $0.154/MWh (0.59%) "
+  "boundary effect, not extra simulated time or a Singapore price premium.")
+P("The continuous shift is retained because a circular within-May shift would "
+  "create an artificial May 31-to-May 1 discontinuity. Baselines, QP, and "
+  "future learned policies are compared on the same slot data within each "
+  "scenario; regional monthly means are not forced to match.")
+H2("Reference diagnostics")
+TABLE(
+    ["Slot", "Mean", "Std", "r(price, net)", "Price peak UTC", "Net peak UTC"],
+    [
+        ["US Pacific", "$25.93", "$16.48", "0.895", "03:00", "03:00"],
+        ["US Mountain", "$25.93", "$16.48", "0.895", "02:00", "02:00"],
+        ["US Central", "$25.94", "$16.48", "0.895", "01:00", "01:00"],
+        ["US Eastern", "$25.94", "$16.48", "0.895", "00:00", "00:00"],
+        ["Global Pacific", "$25.93", "$16.48", "0.895", "03:00", "03:00"],
+        ["Global Central", "$25.94", "$16.48", "0.895", "01:00", "01:00"],
+        ["Global Amsterdam", "$25.94", "$16.47", "0.894", "18:00", "18:00"],
+        ["Global Singapore", "$26.09", "$16.39", "0.892", "12:00", "12:00"],
+    ],
+    "ENERGY MODEL V2 REFERENCE DIAGNOSTICS (PRICE IN USD/MWh)",
+    widths=[1.15, 0.75, 0.75, 0.85, 1.05, 1.05],
+)
+P("Reference CAISO facts: mean DAM price is about $25.93/MWh; negative-price "
+  "intervals are retained; the average local price and net-demand trough is "
+  "approximately 12:00 PDT; the average local price and net-demand peak is "
+  "approximately 20:00 PDT; and price/net-demand correlation is approximately "
+  "0.895.")
+P("Negative-net-demand intervals average $2.86/MWh versus $29.88/MWh otherwise. "
+  "The deepest 5% of net-demand intervals average $0.11/MWh and have negative "
+  "prices 56% of the time. Real energy cost therefore already strongly favors "
+  "execution in the duck-curve belly.")
+H2("QP headroom gate")
+TABLE(
+    ["Scenario", "Status quo", "Spatial QP", "Joint QP", "Spatial", "Joint", "Temporal"],
+    [
+        ["US a–d", "$6.568M", "$6.092M", "$6.045M", "7.24%", "7.95%", "0.77%"],
+        ["US e–h", "$6.219M", "$5.768M", "$5.637M", "7.26%", "9.36%", "2.27%"],
+        ["Global a–d", "$6.598M", "$5.559M", "$5.525M", "15.75%", "16.26%", "0.60%"],
+        ["Global e–h", "$6.276M", "$5.246M", "$5.185M", "16.42%", "17.38%", "1.16%"],
+    ],
+    "NO-TRAINING CLAIRVOYANT-QP HEADROOM (UNRESTRICTED-ROUTING UPPER BOUND)",
+    widths=[1.05, 0.85, 0.85, 0.85, 0.75, 0.75, 0.75],
+)
+H2("Objective coefficient and demand-charge treatment")
+P("The frozen primary coefficient is α=0.015. Calibrated only on a–d, "
+  "the Status Quo grid-stress component is 18.2% of real energy cost in US and "
+  "18.3% in Global: material but not dominant. Headroom conclusions remain "
+  "stable for α∈{0,0.005,0.015,0.03}.")
+P("The standardized $15/kW-cycle demand charge is excluded from the primary "
+  "reward and reported as a secondary sensitivity. It is about $4.694M for "
+  "Status Quo—large enough to dominate—and is not a real Dutch or Singapore "
+  "tariff. Demand-aware training remains a separate extension.")
+FIG(
+    ENERGY_FIGS / "objective_sensitivity.png",
+    "Objective sensitivity on a–d calibration cells only: component share and "
+    "clairvoyant headroom across α.",
+    width=6.6,
+)
+H2("Structural attribution and rated-power sensitivity")
+P("V2 uses one CAISO price level shifted in local time, so the v1 unequal-mean "
+  "synthetic-price criticism no longer applies. The a–d-only ablations below "
+  "diagnose interacting sources of spatial headroom; they are not an additive "
+  "causal decomposition.")
+TABLE(
+    ["Condition", "US", "Global"],
+    [
+        ["Primary", "7.24%", "15.75%"],
+        ["Energy only", "7.52%", "13.77%"],
+        ["Pooled power", "4.14%", "14.64%"],
+        ["Synchronous market", "5.67%", "5.67%"],
+        ["Shifted market only", "4.36%", "12.58%"],
+        ["Power heterogeneity only", "6.33%", "6.33%"],
+        ["Fully equal control", "0.05%", "0.05%"],
+    ],
+    "SPATIAL-QP STRUCTURAL ABLATIONS (A–D CALIBRATION CELLS)",
+    widths=[2.2, 1.0, 1.0],
+)
+P("Shifted market phase is the dominant Global lever; calibrated per-cell power "
+  "heterogeneity materially increases US headroom. The latter makes the "
+  "optimization non-degenerate but is a direct linear-model consequence, not "
+  "a novel RL discovery. With fixed α, R=50–200 MW yields 7.18–7.34% US and "
+  "14.81–17.35% Global headroom.")
+FIG(
+    ENERGY_FIGS / "structure_ablation.png",
+    "No-training structural and rated-power sensitivity on a–d calibration "
+    "cells. Mechanisms interact; bars are not additive attributions.",
+    width=6.6,
+)
+H2("Experimental deadline sensitivity")
+P("ClusterData 2019 supplies no deadlines. The primary φ=1 gives H=2μ. "
+  "Clairvoyant robustness at φ=0 (H=μ) yields 0.3–1.2% incremental temporal "
+  "headroom; primary φ=1 yields 0.6–2.3%; loose φ=2 (H=3μ) yields 0.8–3.2%. "
+  "Temporal value remains secondary across the sweep.")
+H2("Figures")
+FIG(
+    ENERGY_FIGS / "reference_month.png",
+    "Energy model v2 reference month: real May-2025 CAISO day-ahead price, "
+    "net demand, and solar.",
+    width=6.6,
+)
+FIG(
+    ENERGY_FIGS / "us_shifted_daily_profiles.png",
+    "Energy model v2 average daily profiles shifted across Pacific, Mountain, "
+    "Central, and Eastern slots.",
+    width=6.6,
+)
+FIG(
+    ENERGY_FIGS / "global_shifted_daily_profiles.png",
+    "Energy model v2 average daily profiles shifted across Pacific, Central, "
+    "Amsterdam, and Singapore slots.",
+    width=6.6,
+)
+H2("Review interpretation")
+P("The corrected signed-demand/equal-capacity model creates 8.0–17.4% "
+  "optimistic unrestricted-routing joint headroom depending on scenario. "
+  "Spatial diversity remains dominant. "
+  "Incremental temporal headroom is positive but modest at 0.6–2.3%.")
+H2("Explicit limitations and future work")
+P("The primary experiment is a controlled CAISO archetype, not a real multi-"
+  "market replay. Regional price levels are intentionally not re-averaged. "
+  "Time-zone shifts use adjacent real boundary hours rather than a circular "
+  "within-May wrap, so shifted monthly means can differ slightly. Five-minute "
+  "RTM price is future robustness work. Historical 2019/2024 duck-curve "
+  "comparison and extrapolation are future work, not additional training "
+  "scenarios. Workload shapes are from May 2019 while the energy calendar is "
+  "May 2025; this is an explicit counterfactual. OOF holds out workload cells, "
+  "not the shared energy month. Routing is unrestricted across all slots; "
+  "latency, residency, and movement are future work. MPC is future work; the "
+  "QP is a clairvoyant diagnostic only.")
+H2("Gate status")
+P("The α=0.015 primary objective and secondary demand-charge treatment are "
+  "frozen with a 501,760-step, 10-seed, two-fold runner. No PPO training has "
+  "begun; the committed checkpoint must pass the runner's clean-tree preflight "
+  "before launch.",
+  bold=True)
+
+body_after_gate = doc.add_section(WD_SECTION.CONTINUOUS)
+set_cols(body_after_gate, 2)
 
 # ---------------- V. EXPERIMENTAL SETUP ----------------
-H1("V. EXPERIMENTAL SETUP")
+EMIT_CONTENT = False
+H1("V. ARCHIVED ENERGY-MODEL V1 EXPERIMENTAL SETUP")
+P("This section and Sec. VI preserve the retired mixed/synthetic energy-model "
+  "v1 campaign for auditability. They are not final v2 evidence and must be "
+  "replaced after the frozen v2 campaign.", bold=True)
 H2("A. Agents and baselines")
 P("PPO (Stable-Baselines3, MLP 128×128, lr 3e-4, 500k steps) acts in the "
   "continuous 3N-dimensional space. Its observation includes per-DC dynamic "
@@ -604,7 +807,7 @@ P("By construction service + batch = measured demand, so a serve-everything-"
   "modeling errors of Sec. VII.")
 
 # ---------------- VI. RESULTS ----------------
-H1("VI. RESULTS")
+H1("VI. ARCHIVED ENERGY-MODEL V1 RESULTS")
 TABLE(["Config", "SQ", "Trough", "DQN", "PPO (±sd)", "ΔSQ", "QP", "gap"],
       [["US spatial", "9.85", "11.23", "9.81", "9.57±.03", "2.8%", "9.46", "1.6%"],
        ["US batch", "9.85", "10.09", "9.89", "9.59±.08", "2.7%", "9.44", "1.3%"],
@@ -633,17 +836,12 @@ P("Across five seeds per configuration, PPO is the best policy — learned or "
 FIG(FIGS / "fig4_profile.png",
     "Fig. 4. Fleet power profile, US batch (first 4 days): PPO serves the same "
     "work at lower, flatter draw.")
-H2("B. Emergent slope arbitrage")
-P("Per-cell power calibration converts the low-diversity US scenario from "
-  "“nothing to learn” (under pooled power, all DCs are energetically identical "
-  "and near-uniform routing is optimal) into a real optimization: idle power is "
-  "sunk, so each marginal unit of CPU is cheapest where the slope is lowest. "
-  "PPO inverts the load distribution relative to the do-nothing policies — "
-  "toward low-slope cells a/b, away from high-slope c/d — worth +2.8% over the "
-  "status quo with no spatial price diversity at all. No baseline encodes this "
-  "strategy. In the Global scenario, slope arbitrage compounds with price "
-  "arbitrage: PPO routes aggressively away from high-priced Singapore toward "
-  "cheap, low-slope US capacity.")
+H2("B. Historical v1 power-heterogeneity interpretation")
+P("Per-cell power calibration makes marginal work cheaper where fitted slope is "
+  "lower because idle power is sunk. Historical PPO routed accordingly, but v1 "
+  "did not isolate that mechanism from unequal synthetic regional prices. It is "
+  "a direct consequence of the calibrated linear model—not a novel RL "
+  "discovery—and its causal contribution is not assigned from v1 results.")
 H2("C. The foresighted heuristic loses everywhere")
 P("Trough-Slot Lookahead holds privileged 3-hour future net-demand information "
   "yet loses every configuration by 5.0–14.8% vs. PPO — and in the US it is the "
@@ -777,17 +975,11 @@ FIG(FIGS / "fig6_generalization.png",
     "policies. Green: domain randomization restores it. Blue: the observed "
     "net-demand-year shift transfers without any special treatment.")
 H2("I. Robustness to movement cost")
-P("The spatial lever assumes free inter-site movement; we test how much "
-  "survives a per-unit cost on work routed away from its home cell (the "
-  "SustainCluster transmission-cost idea [27]). Charging existing policies "
-  "post-hoc — a conservative bound, since a movement-aware policy would route "
-  "less and recover more — the Global advantage is robust: it survives until "
-  "movement costs reach $219/unit (Global spatial) and $331/unit (Global "
-  "batch), i.e. 0.35× and 0.53× the energy cost of serving a unit, still "
-  "returning +7.9% and +11.0% at a substantial $50/unit (Fig. 7). The US "
-  "margin is thinner (break-even ~0.14× unit energy), honestly reflecting its "
-  "smaller spatial diversity. The 10–13% Global savings are thus not an "
-  "artifact of free fungibility.")
+P("The archived v1 sweep charged service movement post hoc but omitted batch "
+  "movement. That omission understates total movement cost and makes the result "
+  "optimistic; it is not a conservative bound or valid robustness evidence. "
+  "V2 does not promote its break-even values and instead frames unrestricted "
+  "routing as an optimistic upper-bound assumption.")
 FIG(FIGS / "fig7_movement_cost.png",
     "Fig. 7. PPO savings vs. per-unit inter-site movement cost (symlog x). "
     "Global routing keeps paying well past realistic egress prices.")
@@ -818,76 +1010,61 @@ P("L3 — Synthetic generators must conserve the demand-presentation process. "
   "Corollary (L3b): requests ≠ usage — request-weighted tier shares "
   "overestimated the deferrable fraction 3–5×. A one-line shape "
   "check (generated vs. source peak/mean) catches both.")
-P("Threats to validity. (i) PRICES are documented synthetic, not real LMP "
-  "(Sec. IV-D) — the most significant limitation; relative comparisons share "
-  "the same series, but absolute price levels are modeled. US net demand uses "
-  "EIA-930 while non-US series include documented approximations; replacing "
-  "both with validated market data is primary future work. "
-  "(ii) Cell locations are anonymized; the geographic assignment is a modeling "
-  "choice justified by documented inter-cell heterogeneity [1]. (iii) The 100 "
-  "MW magnitude bridges cell scale to grid relevance; results should be swept "
-  "over R, and a 300 MW fleet would plausibly move LMPs (the price-taker "
-  "assumption). (iv) The measured tier curves make episodes deterministic; "
-  "Sec. VI-H addresses the resulting memorization concern directly and shows "
-  "transfer along observed axes. (v) May is the deepest duck-curve month in "
-  "CAISO; seasonal generalization is untested. (vi) Cooling and PUE are "
-  "excluded by scope; a multiplicative PUE would scale, not reorder, results. "
-  "(vii) The linear power model is calibrated on u ≈ 0.1–0.7 and omits "
-  "memory/IO effects (+0.03 R² at most); a policy pushing utilization outside "
-  "that range extrapolates. (viii) Five seeds and one hyperparameter set per "
-  "algorithm; DQN's higher seed variance (std up to ±$0.9M vs. PPO's ≤$0.25M) "
-  "is itself reported as a stability finding.")
+P("Threats to validity. (i) The active v2 experiment is a controlled CAISO "
+  "archetype, not a real multi-market replay; regional price levels and demand "
+  "shapes are intentionally held to one source. (ii) Hourly DAM price is held "
+  "stepwise over twelve controller intervals; five-minute RTM is future "
+  "robustness work. (iii) The continuous local-wall-time shift uses adjacent "
+  "real boundary hours, so monthly slot means can differ slightly; Singapore's "
+  "0.59% premium is a boundary effect, not a regional markup. (iv) Workload "
+  "shapes are May 2019 while energy is May 2025, an explicit cross-year "
+  "counterfactual. (v) Cell locations are anonymized; the geographic assignment "
+  "is a modeling choice justified by documented inter-cell heterogeneity [1]. "
+  "(vi) The 100 MW magnitude bridges cell scale to grid relevance and retains "
+  "a price-taker assumption. (vii) The measured tier curves make episodes "
+  "deterministic and cannot test workload seasonality. (viii) Cooling and PUE "
+  "are excluded by scope. (ix) The linear power model is calibrated on "
+  "u ≈ 0.1–0.7 and omits memory/IO effects. (x) The learned-policy evidence in "
+  "Secs. V–VI belongs to archived v1 and is not a v2 result.")
 
 # ---------------- VIII. FUTURE WORK ----------------
-H1("VIII. FURTHER TOPICS OF CONSIDERATION")
-P("(1) REAL PRICES: replace the synthetic price series with real CAISO/MISO "
-  "LMP (and documented proxies for the non-ISO territories) — the highest-"
-  "priority item, since it is the main provenance limitation (Sec. IV-D). "
-  "(2) Sensitivity sweeps: deferrable fraction (via the retained generator), "
-  "rated power R, flexibility factor φ, peak weight α; and seasonal "
-  "generalization beyond May. (3) Carbon objective: swap or add marginal "
-  "carbon-intensity signals to compare against CICS's objective directly [3]. "
-  "(4) Forecast features: day-ahead price and net-demand forecasts as "
-  "observations, quantifying the residual value of explicit foresight. "
-  "(5) Constrained RL: enforce zero deadline violations as a hard constraint "
-  "(e.g., Lagrangian PPO) rather than a penalty. (6) Hybrid granularity: a "
-  "job-level inner scheduler below the aggregate outer policy, bridging to "
-  "the CFWS setting [6]. (7) Storage and demand response: batteries and "
-  "market participation extend the action space naturally [13]. (8) DQN "
-  "stabilization: distributional/double variants and action-space curricula "
-  "to separate encoding effects from optimizer fragility. (9) Multi-objective "
-  "Pareto analysis of cost vs. peak contribution vs. completion latency. "
-  "(10) Transfer to other public traces — e.g., the Alibaba 2020 GPU trace "
-  "already packaged by SustainCluster [27] — to test trace dependence of the "
-  "slope-arbitrage finding, and cross-validation of our policies inside the "
-  "SustainCluster environment. (11) Demand-charge optimization: multi-seed "
-  "training, peak-aware curricula or constrained control, and policy designs "
-  "that close the 6.5–16.5% PPO gap to the demand-aware QP in batch mode.")
+EMIT_CONTENT = True
+H1("V. FURTHER TOPICS OF CONSIDERATION")
+P("(1) Market robustness: compare the primary NP15 DAM archetype with CAISO "
+  "five-minute RTM and, later, a documented real multi-market replay with "
+  "regional price levels and demand shapes. (2) Historical comparison: quantify "
+  "how the 2025 duck curve deepened from 2019/2024 and test extrapolated future "
+  "curves. (3) Sensitivity sweeps: deferrable fraction, rated power R, "
+  "flexibility factor φ, peak weight α, and workload seasonality. (4) Bound "
+  "global routing with latency, residency, and movement-cost constraints. "
+  "(5) Add marginal carbon intensity to compare directly with CICS [3]. "
+  "(6) Add a causal receding-horizon MPC comparator with day-ahead price and "
+  "net-demand forecasts. (7) Explore "
+  "constrained RL for completion guarantees. (8) Add a job-level inner "
+  "scheduler below the aggregate controller. (9) Extend the action space to "
+  "storage and demand response. (10) Transfer to other public workload traces. "
+  "(11) Test peak-aware policy designs against the demand-charge QP. "
+  "(12) Add a ramp-aware objective only if the first v2 policies worsen the "
+  "reported one-hour/three-hour physical ramp KPIs.")
 
 # ---------------- IX. CONCLUSION ----------------
-H1("IX. CONCLUSION")
-P("On an environment assembled from measured workload and power traces, "
-  "EIA-930 US net demand, documented non-US net-demand approximations, and "
-  "synthetic prices — a continuous-action "
-  "PPO agent learns grid-aware spatio-temporal load shaping that, across five "
-  "seeds per configuration, beats the grid-unaware status quo by 2.7–12.9%, a "
-  "foresighted heuristic by 5.0–14.8%, and discrete DQN variants by 2.5–9.9% "
-  "(19 of 20 seed comparisons) in every configuration, landing within 1.3–5.7% "
-  "of a clairvoyant QP bound with zero deadline violations and a flatter, lower "
-  "fleet profile. The savings come from continuously exploitable structure — "
-  "price spreads and per-cell marginal-power (slope) arbitrage — and they "
-  "transfer to unseen market conditions along the axes the policy observes, "
-  "with domain randomization extending transfer to unseen workloads. Equally "
-  "important, the path to these numbers required finding and fixing several "
-  "modeling errors that each inverted the ranking, and an honest accounting of "
-  "what is measured (demand, power, net demand) versus modeled (prices); we "
-  "offer the corrected environment, the validation invariant, the QP bound, and "
-  "the lessons themselves as contributions to reproducible research in "
-  "sustainable computing. A separate single-seed US-reference demand-charge "
-  "campaign shows spatial PPO can help, especially globally, but learned "
-  "temporal policies do not beat immediate drain despite QP headroom; this "
-  "negative result defines the next algorithmic problem rather than extending "
-  "the headline claim.")
+H1("VI. CONCLUSION")
+P("The active thesis experiment now begins with a reproducible real energy "
+  "model rather than a mixture of synthetic regional inputs. One May-2025 "
+  "CAISO net-demand/solar series and one NP15 day-ahead price series are shifted "
+  "together across four US and four global local-time slots. The 8,928-step "
+  "calendar preserves negative prices, aligns the average trough near noon and "
+  "the average peak near 20:00 PDT, and yields price/net-demand correlation of "
+  "approximately 0.895. Continuous boundary handling keeps real chronology: "
+  "Singapore's slightly higher monthly mean comes from substituting 15 real "
+  "June boundary hours, not extra duration or a regional premium. Equal 100 MW "
+  "unit-capacity proxies and observed current batch arrivals now pass the "
+  "preflight. The corrected QP gate shows 8.0–17.4% joint headroom but only "
+  "0.6–2.3% incremental temporal value. α=0.015 makes grid stress about 18% of "
+  "energy cost; the standardized demand charge remains secondary. The "
+  "mixed/synthetic v1 campaigns remain archived; no learned-policy claim will "
+  "be promoted until the frozen v2 out-of-fold campaign is trained and "
+  "evaluated.")
 
 # ---------------- REFERENCES ----------------
 H1("REFERENCES")

@@ -45,9 +45,11 @@ def load_scenario(
         config_path: Path to the scenario YAML file.
         batch_enabled: If True, load per-cell batch configs and set
             batch_fraction / batch_mean_duration_sec on each site.
-        dynamic_arrivals: If True (and batch_enabled), create synthetic
-            batch arrival generators from fitted distributions instead of
-            using static batch_fraction splits.
+        dynamic_arrivals: If True (and batch_enabled), create a synthetic
+            batch arrival generator only when the site has no measured
+            ``tier_curves`` input. Measured service/batch curves always take
+            precedence. A ``batch_distributions`` file can still provide the
+            fitted mean duration used for deadlines without generating demand.
         seed: Random seed for batch arrival generators.
 
     Returns:
@@ -76,7 +78,6 @@ def load_scenario(
     batch_config: dict[str, Any] = config.get("batch", {}) if batch_enabled else {}
 
     # First pass: load timeseries and fleet info
-    raw_fleet_data: list[dict[str, float] | None] = []
     sites_data: list[dict[str, Any]] = []
 
     for site_cfg in config["sites"]:
@@ -84,12 +85,17 @@ def load_scenario(
         solar = load_csv_values(root_dir / site_cfg["solar"], "solar_fraction")
         price = load_csv_values(root_dir / site_cfg["price"], "price_usd_kwh")
         net_demand = load_csv_values(
-            root_dir / site_cfg["net_demand"], "net_demand_normalized"
+            root_dir / site_cfg["net_demand"],
+            site_cfg.get("net_demand_column", "net_demand_signed"),
+        )
+        net_demand_mw = load_csv_values(
+            root_dir / site_cfg["net_demand"],
+            "net_demand_mw",
         )
 
-        # Optional real per-tier curves (trace-derived service/batch split;
-        # scripts/derive_tier_curves.py). Take precedence over the synthetic
-        # generator when batch mode is enabled.
+        # Optional measured per-tier curves (trace-derived service/batch split).
+        # These are the complete primary demand input in batch mode; they bypass
+        # synthetic arrival generation rather than validating or seeding it.
         service_curve = batch_curve = None
         tier_path = site_cfg.get("tier_curves")
         if batch_enabled and tier_path:
@@ -97,11 +103,18 @@ def load_scenario(
             batch_curve = load_csv_values(root_dir / tier_path, "batch_demand_norm")
 
         # Truncate to the shortest series
-        min_len = min(len(workload), len(solar), len(price), len(net_demand))
+        min_len = min(
+            len(workload),
+            len(solar),
+            len(price),
+            len(net_demand),
+            len(net_demand_mw),
+        )
         workload = workload[:min_len]
         solar = solar[:min_len]
         price = price[:min_len]
         net_demand = net_demand[:min_len]
+        net_demand_mw = net_demand_mw[:min_len]
         if service_curve is not None:
             service_curve = service_curve[:min_len]
             batch_curve = batch_curve[:min_len]
@@ -130,7 +143,6 @@ def load_scenario(
         if batch_curve is not None and workload.sum() > 0:
             batch_fraction = float(batch_curve.sum() / workload.sum())
 
-        raw_fleet_data.append(fleet)
         sites_data.append(
             {
                 "site_cfg": site_cfg,
@@ -138,6 +150,7 @@ def load_scenario(
                 "solar": solar,
                 "price": price,
                 "net_demand": net_demand,
+                "net_demand_mw": net_demand_mw,
                 "service_curve": service_curve,
                 "batch_curve": batch_curve,
                 "batch_fraction": batch_fraction,
@@ -148,28 +161,23 @@ def load_scenario(
             }
         )
 
-    # Normalize fleet capacities so the largest DC maps to 1.0
-    max_cpu = max(
-        (f["cpu_total"] for f in raw_fleet_data if f is not None),
-        default=0,
-    )
-    max_mem = max(
-        (f["memory_total"] for f in raw_fleet_data if f is not None),
-        default=0,
-    )
-
     # Second pass: build sites
     sites = []
     for i, sd in enumerate(sites_data):
         site_cfg = sd["site_cfg"]
         fleet = sd["fleet"]
 
-        if fleet and max_cpu > 0:
-            capacity = fleet["cpu_total"] / max_cpu
-            memory_capacity = fleet["memory_total"] / max_mem if max_mem > 0 else 1.0
-        else:
-            capacity = site_cfg.get("capacity", 1.0)
-            memory_capacity = site_cfg.get("memory_capacity", 1.0)
+        # Workload/tier curves are already utilization fractions of each source
+        # cell's own capacity. The v2 experiment maps every shape onto an equal
+        # 100 MW proxy DC, so capacity is one in those same local-utilization
+        # units. Raw machine totals remain provenance metadata only.
+        capacity = float(site_cfg.get("capacity", 1.0))
+        memory_capacity = float(site_cfg.get("memory_capacity", 1.0))
+        if capacity <= 0.0 or memory_capacity <= 0.0:
+            raise ValueError(
+                f"{site_cfg['name']}: capacity and memory_capacity must "
+                "be positive"
+            )
 
         site = DataCenterSite(
             name=site_cfg["name"],
@@ -177,6 +185,7 @@ def load_scenario(
             solar=sd["solar"],
             price=sd["price"],
             net_demand=sd["net_demand"],
+            net_demand_mw=sd["net_demand_mw"],
             rated_power_mw=site_cfg.get("rated_power_mw", 100.0),
             capacity=capacity,
             memory_capacity=memory_capacity,
