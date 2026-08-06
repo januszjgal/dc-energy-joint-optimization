@@ -1,0 +1,56 @@
+{
+  "stage": "round2",
+  "results_sha256": "159cf764f232fc0a98561165f39322a45906a2374fc68612dcd7bd94f13e8966",
+  "selected": {
+    "us": [
+      {
+        "combo": "R3_P1",
+        "candidate": "R3",
+        "variant": "P1",
+        "summary": {
+          "seed_count": 5,
+          "safe_seed_count": 0,
+          "all_seeds_safe": false,
+          "worst_seed_total_cost": 6547828.313616423,
+          "mean_total_cost": 6531804.317308883,
+          "std_total_cost": 16477.36947115771,
+          "mean_savings_vs_status_quo_pct": 0.5466775945347008,
+          "worst_savings_vs_status_quo_pct": 0.30269605534888055,
+          "minimum_batch_completion": 0.9998361411856471,
+          "maximum_service_backlog": 0.0,
+          "maximum_terminal_batch_pool": 0.6447893888157106,
+          "total_expired": 0.0,
+          "mean_action_saturation_fraction": 0.0
+        }
+      }
+    ],
+    "global": [
+      {
+        "combo": "R0_P3",
+        "candidate": "R0",
+        "variant": "P3",
+        "summary": {
+          "seed_count": 5,
+          "safe_seed_count": 0,
+          "all_seeds_safe": false,
+          "worst_seed_total_cost": 6578308.532956033,
+          "mean_total_cost": 6521465.35216354,
+          "std_total_cost": 45216.56037476747,
+          "mean_savings_vs_status_quo_pct": 1.1671719229116855,
+          "worst_savings_vs_status_quo_pct": 0.3057133378782576,
+          "minimum_batch_completion": 0.9997840208616541,
+          "maximum_service_backlog": 0.0,
+          "maximum_terminal_batch_pool": 0.8498844396074434,
+          "total_expired": 0.0,
+          "mean_action_saturation_fraction": 0.0
+        }
+      }
+    ]
+  },
+  "selection_rule": [
+    "all_seeds_safe",
+    "safe_seed_count",
+    "worst_seed_total_cost",
+    "mean_total_cost"
+  ]
+}

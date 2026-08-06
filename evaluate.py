@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from baselines import (
     DrainImmediatelyPolicy,
@@ -26,6 +27,7 @@ from baselines import (
 )
 from env.data_loader import load_scenario
 from env.multi_dc_env import REFERENCE_DEMAND_CHARGE_RATE, MultiDCEnv
+from env.reward import RewardConfig
 
 
 def run_episode(
@@ -55,6 +57,36 @@ def run_episode(
         if terminated or truncated:
             break
 
+    return total_reward, history
+
+
+def run_normalized_episode(
+    env: MultiDCEnv,
+    model: PPO,
+    vecnormalize_path: Path,
+) -> tuple[float, list[dict[str, Any]]]:
+    """Evaluate a PPO model with its frozen observation-normalization state."""
+    max_steps = env.max_steps
+    vec_env = DummyVecEnv([lambda: env])
+    vec_env = VecNormalize.load(vecnormalize_path, vec_env)
+    vec_env.training = False
+    vec_env.norm_reward = False
+    obs = vec_env.reset()
+    total_reward = 0.0
+    history: list[dict[str, Any]] = []
+    for _ in range(max_steps):
+        action, _ = model.predict(obs, deterministic=True)
+        obs, rewards, dones, infos = vec_env.step(action)
+        total_reward += float(rewards[0])
+        history.append(infos[0])
+        if bool(dones[0]):
+            break
+    vec_env.close()
+    if len(history) != max_steps:
+        raise RuntimeError(
+            "normalized evaluation ended before the full episode: "
+            f"{len(history)} != {max_steps}"
+        )
     return total_reward, history
 
 
@@ -139,6 +171,19 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
     total_energy_cost = sum(h.get("total_energy_cost", 0.0) for h in history)
     total_peak_penalty = sum(h.get("total_peak_penalty", 0.0) for h in history)
     total_grid_mw = sum(h.get("total_grid_mw", 0.0) for h in history)
+    total_reward_training_cost = sum(
+        h.get("reward_training_cost", h.get("total_cost", 0.0))
+        for h in history
+    )
+    total_reward_idle_cost = sum(
+        h.get("reward_idle_cost", 0.0) for h in history
+    )
+    total_reward_potential_delta = sum(
+        h.get("reward_potential_delta", 0.0) for h in history
+    )
+    total_reward_penalty_adjustment = sum(
+        h.get("reward_penalty_adjustment", 0.0) for h in history
+    )
 
     # Peak-weighted grid consumption: how much load was drawn at the
     # duck-curve neck (averaged net demand across DCs, weighted by grid_mw).
@@ -263,6 +308,42 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
             first_step.get("effective_deadline_penalty_weight", 2.0)
         ),
         "reward_scale": float(first_step.get("reward_scale", 1.0)),
+        "reward_training_cost": float(total_reward_training_cost),
+        "reward_idle_cost_subtracted": float(total_reward_idle_cost),
+        "reward_potential_delta": float(total_reward_potential_delta),
+        "reward_penalty_adjustment": float(
+            total_reward_penalty_adjustment
+        ),
+        "reward_idle_cost_subtraction": bool(
+            first_step.get("reward_idle_cost_subtraction", False)
+        ),
+        "reward_urgency_potential_weight": float(
+            first_step.get("reward_urgency_potential_weight", 0.0)
+        ),
+        "batch_completion_weight": float(
+            first_step.get(
+                "batch_completion_weight",
+                first_step.get("effective_deadline_penalty_weight", 0.0),
+            )
+        ),
+        "reward_service_backlog_weight": float(
+            first_step.get(
+                "reward_service_backlog_weight",
+                first_step.get("effective_backlog_weight", 0.0),
+            )
+        ),
+        "reward_batch_completion_weight": float(
+            first_step.get(
+                "reward_batch_completion_weight",
+                first_step.get("effective_deadline_penalty_weight", 0.0),
+            )
+        ),
+        "observe_episode_progress": bool(
+            first_step.get("observe_episode_progress", False)
+        ),
+        "deadline_bucket_edges": list(
+            first_step.get("deadline_bucket_edges", [])
+        ),
         "batch_completion_shaping_enabled": bool(
             first_step.get("batch_completion_shaping_enabled", False)
         ),
@@ -363,9 +444,13 @@ def _make_env(
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
     demand_charge_period_steps: int | None = None,
+    allow_multiple_demand_charge_periods: bool = False,
     enforce_batch_completion: bool = False,
     completion_penalty_weight: float | None = None,
     batch_spatial_routing: bool = True,
+    reward_config: RewardConfig | None = None,
+    observe_episode_progress: bool = False,
+    deadline_bucket_edges: tuple[int, ...] | None = None,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
     sites, power_model, batch_config = load_scenario(
@@ -396,9 +481,15 @@ def _make_env(
         peak_penalty_weight=peak_penalty_weight,
         demand_charge_rate=demand_charge_rate,
         demand_charge_period_steps=demand_charge_period_steps,
+        allow_multiple_demand_charge_periods=(
+            allow_multiple_demand_charge_periods
+        ),
         enforce_batch_completion=enforce_batch_completion,
         completion_penalty_weight=completion_penalty_weight,
         batch_spatial_routing=batch_spatial_routing,
+        reward_config=reward_config,
+        observe_episode_progress=observe_episode_progress,
+        deadline_bucket_edges=deadline_bucket_edges,
     )
 
 
@@ -466,6 +557,12 @@ def main(argv: list[str] | None = None) -> None:
              "a rate quoted for that period; it must divide max_steps exactly.",
     )
     parser.add_argument(
+        "--allow-multiple-demand-charge-periods",
+        action="store_true",
+        help="Acknowledge a full configured rate charged once per shorter "
+             "billing period.",
+    )
+    parser.add_argument(
         "--enforce-batch-completion",
         action="store_true",
         help="Evaluate with gamma-equivalent dense completion accounting and "
@@ -485,6 +582,40 @@ def main(argv: list[str] | None = None) -> None:
              "drained batch executes at its home DC. Must match how the model "
              "was trained (action space differs: 3N with routing, 2N without).",
     )
+    parser.add_argument(
+        "--v3-recovery",
+        action="store_true",
+        help="Use the opt-in 81D joint PPO recovery state and reward config.",
+    )
+    parser.add_argument(
+        "--vecnormalize-path",
+        type=Path,
+        default=None,
+        help="Saved VecNormalize statistics for a normalized v3 model.",
+    )
+    parser.add_argument(
+        "--service-backlog-weight",
+        type=float,
+        default=1000.0,
+        help="V3 training reward service weight; evaluation remains at 1000.",
+    )
+    parser.add_argument(
+        "--batch-completion-weight",
+        type=float,
+        default=1000.0,
+        help="V3 training reward batch weight; evaluation remains at 1000.",
+    )
+    parser.add_argument(
+        "--subtract-idle-cost",
+        action="store_true",
+        help="Use the v3 action-independent idle-cost reward baseline.",
+    )
+    parser.add_argument(
+        "--urgency-potential-weight",
+        type=float,
+        default=0.0,
+        help="V3 policy-invariant urgency-potential coefficient.",
+    )
     args = parser.parse_args(argv)
     if args.enforce_batch_completion and not args.batch_mode:
         parser.error("--enforce-batch-completion requires --batch-mode")
@@ -495,6 +626,47 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(
             "--completion-penalty requires --enforce-batch-completion"
         )
+    if args.v3_recovery and (
+        not args.batch_mode or not args.enforce_batch_completion
+    ):
+        parser.error(
+            "--v3-recovery requires --batch-mode and "
+            "--enforce-batch-completion"
+        )
+    if args.v3_recovery and not args.batch_spatial_routing:
+        parser.error(
+            "--v3-recovery requires the joint batch-routing head; "
+            "--no-batch-spatial-routing is incompatible"
+        )
+    if args.v3_recovery and args.completion_penalty is not None:
+        parser.error(
+            "--v3-recovery uses separate reward weights; omit "
+            "--completion-penalty"
+        )
+    if args.vecnormalize_path is not None:
+        if not args.v3_recovery:
+            parser.error("--vecnormalize-path requires --v3-recovery")
+        if not args.vecnormalize_path.exists():
+            parser.error(
+                f"VecNormalize file does not exist: {args.vecnormalize_path}"
+            )
+
+    recovery_reward = (
+        RewardConfig(
+            service_backlog_weight=args.service_backlog_weight,
+            batch_completion_weight=args.batch_completion_weight,
+            evaluation_service_backlog_weight=1000.0,
+            evaluation_batch_completion_weight=1000.0,
+            reward_scale=1e-4,
+            subtract_idle_cost=args.subtract_idle_cost,
+            urgency_potential_weight=args.urgency_potential_weight,
+        )
+        if args.v3_recovery
+        else None
+    )
+    deadline_bucket_edges = (
+        (1, 3, 6, 12, 24) if args.v3_recovery else None
+    )
 
     scenario_name = args.scenario.stem
     if args.batch_mode:
@@ -522,11 +694,28 @@ def main(argv: list[str] | None = None) -> None:
         peak_penalty_weight=args.peak_penalty_weight,
         demand_charge_rate=args.demand_charge_rate,
         demand_charge_period_steps=args.demand_charge_period_steps,
+        allow_multiple_demand_charge_periods=(
+            args.allow_multiple_demand_charge_periods
+        ),
         enforce_batch_completion=args.enforce_batch_completion,
         completion_penalty_weight=args.completion_penalty,
         batch_spatial_routing=args.batch_spatial_routing,
+        reward_config=recovery_reward,
+        observe_episode_progress=args.v3_recovery,
+        deadline_bucket_edges=deadline_bucket_edges,
     )
-    rl_reward, rl_history = run_episode(env, rl_model.predict, is_sb3=True)
+    if args.vecnormalize_path is not None:
+        rl_reward, rl_history = run_normalized_episode(
+            env,
+            rl_model,
+            args.vecnormalize_path,
+        )
+    else:
+        rl_reward, rl_history = run_episode(
+            env,
+            rl_model.predict,
+            is_sb3=True,
+        )
     rl_summary = compute_summary(rl_history, batch_enabled=args.batch_mode)
     print(f"  {rl_label} total cost: {rl_summary['total_cost']:.2f}")
     results[rl_label] = {"reward": rl_reward, "summary": rl_summary, "history": rl_history}
@@ -547,9 +736,15 @@ def main(argv: list[str] | None = None) -> None:
             peak_penalty_weight=args.peak_penalty_weight,
             demand_charge_rate=args.demand_charge_rate,
             demand_charge_period_steps=args.demand_charge_period_steps,
+            allow_multiple_demand_charge_periods=(
+                args.allow_multiple_demand_charge_periods
+            ),
             enforce_batch_completion=args.enforce_batch_completion,
             completion_penalty_weight=args.completion_penalty,
             batch_spatial_routing=args.batch_spatial_routing,
+            reward_config=recovery_reward,
+            observe_episode_progress=args.v3_recovery,
+            deadline_bucket_edges=deadline_bucket_edges,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
         summary = compute_summary(history, batch_enabled=args.batch_mode)

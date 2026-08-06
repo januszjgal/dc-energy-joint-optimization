@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archived Draft — PPO Recovery Plan with MPC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-body: "DM Sans", "Segoe UI", sans-serif;
+  --font-heading: "Instrument Serif", Georgia, serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+  --bg: #f5f1e8;
+  --surface: #fffdf8;
+  --surface2: #eee8dc;
+  --surface3: #e4dccd;
+  --border: rgba(28, 49, 72, .13);
+  --border-strong: rgba(28, 49, 72, .25);
+  --text: #172433;
+  --dim: #687482;
+  --navy: #1e3a5f;
+  --navy-dim: rgba(30, 58, 95, .09);
+  --gold: #b88628;
+  --gold-dim: rgba(184, 134, 40, .11);
+  --sage: #54735b;
+  --sage-dim: rgba(84, 115, 91, .11);
+  --rose: #aa4255;
+  --rose-dim: rgba(170, 66, 85, .10);
+  --amber: #a86610;
+  --amber-dim: rgba(168, 102, 16, .11);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101722;
+    --surface: #182332;
+    --surface2: #202d3e;
+    --surface3: #29384b;
+    --border: rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.17);
+    --text: #edf2f6;
+    --dim: #a8b4c2;
+    --navy: #94bde2;
+    --navy-dim: rgba(148,189,226,.13);
+    --gold: #e4bd68;
+    --gold-dim: rgba(228,189,104,.13);
+    --sage: #9ac3a2;
+    --sage-dim: rgba(154,195,162,.13);
+    --rose: #ef91a3;
+    --rose-dim: rgba(239,145,163,.13);
+    --amber: #e6ad55;
+    --amber-dim: rgba(230,173,85,.13);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  padding: 34px;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  overflow-wrap: break-word;
+}
+.wrap {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 205px minmax(0, 1fr);
+  gap: 0 42px;
+}
+.main { min-width: 0; }
+.toc {
+  position: sticky;
+  top: 22px;
+  align-self: start;
+  grid-row: 1 / -1;
+  max-height: calc(100dvh - 44px);
+  overflow-y: auto;
+  padding: 12px 0;
+}
+.toc-title {
+  font: 600 9px/1.4 var(--font-mono);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+}
+.toc a {
+  display: block;
+  color: var(--dim);
+  text-decoration: none;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 6px 9px;
+  margin: 1px 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 6px 6px 0;
+}
+.toc a:hover { color: var(--text); background: var(--surface2); }
+.toc a.active { color: var(--text); border-left-color: var(--gold); background: var(--gold-dim); }
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 92%, var(--gold) 8%);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px 32px 4px 32px;
+  padding: 42px 48px;
+  box-shadow: 0 14px 45px rgba(17, 31, 46, .12);
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  right: -95px;
+  bottom: -120px;
+  border: 28px solid var(--gold-dim);
+  border-radius: 50%;
+}
+.eyebrow, .label {
+  font: 600 10px/1.4 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1.8px;
+  color: var(--gold);
+}
+h1 {
+  margin: 10px 0 12px;
+  max-width: 930px;
+  font: italic 58px/.98 var(--font-heading);
+  letter-spacing: -.8px;
+}
+.lead {
+  max-width: 880px;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--dim);
+}
+.decision {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 8px 12px;
+  background: var(--navy-dim);
+  border: 1px solid color-mix(in srgb, var(--navy) 45%, transparent);
+  color: var(--navy);
+  font: 600 11px/1.3 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.sec-head {
+  scroll-margin-top: 22px;
+  margin: 40px 0 16px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border-strong);
+  font: 34px/1.05 var(--font-heading);
+}
+.sec-head .num {
+  margin-right: 10px;
+  color: var(--gold);
+  font: 600 11px var(--font-mono);
+}
+.grid-2, .grid-3, .grid-4 {
+  display: grid;
+  gap: 14px;
+}
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid-2 > *, .grid-3 > *, .grid-4 > *, .compare > * { min-width: 0; }
+.card {
+  min-width: 0;
+  padding: 19px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.card.elevated {
+  box-shadow: 0 5px 18px rgba(16, 31, 46, .07);
+  border-color: var(--border-strong);
+}
+.card.recessed { background: var(--surface2); box-shadow: inset 0 1px 3px rgba(0,0,0,.04); }
+.card.rose { border-left: 4px solid var(--rose); }
+.card.sage { border-left: 4px solid var(--sage); }
+.card.gold { border-left: 4px solid var(--gold); }
+.card.navy { border-left: 4px solid var(--navy); }
+.card h3 { margin: 7px 0 7px; font-size: 17px; }
+.card p { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.55; }
+.card ul { margin: 8px 0 0; padding-left: 18px; color: var(--dim); font-size: 13px; line-height: 1.5; }
+.compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.compare-head {
+  padding: 11px 14px;
+  font: 600 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.before .compare-head { color: var(--rose); background: var(--rose-dim); }
+.after .compare-head { color: var(--sage); background: var(--sage-dim); }
+.flow-list { list-style: none; padding: 14px 18px 18px; margin: 0; counter-reset: step; }
+.flow-list li {
+  position: relative;
+  counter-increment: step;
+  padding: 4px 0 24px 35px;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.flow-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text);
+  font: 600 10px var(--font-mono);
+  background: var(--surface);
+}
+.flow-list li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 27px;
+  height: 20px;
+  border-left: 1px solid var(--border-strong);
+}
+.metric {
+  padding: 17px;
+  border-top: 4px solid var(--navy);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.metric:nth-child(2) { border-top-color: var(--rose); }
+.metric:nth-child(3) { border-top-color: var(--gold); }
+.metric:nth-child(4) { border-top-color: var(--sage); }
+.metric strong { display: block; font: 700 26px var(--font-mono); }
+.metric span { display: block; margin-top: 6px; color: var(--dim); font-size: 12px; line-height: 1.4; }
+code {
+  font-family: var(--font-mono);
+  font-size: .87em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--navy-dim);
+  color: var(--navy);
+}
+.code-file {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+.code-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--dim);
+  font: 11px var(--font-mono);
+}
+pre {
+  margin: 0;
+  padding: 15px;
+  color: var(--text);
+  background: var(--surface2);
+  font: 11px/1.55 var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.45; }
+thead { position: sticky; top: 0; z-index: 2; }
+th {
+  padding: 12px 13px;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--dim);
+  background: var(--surface2);
+  border-bottom: 2px solid var(--border-strong);
+  font: 600 9px/1.4 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+td {
+  min-width: 0;
+  padding: 13px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: break-word;
+}
+tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface) 92%, var(--surface2) 8%); }
+tbody tr:last-child td { border-bottom: 0; }
+.status {
+  display: inline-block;
+  padding: 4px 8px;
+  white-space: nowrap;
+  border-radius: 3px;
+  font: 600 9px var(--font-mono);
+  text-transform: uppercase;
+}
+.status.block { color: var(--rose); background: var(--rose-dim); }
+.status.gate { color: var(--gold); background: var(--gold-dim); }
+.status.ready { color: var(--sage); background: var(--sage-dim); }
+.callout {
+  margin-top: 14px;
+  padding: 17px 19px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--gold);
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.callout.rose { border-left-color: var(--rose); }
+.callout.sage { border-left-color: var(--sage); }
+.callout strong { color: var(--text); }
+.diagram-shell { position: relative; }
+.diagram-hint { margin: 0 0 8px; color: var(--dim); font: 10px var(--font-mono); }
+.mermaid-wrap {
+  position: relative;
+  min-height: 610px;
+  padding: 38px 18px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+  cursor: grab;
+}
+.mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+.mermaid-viewport { position: relative; width: 100%; height: 560px; overflow: hidden; }
+.mermaid-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.zoom-controls {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.zoom-controls button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  font: 13px var(--font-mono);
+}
+.zoom-controls button:hover { color: var(--text); background: var(--surface2); }
+.zoom-label { padding: 0 6px; color: var(--dim); font: 9px var(--font-mono); }
+.mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 15px !important; }
+.mermaid .edgeLabel { color: var(--dim) !important; background: var(--bg) !important; font-family: var(--font-mono) !important; font-size: 11px !important; }
+.mermaid .edgeLabel rect { fill: var(--bg) !important; }
+.caption { margin: 8px 0 0; color: var(--dim); font-size: 12px; line-height: 1.5; }
+.timeline { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
+.phase {
+  position: relative;
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.phase:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -9px;
+  top: 25px;
+  width: 6px;
+  border-top: 2px solid var(--gold);
+}
+.phase b { display: block; margin-bottom: 7px; font-size: 14px; }
+.phase small { color: var(--dim); line-height: 1.45; }
+details { margin-top: 14px; border: 1px solid var(--border); background: var(--surface); }
+summary { cursor: pointer; padding: 13px 16px; font-weight: 600; }
+.inside { padding: 0 16px 16px; color: var(--dim); font-size: 12px; line-height: 1.6; }
+footer { margin: 42px 0 10px; color: var(--dim); font: 10px/1.5 var(--font-mono); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.animate { animation: fadeUp .36s ease-out both; animation-delay: calc(var(--i,0) * .04s); }
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { animation-duration: .01ms !important; animation-delay: 0ms !important; scroll-behavior: auto !important; }
+}
+@media (max-width: 1000px) {
+  body { padding: 0 24px 30px; }
+  .wrap { grid-template-columns: 1fr; }
+  .toc {
+    position: sticky; top: 0; z-index: 20; grid-row: auto; max-height: none;
+    display: flex; gap: 4px; overflow-x: auto; background: var(--bg);
+    border-bottom: 1px solid var(--border); margin: 0 -24px 20px; padding: 9px 24px;
+  }
+  .toc-title { display: none; }
+  .toc a { flex: 0 0 auto; border-left: 0; border-bottom: 2px solid transparent; border-radius: 4px 4px 0 0; }
+  .toc a.active { border-left: 0; border-bottom-color: var(--gold); }
+  .hero { padding: 32px 26px; }
+  h1 { font-size: 46px; }
+  .grid-4, .grid-3 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .timeline { grid-template-columns: 1fr 1fr; }
+  .phase::after { display: none; }
+  .sec-head { scroll-margin-top: 62px; }
+}
+@media (max-width: 680px) {
+  .compare, .grid-2, .grid-3, .grid-4, .timeline { grid-template-columns: 1fr; }
+  h1 { font-size: 39px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" id="toc">
+  <div class="toc-title">Implementation plan</div>
+  <a href="#summary">Recommendation</a>
+  <a href="#problem">Problem</a>
+  <a href="#facts">Verified facts</a>
+  <a href="#state">Controller states</a>
+  <a href="#variables">State variables</a>
+  <a href="#functions">Modified functions</a>
+  <a href="#api">APIs</a>
+  <a href="#phases">Phases and gates</a>
+  <a href="#edges">Edge cases</a>
+  <a href="#tests">Tests</a>
+  <a href="#files">Files</a>
+  <a href="#notes">Warnings</a>
+</nav>
+
+<main class="main">
+<header class="hero animate" id="summary" style="--i:0">
+  <div class="eyebrow">Controller v3 · implementation spec</div>
+  <h1>Archived draft: PPO recovery with an MPC fallback</h1>
+  <p class="lead">Keep the frozen v2 result immutable. Run a small lexicographic reward-and-training sweep on development data before building a new controller. Escalate to a safety layer and causal MPC only if repaired PPO cannot complete work and beat spatial-only control.</p>
+  <div class="decision">Recommended first move: successive-halving PPO reward/credit sweep; MPC is the fallback</div>
+</header>
+
+<section id="problem">
+  <h2 class="sec-head"><span class="num">01</span>The problem to solve</h2>
+  <div class="compare">
+    <article class="card elevated before">
+      <div class="compare-head">Before · frozen v2 joint PPO</div>
+      <ol class="flow-list">
+        <li>One flat <code>3N</code> Gaussian action jointly changes service routing, batch release, and batch placement.</li>
+        <li>Service receives priority, so a poor routing action can create transient backlog even when fleet capacity exists.</li>
+        <li>Batch safety is encouraged through penalties, not guaranteed by the action parameterization.</li>
+        <li><code>γ=1</code>, but default <code>gae_lambda=0.95</code> greatly attenuates credit over 40–270 minute deadlines.</li>
+        <li>Result: only 9/40 batch seeds meet completion; one seed incurs $2.289M backlog cost; joint headline fails.</li>
+      </ol>
+    </article>
+    <article class="card elevated after">
+      <div class="compare-head">After · controller v3</div>
+      <ol class="flow-list">
+        <li>Expose episode progress and deadline buckets so terminal flushing and urgency are Markov.</li>
+        <li>Separate service-backlog and batch-completion weights instead of coupling both to one $1,000 floor.</li>
+        <li>Sweep GAE λ, idle-cost subtraction, urgency potential shaping, and penalties with safety-first selection.</li>
+        <li>Train only temporal heads with spatial routing frozen as the cheapest interference diagnostic.</li>
+        <li>Build a safety layer/MPC only if no PPO variant produces exact completion and positive development gains.</li>
+      </ol>
+    </article>
+  </div>
+</section>
+
+<section id="facts">
+  <h2 class="sec-head"><span class="num">02</span>Verified fact sheet</h2>
+  <div class="grid-4">
+    <div class="metric"><strong>31 / 40</strong><span>Joint seeds failed the frozen 99.99% batch-completion floor.</span></div>
+    <div class="metric"><strong>$2.289M</strong><span>Transient service-backlog cost in the worst US joint seed.</span></div>
+    <div class="metric"><strong>40–270 min</strong><span>Primary cell deadline horizons: 8–54 five-minute steps.</span></div>
+    <div class="metric"><strong>6%</strong><span><code>0.95^54</code>: approximate GAE credit remaining at the longest deadline.</span></div>
+  </div>
+  <div class="grid-3" style="margin-top:14px">
+    <article class="card navy"><div class="label">What already works</div><h3>Spatial PPO is viable</h3><p>Global spatial succeeds in both folds with complete service. The algorithm is not universally broken; joint credit and feasibility are.</p></article>
+    <article class="card rose"><div class="label">Root failure</div><h3>Three coupled controls interfere</h3><p>The catastrophic seed comes from transient service backlog, not merely the tiny terminal batch pool. Routing and temporal heads damage one another.</p></article>
+    <article class="card gold"><div class="label">Available leverage</div><h3>The system is convex underneath</h3><p>The existing Clarabel QP already models service, queue, deadlines, capacity, and the primary objective. It can be refactored into causal MPC.</p></article>
+  </div>
+  <div class="callout rose"><strong>Critical hidden-state finding:</strong> completion-guarded batch observations include hour-of-day but not episode progress. The policy is penalized for a terminal pool yet cannot know the month is ending. Add normalized steps-remaining before interpreting another reward sweep.</div>
+  <div class="callout"><strong>Methodological boundary:</strong> v3 is a post-hoc algorithmic follow-up. The frozen v2 negative result remains the confirmatory result. With no untouched Google month/cells left, v3 cannot be presented as a fresh confirmatory test without a new workload trace.</div>
+</section>
+
+<section id="state">
+  <h2 class="sec-head"><span class="num">03</span>Development state machine</h2>
+  <div class="diagram-shell">
+    <p class="diagram-hint">Ctrl/Cmd + wheel to zoom · drag to pan · click or expand for full size</p>
+    <div class="mermaid-wrap">
+      <div class="zoom-controls">
+        <button data-action="in" title="Zoom in">+</button>
+        <button data-action="out" title="Zoom out">&minus;</button>
+        <button data-action="fit" title="Fit">&#8634;</button>
+        <button data-action="one" title="1:1">1:1</button>
+        <button data-action="expand" title="Open full size">&#x26F6;</button>
+        <span class="zoom-label">loading</span>
+      </div>
+      <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"></div></div>
+    </div>
+    <script type="text/plain" class="diagram-source">
+flowchart TD
+  A["Frozen v2 evidence<br/>preserve negative result"] --> B["Make terminal state observable<br/>episode progress + deadline buckets"]
+  B --> C["Round 1 PPO sweep<br/>3 seeds, 150k steps<br/>reward and GAE variants"]
+  C --> D{"Any variant safe in every seed<br/>and better than v2 control"}
+  D -->|"yes"| E["Round 2 successive halving<br/>top variants, 5 seeds, 300k"]
+  E --> F{"Exact completion<br/>stable positive development gain"}
+  F -->|"yes"| G["Full-budget development<br/>10 seeds, 501760 steps"]
+  G --> H{"Joint beats safe spatial<br/>with positive paired CI"}
+  H -->|"yes"| I["Freeze exploratory v3<br/>one-time opposite-cell evaluation"]
+  D -->|"no"| J["Add feasible action decoder<br/>service cap + EDF floor"]
+  F -->|"no"| J
+  H -->|"no"| J
+  J --> K["Build causal rolling-horizon MPC<br/>strong baseline and optional teacher"]
+  K --> L{"Shielded PPO captures<br/>at least 50% MPC savings"}
+  L -->|"yes"| I
+  L -->|"partial observability"| M["RecurrentPPO once"] --> L
+  L -->|"sample efficiency"| N["SAC or TD3 once"] --> L
+  L -->|"RL still fails"| O["Make causal MPC primary<br/>retain PPO negative result"]
+    </script>
+  </div>
+  <p class="caption">Algorithm changes occur only after the safety and causal-controller gates. Switching to SAC before fixing feasibility would reproduce the same failure with a different optimizer.</p>
+</section>
+
+<section id="variables">
+  <h2 class="sec-head"><span class="num">04</span>State and protocol variables</h2>
+  <div class="grid-2">
+    <article class="card elevated navy">
+      <div class="label">New observation state</div>
+      <div class="code-file">
+        <div class="code-head">Per site, float32 unless noted</div>
+        <pre>episode_progress: float
+steps_remaining_fraction: float
+
+deadline_bucket_loads: ndarray[6]
+# due in 1, 3, 6, 12, 24, &gt;24 steps
+
+mandatory_batch_now: float
+residual_capacity_now: float
+urgency_potential: float
+
+# Forecast state is Phase 2 only,
+# if the PPO sweep fails.</pre>
+      </div>
+    </article>
+    <article class="card elevated gold">
+      <div class="label">New reward and training state</div>
+      <div class="code-file">
+        <div class="code-head">Execution diagnostics</div>
+        <pre>service_backlog_weight: float
+batch_completion_weight: float
+urgency_potential_weight: float
+idle_cost_constant: float
+variable_cost: float
+reward_scale_v3: float
+gae_lambda: float
+
+# Projection state is Phase 2 only.</pre>
+      </div>
+    </article>
+  </div>
+  <div class="callout"><strong>Round-one rule:</strong> every candidate receives identical observations, seeds, training budget, and evaluation windows. Only reward/training parameters vary. Forecast features are deferred unless the PPO sweep fails.</div>
+</section>
+
+<section id="functions">
+  <h2 class="sec-head"><span class="num">05</span>Core function changes</h2>
+  <div class="grid-2">
+    <article class="card">
+      <div class="label">Deadline-aware queue</div>
+      <div class="code-file">
+        <div class="code-head">env/workload_generator.py</div>
+        <pre>def deadline_histogram(
+    self,
+    current_step: int,
+    edges: tuple[int, ...],
+) -&gt; np.ndarray:
+    """Demand grouped by remaining deadline."""
+
+def demand_due_by(
+    self,
+    current_step: int,
+    horizon_steps: int,
+) -&gt; float:
+    """Cumulative queued demand due by horizon."""</pre>
+      </div>
+      <p>Replaces one urgency scalar with enough state to distinguish “large pool, ample slack” from “small pool, due now.”</p>
+    </article>
+    <article class="card">
+      <div class="label">Feasible action decoder</div>
+      <div class="code-file">
+        <div class="code-head">env/safety_layer.py · new</div>
+        <pre>def decode(
+    raw_action: np.ndarray,
+    service_demand: np.ndarray,
+    queues: list[BatchPool],
+    capacity: np.ndarray,
+    forecast: ForecastBundle,
+) -&gt; SafeBatchAction:
+    """Project preferences onto service,
+    EDF, capacity and terminal constraints."""</pre>
+      </div>
+      <p>Jointly caps service placement, reserves mandatory EDF work, scales only discretionary batch, and surfaces true infeasibility instead of silently accumulating backlog.</p>
+    </article>
+    <article class="card">
+      <div class="label">Action-dependent reward</div>
+      <div class="code-file">
+        <div class="code-head">env/multi_dc_env.py</div>
+        <pre>idle_constant = cost_at_utilization_zero(t)
+variable_cost = full_cost - idle_constant
+
+reward = -scale * (
+    variable_cost
+    + eta * squared_projection_distance
+    + potential_queue_shaping
+)</pre>
+      </div>
+      <p>Subtracting the per-step zero-load constant preserves policy ordering exactly. Full dollars remain the only evaluation objective. The penalty floor and scale are recalibrated after subtraction.</p>
+    </article>
+    <article class="card">
+      <div class="label">Causal MPC controller</div>
+      <div class="code-file">
+        <div class="code-head">controllers/rolling_mpc.py · new</div>
+        <pre>def predict(
+    obs: np.ndarray,
+    env: MultiDCEnv,
+    horizon_steps: int = 72,
+) -&gt; np.ndarray:
+    """Solve 6h convex plan, return first
+    safe action; replan every 12 steps."""</pre>
+      </div>
+      <p>Refactors the existing offline QP into a warm-started rolling solver. A 24-hour horizon is a sensitivity, not the primary runtime.</p>
+    </article>
+    <article class="card">
+      <div class="label">Structured actor and curriculum</div>
+      <div class="code-file">
+        <div class="code-head">policies/structured_joint_policy.py · new</div>
+        <pre>site_encoder -&gt; cross_site_attention
+forecast_encoder -&gt; temporal_context
+
+service_head
+discretionary_drain_head
+batch_placement_head
+global_value_head</pre>
+      </div>
+      <p>Behavior-clone MPC first. Then warm-start service routing and train discretionary temporal control. “Hierarchical” means staged training plus separate heads—not merely renaming the existing flat vector.</p>
+    </article>
+    <article class="card">
+      <div class="label">Training controls</div>
+      <div class="code-file">
+        <div class="code-head">train_v3.py · new</div>
+        <pre>--gae-lambda {0.95,0.99,1.0}
+--teacher-checkpoint PATH
+--freeze-service-head
+--safety-mode project
+--forecast-horizon 72
+--reward-scale-file PATH
+--target-kl FLOAT</pre>
+      </div>
+      <p>The longest v2 deadline retains only ~6% GAE weight at λ=.95 but ~58% at λ=.99. Expose and freeze this parameter rather than relying on the SB3 default.</p>
+    </article>
+  </div>
+</section>
+
+<section id="api">
+  <h2 class="sec-head"><span class="num">06</span>Commands and APIs</h2>
+  <div class="table-wrap"><div class="table-scroll">
+    <table>
+      <thead><tr><th>Interface</th><th>Parameters</th><th>Behavior</th><th>Gate</th></tr></thead>
+      <tbody>
+        <tr><td><code>deadline_histogram</code></td><td><code>current_step, edges</code></td><td>Returns origin queue demand by remaining-deadline bucket.</td><td><span class="status ready">unit</span></td></tr>
+        <tr><td><code>SafeActionDecoder.decode</code></td><td>raw action, current state, causal forecast</td><td>Returns executed service/batch action, mandatory completion, projection distance, infeasibility flag.</td><td><span class="status block">blocking</span></td></tr>
+        <tr><td><code>ForecastProvider.get</code></td><td><code>t, horizon=72</code></td><td>Returns only information available at t; test-realized future is prohibited.</td><td><span class="status block">leakage</span></td></tr>
+        <tr><td><code>RollingHorizonMPC.predict</code></td><td>observation, environment</td><td>Warm-started 6h plan; executes first interval/hour block.</td><td><span class="status gate">baseline</span></td></tr>
+        <tr><td><code>build_mpc_dataset.py</code></td><td>training scenarios, seeds</td><td>Stores observation, forecast, teacher action, safety action, and solver metadata.</td><td><span class="status gate">teacher</span></td></tr>
+        <tr><td><code>train_v3.py</code></td><td>protocol, BC checkpoint, algorithm</td><td>Runs temporal-only diagnostic, structured PPO, RecurrentPPO, or exploratory SAC/TD3.</td><td><span class="status gate">development</span></td></tr>
+        <tr><td><code>run_v3_campaign.py</code></td><td>frozen protocol</td><td>Nested/post-hoc evaluation with provenance, no model selection on outer test.</td><td><span class="status block">final</span></td></tr>
+      </tbody>
+    </table>
+  </div></div>
+</section>
+
+<section id="phases">
+  <h2 class="sec-head"><span class="num">07</span>Implementation phases and kill gates</h2>
+  <div class="timeline">
+    <article class="phase"><b>0 · Cheap diagnosis</b><small>Freeze service routing and train only temporal heads. Sweep GAE λ and idle-subtracted reward on a–d development data.</small></article>
+    <article class="phase"><b>1 · Safety kernel</b><small>Feasible-by-construction service + EDF batch decoder. No RL campaign until exact completion holds under random actions.</small></article>
+    <article class="phase"><b>2 · Causal MPC</b><small>6h primary / 24h sensitivity. Establish feasible causal savings and create teacher actions.</small></article>
+    <article class="phase"><b>3 · Guided PPO</b><small>Behavior cloning, separate heads, spatial warm start, then shielded fine-tuning with λ=.99/1.0.</small></article>
+    <article class="phase"><b>4 · Algorithm gate</b><small>RecurrentPPO only for residual partial observability; SAC/TD3 only for sample efficiency; otherwise MPC becomes primary.</small></article>
+  </div>
+  <div class="table-wrap" style="margin-top:15px"><div class="table-scroll">
+    <table>
+      <thead><tr><th>Gate</th><th>Required evidence</th><th>Failure action</th></tr></thead>
+      <tbody>
+        <tr><td><span class="status block">Safety</span></td><td>100% service; zero expiry; terminal pool ≤1e−8; no safety infeasibility on development traces.</td><td>Do not train. Redesign reserve/projection or declare the workload infeasible.</td></tr>
+        <tr><td><span class="status gate">MPC</span></td><td>Exact completion; causal forecast only; positive savings over safe Status Quo and immediate drain.</td><td>Fix forecast/system model before any distillation.</td></tr>
+        <tr><td><span class="status gate">Cheap PPO</span></td><td>No catastrophic backlog in 3–5 development seeds; joint mean not worse than safe spatial.</td><td>Stop full PPO work and prioritize MPC.</td></tr>
+        <tr><td><span class="status ready">RL value</span></td><td>Paired positive CI for joint vs safe spatial and ≥50% of causal MPC incremental savings.</td><td>Try RecurrentPPO, then exploratory SAC/TD3 once each.</td></tr>
+        <tr><td><span class="status ready">Final</span></td><td>Exact completion all seeds; no statistically detectable demand-charge/ramp regression; frozen provenance.</td><td>MPC is primary controller; PPO remains negative comparison.</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+  <div class="callout rose"><strong>Evidence rule:</strong> because v2 results already exposed all eight cells, v3 is exploratory/post-hoc on this dataset. Use nested or blocked internal validation and preserve v2 as the frozen conclusion. A new trace/month is required for fresh confirmatory evidence.</div>
+</section>
+
+<section id="edges">
+  <h2 class="sec-head"><span class="num">08</span>Edge cases and expected behavior</h2>
+  <div class="table-wrap"><div class="table-scroll">
+    <table>
+      <thead><tr><th>Scenario</th><th>Expected behavior</th><th>Failure signal</th></tr></thead>
+      <tbody>
+        <tr><td>Total service exceeds fleet capacity</td><td>Mark environment infeasible; serve maximum service; do not claim the safety kernel guarantees the impossible.</td><td><code>safety_infeasible=true</code></td></tr>
+        <tr><td>Mandatory EDF batch exceeds residual capacity</td><td>Joint projector re-routes service and reserves batch. If still infeasible, explicit failure—not silent queue growth.</td><td>mandatory shortfall metric</td></tr>
+        <tr><td>Forecast error near deadline</td><td>Emergency EDF floor overrides discretionary action; projection-distance penalty teaches the actor not to depend on rescue.</td><td>override frequency</td></tr>
+        <tr><td>Final 54-step episode window</td><td>Terminal flush schedule progressively removes deferral freedom and proves zero terminal pool.</td><td>remaining pool by step</td></tr>
+        <tr><td>Negative prices / negative net demand</td><td>Allow safe concentration within capacity; do not let the ramp/demand-charge guards manufacture artificial avoidance.</td><td>economic component audit</td></tr>
+        <tr><td>MPC solver timeout</td><td>Warm-start previous plan; fall back to safe EDF + spatial controller; count every fallback.</td><td>solver/fallback rate</td></tr>
+        <tr><td>Forecast tensor unavailable on first day</td><td>Use training-fold profile/persistence fallback; never substitute future realized test values.</td><td>forecast-source label</td></tr>
+        <tr><td>Many raw actions project to one safe action</td><td>Report projection distance and add a small penalty; if saturation persists, redesign feasible action parameterization.</td><td>projection saturation</td></tr>
+        <tr><td>Domain-randomized compute bundles</td><td>Permute forecast/workload/power context as one bundle; never detach a forecast from its workload/site context.</td><td>bundle hash check</td></tr>
+        <tr><td>Recurrent hidden state between episodes</td><td>Reset exactly at episode boundary and fold/scenario switch.</td><td>determinism test</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+</section>
+
+<section id="tests">
+  <h2 class="sec-head"><span class="num">09</span>Test requirements</h2>
+  <div class="grid-3">
+    <article class="card recessed navy"><div class="label">Unit</div><ul>
+      <li>Deadline buckets sum exactly to pool demand.</li>
+      <li>Idle-cost subtraction changes every policy return by the same constant.</li>
+      <li>Capped service allocation preserves total service and site capacity.</li>
+      <li>Mandatory EDF completion cannot be scaled below its floor.</li>
+      <li>Terminal flush reaches zero pool on feasible traces.</li>
+    </ul></article>
+    <article class="card recessed gold"><div class="label">Integration</div><ul>
+      <li>240-step safe-controller run matches a small convex reference.</li>
+      <li>MPC uses no realized future data and reproduces stored teacher actions.</li>
+      <li>Random raw actions remain service/batch feasible after projection.</li>
+      <li>BC checkpoint reproduces teacher mean action within tolerance.</li>
+      <li>Executed-action accounting drives reward and evaluation consistently.</li>
+    </ul></article>
+    <article class="card recessed sage"><div class="label">Campaign</div><ul>
+      <li>3-seed cheap gate before any 10-seed campaign.</li>
+      <li>No service backlog, expiry, or terminal pool in every seed.</li>
+      <li>Paired joint-vs-spatial statistics pre-registered.</li>
+      <li>Demand charge and ramp regressions reported independently.</li>
+      <li>Source/data/model/teacher hashes frozen and verified.</li>
+    </ul></article>
+  </div>
+</section>
+
+<section id="files">
+  <h2 class="sec-head"><span class="num">10</span>File implementation map</h2>
+  <div class="table-wrap"><div class="table-scroll">
+    <table>
+      <thead><tr><th>File</th><th>Change</th><th>Reuse</th></tr></thead>
+      <tbody>
+        <tr><td><code>env/workload_generator.py</code></td><td>Add deadline histogram, due-by queries, and exact amount draining.</td><td>Existing EDF entries/deque.</td></tr>
+        <tr><td><code>env/safety_layer.py</code> · new</td><td>Joint service/batch feasibility decoder, terminal flush, explicit infeasibility.</td><td>Capacity and queue state.</td></tr>
+        <tr><td><code>env/forecast.py</code> · new</td><td>Causal price/net-demand/workload forecast bundle with source labels.</td><td>Existing shifted market calendar.</td></tr>
+        <tr><td><code>env/multi_dc_env.py</code></td><td>Add forecast/deadline state, execute safe action, idle-subtracted training reward, safety metrics.</td><td>Current economics and reporting.</td></tr>
+        <tr><td><code>controllers/rolling_mpc.py</code> · new</td><td>Rolling causal convex controller and fallback.</td><td><code>compute_qp_optimum.py</code> assembly.</td></tr>
+        <tr><td><code>policies/structured_joint_policy.py</code> · new</td><td>Forecast/site encoders and separate service/drain/placement heads.</td><td>SB3 ActorCriticPolicy.</td></tr>
+        <tr><td><code>scripts/build_mpc_dataset.py</code> · new</td><td>Create hashed teacher dataset and cross-site action-correlation diagnostic.</td><td>Causal MPC controller.</td></tr>
+        <tr><td><code>train_v3.py</code> · new</td><td>BC initialization, GAE/entropy/value controls, frozen-head curriculum, algorithm ladder.</td><td>Current PPO setup.</td></tr>
+        <tr><td><code>evaluate.py</code></td><td>Add safety/projection/MPC-capture metrics and paired joint-vs-spatial output.</td><td>Current canonical metrics.</td></tr>
+        <tr><td><code>env/protocols/v3_*.yaml</code> · new</td><td>Freeze forecasts, safety semantics, rewards, gates, algorithms, and selection rules.</td><td>v2 protocol pattern.</td></tr>
+        <tr><td><code>scripts/run_v3_campaign.py</code> · new</td><td>Nested/post-hoc campaign with teacher/model/protocol provenance.</td><td>v2 atomic runner.</td></tr>
+        <tr><td><code>scripts/smoke_test_v3_*.py</code> · new</td><td>Safety, leakage, MPC equivalence, BC, and end-to-end tests.</td><td>Existing smoke-test style.</td></tr>
+      </tbody>
+    </table>
+  </div></div>
+</section>
+
+<section id="notes">
+  <h2 class="sec-head"><span class="num">11</span>Implementation notes and warnings</h2>
+  <div class="grid-2">
+    <div class="callout sage"><strong>Backward compatibility.</strong> Do not mutate or overwrite v2 models, protocol, summary, or thesis claims. V3 gets new environment flags, model roots, output roots, and protocol IDs.</div>
+    <div class="callout rose"><strong>Hard warning.</strong> A safety layer cannot guarantee an infeasible workload. Every guarantee must be conditioned on a checked fleet-capacity/deadline schedulability invariant.</div>
+    <div class="callout"><strong>Reward correctness.</strong> Zero-load cost is action-independent and safe to subtract. Recompute the variable-cost scale and economic penalty floor afterward; evaluation always uses original dollars.</div>
+    <div class="callout"><strong>MPC teacher validity.</strong> Distillation is valid only when the student receives the same causal forecast information. Never train on teacher actions generated with realized test futures.</div>
+    <div class="callout"><strong>Performance.</strong> Replan MPC every 12 steps with a 72-step horizon and warm-start Clarabel. Safety decoding remains five-minute and should be sub-millisecond for N=4.</div>
+    <div class="callout rose"><strong>Algorithm pivot rule.</strong> RecurrentPPO and SAC do not repair an unsafe action space. If safe PPO cannot capture ≥50% of causal MPC savings, make MPC the primary controller instead of running another broad horse race.</div>
+  </div>
+  <details>
+    <summary>Why not start with SAC?</summary>
+    <div class="inside">The v2 failure is dominated by joint-head interference, transient service backlog, and completion feasibility. SAC may improve sample efficiency, but it inherits the same unsafe 3N action semantics and adds a discounted off-policy objective that is awkward with the finite-horizon γ=1 accounting. Use it only after the safety kernel and teacher baseline exist.</div>
+  </details>
+  <details>
+    <summary>Why build MPC if the thesis is about RL?</summary>
+    <div class="inside">The causal MPC establishes what a feasible controller can achieve with the same information, supplies safe teacher actions, and provides a scientifically defensible pivot. If PPO learns the MPC policy more cheaply at runtime, RL adds value. If it does not, the honest controller is MPC and PPO remains the important negative result.</div>
+  </details>
+</section>
+
+<footer>Plan generated from the frozen v2 protocol, 80-model held-out results, current environment implementation, and existing Clarabel QP. No v3 training or source modification is performed by this plan.</footer>
+</main>
+</div>
+
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "base",
+  look: "classic",
+  flowchart: { htmlLabels: true, curve: "basis" },
+  themeVariables: {
+    primaryColor: dark ? "#202d3e" : "#f4efe4",
+    primaryBorderColor: dark ? "#94bde2" : "#1e3a5f",
+    primaryTextColor: dark ? "#edf2f6" : "#172433",
+    secondaryColor: dark ? "#29384b" : "#edf2e8",
+    secondaryBorderColor: dark ? "#9ac3a2" : "#54735b",
+    tertiaryColor: dark ? "#332c24" : "#f6ecd6",
+    tertiaryBorderColor: dark ? "#e4bd68" : "#b88628",
+    lineColor: dark ? "#a8b4c2" : "#687482",
+    fontFamily: "DM Sans",
+    fontSize: "16px"
+  }
+});
+const shell = document.querySelector(".diagram-shell");
+const wrap = shell.querySelector(".mermaid-wrap");
+const viewport = shell.querySelector(".mermaid-viewport");
+const canvas = shell.querySelector(".mermaid-canvas");
+const source = shell.querySelector(".diagram-source").textContent.trim();
+const label = shell.querySelector(".zoom-label");
+let zoom = 1, panX = 0, panY = 0, svgW = 1000, svgH = 700;
+let dragging = false, moved = false, startX = 0, startY = 0;
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+function apply() {
+  canvas.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+  label.textContent = `${Math.round(zoom * 100)}%`;
+}
+function fit() {
+  const rect = viewport.getBoundingClientRect();
+  zoom = clamp(Math.min((rect.width - 24) / svgW, (rect.height - 24) / svgH), .35, 1.5);
+  panX = (rect.width - svgW * zoom) / 2;
+  panY = (rect.height - svgH * zoom) / 2;
+  apply();
+}
+function openFull() {
+  const svg = canvas.querySelector("svg");
+  if (!svg) return;
+  const w = open("", "_blank");
+  if (!w) return;
+  w.document.write(`<!doctype html><title>Controller v3 state machine</title><style>body{margin:0;background:#f5f1e8;display:grid;place-items:center;min-height:100vh}svg{max-width:none}</style>${svg.outerHTML}`);
+  w.document.close();
+}
+const { svg } = await mermaid.render("controller-v3-state", source);
+canvas.innerHTML = svg;
+const svgNode = canvas.querySelector("svg");
+const vb = svgNode?.viewBox?.baseVal;
+if (vb?.width) { svgW = vb.width; svgH = vb.height; }
+else {
+  svgW = parseFloat(svgNode.getAttribute("width")) || 1000;
+  svgH = parseFloat(svgNode.getAttribute("height")) || 700;
+}
+svgNode.style.width = `${svgW}px`;
+svgNode.style.height = `${svgH}px`;
+requestAnimationFrame(fit);
+shell.querySelector('[data-action="in"]').onclick = () => { zoom = clamp(zoom * 1.18, .25, 3); apply(); };
+shell.querySelector('[data-action="out"]').onclick = () => { zoom = clamp(zoom / 1.18, .25, 3); apply(); };
+shell.querySelector('[data-action="fit"]').onclick = fit;
+shell.querySelector('[data-action="one"]').onclick = () => { zoom = 1; panX = 0; panY = 0; apply(); };
+shell.querySelector('[data-action="expand"]').onclick = openFull;
+wrap.addEventListener("wheel", e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  const old = zoom;
+  zoom = clamp(zoom * (e.deltaY < 0 ? 1.1 : .9), .25, 3);
+  const r = viewport.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  panX = x - (x - panX) * zoom / old;
+  panY = y - (y - panY) * zoom / old;
+  apply();
+}, { passive: false });
+viewport.addEventListener("mousedown", e => {
+  dragging = true; moved = false; startX = e.clientX - panX; startY = e.clientY - panY;
+  wrap.classList.add("is-panning");
+});
+addEventListener("mousemove", e => {
+  if (!dragging) return;
+  const nx = e.clientX - startX, ny = e.clientY - startY;
+  if (Math.abs(nx - panX) + Math.abs(ny - panY) > 4) moved = true;
+  panX = nx; panY = ny; apply();
+});
+addEventListener("mouseup", () => { dragging = false; wrap.classList.remove("is-panning"); });
+viewport.addEventListener("click", () => { if (!moved) openFull(); });
+viewport.addEventListener("dblclick", e => { e.preventDefault(); fit(); });
+
+const toc = document.getElementById("toc");
+const links = toc.querySelectorAll("a");
+const sections = [...links].map(link => ({
+  link,
+  el: document.getElementById(link.getAttribute("href").slice(1))
+})).filter(x => x.el);
+const observer = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    links.forEach(x => x.classList.remove("active"));
+    const match = sections.find(x => x.el === entry.target);
+    match?.link.classList.add("active");
+  }
+}, { rootMargin: "-10% 0px -80% 0px" });
+sections.forEach(x => observer.observe(x.el));
+</script>
+</body>
+</html>

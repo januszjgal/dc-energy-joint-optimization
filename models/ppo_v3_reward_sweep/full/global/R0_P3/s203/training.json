@@ -1,0 +1,43 @@
+{
+  "training": {
+    "timesteps": 501760,
+    "learning_rate": 0.0003,
+    "learning_rate_schedule": "fixed",
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 1.0,
+    "gae_lambda": 0.95,
+    "target_kl": null,
+    "normalize_observations": false,
+    "seed": 203,
+    "net_arch": [
+      128,
+      128
+    ]
+  },
+  "reward": {
+    "service_backlog_weight": 700.0,
+    "batch_completion_weight": 1500.0,
+    "evaluation_service_backlog_weight": 1000.0,
+    "evaluation_batch_completion_weight": 1000.0,
+    "reward_scale": 0.0001,
+    "subtract_idle_cost": false,
+    "urgency_potential_weight": 250.0
+  },
+  "scenario": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-literate-umbrella\\env\\scenarios\\global_model_v2_2025.yaml",
+  "observation_shape": [
+    81
+  ],
+  "action_shape": [
+    12
+  ],
+  "diagnostics": {
+    "steps_observed": 501760,
+    "max_service_backlog": 2.882203792608772,
+    "max_batch_pool": 2.397593145564425,
+    "batch_expired_during_training": 0.0,
+    "action_saturation_fraction": 0.004024334343112245
+  },
+  "num_timesteps": 501760
+}

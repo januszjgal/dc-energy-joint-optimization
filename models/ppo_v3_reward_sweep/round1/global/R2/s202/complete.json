@@ -1,0 +1,50 @@
+{
+  "stage": "round1",
+  "region": "global",
+  "candidate": "R2",
+  "variant": null,
+  "seed": 202,
+  "timesteps": 151552,
+  "gae_lambda": 1.0,
+  "normalize_observations": false,
+  "learning_rate_schedule": "fixed",
+  "target_kl": null,
+  "batch_size": 64,
+  "subtract_idle_cost": false,
+  "service_backlog_weight": 1000.0,
+  "batch_completion_weight": 1000.0,
+  "urgency_potential_weight": 0.0,
+  "protocol_sha256": "afcdacc992bdf9ba219fab251a2576812e0180aa189da49994056d935b549dda",
+  "train_scenario": "env/scenarios/global_model_v2_2025.yaml",
+  "algorithm": "PPO",
+  "learning_rate": 0.0003,
+  "n_steps": 2048,
+  "n_epochs": 10,
+  "gamma": 1.0,
+  "net_arch": [
+    128,
+    128
+  ],
+  "deadline_bucket_edges": [
+    1,
+    3,
+    6,
+    12,
+    24
+  ],
+  "evaluation_objective": {
+    "service_backlog_weight": 1000.0,
+    "batch_completion_weight": 1000.0,
+    "full_dollar_cost_unchanged": true
+  },
+  "job_fingerprint": "34776e92639424001327a1158a8ab3e4e9e06f395e600c80f37f0253dbf6a529",
+  "completed_at_utc": "2026-08-06T14:10:26.778533+00:00",
+  "elapsed_seconds": 481.15588426589966,
+  "model_path": "models/ppo_v3_reward_sweep/round1/global/R2/s202/model.zip",
+  "model_bytes": 701571,
+  "model_sha256": "e5af2515371ddbbf609024f5ce28bcbe9d4793cd065de9a804491667fa82466b",
+  "diagnostics_sha256": "1e4ceeb621207a6eee07332e507b79eba70e9ce05d5c9c4b195800064d477c14",
+  "vecnormalize_sha256": null,
+  "log_path": "logs/ppo_v3_reward_sweep/round1/global/R2_s202.log",
+  "log_sha256": "bd6cb1665019ffc328763bf26668bb262e177c24f36b828821b97b954f11be35"
+}
