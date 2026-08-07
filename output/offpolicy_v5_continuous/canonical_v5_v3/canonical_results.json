@@ -1,0 +1,439 @@
+{
+  "study": "v5 corrected teacher-guided TD3+BC",
+  "source_commit": "81d50713b85e5f96809b37c16855289d13b1ad4d",
+  "protocol": {
+    "id": "v5-offpolicy-td3bc-frozen-v3",
+    "path": "env\\protocols\\v5_offpolicy_td3bc.yaml",
+    "sha256": "af656597d178f64ccf1f37ce635e3d1c9dc9167f13efe104deee86b44c4e1349"
+  },
+  "claim_scope": {
+    "development": "a-d development / frozen confirmation",
+    "transfer": "e-h descriptive transfer only",
+    "energy_generalization": "No untouched confirmatory energy month; all seeds share one deterministic May 2025 CAISO archetype."
+  },
+  "regions": {
+    "us": {
+      "goal_savings_pct": 5.0,
+      "variants": {
+        "bc_only": {
+          "development_savings_pct": {
+            "values": [
+              6.432972953932534,
+              6.472198742634731,
+              6.1672093135453645,
+              6.027250260810563,
+              6.3451867398868975
+            ],
+            "count": 5,
+            "mean": 6.288963602162018,
+            "minimum": 6.027250260810563,
+            "maximum": 6.472198742634731,
+            "sample_std": 0.18761185407307063,
+            "optimization_seed_t95_interval": [
+              6.056012717323227,
+              6.521914487000808
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "descriptive_transfer_savings_pct": {
+            "values": [
+              5.810565703147158,
+              5.490426018427978,
+              5.443417979184875,
+              6.066840806219922,
+              5.489265060690414
+            ],
+            "count": 5,
+            "mean": 5.66010311353407,
+            "minimum": 5.443417979184875,
+            "maximum": 6.066840806219922,
+            "sample_std": 0.27064873262010186,
+            "optimization_seed_t95_interval": [
+              5.324048326080212,
+              5.996157900987927
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "mean_decoder_adjustment_rate": 0.9766801075268817,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true,
+          "all_provenance_pass": true,
+          "records": [
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s301\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s302\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s303\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s304\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s305\\record.json"
+          ]
+        },
+        "post_rl_td3bc": {
+          "development_savings_pct": {
+            "values": [
+              6.374079281161426,
+              6.497250867630186,
+              6.236431690267615,
+              6.112359722517569,
+              6.231007163239511
+            ],
+            "count": 5,
+            "mean": 6.290225744963261,
+            "minimum": 6.112359722517569,
+            "maximum": 6.497250867630186,
+            "sample_std": 0.1482630935455737,
+            "optimization_seed_t95_interval": [
+              6.1061327994454055,
+              6.474318690481117
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "descriptive_transfer_savings_pct": {
+            "values": [
+              5.910608799225556,
+              5.496401900549327,
+              5.319742615665296,
+              6.04423741190737,
+              5.6538774905496085
+            ],
+            "count": 5,
+            "mean": 5.684973643579432,
+            "minimum": 5.319742615665296,
+            "maximum": 6.04423741190737,
+            "sample_std": 0.2957624280780621,
+            "optimization_seed_t95_interval": [
+              5.317736084613571,
+              6.052211202545292
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "mean_decoder_adjustment_rate": 0.982168458781362,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true,
+          "all_provenance_pass": true,
+          "records": [
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s301\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s302\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s303\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s304\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\us\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s305\\record.json"
+          ]
+        }
+      },
+      "secondary_kpis": {
+        "development": {
+          "mean_baseline_primary_cost_usd": 6567708.508199269,
+          "mean_policy_primary_cost_usd": 6154584.816762376,
+          "mean_primary_savings_usd": 413123.6914368933,
+          "mean_baseline_energy_cost_usd": 5555106.117696815,
+          "mean_policy_energy_cost_usd": 5196889.47129759,
+          "mean_baseline_grid_stress_cost_usd": 1012602.3905024533,
+          "mean_policy_grid_stress_cost_usd": 957695.345464786,
+          "secondary_demand_charge_rate_usd_per_kw_cycle": 15.0,
+          "mean_baseline_demand_charge_ref_usd": 4694066.819951468,
+          "mean_policy_demand_charge_ref_usd": 5564170.999661484,
+          "mean_demand_charge_change_usd": 870104.1797100157,
+          "mean_demand_charge_change_pct": 18.536254661134365,
+          "combined_primary_plus_demand_charge_savings_usd": -456980.4882731214,
+          "combined_primary_plus_demand_charge_savings_pct": -4.05780150071739,
+          "mean_baseline_peak_grid_mw": 302.8230596188646,
+          "mean_policy_peak_grid_mw": 367.9285635100151,
+          "mean_baseline_load_factor": 0.9519172922103198,
+          "mean_policy_load_factor": 0.7584896594486437,
+          "mean_decoder_adjustment_rate": 0.982168458781362,
+          "mean_decoder_adjustment_l2": 0.3510398323761951,
+          "maximum_decoder_adjustment_l2": 3.3441822878433753,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true
+        },
+        "descriptive_transfer": {
+          "mean_baseline_primary_cost_usd": 6218995.615601416,
+          "mean_policy_primary_cost_usd": 5865447.353959115,
+          "mean_primary_savings_usd": 353548.2616423005,
+          "mean_baseline_energy_cost_usd": 5294680.617800324,
+          "mean_policy_energy_cost_usd": 5000874.316422973,
+          "mean_baseline_grid_stress_cost_usd": 924314.9978010915,
+          "mean_policy_grid_stress_cost_usd": 864573.0375361415,
+          "secondary_demand_charge_rate_usd_per_kw_cycle": 15.0,
+          "mean_baseline_demand_charge_ref_usd": 4626200.054982633,
+          "mean_policy_demand_charge_ref_usd": 5373440.4431655435,
+          "mean_demand_charge_change_usd": 747240.3881829102,
+          "mean_demand_charge_change_pct": 16.152357859623848,
+          "combined_primary_plus_demand_charge_savings_usd": -393692.1265406087,
+          "combined_primary_plus_demand_charge_savings_pct": -3.6301062562516875,
+          "mean_baseline_peak_grid_mw": 297.966570960318,
+          "mean_policy_peak_grid_mw": 328.6704483001725,
+          "mean_baseline_load_factor": 0.9290340355159127,
+          "mean_policy_load_factor": 0.8334438423900128,
+          "mean_decoder_adjustment_rate": 0.9958333333333333,
+          "mean_decoder_adjustment_l2": 0.4612067137138807,
+          "maximum_decoder_adjustment_l2": 2.6630865976019353,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true
+        }
+      },
+      "post_rl_update_evidence": {
+        "n_updates_each": [
+          2048
+        ],
+        "all_actor_hashes_changed": true,
+        "all_critic_hashes_changed": true,
+        "all_teacher_absent_during_rl": true,
+        "all_teacher_absent_at_inference": true
+      },
+      "attribution": {
+        "paired_post_rl_minus_bc_percentage_points": {
+          "values": [
+            -0.05889367277110846,
+            0.025052124995454506,
+            0.06922237672225062,
+            0.08510946170700606,
+            -0.11417957664738676
+          ],
+          "count": 5,
+          "mean": 0.0012621428012431935,
+          "minimum": -0.11417957664738676,
+          "maximum": 0.08510946170700606,
+          "sample_std": 0.08538214431529963,
+          "optimization_seed_t95_interval": [
+            -0.10475379188450273,
+            0.10727807748698912
+          ],
+          "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+        },
+        "interpretation": "The reward-trained actor and critics changed, but the paired economic difference from BC-only is the incremental RL effect. Most absolute savings are attributable to teacher imitation."
+      },
+      "analytic_teacher_benchmark": {
+        "development": {
+          "scenario_kind": "development",
+          "savings_vs_status_quo_pct": 7.21599088161977,
+          "total_cost": 6093783.261116244,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.702844982078853
+        },
+        "descriptive_transfer": {
+          "scenario_kind": "descriptive_transfer",
+          "savings_vs_status_quo_pct": 7.227750029534877,
+          "total_cost": 5769502.158158012,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.9208109318996416
+        },
+        "attribution": "Causal current-state analytic benchmark and offline teacher; not an RL result and absent at inference."
+      },
+      "teacher_savings_capture_pct": 87.1706443114476,
+      "headline_gate_passed": true
+    },
+    "global": {
+      "goal_savings_pct": 10.0,
+      "variants": {
+        "bc_only": {
+          "development_savings_pct": {
+            "values": [
+              13.840816528358463,
+              14.206298400298712,
+              13.88057890311975,
+              14.045153305720325,
+              14.113531073147287
+            ],
+            "count": 5,
+            "mean": 14.017275642128908,
+            "minimum": 13.840816528358463,
+            "maximum": 14.206298400298712,
+            "sample_std": 0.15459276545359357,
+            "optimization_seed_t95_interval": [
+              13.825323370882423,
+              14.209227913375393
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "descriptive_transfer_savings_pct": {
+            "values": [
+              13.433999700091766,
+              13.15788733572654,
+              12.117201954311703,
+              12.692298965557592,
+              13.169225142746983
+            ],
+            "count": 5,
+            "mean": 12.914122619686918,
+            "minimum": 12.117201954311703,
+            "maximum": 13.433999700091766,
+            "sample_std": 0.5193888218909605,
+            "optimization_seed_t95_interval": [
+              12.269216218475444,
+              13.559029020898391
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "mean_decoder_adjustment_rate": 0.9557795698924731,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true,
+          "all_provenance_pass": true,
+          "records": [
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s301\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s302\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s303\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s304\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3\\s305\\record.json"
+          ]
+        },
+        "post_rl_td3bc": {
+          "development_savings_pct": {
+            "values": [
+              13.822014317287765,
+              14.220641069076754,
+              13.862748827574512,
+              13.982827137764225,
+              14.11202577136236
+            ],
+            "count": 5,
+            "mean": 14.000051424613122,
+            "minimum": 13.822014317287765,
+            "maximum": 14.220641069076754,
+            "sample_std": 0.16736482334281796,
+            "optimization_seed_t95_interval": [
+              13.792240548902612,
+              14.207862300323633
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "descriptive_transfer_savings_pct": {
+            "values": [
+              13.49703508756347,
+              13.065632830405777,
+              12.037510574821164,
+              12.801050049946104,
+              13.046755641195375
+            ],
+            "count": 5,
+            "mean": 12.889596836786378,
+            "minimum": 12.037510574821164,
+            "maximum": 13.49703508756347,
+            "sample_std": 0.5381821997821824,
+            "optimization_seed_t95_interval": [
+              12.221355374842735,
+              13.55783829873002
+            ],
+            "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+          },
+          "mean_decoder_adjustment_rate": 0.9512320788530466,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true,
+          "all_provenance_pass": true,
+          "records": [
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s301\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s302\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s303\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s304\\record.json",
+            "models\\offpolicy_v5_continuous\\frozen_confirmation\\td3_bc\\global\\td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3\\s305\\record.json"
+          ]
+        }
+      },
+      "secondary_kpis": {
+        "development": {
+          "mean_baseline_primary_cost_usd": 6598480.969370618,
+          "mean_policy_primary_cost_usd": 5674690.240415421,
+          "mean_primary_savings_usd": 923790.7289551971,
+          "mean_baseline_energy_cost_usd": 5576711.786288248,
+          "mean_policy_energy_cost_usd": 4900244.41945049,
+          "mean_baseline_grid_stress_cost_usd": 1021769.1830823697,
+          "mean_policy_grid_stress_cost_usd": 774445.8209649316,
+          "secondary_demand_charge_rate_usd_per_kw_cycle": 15.0,
+          "mean_baseline_demand_charge_ref_usd": 4694066.819951468,
+          "mean_policy_demand_charge_ref_usd": 5564170.999661484,
+          "mean_demand_charge_change_usd": 870104.1797100157,
+          "mean_demand_charge_change_pct": 18.536254661134365,
+          "combined_primary_plus_demand_charge_savings_usd": 53686.54924518056,
+          "combined_primary_plus_demand_charge_savings_pct": 0.4754157365262164,
+          "mean_baseline_peak_grid_mw": 302.8230596188646,
+          "mean_policy_peak_grid_mw": 369.81944811385773,
+          "mean_baseline_load_factor": 0.9519172922103198,
+          "mean_policy_load_factor": 0.7698403811911074,
+          "mean_decoder_adjustment_rate": 0.9512320788530466,
+          "mean_decoder_adjustment_l2": 0.33068672211328526,
+          "maximum_decoder_adjustment_l2": 3.2040190000466144,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true
+        },
+        "descriptive_transfer": {
+          "mean_baseline_primary_cost_usd": 6275896.089890386,
+          "mean_policy_primary_cost_usd": 5466958.386007875,
+          "mean_primary_savings_usd": 808937.7038825108,
+          "mean_baseline_energy_cost_usd": 5337098.127652855,
+          "mean_policy_energy_cost_usd": 4735662.855960093,
+          "mean_baseline_grid_stress_cost_usd": 938797.9622375312,
+          "mean_policy_grid_stress_cost_usd": 731295.5300477812,
+          "secondary_demand_charge_rate_usd_per_kw_cycle": 15.0,
+          "mean_baseline_demand_charge_ref_usd": 4626200.054982633,
+          "mean_policy_demand_charge_ref_usd": 5373440.4431655435,
+          "mean_demand_charge_change_usd": 747240.3881829102,
+          "mean_demand_charge_change_pct": 16.152357859623848,
+          "combined_primary_plus_demand_charge_savings_usd": 61697.31569959968,
+          "combined_primary_plus_demand_charge_savings_pct": 0.5659215886535213,
+          "mean_baseline_peak_grid_mw": 297.966570960318,
+          "mean_policy_peak_grid_mw": 332.45178061823736,
+          "mean_baseline_load_factor": 0.9290340355159127,
+          "mean_policy_load_factor": 0.8295737320538392,
+          "mean_decoder_adjustment_rate": 0.9844534050179211,
+          "mean_decoder_adjustment_l2": 0.4618973119273567,
+          "maximum_decoder_adjustment_l2": 3.397260070722724,
+          "maximum_emergency_intervention_rate": 0.0,
+          "all_safe": true
+        }
+      },
+      "post_rl_update_evidence": {
+        "n_updates_each": [
+          2048
+        ],
+        "all_actor_hashes_changed": true,
+        "all_critic_hashes_changed": true,
+        "all_teacher_absent_during_rl": true,
+        "all_teacher_absent_at_inference": true
+      },
+      "attribution": {
+        "paired_post_rl_minus_bc_percentage_points": {
+          "values": [
+            -0.018802211070697794,
+            0.014342668778041912,
+            -0.017830075545237634,
+            -0.062326167956099354,
+            -0.0015053017849275818
+          ],
+          "count": 5,
+          "mean": -0.01722421751578409,
+          "minimum": -0.062326167956099354,
+          "maximum": 0.014342668778041912,
+          "sample_std": 0.028638242278345945,
+          "optimization_seed_t95_interval": [
+            -0.05278329192464326,
+            0.018334856893075083
+          ],
+          "interval_interpretation": "Variation across training seeds on one deterministic calendar; not an independent-data confidence interval."
+        },
+        "interpretation": "The reward-trained actor and critics changed, but the paired economic difference from BC-only is the incremental RL effect. Most absolute savings are attributable to teacher imitation."
+      },
+      "analytic_teacher_benchmark": {
+        "development": {
+          "scenario_kind": "development",
+          "savings_vs_status_quo_pct": 15.715358095166328,
+          "total_cost": 5561506.056192623,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.6911962365591398
+        },
+        "descriptive_transfer": {
+          "scenario_kind": "descriptive_transfer",
+          "savings_vs_status_quo_pct": 16.36113445518972,
+          "total_cost": 5249088.292355426,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.9200268817204301
+        },
+        "attribution": "Causal current-state analytic benchmark and offline teacher; not an RL result and absent at inference."
+      },
+      "teacher_savings_capture_pct": 89.0851569517796,
+      "headline_gate_passed": true
+    }
+  },
+  "all_headline_gates_passed": true
+}
