@@ -8,13 +8,29 @@
 > Global spatial PPO is the only robust learned success (~0.9–1.2% held-out
 > savings); US spatial is not established and joint batch control is unstable.
 > Energy-model v1 remains historical evidence only. A separate, post-hoc,
-> non-headline PPO recovery sweep (v3, §7A) since found and repaired a genuine
+> non-headline PPO recovery sweep (v3, §7A) since found and partially repaired a genuine
 > v2 state-observability defect and re-ran joint-only PPO with a
 > successive-halving reward/budget sweep; its best a–d policies still fail the
 > frozen safety/completion gate (only 1/10 seeds safe in both regions), so it
 > **does not overturn §7's frozen conclusion** — it narrows the interpretation
 > of the joint-negative result from "PPO cannot do it" to "PPO did not do it
-> safely under the v2 state/budget."
+> safely under the v2 state/budget." A further post-v3, non-headline,
+> exploratory study (v4, §7B) then added a causal one-step hard-feasibility
+> projector — not an MPC controller — around the same selected v3 joint PPO
+> configurations. Under v4's frozen a–d envelope, every evaluated seed at
+> every stage (replay of the archived v3 policies, and 36 freshly trained
+> short/medium/full-budget candidates) is **deterministically safe**: exactly
+> zero expired batch work, exactly zero terminal batch pool or service
+> backlog, and exactly zero safety-infeasibility certificates. Economics
+> remain seed/scenario-dependent and unresolved for US (full-budget mean
+> **−0.246%**, optimizer CI crossing zero) while Global is positive at every
+> stage (full-budget mean **+3.262%**, optimizer CI **+$160,775 to
+> +$267,541**, all ten seeds individually positive) — but Global's trained
+> savings rely materially on the projector itself, so the safety-relevant
+> controller is **PPO + projector jointly**, not PPO alone. v4 therefore
+> establishes hard safety, not projector-independent economic evidence, and **does not overturn
+> §7 or §7A** — it is a further non-headline refinement layered on the v3
+> recovery study.
 
 ---
 
@@ -1522,6 +1538,442 @@ may be exposed separately for value/audit purposes, but must not be advertised
 as drainable work. This observation change requires a new protocol and
 retraining; the frozen v3 source and results are not silently rewritten.
 
+## 7B. Post-v3 Hard-Safety PPO v4 Study (Non-Headline, Post-Hoc)
+
+> **Status: exploratory, not confirmatory.** §7 and §7A above are unchanged
+> and remain the frozen primary evidence and the frozen non-headline v3
+> evidence, respectively. This section documents a further post-hoc protocol
+> (`ppo-hard-safety-v4`, `parent_protocol: ppo-reward-sweep-v3`,
+> `output/ppo_v4_safety/protocol.json`) that asks a narrower engineering
+> question: can the §7A.11 deadline-boundary defect and §7A.8 soft-safety gap
+> be closed with a **causal, one-step hard feasibility projection** — not a
+> full model-predictive controller — layered around the already-selected v3
+> joint PPO configurations (US `R3_P1`, Global `R0_P3`)? v4 excludes
+> `model_predictive_control`, `spatial_only_training`, and
+> `temporal_only_training` exactly as v3 did; `claim_scope.development_cells =
+> a-d`, `descriptive_transfer_cells = e-h`, and
+> `fresh_confirmatory_data_available: false` — cells e–h remain descriptive
+> only because both v2 and v3 already exposed them. All figures below are
+> read directly from the frozen raw JSON under `output/ppo_v4_safety/`
+> (`protocol.json`, `preflight.json`, `replay_results.json`,
+> `short_results.json`/`short_gate.json`,
+> `medium_results.json`/`medium_gate.json`, `full_results.json`/`full_gate.json`,
+> `final_results.json`, `models/ppo_v4_safety/manifest.json`), not recomputed.
+> The deterministic canonical package is now available at
+> `output/ppo_v4_safety/canonical_results.json` and
+> `output/ppo_v4_safety/results_report.md`, with five publication figures in
+> the same directory; `scripts/build_safety_v4_results.py` rebuilds them from
+> these frozen JSON/model inputs and verifies all 36 hashes.
+
+### 7B.1 What v4 adds: a causal projector, not an MPC controller
+
+`env/safety_layer.py` implements `project_joint_action()`, called once per
+step from `env/safe_multi_dc_env.py::SafeMultiDCEnv._step_batch()` (used by
+both `train_v4.py` and evaluation). Given the policy's raw 12-dim joint
+action for the current step only, it deterministically projects the decoded
+service/drain/routing preferences onto the exact feasible set for **that one
+step**, using only information available at the current step — the current
+pool contents, the current service/batch arrivals, and the frozen envelope
+constants (§7B.3). It does not plan, simulate, or optimize over future steps,
+and it does not see any realized future trace; it is a projection layer, not
+a controller with foresight, and is explicitly excluded from the MPC family.
+
+### 7B.2 Requirement 1 — deadline-actionable state closes the §7A.11 defect
+
+v4 sets `actionable_deadline_state = True` on `SafeMultiDCEnv.__init__`
+(inherited by `MultiDCEnv._get_obs()`, `env/multi_dc_env.py` lines ~1291–1338),
+which switches the observation from `BatchPool.total_demand` /
+`BatchPool.urgency()` / `BatchPool.deadline_histogram()` to
+`BatchPool.actionable_total_demand()` / `actionable_urgency()` /
+`actionable_deadline_histogram()` (`env/workload_generator.py`). Each
+actionable method excludes any entry with `deadline_step <= current_step`
+from the observed pool size, urgency fraction, and deadline-bucket histogram
+— exactly the `[1, 3, 6, 12, 24]`-step buckets carried over from v3. Due-now
+unavoidable mass is therefore never presented to the policy as if it were
+still actionable/drainable (`due_now_unavoidable_mass_is_audit_only: true`,
+`protocol.json`). `scripts/smoke_test_safety_v4.py::test_deadline_semantics_and_actionable_state`
+verifies this directly: a pool with entries due at steps 4 and 5, observed at
+step 4, reports `actionable_total_demand == 2.0` (only the step-5 entry),
+while `expire(4)` separately and correctly removes the step-4 entry's `1.0`
+units as expired. This closes the exact defect §7A.11 flagged in v3.
+
+### 7B.3 Requirement 2 — cumulative causal EDF with train-only, no-future-leakage envelopes
+
+`_mandatory_edf_by_origin()` (`env/safety_layer.py`) computes, for every
+*nested* deadline prefix currently in the pools (not just the single nearest
+deadline), how much batch work must be forced to drain now so that a
+**guaranteed per-step future drain capacity** — not an optimistic or
+best-case one — can still clear it before its deadline. The guaranteed
+capacity is `future_fleet_capacity_total − service_envelope_total −
+batch_arrival_envelope_total = 4.0 − 2.25 − 1.0 = 0.75` normalized units/step
+(`guaranteed_carried_batch_capacity`, `protocol.json`). These three envelope
+constants are **frozen before replay or training** by rounding *upward* from
+the maximum total service (`2.130388`) and maximum total batch arrival
+(`0.831723`) ever observed across development cells a–d only
+(`envelope_provenance`, `protocol.json`; `preflight.json`'s
+`max_total_service_demand` / `max_total_batch_arrival` fields reproduce the
+same two source numbers for both regions). The envelope is deliberately
+**train-only and a–d-scoped** (`envelope_scope: a-d-development-only`): it is
+never fit to, or silently widened by, e–h or any other held-out trace.
+`scripts/smoke_test_safety_v4.py::test_no_future_trace_leakage` checks this
+structurally — re-running the identical current-step projection twice with
+freshly reconstructed (but state-identical) pools yields bit-identical
+output, so nothing beyond the current-step arguments can influence the
+projection. `test_random_projection_invariants` additionally fuzzes 250
+random pools/actions/service loads under the exact frozen a–d envelope
+(`service_envelope_total=2.25`, `batch_arrival_envelope_total=1.0`,
+`future_fleet_capacity_total=4.0`) and requires `minimum_deadline_slack >=
+-1e-8` on every one of the ≥200 feasible draws — i.e. the cumulative EDF
+check must hold for every nested deadline prefix, not just the nearest one.
+
+### 7B.4 Requirement 3 — clean-state service guarantee, and its local-backlog caveat
+
+`SafeMultiDCEnv._step_batch()` fails closed with a
+`preexisting_local_service_backlog` certificate (§7B.6) if any site's
+`backlog` is non-zero *before* that step's projection runs
+(`preexisting_local_service_backlog: fail_closed`, `protocol.json`). **The
+hard zero-backlog guarantee therefore applies only from a clean safe
+state, not universally** — it is a guarantee that v4's own projector never
+*creates* local service backlog, not a guarantee against backlog carried in
+from outside the v4 loop (e.g. a differently-coded caller, or a future
+extension that re-enables the `MultiDCEnv` base-class backlog path). Within
+the frozen protocol this caveat is inert by construction: every v4 site's
+`backlog` is reset to exactly `0.0` at the end of every projected step
+(`site.backlog = 0.0`, `safe_multi_dc_env.py`), so the guard is never
+naturally triggered in replay/short/medium/full/final; it exists to fail
+loudly rather than silently pool or hide backlog if that invariant is ever
+broken. `test_preexisting_backlog_fails_closed` verifies the fail-closed path
+directly by forcing `env.sites[0].backlog = 0.1` before stepping.
+
+### 7B.5 Requirement 4 — exact transport with real row/column conservation, no `serve_ratio` shortcut
+
+Where earlier reward-only accounting could summarize service/batch execution
+with a single scalar completion ratio, `exact_transport()`
+(`env/safety_layer.py`) builds an explicit deterministic non-negative
+origin×destination flow matrix whose row sums equal the projected origin
+drains and whose column sums equal the projected destination placements,
+constructed by a greedy, exact northwest-corner-style fill with an internal
+`RuntimeError` guard if row/column sums ever drift from the inputs by more
+than `1e-8`. There is no `serve_ratio`-style single-number approximation
+anywhere in the v4 path: every unit of batch work is tracked as a discrete
+origin→destination flow. `safety_transport_conservation_error` (max of
+row-sum and column-sum deviation) is logged on every step and reported in
+every aggregate; the frozen promotion gate requires it
+`<= 1e-8` (`promotion_gate.require_all_seeds`,
+`gate_rule.max_transport_conservation_error`), and the realized values are far
+tighter than the gate in every stage —
+`maximum_transport_conservation_error` is `2.78e-16`–`3.33e-16` (replay),
+`2.22e-16`–`2.50e-16` (short), `2.22e-16`–`2.50e-16` (medium), and
+`2.50e-16`–`3.05e-16` (full) across both regions — i.e. floating-point noise,
+not an approximation.
+
+### 7B.6 Requirement 5 — exact 0%/100% drain endpoints replace the v3 sigmoid cap
+
+§7A.8 identified that v3's inherited `±3`-clipped sigmoid drain head could
+reach at most `sigmoid(3) ≈ 95.257%` per step, never exactly 0% or 100%. v4's
+projector removes this asymptote entirely: `project_box_sum_range()` and
+`project_capped_simplex()` (`env/safety_layer.py`) solve an exact
+box/simplex-constrained least-squares projection whose solution can land
+precisely at a bound. `exact_zero_drain_count` / `exact_full_drain_count`
+(counted via `drain_rates == 0.0` / `== 1.0`, exact floating-point equality,
+not a threshold) are logged every step and summed across training in
+`SafetyTrainingCallback` (`train_v4.py`). `test_wrong_origin_override_and_exact_endpoints`
+demonstrates both endpoints directly: a mandatory-drain scenario forces
+`drain_rates[0] == 1.0` exactly even though the raw PPO preference favored
+the other origin, and an empty-pool scenario yields `drain_rates[0] == 0.0`
+exactly. This is the concrete fix the v3 write-up called for: an "exact
+0.0–100% drain-reachability decoder," not a wider sigmoid.
+
+### 7B.7 Requirement 6 — infeasibility certificates, fail-closed rather than silently wrong
+
+`SafetyInfeasibleError` (`env/safety_layer.py`) always carries a structured
+`certificate` dict with a machine-checkable `reason` — observed reasons in
+the test suite include `service_envelope_exceeded`,
+`batch_arrival_envelope_exceeded`, `service_capacity_deficit`,
+`pre_action_deadline_miss`, `mandatory_batch_capacity_deficit`,
+`origin_drain_projection_empty`, `preexisting_local_service_backlog`,
+`post_projection_grid_cap_violation`, and
+`post_projection_ramp_cap_violation` — instead of returning a degraded or
+silently-clipped action. `test_fail_closed_certificates` exercises the
+`service_capacity_deficit` and `pre_action_deadline_miss` paths directly;
+`test_preexisting_backlog_fails_closed` exercises
+`preexisting_local_service_backlog`. `train_v4.py::train_safe_candidate`
+catches `SafetyInfeasibleError` during training and writes the certificate
+verbatim to the run's diagnostics file with `"status":
+"safety_infeasible"` rather than swallowing it. Across every recorded
+evaluation seed in every stage — 40 replay records (10 seeds × 2 regions × 2
+modes), 6 short, 10 medium, 20 full, and 20 final (e–h) — `safety_infeasibility_certificates`
+is exactly `0`, and the frozen promotion gate requires exactly `0` on every
+seed (`gate_rule.safety_infeasibility_certificates: "exactly 0"`).
+
+### 7B.8 Requirement 7 — minimal projection, not an arbitrary feasible point
+
+Every projection primitive (`project_capped_simplex`,
+`project_box_sum_range`) solves for the **Euclidean-nearest** feasible point
+to the policy's raw decoded preference — a bisection search over the
+simplex-projection dual variable in `project_capped_simplex`, and a
+box-clip-then-simplex-correct fallback in `project_box_sum_range` — rather
+than an arbitrary feasible point (e.g. always-serve-status-quo or
+always-maximize-safety-margin). `projection_l2` is the total Euclidean
+distance across the concatenated service/origin-drain/destination-placement
+vectors (`safety_layer.py::project_joint_action`), logged every step as
+`safety_projection_l2` and aggregated as `mean_safety_intervention_rate` /
+`max_projection_l2`. `intervened = projection_l2 > 1e-8` distinguishes a true
+correction from floating-point noise. This keeps the projector's behavior as
+close as possible to the trained policy's intent whenever the raw action was
+already feasible or near-feasible, and quantifies exactly how far it deviated
+when it was not.
+
+### 7B.9 Requirement 8 — in-loop training telemetry, not a post-hoc audit
+
+`SafetyTrainingCallback` (`train_v4.py`) is registered on every PPO
+`model.learn()` call and inspects the `info` dict on **every training
+transition** (not just at evaluation), accumulating: intervention count and
+rate, mean/max projection L2, mandatory-batch step count and rate, the
+binding-deadline-steps-remaining histogram, minimum deadline slack, exact
+zero/full drain counts, negative-flush-active step count, and the running
+max transport-conservation error. `train_safe_candidate()` writes this
+summary into every model's `diagnostics.json` (or, on a raised
+`SafetyInfeasibleError`, into a `"status": "safety_infeasible"` diagnostics
+file carrying the certificate) alongside the training/reward/safety configs
+— so a v4 model's safety behavior *during* training, not just its evaluation
+episode, is inspectable from the committed artifact tree.
+
+### 7B.10 Requirement 9 — the optional negative-demand flush ablation
+
+`SafetyConfig.negative_demand_flush` (default `False`,
+`primary_negative_demand_flush: false` in `protocol.json`) optionally forces
+a minimum batch-drain total toward negative-net-demand destinations, on top
+of the mandatory EDF floor (§7B.3), whenever any destination's net demand is
+currently negative (`flush_mask`, `env/safety_layer.py`). It is exercised
+only as an explicit **ablation**, never as the primary configuration
+(`negative_demand_flush_ablation: true`); `test_negative_flush_is_optional`
+confirms the two modes diverge (`off.origin_batch[0] < 0.1` vs.
+`on.origin_batch[0] == 1.0` on the same pool/action). The replay stage
+evaluates both modes side by side on the identical 10 archived v3 seeds per
+region (§7B.11), which is the ablation's only reported comparison — there is
+no separate "economic ablation" artifact beyond this dual-mode replay.
+
+### 7B.11 Requirement 10, and results — optional power/ramp caps, implemented and tested but disabled in every reported run
+
+`SafetyConfig.max_grid_mw` / `max_upward_ramp_mw` are fully implemented:
+`_static_future_capacity_bounds()` and `_effective_capacities()`
+(`env/safe_multi_dc_env.py`) fold optional hard per-site grid-power and
+upward-ramp ceilings into the provable capacity envelope and the per-step
+effective capacity, and `_step_batch()` raises
+`post_projection_grid_cap_violation` / `post_projection_ramp_cap_violation`
+certificates if a realized value ever exceeds its configured cap.
+`test_optional_grid_and_ramp_caps` exercises both the enforced-cap path (grid
+draw stays within a deliberately tight cap) and the fail-closed
+configuration-validation path (a grid cap set below unavoidable idle draw is
+rejected with `ValueError` before any episode runs). **Every reported v4
+run — replay, short, medium, full, and final — uses
+`primary_power_caps: null` and `primary_ramp_caps: null`** (`protocol.json`):
+the caps exist and are unit-tested, but play no role in any of the headline
+figures below. **No MPC controller of any kind is built, trained, or
+activated anywhere in v4** — the projector is a one-step causal correction,
+not a planner.
+
+### 7B.12 Replay: hard safety wrapped around the unmodified, already-trained v3 policies
+
+The replay stage does **not** retrain anything. It reuses the exact archived
+v3 `R3_P1` (US) and `R0_P3` (Global) model files and `VecNormalize` states —
+hash-verified against the v3 manifest before use
+(`validate_v3_replay_source()`, `scripts/run_safety_campaign_v4.py`) — and
+re-evaluates them on the same 10 selected v3 seeds (201–210) on cells a–d,
+with the v4 hard-safety projector wrapped around the policy **only at
+evaluation time**. This isolates one question: does a causal projector alone
+make the existing v3 policies unconditionally safe, with no retraining? Both
+modes are run for both regions:
+
+| Region | Mode | Mean savings vs. Status Quo | Worst-seed savings | Mean intervention rate | Safe / 10 | Optimizer 95% CI (USD) | All-seed positive |
+|---|---|---:|---:|---:|---:|---|---|
+| US | safety-only | **+0.057%** | −1.049% | **0.011%** | **10/10** | [−$21,772, +$28,698] | No |
+| US | safety + negative-demand flush | +0.002% | −1.067% | 23.902% | **10/10** | [−$25,141, +$25,022] | No |
+| Global | safety-only | **+2.041%** | +1.016% | **0.473%** | **10/10** | [+$103,993, +$167,977] | Yes |
+| Global | safety + negative-demand flush | +1.257% | +0.146% | 48.516% | **10/10** | [+$50,314, +$111,333] | Yes |
+
+Every one of these 40 replay evaluations reports `minimum_service_completion
+= minimum_batch_completion = 1.0`, `total_expired = 0.0`,
+`maximum_terminal_batch_pool = maximum_terminal_service_backlog = 0.0`,
+`safety_infeasibility_certificates = 0`, and
+`maximum_transport_conservation_error` of order `1e-16` — i.e. **10/10 seeds
+safe in every region and every mode**, with no retraining at all. Safety-only
+intervention rates are minimal (0.011% of US steps, 0.473% of Global steps)
+— the archived v3 policies were already close to feasible almost everywhere
+on a–d; the projector only had to correct a small fraction of steps. Turning
+on the optional negative-demand flush (§7B.10) raises intervention rates by
+roughly three orders of magnitude (23.9% US, 48.5% Global). It lowers absolute
+mean cost (US $6.564M→$6.552M; Global $6.464M→$6.302M), but the flush-enabled
+Status Quo also benefits, so PPO's relative savings against its mode-matched
+baseline fall (US +0.057%→+0.002%, Global +2.041%→+1.257%). The ablation
+therefore shows a broad economic effect from forced trough execution, not a
+larger learned-policy advantage; its high intervention rate would also make it
+a dominant heuristic rather than a minimal shield. It remains excluded from
+every primary configuration.
+
+### 7B.13 Short/medium/full: 36 freshly trained hard-safe joint PPO models
+
+Unlike replay, the short/medium/full stages **train from scratch** inside
+`SafeMultiDCEnv` (the projector is active during training, not only at
+evaluation), at three rollout-aligned budgets with strictly nested seeds
+(short 151,552 steps/3 seeds 301–303; medium 301,056 steps/5 seeds 301–305;
+full — the region's final v3-selected budget, 151,552 for US and 1,003,520
+for Global — /10 seeds 301–310), safety-only mode throughout, on development
+cells a–d:
+
+| Stage | Seeds | Region | Mean savings vs. Status Quo | Worst-seed savings | Mean intervention rate | Safe / N | Optimizer 95% CI (USD) | All-seed positive |
+|---|---:|---|---:|---:|---:|---:|---|---|
+| Short | 3 | US | **−0.024%** | −1.182% | 0.011% | **3/3** | [−$77,608, +$45,937] | No |
+| Short | 3 | Global | **+2.209%** | +1.234% | 5.376% | **3/3** | [+$81,395, +$193,223] | Yes |
+| Medium | 5 | US | **−0.105%** | −0.477% | 2.052% | **5/5** | [−$22,064, +$9,184] | No |
+| Medium | 5 | Global | **+1.557%** | −1.408% | 1.270% | **5/5** | [−$3,567, +$192,943] | No (CI crosses zero) |
+| Full | 10 | US | **−0.246%** | −1.413% | **0.021%** | **10/10** | [−$44,445, +$11,041] | No (CI crosses zero) |
+| Full | 10 | Global | **+3.262%** | +0.856% | **18.786%** | **10/10** | **[+$160,775, +$267,541]** | **Yes** |
+
+Every seed at every stage reports `minimum_service_completion =
+minimum_batch_completion = 1.0`, `total_expired = 0.0`,
+`maximum_terminal_batch_pool = maximum_terminal_service_backlog = 0.0`,
+`safety_infeasibility_certificates = 0`, and
+`maximum_transport_conservation_error <= 3.05e-16` — i.e. **every one of the
+36 freshly trained models is safe in every seed at every stage**, and every
+stage's `*_gate.json` reports the top-level `"passed": true` on the
+promotion gate's seven hard requirements (§7B.7's certificate count, §7B.5's
+transport error, exact completion, and zero expiry/terminal pool/backlog).
+**Economics remain unresolved for US; Global stays positive at all stages and
+is strongest at the full budget.** US's mean savings are small and go slightly negative as budget
+increases (−0.024% → −0.105% → −0.246%), and its optimizer CI crosses zero at
+every stage — hard safety does not manufacture US economic value that was
+never established in v2 or v3. Global's mean savings dip at medium before
+reaching their strongest value at full budget (+2.209% → +1.557% → **+3.262%** at
+full budget) and its full-budget optimizer CI is **fully positive,
+[+$160,775, +$267,541], with all ten seeds individually improving over
+Status Quo** — the strongest positive result in this entire v4 study. Full
+budget's mean safety-intervention rate is **0.021% for US** and **18.786%
+for Global** — i.e. the trained Global policy at full budget spends nearly a
+fifth of its steps under active hard-safety correction, a materially higher
+rate than the near-zero replay intervention rate on the *un*trained-under-
+safety archived v3 policy (§7B.12). **This is the central caveat for Global's
+positive result: because the projector is active roughly one step in five
+during full-budget Global evaluation, its reported cost already includes the
+projector's own corrections, not the raw PPO policy's unconstrained
+preference. The controller that produced the +3.262% figure is therefore PPO
++ projector jointly, not PPO alone — the projector is not a passive
+safety net here, it is a load-bearing part of the economic result.**
+
+`full_gate.json` additionally reports a **diagnostic-only** comparison
+against the archived v3 policies replayed with the safety-only projector
+(§7B.12; `diagnostic_cost_comparator: archived_v3_policy_with_safety_only_replay`,
+explicitly *not* a promotion gate):
+
+| Region | Diagnostic comparison | Mean improvement (USD) | Optimizer 95% CI (USD) |
+|---|---|---:|---|
+| US | full-budget v4 vs. archived-v3 safety-only replay | −$19,954 | [−$57,319, +$17,574] |
+| Global | full-budget v4 vs. archived-v3 safety-only replay | **+$80,570** | **[+$18,047, +$142,269]** |
+
+For Global, training *under* the hard-safety projector (full budget) is
+diagnostically better than merely wrapping the archived, safety-*unaware* v3
+policy in the same projector at evaluation time — the fully positive
+diagnostic CI suggests the policy adapted to, and partly benefits from,
+having the projector present during learning. For US, the sign is reversed
+and the CI still crosses zero — training under the projector at full budget
+is not diagnostically distinguishable from (and nominally slightly worse
+than) simply replaying the archived v3 policy through the same projector.
+Both comparisons are explicitly diagnostic, not part of the promotion gate.
+
+### 7B.14 e–h descriptive transfer (non-confirmatory, exactly as in v3)
+
+`final_results.json` (`evaluation_cells: "e-h"`, `mode: "safety_only"`,
+`headline_eligible: false`) re-evaluates the **same** full-budget v4 models
+used in §7B.13 (US 151,552 steps, Global 1,003,520 steps) once on cells e–h
+instead of a–d, exactly mirroring v3's §7A.6 descriptive check and inheriting
+the identical caveat: cells e–h were already exposed by frozen v2 and v3, so
+this is not fresh confirmatory data (`fresh_confirmatory_data_available:
+false`, `protocol.json`):
+
+| Region | Mean savings vs. Status Quo | Worst-seed savings | Mean intervention rate | Safe / 10 |
+|---|---:|---:|---:|---:|
+| US | **−0.149%** | −1.763% | 0.580% | **10/10** |
+| Global | **+3.611%** | +0.510% | 20.170% | **10/10** |
+
+As in every other v4 stage, all 10 seeds per region report exact completion,
+zero expiry, zero terminal pool/backlog, zero certificates, and
+transport-conservation error of order `1e-16` — hard safety transfers
+cleanly to e–h with no retraining. The cost figures themselves are
+**descriptive only**: no success gate is defined for this transfer, it
+reuses already-seen workload cells, and it is not treated as confirmatory
+evidence that the trained v4 policies "generalize."
+
+### 7B.15 Model count, protocol hash, and exact conservation across the whole study
+
+`models/ppo_v4_safety/manifest.json` records **36 newly trained models**
+(`model_count: 36`: short 3×2 + medium 5×2 + full 10×2 regions = 6+10+20=36),
+each with a SHA-256 of the model file, its completion record, and a
+job fingerprint; the replay stage reuses the 20 archived v3 models
+(10 seeds × 2 regions) with no additions to this count. Every result file
+above — `preflight.json`, `replay_results.json`, `short_results.json`,
+`short_gate.json`, `medium_results.json`, `medium_gate.json`,
+`full_results.json`, `full_gate.json`, `final_results.json`, and
+`manifest.json` — carries the identical `protocol_sha256 =
+42a39388adf3a1ed7597c255fa5352f690783b9e10cd49de60eae72e576ded6b`, so every
+number in §7B.12–§7B.14 is traceable to one exact frozen protocol snapshot.
+Across all 96 recorded evaluation seeds (40 replay + 6 short + 10 medium + 20
+full + 20 final), the exact-accounting invariants hold without exception:
+`total_expired = 0.0`, `maximum_terminal_batch_pool = 0.0`,
+`maximum_terminal_service_backlog = 0.0`, `safety_infeasibility_certificates
+= 0`, and `maximum_transport_conservation_error` never exceeds `3.33e-16` —
+several orders of magnitude inside the gate's `1e-8` requirement.
+
+### 7B.16 The envelope/future-leakage boundary: what the guarantee does and does not cover
+
+**Safety success in v4 is deterministic, not statistical, but only under two
+standing assumptions that are explicit rather than hidden.** First, the
+frozen envelope constants (§7B.3: `service_envelope_total = 2.25`,
+`batch_arrival_envelope_total = 1.0`, `future_fleet_capacity_total = 4.0`)
+are rounded-upward bounds on the maximum service/batch demand **actually
+observed on development cells a–d**, not a universal physical limit; the
+projector fails closed with a `service_envelope_exceeded` or
+`batch_arrival_envelope_exceeded` certificate (§7B.7) if a future scenario's
+realized demand ever exceeds them, rather than silently violating a
+guarantee. Because the constants were fixed before, and never refit to, e–h
+or any other data (`test_no_future_trace_leakage`, §7B.3), the guarantee
+generalizes safely to e–h only because e–h's realized demand happens to stay
+within the same a–d-derived envelope — it is not evidence that the envelope
+would hold for materially different future workload or energy data, and any
+such extension must first re-run the envelope scan (`preflight.json`'s
+`max_total_service_demand` / `max_total_batch_arrival` fields) and re-derive
+new constants before claiming safety. Second, the clean-state service
+guarantee (§7B.4) is unconditional only from a state with zero pre-existing
+local backlog; it is a property of the v4 loop closing on itself correctly,
+not a guarantee that would survive an external caller injecting backlog
+outside that loop. Both boundaries are the concrete reason the protocol
+states `fresh_confirmatory_data_available: false` and why **any future
+positive safety claim beyond a–d/e–h requires new workload/energy data and a
+re-run envelope scan, not merely re-running the existing frozen constants.**
+
+### 7B.17 Reading v4 against v2/v3: what changed, what did not
+
+**v4 does not reopen or reweight §7's frozen v2 headline, and does not
+overturn §7A's v3 recovery-study conclusion.** It closes two specific,
+previously-flagged gaps — the §7A.11 deadline-boundary observation defect
+(§7B.2) and the §7A.8 soft-safety/sigmoid-cap gap (§7B.4–§7B.6) — with a
+one-step causal projector, and reports that doing so makes every evaluated
+seed, in every stage, deterministically safe under the frozen a–d envelope.
+It does **not** establish new economic evidence: US's cost picture remains
+exactly as unresolved as it was in v2/v3 (small, CI-crossing-zero savings or
+losses at every budget), and Global's improved full-budget figure
+(+3.262%, fully positive CI) is a genuine result but one that depends
+materially on the projector's own corrections being active during both
+training and evaluation (§7B.13) — it is evidence for the joint PPO+projector
+system, not for an unconstrained PPO policy that happens to also be safe.
+No MPC controller was built anywhere in this study; the optional power/ramp
+caps (§7B.11) and the optional negative-demand flush (§7B.10) are both
+implemented and unit-tested but disabled in every reported primary
+configuration. The next evidence step this study points to is unchanged from
+its own framing: new workload and/or energy data, run through a re-derived
+(not reused) envelope scan, before any wider safety or economic claim can be
+made.
+
 ---
 
 ## Appendix A — Archived Energy-Model v1 Scenarios
@@ -2080,6 +2532,19 @@ under `archive/energy_model_v1_mixed_20260805/` and
 10. **Three exact-accounting regression tests gate any reward-shaping or demand-charge extension:** the two already-published demand-charge identities in `scripts/smoke_test_demand_charge.py` — incremental demand charge sums to `rate × period max`, and dense arrival-minus-completion shaping sums to `λ_x × (expired + terminal pool)` — plus the new potential-shaping telescoping test (`scripts/smoke_test_ppo_v3.py::test_potential_telescopes`), all verifying identities rather than statistical properties.
 11. **The v3 state repair remains incomplete at the deadline boundary.** Selected evaluation trajectories had zero expiry, so their reported failures are terminal-pool failures; however, 9/10 selected Global trainings accumulated 127.597 expired units across randomized episodes while due-now carried mass could appear actionable in the observation. Any future positive claim requires a new protocol that excludes `deadline_step <= t` entries from actionable pool/bucket features and retrains.
 
+### Post-v3 hard-safety PPO v4 study (§7B, non-headline)
+
+1. **v4 adds a causal, one-step hard feasibility projection — not an MPC controller — around the already-selected v3 joint configurations (US `R3_P1`, Global `R0_P3`)**, closing the §7A.11 deadline-boundary observation defect (actionable pool/urgency/deadline-bucket state now excludes `deadline_step <= t` entries) and the §7A.8 soft-safety/sigmoid-cap gap (exact 0%/100% drain endpoints via Euclidean-minimal box/simplex projection) in one integrated layer.
+2. **The frozen a–d envelope (`service_envelope_total=2.25`, `batch_arrival_envelope_total=1.0`, `future_fleet_capacity_total=4.0`) is rounded upward from observed a–d maxima only, fixed before replay/training, and never fit to e–h or any future trace** — verified by a bit-identical-reconstruction test and a 250-draw random-projection fuzz test requiring cumulative EDF feasibility on every nested deadline prefix.
+3. **Replay (no retraining) wraps the archived, unmodified v3 policies in the v4 projector at evaluation only.** All 10/10 seeds are safe in both regions and both modes; safety-only intervention rates are minimal (US 0.011%, Global 0.473%). Turning on the optional negative-demand flush ablation raises intervention rates roughly a thousandfold (23.9% US, 48.5% Global) and lowers absolute cost, but PPO's relative savings against the corresponding flush-enabled Status Quo fall (US +0.057%→+0.002%, Global +2.041%→+1.257%). It is a high-intervention economic heuristic rather than a minimal safety shield and stays disabled in every primary configuration.
+4. **36 freshly trained hard-safe joint PPO models (short 3-seed, medium 5-seed, full 10-seed, ×2 regions) are safe in every one of 36 seeds at every stage** (`*_gate.json`: `"passed": true` throughout) — exact zero expiry, zero terminal pool/backlog, zero infeasibility certificates, transport-conservation error of order `1e-16`.
+5. **US economics remain unresolved at every budget** (short −0.024%, medium −0.105%, full −0.246%; optimizer CI crosses zero at every stage) — hard safety does not manufacture US economic value absent from v2/v3. **Global remains positive at every stage and is strongest at full budget, but the path is not monotonic** (short +2.209%, medium +1.557% with a CI crossing zero, full **+3.262%** with a fully positive optimizer CI **[+$160,775, +$267,541]** and all ten seeds individually positive).
+6. **Global's positive full-budget result is a joint PPO+projector result, not evidence for an unconstrained PPO policy.** The full-budget Global mean safety-intervention rate is **18.786%** (vs. US's **0.021%**) — the projector actively corrects roughly one in five Global evaluation steps, so its own corrections are baked into the reported cost. A diagnostic (non-gating) comparison against the archived-v3-safety-only replay is also fully positive for Global (**+$18,047 to +$142,269**) but crosses zero for US.
+7. **e–h transfer (US −0.149%/10-10 safe, Global +3.611%/10-10 safe) is descriptive only**, exactly mirroring v3's e–h check — cells e–h were already exposed by frozen v2/v3, so this is not fresh confirmatory data and defines no success gate.
+8. **Optional power/ramp caps are implemented and unit-tested (enforced-cap and fail-closed-validation paths both verified) but disabled (`null`) in every reported run; no MPC controller of any kind is built, trained, or activated anywhere in v4.**
+9. **The guarantee's boundary is explicit: it holds only within the frozen a–d-derived envelope and only from a clean (zero pre-existing local backlog) state.** Both are audited/fail-closed rather than silently assumed, and both are the reason any wider safety or economic claim requires new workload/energy data and a re-derived envelope scan, not a reuse of these frozen constants.
+10. **v4 does not overturn §7's frozen v2 headline or §7A's v3 recovery-study conclusion.** It establishes deterministic hard safety under its frozen assumptions; it does not establish new, projector-independent economic evidence, and Global's improved figure is attributable to the PPO+projector system as a whole.
+
 ### Archived energy-model v1 takeaways
 
 *(All numbers are the 5-seed multi-seed campaign, §7.1.)*
@@ -2149,6 +2614,7 @@ The results in §7 were not produced by a single clean run; they are the product
 | 25 | **Post-hoc exploratory PPO v3 recovery study run** (§7A): added episode-progress/deadline-bucket observability, fixed the full-dollar evaluation objective, ran a successive-halving reward/training sweep (R0–R5 → P0–P3) and a three-budget scaling diagnostic (151,552/501,760/1,003,520 steps) with matched, nested seeds and a safety-first selection rule | A genuine v2 POMDP defect (terminal batch liability charged while episode/month position was unobserved with the demand charge disabled) was identified and needed testing before the joint-negative conclusion could be generalized | Selected a–d policies (US 151,552 steps, Global 1,003,520 steps) remain only 1/10 safe seeds each; US +0.051% mean savings (CI crosses zero), Global +2.032% (CI fully positive); both fail the frozen all-seeds-safe gate. The v2 joint-negative result is reframed as conditional on the augmented state/budget, not retracted; §7 remains the frozen, primary evidence. One-time e–h transfer (US −0.155%/7-10 safe, Global +2.826%/5-10 safe) is descriptive only and not headline-eligible |
 | 26 | **Deterministic negative-net-demand probe added, then corrected to a conditioned uniform-routing benchmark** (§7A.9): all 10 selected a–d models/region re-evaluated with domain randomization disabled, splitting mean drain, actual pool clearance, and batch routing share by negative- vs. non-negative-demand step, then comparing routing share against the mean fraction of destinations negative when available (not raw negative-step incidence) | The prior write-up could report only unconditioned whole-episode average drain rates and had no negative-demand-conditioned breakdown; the first conditioned version compared routing share against zero rather than the uniform benchmark, overstating the US's apparent spatial preference | Mean drain is slightly *lower*, not higher, on negative-demand steps in both regions (US 0.509108 vs. 0.513233; Global 0.520032 vs. 0.521231); clearance is essentially unchanged (US 0.508187 vs. 0.507867; Global 0.501521 vs. 0.502063); against the uniform benchmark, US shows **no** measurable negative-site preference (0.611085 vs. 0.611814 uniform, −0.07 pp) while Global shows only a **modest** +3.21 pp tilt (0.332631 vs. 0.300487); no negative-demand step exceeds 90% mean drain in either region. Descriptive only — no causal or confirmatory claim |
 | 27 | **Deadline-boundary observation audit added** (§7A.11) | Final review found that due-now carried work could remain in actionable pool/bucket features even though the next transition expires it before service | Selected a–d/e–h evaluations had zero expiry and remain valid negative diagnostics, but 9/10 selected Global trainings accumulated 127.597 expired units across randomized episodes. V3 is now explicitly a partial state repair; the next protocol must filter `deadline_step <= t` from actionable features and retrain |
+| 28 | **Post-v3 hard-safety PPO v4 study run** (§7B): added a causal one-step feasibility projector (`env/safety_layer.py`, `env/safe_multi_dc_env.py`) closing the §7A.11 deadline-boundary defect and the §7A.8 soft-safety/sigmoid-cap gap; replayed the archived v3 policies under the projector with an optional negative-demand-flush ablation, then trained 36 new hard-safe joint PPO models at three rollout-aligned budgets (short/medium/full) around the same selected v3 configurations, plus a descriptive e–h transfer | The §7A.8/§7A.11 write-ups explicitly named "an exact 0.0–1.0 decoder or hard feasibility override" and an actionable-state fix as the priority next steps, short of a full MPC controller | Every evaluated seed at every stage (40 replay + 6 short + 10 medium + 20 full + 20 final e–h) is deterministically safe: zero expiry, zero terminal pool/backlog, zero infeasibility certificates, transport-conservation error of order 1e-16. US economics remain unresolved (full-budget mean −0.246%, CI crosses zero); Global turns robustly positive at full budget (+3.262%, CI [+$160,775, +$267,541], all seeds positive) but at an 18.786% mean intervention rate, so the result is attributable to PPO+projector jointly, not PPO alone. The optional negative-demand flush is safe and lowers absolute cost, but yields less relative savings against its own flush-enabled Status Quo baseline and stays disabled primary; optional power/ramp caps are implemented/tested but disabled in every reported run; no MPC controller is built. §7 remains the primary held-out evidence; §7A remains frozen non-headline exploratory evidence |
 
 ## Verification Summary
 
@@ -2208,5 +2674,31 @@ explicitly `"status": "exploratory-post-hoc"` and `"headline_eligible":
 false` for its e–h transfer; it does not change, supersede, or
 retroactively re-score any frozen v2 model, hash, or result, and §7 remains
 the sole primary/frozen evidence for the thesis headline.
+
+**Post-v3 v4 hard-safety verification (§7B):** all §7B figures were extracted
+directly from the raw v4 protocol/preflight/gate/results JSON under
+`output/ppo_v4_safety/` (`protocol.json`, `preflight.json`,
+`replay_results.json`, `short_results.json`/`short_gate.json`,
+`medium_results.json`/`medium_gate.json`, `full_results.json`/`full_gate.json`,
+`final_results.json`) and `models/ppo_v4_safety/manifest.json`, not recomputed
+or estimated; every one of these files shares the identical
+`protocol_sha256 = 42a39388adf3a1ed7597c255fa5352f690783b9e10cd49de60eae72e576ded6b`.
+`scripts/smoke_test_safety_v4.py`'s ten tests (projection primitives,
+actionable-state/deadline semantics, exact mandatory-origin overrides and
+exact drain endpoints, fail-closed certificates, fail-closed pre-existing
+backlog, no-future-trace-leakage, optional negative-demand-flush, 250-draw
+random projection invariants, optional grid/ramp caps, and a full-episode
+hold-policy run) were re-run and confirmed passing during this verification
+pass. The v4 protocol is explicitly `"status": "exploratory-post-v3"` and
+`"fresh_confirmatory_data_available": false`; it does not change, supersede,
+or retroactively re-score any frozen v2 or v3 model, hash, or result. §7
+remains the sole primary/frozen evidence for the thesis headline, and §7A
+remains the frozen non-headline v3 recovery-study evidence; §7B is a further
+non-headline, post-hoc refinement layered on top of both, establishing
+deterministic hard safety under a frozen, a–d-derived, never-future-leaked
+envelope while leaving economics seed/scenario-dependent — most notably, its
+one clearly positive economic result (Global at full budget) is a property of
+the trained PPO policy operating jointly with the safety projector, not of an
+unconstrained PPO policy alone.
 
 **Reproducibility of the lineage:** the current measured tier curves are regenerable via `extract_tier_curves.ipynb`, and per-cell power via the enhanced Dataset 2 extraction in `extract_clusterdata2019_full.ipynb`. Superseded local approximations are preserved in the v1 archive.

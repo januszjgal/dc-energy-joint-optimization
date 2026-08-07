@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,8 @@ from baselines import (
 from env.data_loader import load_scenario
 from env.multi_dc_env import REFERENCE_DEMAND_CHARGE_RATE, MultiDCEnv
 from env.reward import RewardConfig
+from env.safe_multi_dc_env import SafeMultiDCEnv
+from env.safety_layer import SafetyConfig
 
 
 def run_episode(
@@ -365,6 +368,128 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
             ramp_metrics[label] = metrics
     summary["physical_ramp_metrics"] = ramp_metrics
 
+    if bool(first_step.get("safety_enabled", False)):
+        intervention_values = [
+            bool(row.get("safety_intervened", False))
+            for row in history
+        ]
+        projection_values = np.asarray(
+            [
+                row.get("safety_projection_l2", 0.0)
+                for row in history
+            ],
+            dtype=np.float64,
+        )
+        mandatory_values = np.asarray(
+            [
+                row.get("safety_mandatory_batch", 0.0)
+                for row in history
+            ],
+            dtype=np.float64,
+        )
+        binding_counts: dict[str, int] = {}
+        for row in history:
+            binding = row.get(
+                "safety_binding_deadline_steps_remaining"
+            )
+            if binding is not None:
+                key = str(int(binding))
+                binding_counts[key] = binding_counts.get(key, 0) + 1
+        slack_values = [
+            float(row["safety_minimum_deadline_slack"])
+            for row in history
+            if math.isfinite(
+                float(
+                    row.get(
+                        "safety_minimum_deadline_slack",
+                        math.inf,
+                    )
+                )
+            )
+        ]
+        summary["safety"] = {
+            "enabled": True,
+            "infeasibility_certificates": 0,
+            "intervention_count": int(sum(intervention_values)),
+            "intervention_rate": float(np.mean(intervention_values)),
+            "mean_projection_l2": float(projection_values.mean()),
+            "max_projection_l2": float(projection_values.max()),
+            "mandatory_step_count": int(
+                np.count_nonzero(mandatory_values > 1e-12)
+            ),
+            "mandatory_step_rate": float(
+                np.mean(mandatory_values > 1e-12)
+            ),
+            "mean_mandatory_batch": float(mandatory_values.mean()),
+            "max_mandatory_batch": float(mandatory_values.max()),
+            "binding_deadline_histogram": dict(
+                sorted(binding_counts.items(), key=lambda item: int(item[0]))
+            ),
+            "minimum_deadline_slack": (
+                float(min(slack_values)) if slack_values else None
+            ),
+            "exact_zero_drain_count": int(
+                sum(
+                    row.get("safety_exact_zero_drain_count", 0)
+                    for row in history
+                )
+            ),
+            "exact_full_drain_count": int(
+                sum(
+                    row.get("safety_exact_full_drain_count", 0)
+                    for row in history
+                )
+            ),
+            "negative_flush_step_count": int(
+                sum(
+                    bool(
+                        row.get(
+                            "safety_negative_flush_active",
+                            False,
+                        )
+                    )
+                    for row in history
+                )
+            ),
+            "negative_flush_activation_rate": float(
+                np.mean(
+                    [
+                        bool(
+                            row.get(
+                                "safety_negative_flush_active",
+                                False,
+                            )
+                        )
+                        for row in history
+                    ]
+                )
+            ),
+            "max_transport_conservation_error": float(
+                max(
+                    row.get(
+                        "safety_transport_conservation_error",
+                        0.0,
+                    )
+                    for row in history
+                )
+            ),
+            "service_envelope_total": float(
+                first_step["safety_service_envelope_total"]
+            ),
+            "batch_arrival_envelope_total": float(
+                first_step["safety_batch_arrival_envelope_total"]
+            ),
+            "guaranteed_carried_batch_capacity": float(
+                first_step[
+                    "safety_guaranteed_carried_batch_capacity"
+                ]
+            ),
+            "envelope_id": str(first_step["safety_envelope_id"]),
+            "envelope_scope": str(
+                first_step["safety_envelope_scope"]
+            ),
+        }
+
     if batch_enabled:
         total_expired = sum(h.get("total_batch_expired", 0) for h in history)
         total_deadline_cost = sum(
@@ -451,6 +576,7 @@ def _make_env(
     reward_config: RewardConfig | None = None,
     observe_episode_progress: bool = False,
     deadline_bucket_edges: tuple[int, ...] | None = None,
+    safety_config: SafetyConfig | None = None,
 ) -> MultiDCEnv:
     """Create environment for evaluation."""
     sites, power_model, batch_config = load_scenario(
@@ -470,7 +596,13 @@ def _make_env(
         else deadline_penalty_weight
     )
     uh = batch_config.get("urgency_horizon_steps", 12)
-    return MultiDCEnv(
+    environment_class = (
+        SafeMultiDCEnv if safety_config is not None else MultiDCEnv
+    )
+    environment_kwargs: dict[str, Any] = {}
+    if safety_config is not None:
+        environment_kwargs["safety_config"] = safety_config
+    return environment_class(
         sites=sites,
         power_model=power_model,
         batch_enabled=batch_enabled,
@@ -490,6 +622,7 @@ def _make_env(
         reward_config=reward_config,
         observe_episode_progress=observe_episode_progress,
         deadline_bucket_edges=deadline_bucket_edges,
+        **environment_kwargs,
     )
 
 
@@ -588,6 +721,31 @@ def main(argv: list[str] | None = None) -> None:
         help="Use the opt-in 81D joint PPO recovery state and reward config.",
     )
     parser.add_argument(
+        "--v4-safety",
+        action="store_true",
+        help="Evaluate with the hard v4 feasibility projector active.",
+    )
+    parser.add_argument(
+        "--negative-demand-flush",
+        action="store_true",
+        help="Enable the optional v4 negative-demand flush ablation.",
+    )
+    parser.add_argument(
+        "--service-envelope-total",
+        type=float,
+        default=2.25,
+    )
+    parser.add_argument(
+        "--batch-arrival-envelope-total",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--future-fleet-capacity-total",
+        type=float,
+        default=4.0,
+    )
+    parser.add_argument(
         "--vecnormalize-path",
         type=Path,
         default=None,
@@ -626,26 +784,29 @@ def main(argv: list[str] | None = None) -> None:
         parser.error(
             "--completion-penalty requires --enforce-batch-completion"
         )
-    if args.v3_recovery and (
+    recovery_enabled = bool(args.v3_recovery or args.v4_safety)
+    if recovery_enabled and (
         not args.batch_mode or not args.enforce_batch_completion
     ):
         parser.error(
             "--v3-recovery requires --batch-mode and "
             "--enforce-batch-completion"
         )
-    if args.v3_recovery and not args.batch_spatial_routing:
+    if recovery_enabled and not args.batch_spatial_routing:
         parser.error(
             "--v3-recovery requires the joint batch-routing head; "
             "--no-batch-spatial-routing is incompatible"
         )
-    if args.v3_recovery and args.completion_penalty is not None:
+    if recovery_enabled and args.completion_penalty is not None:
         parser.error(
             "--v3-recovery uses separate reward weights; omit "
             "--completion-penalty"
         )
     if args.vecnormalize_path is not None:
-        if not args.v3_recovery:
-            parser.error("--vecnormalize-path requires --v3-recovery")
+        if not recovery_enabled:
+            parser.error(
+                "--vecnormalize-path requires --v3-recovery or --v4-safety"
+            )
         if not args.vecnormalize_path.exists():
             parser.error(
                 f"VecNormalize file does not exist: {args.vecnormalize_path}"
@@ -661,11 +822,25 @@ def main(argv: list[str] | None = None) -> None:
             subtract_idle_cost=args.subtract_idle_cost,
             urgency_potential_weight=args.urgency_potential_weight,
         )
-        if args.v3_recovery
+        if recovery_enabled
         else None
     )
     deadline_bucket_edges = (
-        (1, 3, 6, 12, 24) if args.v3_recovery else None
+        (1, 3, 6, 12, 24) if recovery_enabled else None
+    )
+    safety_config = (
+        SafetyConfig(
+            service_envelope_total=args.service_envelope_total,
+            batch_arrival_envelope_total=(
+                args.batch_arrival_envelope_total
+            ),
+            future_fleet_capacity_total=(
+                args.future_fleet_capacity_total
+            ),
+            negative_demand_flush=args.negative_demand_flush,
+        )
+        if args.v4_safety
+        else None
     )
 
     scenario_name = args.scenario.stem
@@ -701,8 +876,9 @@ def main(argv: list[str] | None = None) -> None:
         completion_penalty_weight=args.completion_penalty,
         batch_spatial_routing=args.batch_spatial_routing,
         reward_config=recovery_reward,
-        observe_episode_progress=args.v3_recovery,
+        observe_episode_progress=recovery_enabled,
         deadline_bucket_edges=deadline_bucket_edges,
+        safety_config=safety_config,
     )
     if args.vecnormalize_path is not None:
         rl_reward, rl_history = run_normalized_episode(
@@ -743,8 +919,9 @@ def main(argv: list[str] | None = None) -> None:
             completion_penalty_weight=args.completion_penalty,
             batch_spatial_routing=args.batch_spatial_routing,
             reward_config=recovery_reward,
-            observe_episode_progress=args.v3_recovery,
+            observe_episode_progress=recovery_enabled,
             deadline_bucket_edges=deadline_bucket_edges,
+            safety_config=safety_config,
         )
         reward, history = run_episode(env, baseline.predict, is_sb3=False)
         summary = compute_summary(history, batch_enabled=args.batch_mode)

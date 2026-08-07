@@ -197,6 +197,53 @@ not assumptions in the primary model. Historical 2019/2024 duck-curve
 comparison and multi-year extrapolation are future work; they are not additional
 training scenarios.
 
+## Post-v3 exploratory PPO v4 hard-safety study (non-headline)
+
+A further post-v3, non-headline, exploratory study (`ppo-hard-safety-v4`)
+adds a **causal, one-step hard feasibility projector** — not an MPC
+controller — around the same selected v3 joint PPO configurations
+(US `R3_P1`, Global `R0_P3`). Full raw artifacts: `output/ppo_v4_safety/`
+and `models/ppo_v4_safety/`; full narrative: `output/thesis_overview.md`
+§7B.
+
+- **Closes both open v3 items named above.** Deadline-actionable state now
+  excludes `deadline_step <= t` entries from actionable pool/urgency/bucket
+  features, and drains are decided by an exact box/simplex projection that
+  can land exactly on 0%/100% instead of the old `sigmoid(3) ≈ 95.257%` cap.
+- **Frozen, train-only, a–d-only envelope** (`service_envelope_total=2.25`,
+  `batch_arrival_envelope_total=1.0`, `future_fleet_capacity_total=4.0`),
+  never fit to e–h or any future trace, drives a cumulative causal
+  earliest-deadline-first feasibility check plus exact-transport routing
+  (real row/column conservation, not a `serve_ratio` approximation).
+  Infeasible states fail closed with a structured certificate rather than
+  degrading silently; the guarantee holds only from a clean (zero
+  pre-existing local backlog) state, which is audited, not merely assumed.
+- **Replay** wraps the archived, unmodified v3 policies in the projector at
+  evaluation only (no retraining): 10/10 seeds safe in both regions/modes;
+  minimal safety-only intervention (US 0.011%, Global 0.473%). The optional
+  negative-demand-flush ablation stays safe and lowers absolute cost, but raises
+  intervention to 23.9%/48.5% and yields less relative savings against its own
+  flush-enabled Status Quo baseline, so it stays disabled primary.
+- **36 freshly trained hard-safe joint PPO models** (short 3-seed, medium
+  5-seed, full 10-seed, ×2 regions) are safe in **every** seed at every
+  stage — zero expiry, zero terminal pool/backlog, zero certificates,
+  transport-conservation error ~1e-16. US economics remain unresolved
+  (full-budget mean −0.246%, CI crosses zero); **Global turns robustly
+  positive at full budget** (+3.262%, CI `[+$160,775, +$267,541]`, all ten
+  seeds positive) but at an **18.786%** mean intervention rate — that result
+  is a property of **PPO + projector jointly**, not of an unconstrained PPO
+  policy. A descriptive-only e–h transfer (US −0.149%/10-10 safe, Global
+  +3.611%/10-10 safe) mirrors v3 and sets no gate.
+- **Optional power/ramp caps are implemented and unit-tested but disabled
+  (`null`) in every reported run; no MPC controller is built anywhere in
+  v4.** All 10 requirement-mapped unit tests in
+  `scripts/smoke_test_safety_v4.py` pass.
+- v4 does not overturn the frozen v2 headline or the v3 recovery-study
+  conclusion above — it establishes deterministic hard safety under its
+  frozen assumptions, not new projector-independent economic evidence. Any
+  wider safety/economic claim needs new workload/energy data, not reuse of
+  this frozen envelope.
+
 ## Frozen historical conclusion
 
 Energy-model v1 is reproducible as an 8,917-step synthetic objective (v1 only;
@@ -223,6 +270,13 @@ results are under `output/ppo_v3_reward_sweep/` (`protocol.json`,
 `canonical_results.json`, `results_report.md`,
 `ppo_v3_negative_net_demand_probe.png`); see the "Post-v2 exploratory PPO v3
 recovery study" section above.
+
+The separate, non-frozen exploratory v4 hard-safety protocol and raw
+replay/gate/results are under `output/ppo_v4_safety/` (`protocol.json`,
+`preflight.json`, `replay_results.json`, `short_results.json`/`short_gate.json`,
+`medium_results.json`/`medium_gate.json`, `full_results.json`/`full_gate.json`,
+`final_results.json`) and `models/ppo_v4_safety/manifest.json`; see the
+"Post-v3 exploratory PPO v4 hard-safety study" section above.
 
 ## Frozen simplifying assumptions
 

@@ -1,0 +1,69 @@
+{
+  "stage": "medium",
+  "region": "us",
+  "combo": "R3_P1",
+  "seed": 304,
+  "timesteps": 301056,
+  "protocol_sha256": "42a39388adf3a1ed7597c255fa5352f690783b9e10cd49de60eae72e576ded6b",
+  "train_scenario": "env/scenarios/us_model_v2_2025.yaml",
+  "transfer_scenario": "env/scenarios/us_model_eh_v2_2025.yaml",
+  "source_combo": "R3_P1",
+  "ppo": {
+    "learning_rate": 0.0003,
+    "learning_rate_schedule": "linear",
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 1.0,
+    "gae_lambda": 0.99,
+    "target_kl": 0.02,
+    "normalize_observations": false,
+    "net_arch": [
+      128,
+      128
+    ]
+  },
+  "reward": {
+    "service_backlog_weight": 700.0,
+    "batch_completion_weight": 1000.0,
+    "evaluation_service_backlog_weight": 1000.0,
+    "evaluation_batch_completion_weight": 1000.0,
+    "reward_scale": 0.0001,
+    "subtract_idle_cost": false,
+    "urgency_potential_weight": 0.0
+  },
+  "safety": {
+    "service_envelope_total": 2.25,
+    "batch_arrival_envelope_total": 1.0,
+    "future_fleet_capacity_total": 4.0,
+    "envelope_id": "ad-rounded-envelope-v1",
+    "envelope_scope": "a-d-development-only",
+    "negative_demand_flush": false,
+    "negative_demand_flush_price_ceiling": null,
+    "max_grid_mw": null,
+    "max_upward_ramp_mw": null,
+    "tolerance": 1e-09
+  },
+  "peak_penalty_weight": 0.015,
+  "deadline_bucket_edges": [
+    1,
+    3,
+    6,
+    12,
+    24
+  ],
+  "controller_scope": {
+    "training": "safety_only",
+    "replay_ablation": "safety_plus_negative_demand_flush"
+  },
+  "job_fingerprint": "0946a8a0cded112a8bee97c66d78b47cfc0eec08ebddff20f962b754c7185612",
+  "completed_at_utc": "2026-08-06T21:24:06.640096+00:00",
+  "elapsed_seconds": 1717.7680943012238,
+  "model_path": "models/ppo_v4_safety/medium/us/R3_P1/s304/model.zip",
+  "model_bytes": 704379,
+  "model_sha256": "d86d8214a836d14a32658e4bd68d6d661b4c33a1b3722cd919569a92e504ee1f",
+  "diagnostics_sha256": "5b7cf7eb167b06139d2fe42b6108fced6ead2696ee402fe74d70cd41a9d9a77c",
+  "vecnormalize_sha256": null,
+  "log_path": "logs/ppo_v4_safety/medium/us/R3_P1_s304.log",
+  "log_sha256": "3d8e4102038c64b523480a53d73519cfa348c8656bccd95a20be7f248b74cd13"
+}
