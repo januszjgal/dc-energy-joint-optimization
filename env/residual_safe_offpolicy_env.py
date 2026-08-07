@@ -68,6 +68,31 @@ def _shares_to_logits(values: np.ndarray) -> np.ndarray:
     return logits - float(np.mean(logits))
 
 
+def _greedy_linear_allocation(
+    total: float,
+    upper: np.ndarray,
+    costs: np.ndarray,
+) -> np.ndarray:
+    total = float(total)
+    upper = np.asarray(upper, dtype=np.float64)
+    costs = np.asarray(costs, dtype=np.float64)
+    allocation = np.zeros_like(upper)
+    if total <= _EPS:
+        return allocation
+    remaining = min(total, float(upper.sum()))
+    order = np.argsort(costs, kind="stable")
+    for index in order:
+        capacity = float(max(upper[index], 0.0))
+        if capacity <= _EPS:
+            continue
+        take = min(remaining, capacity)
+        allocation[index] = take
+        remaining -= take
+        if remaining <= _EPS:
+            break
+    return allocation
+
+
 def _rates_to_logits(values: np.ndarray) -> np.ndarray:
     values = np.asarray(values, dtype=np.float64)
     clipped = np.clip(values, _EPS, 1.0 - _EPS)
@@ -254,6 +279,143 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             [service_logits, drain_logits, destination_logits],
             dtype=np.float64,
         )
+
+    def _optional_total_logit(
+        self,
+        total: float,
+        upper: float,
+    ) -> float:
+        if upper <= _EPS or total <= _EPS:
+            return -self.decoder_logit_bound
+        if upper - total <= _EPS:
+            return self.decoder_logit_bound
+        fraction = float(np.clip(total / upper, _EPS, 1.0 - _EPS))
+        logit = math.log(fraction / (1.0 - fraction))
+        return float(
+            np.clip(
+                logit,
+                -self.decoder_logit_bound,
+                self.decoder_logit_bound,
+            )
+        )
+
+    def marginal_cost_teacher_action(self) -> np.ndarray:
+        """Return a causal native-decoder action from current marginal costs."""
+        t = self.step_index
+        context = self.residual_decoder_context(t)
+        site_cost = (
+            context.marginal_energy_cost
+            + context.marginal_peak_cost
+            + context.marginal_demand_charge_cost
+        )
+        service = _greedy_linear_allocation(
+            context.total_service,
+            context.effective_capacity,
+            site_cost,
+        )
+        residual_capacity = np.maximum(
+            context.effective_capacity - service,
+            0.0,
+        )
+        mandatory = np.asarray(
+            context.mandatory_hint_by_origin,
+            dtype=np.float64,
+        )
+        optional_upper = np.maximum(context.pool_totals - mandatory, 0.0)
+        optional_pool_total = float(optional_upper.sum())
+        optional_capacity_total = float(residual_capacity.sum())
+        optional_max_total = min(optional_pool_total, optional_capacity_total)
+        net_demand = np.asarray(
+            [site.get_net_demand(t) for site in self.sites],
+            dtype=np.float64,
+        )
+        if optional_max_total <= _EPS:
+            optional_total = 0.0
+            target_mask = residual_capacity > _EPS
+        else:
+            spread = float(site_cost.max() - site_cost.min())
+            cheap_threshold = float(site_cost.min() + 0.25 * spread)
+            cheap_mask = site_cost <= cheap_threshold + _EPS
+            negative_mask = net_demand < 0.0
+            target_mask = negative_mask | cheap_mask
+            target_capacity = float(
+                residual_capacity[target_mask].sum()
+            )
+            optional_total = min(optional_max_total, target_capacity)
+            if (
+                optional_total <= _EPS
+                and math.isfinite(context.minimum_deadline_slack)
+            ):
+                urgency_fraction = float(
+                    np.clip(
+                        (6.0 - context.minimum_deadline_slack) / 6.0,
+                        0.0,
+                        1.0,
+                    )
+                )
+                optional_total = min(
+                    optional_max_total,
+                    optional_capacity_total * urgency_fraction,
+                )
+                if optional_total > _EPS:
+                    target_mask = residual_capacity > _EPS
+            if not np.any(target_mask):
+                target_mask = residual_capacity > _EPS
+
+        optional_origin = np.zeros(self.n_dc, dtype=np.float64)
+        if optional_total > _EPS and optional_pool_total > _EPS:
+            desired_origin = np.divide(
+                optional_upper,
+                optional_pool_total,
+                out=np.zeros_like(optional_upper),
+                where=optional_pool_total > _EPS,
+            ) * optional_total
+            optional_origin = project_capped_simplex(
+                desired_origin,
+                optional_total,
+                optional_upper,
+                tolerance=self.safety_config.tolerance,
+            )
+        origin_batch = mandatory + optional_origin
+
+        candidate_capacity = np.where(
+            target_mask,
+            residual_capacity,
+            0.0,
+        )
+        if float(candidate_capacity.sum()) < optional_total - _EPS:
+            candidate_capacity = residual_capacity
+        destination_batch = _greedy_linear_allocation(
+            optional_total,
+            candidate_capacity,
+            site_cost,
+        )
+
+        service_logits = _shares_to_logits(
+            service if float(service.sum()) > _EPS else context.effective_capacity
+        )
+        optional_total_logit = self._optional_total_logit(
+            optional_total,
+            optional_max_total,
+        )
+        origin_logits = _shares_to_logits(
+            optional_origin
+            if float(optional_origin.sum()) > _EPS
+            else np.maximum(optional_upper, _EPS)
+        )
+        destination_logits = _shares_to_logits(
+            destination_batch
+            if float(destination_batch.sum()) > _EPS
+            else np.maximum(candidate_capacity, _EPS)
+        )
+        return np.concatenate(
+            [
+                service_logits,
+                np.array([optional_total_logit], dtype=np.float64),
+                origin_logits,
+                destination_logits,
+            ]
+        ).astype(np.float32)
 
     def _decode_residual_action(
         self,

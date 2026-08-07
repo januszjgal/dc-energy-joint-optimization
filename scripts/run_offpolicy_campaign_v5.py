@@ -13,6 +13,8 @@ from statistics import mean, pstdev
 from typing import Any
 
 import numpy as np
+import torch as th
+import torch.nn.functional as F
 from stable_baselines3 import SAC, TD3
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
@@ -328,6 +330,146 @@ def make_model(
     raise ValueError(f"unsupported algorithm: {algorithm}")
 
 
+def teacher_action(env: ResidualSafeOffPolicyEnv, teacher_name: str) -> np.ndarray:
+    if teacher_name == "native_marginal_cost":
+        return env.marginal_cost_teacher_action()
+    if teacher_name == "status_quo":
+        return env.status_quo_action()
+    raise ValueError(f"unsupported teacher: {teacher_name}")
+
+
+def collect_teacher_rollout(
+    region: str,
+    reward_scale: float,
+    *,
+    teacher_name: str,
+    seed: int,
+    domain_randomization: bool,
+    episodes: int,
+) -> dict[str, Any]:
+    env = make_env(
+        region,
+        seed,
+        reward_scale,
+        domain_randomization=domain_randomization,
+    )
+    observations: list[np.ndarray] = []
+    next_observations: list[np.ndarray] = []
+    actions: list[np.ndarray] = []
+    rewards: list[float] = []
+    dones: list[float] = []
+    infos: list[dict[str, Any]] = []
+    completed = 0
+    try:
+        while completed < episodes:
+            obs, _ = env.reset(seed=seed + completed)
+            while True:
+                action = teacher_action(env, teacher_name)
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                observations.append(np.asarray(obs, dtype=np.float32))
+                next_observations.append(np.asarray(next_obs, dtype=np.float32))
+                actions.append(np.asarray(action, dtype=np.float32))
+                rewards.append(float(reward))
+                dones.append(float(terminated or truncated))
+                infos.append(info)
+                obs = next_obs
+                if terminated or truncated:
+                    completed += 1
+                    break
+        teacher_summary = compute_summary(infos, batch_enabled=True)
+        return {
+            "observations": np.asarray(observations, dtype=np.float32),
+            "next_observations": np.asarray(
+                next_observations,
+                dtype=np.float32,
+            ),
+            "actions": np.asarray(actions, dtype=np.float32),
+            "rewards": np.asarray(rewards, dtype=np.float32),
+            "dones": np.asarray(dones, dtype=np.float32),
+            "infos": infos,
+            "summary": teacher_summary,
+        }
+    finally:
+        env.close()
+
+
+def prefill_replay_buffer(
+    model: SAC | TD3,
+    dataset: dict[str, Any],
+) -> int:
+    count = int(dataset["observations"].shape[0])
+    for index in range(count):
+        model.replay_buffer.add(
+            dataset["observations"][index : index + 1],
+            dataset["next_observations"][index : index + 1],
+            dataset["actions"][index : index + 1],
+            dataset["rewards"][index : index + 1],
+            dataset["dones"][index : index + 1],
+            [dataset["infos"][index]],
+        )
+    return count
+
+
+def _normalize_to_policy_action(
+    env: Monitor,
+    actions: np.ndarray,
+) -> np.ndarray:
+    low = np.asarray(env.action_space.low, dtype=np.float32)
+    high = np.asarray(env.action_space.high, dtype=np.float32)
+    return np.clip(
+        2.0 * (actions - low) / (high - low) - 1.0,
+        -1.0,
+        1.0,
+    ).astype(np.float32)
+
+
+def behavior_clone_actor(
+    model: SAC | TD3,
+    env: Monitor,
+    dataset: dict[str, Any],
+    *,
+    algorithm: str,
+    steps: int,
+    batch_size: int,
+    seed: int,
+) -> dict[str, float]:
+    observations = dataset["observations"]
+    targets = _normalize_to_policy_action(env, dataset["actions"])
+    if steps <= 0 or len(observations) == 0:
+        return {"steps": 0.0, "final_loss": 0.0}
+    rng = np.random.default_rng(seed)
+    model.actor.train()
+    final_loss = 0.0
+    for _ in range(steps):
+        indices = rng.integers(
+            0,
+            len(observations),
+            size=min(batch_size, len(observations)),
+        )
+        obs_tensor = th.as_tensor(
+            observations[indices],
+            dtype=th.float32,
+            device=model.device,
+        )
+        target_tensor = th.as_tensor(
+            targets[indices],
+            dtype=th.float32,
+            device=model.device,
+        )
+        if algorithm == "sac":
+            predicted = model.actor(obs_tensor, deterministic=True)
+        elif algorithm == "td3":
+            predicted = model.actor(obs_tensor)
+        else:
+            raise ValueError(f"unsupported algorithm: {algorithm}")
+        loss = F.mse_loss(predicted, target_tensor)
+        model.actor.optimizer.zero_grad()
+        loss.backward()
+        model.actor.optimizer.step()
+        final_loss = float(loss.detach().cpu().item())
+    return {"steps": float(steps), "final_loss": final_loss}
+
+
 def model_dir(job: Job, profile: str) -> Path:
     return MODEL_ROOT / job.stage / job.algorithm / job.region / profile / f"s{job.seed}"
 
@@ -413,11 +555,43 @@ def run_job(job: Job) -> dict[str, Any]:
     )
     callback = OffPolicyDiagnosticsCallback()
     model = make_model(job.algorithm, train_env, job.seed, stage_config)
-    model.learn(
-        total_timesteps=job.timesteps,
-        callback=callback,
-        progress_bar=False,
-    )
+    teacher_record: dict[str, Any] | None = None
+    if "teacher_name" in stage_config:
+        dataset = collect_teacher_rollout(
+            job.region,
+            reward_scale,
+            teacher_name=str(stage_config["teacher_name"]),
+            seed=job.seed,
+            domain_randomization=bool(
+                stage_config.get("teacher_domain_randomization", True)
+            ),
+            episodes=int(stage_config.get("teacher_prefill_episodes", 1)),
+        )
+        prefill_count = prefill_replay_buffer(model, dataset)
+        model.learning_starts = 0
+        bc_summary = behavior_clone_actor(
+            model,
+            train_env,
+            dataset,
+            algorithm=job.algorithm,
+            steps=int(stage_config.get("teacher_bc_steps", 0)),
+            batch_size=int(
+                stage_config.get("teacher_bc_batch_size", 256)
+            ),
+            seed=job.seed,
+        )
+        teacher_record = {
+            "teacher_name": str(stage_config["teacher_name"]),
+            "prefill_transitions": prefill_count,
+            "rollout_summary": dataset["summary"],
+            "behavior_cloning": bc_summary,
+        }
+    if job.timesteps > 0:
+        model.learn(
+            total_timesteps=job.timesteps,
+            callback=callback,
+            progress_bar=False,
+        )
 
     baseline = baseline_summary(job.region, reward_scale)
     evaluation = evaluate_model(
@@ -440,6 +614,13 @@ def run_job(job: Job) -> dict[str, Any]:
             for key, value in stage_config.items()
             if key != "reward_scale_by_region"
         },
+        "training_mode": (
+            "teacher_bc_only"
+            if teacher_record is not None and job.timesteps <= 0
+            else "teacher_warmstart_rl"
+            if teacher_record is not None
+            else "rl_only"
+        ),
         "reward_scale": reward_scale,
         "model_path": str(model_path.with_suffix(".zip").relative_to(ROOT)),
         "training": training,
@@ -447,6 +628,8 @@ def run_job(job: Job) -> dict[str, Any]:
         "evaluation": evaluation,
         "safe_seed_passed": safe_seed_passed(evaluation),
     }
+    if teacher_record is not None:
+        record["teacher"] = teacher_record
     record_path = output_dir / "record.json"
     record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
     train_env.close()
