@@ -423,18 +423,27 @@ def test_evidence_rejects_wrong_roles_dirty_source_and_tampered_hashes() -> None
     assert post_rl_seed_provenance_pass(bc_only) is False
     assert source_commit_contract_pass(
         {"source-head"},
-        current_head="source-head",
+        source_is_ancestor=True,
+        training_source_unchanged=True,
         committed_protocol_sha256=PROTOCOL_SHA256,
     )
     assert not source_commit_contract_pass(
         {"41aff32-old-source"},
-        current_head="source-head",
+        source_is_ancestor=True,
+        training_source_unchanged=False,
         committed_protocol_sha256=PROTOCOL_SHA256,
     )
     assert not source_commit_contract_pass(
         {"source-head"},
-        current_head="source-head",
+        source_is_ancestor=True,
+        training_source_unchanged=True,
         committed_protocol_sha256="tampered-protocol",
+    )
+    assert not source_commit_contract_pass(
+        {"unrelated-source"},
+        source_is_ancestor=False,
+        training_source_unchanged=True,
+        committed_protocol_sha256=PROTOCOL_SHA256,
     )
 
 
