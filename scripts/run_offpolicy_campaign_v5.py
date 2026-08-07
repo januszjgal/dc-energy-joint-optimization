@@ -319,12 +319,18 @@ def make_model(
             mean=np.zeros(action_dim, dtype=np.float32),
             sigma=np.full(action_dim, sigma, dtype=np.float32),
         )
+        target_policy_noise = float(
+            algo_config.get("target_policy_noise", min(0.5, sigma * 2.0))
+        )
+        target_noise_clip = float(
+            algo_config.get("target_noise_clip", max(0.1, sigma * 2.0))
+        )
         return TD3(
             "MlpPolicy",
             action_noise=action_noise,
-            policy_delay=2,
-            target_policy_noise=min(0.5, sigma * 2.0),
-            target_noise_clip=max(0.1, sigma * 2.0),
+            policy_delay=int(algo_config.get("policy_delay", 2)),
+            target_policy_noise=target_policy_noise,
+            target_noise_clip=target_noise_clip,
             **common,
         )
     raise ValueError(f"unsupported algorithm: {algorithm}")
