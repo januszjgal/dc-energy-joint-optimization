@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -291,6 +291,49 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             shape=(3 * self.n_dc + 1,),
             dtype=np.float32,
         )
+        self._teacher_policy_calls_allowed = True
+
+    def set_teacher_policy_calls_allowed(self, allowed: bool) -> None:
+        self._teacher_policy_calls_allowed = bool(allowed)
+
+    def _require_teacher_policy_calls_allowed(self) -> None:
+        if not self._teacher_policy_calls_allowed:
+            raise RuntimeError(
+                "teacher policy calls are disabled during network-only inference"
+            )
+
+    def bound_action_to_space(self, action: np.ndarray) -> np.ndarray:
+        bounded = np.clip(
+            np.asarray(action, dtype=np.float32),
+            np.asarray(self.action_space.low, dtype=np.float32),
+            np.asarray(self.action_space.high, dtype=np.float32),
+        )
+        return bounded.astype(np.float32, copy=False)
+
+    def _decoder_adjustment_l2(
+        self,
+        desired_service: np.ndarray,
+        desired_origin_batch: np.ndarray,
+        desired_destination_batch: np.ndarray,
+        service: np.ndarray,
+        origin_batch: np.ndarray,
+        destination_batch: np.ndarray,
+    ) -> float:
+        desired = np.concatenate(
+            [
+                np.asarray(desired_service, dtype=np.float64),
+                np.asarray(desired_origin_batch, dtype=np.float64),
+                np.asarray(desired_destination_batch, dtype=np.float64),
+            ]
+        )
+        executed = np.concatenate(
+            [
+                np.asarray(service, dtype=np.float64),
+                np.asarray(origin_batch, dtype=np.float64),
+                np.asarray(destination_batch, dtype=np.float64),
+            ]
+        )
+        return float(np.linalg.norm(executed - desired))
 
     def _post_arrival_pools(
         self,
@@ -491,6 +534,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
 
     def marginal_cost_teacher_action(self) -> np.ndarray:
         """Return a causal native-decoder action from current marginal costs."""
+        self._require_teacher_policy_calls_allowed()
         t = self.step_index
         context = self.residual_decoder_context(t)
         site_cost = (
@@ -598,17 +642,20 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             if float(destination_batch.sum()) > _EPS
             else np.maximum(candidate_capacity, _EPS)
         )
-        return np.concatenate(
-            [
-                service_logits,
-                np.array([optional_total_logit], dtype=np.float64),
-                origin_logits,
-                destination_logits,
-            ]
-        ).astype(np.float32)
+        return self.bound_action_to_space(
+            np.concatenate(
+                [
+                    service_logits,
+                    np.array([optional_total_logit], dtype=np.float64),
+                    origin_logits,
+                    destination_logits,
+                ]
+            )
+        )
 
     def exact_native_teacher_action(self) -> np.ndarray:
         """Translate the exact native teacher into the residual decoder action space."""
+        self._require_teacher_policy_calls_allowed()
         current_step = self.step_index
         context = self.residual_decoder_context(current_step)
         maximum_total = min(
@@ -757,14 +804,16 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             if float(destination_batch.sum()) > _EPS
             else np.maximum(residual_capacity, _EPS)
         )
-        return np.concatenate(
-            [
-                service_logits,
-                np.array([optional_total_logit], dtype=np.float64),
-                origin_logits,
-                destination_logits,
-            ]
-        ).astype(np.float32)
+        return self.bound_action_to_space(
+            np.concatenate(
+                [
+                    service_logits,
+                    np.array([optional_total_logit], dtype=np.float64),
+                    origin_logits,
+                    destination_logits,
+                ]
+            )
+        )
 
     def _decode_residual_action(
         self,
@@ -926,6 +975,14 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             raise RuntimeError(
                 "residual decoder violated cumulative deadline feasibility"
             )
+        decoder_adjustment_l2 = self._decoder_adjustment_l2(
+            desired_service,
+            mandatory + optional_origin,
+            desired_destination,
+            service,
+            origin_batch,
+            destination_batch,
+        )
         return SafetyProjectionResult(
             service=service,
             origin_batch=origin_batch,
@@ -941,8 +998,8 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             desired_destination_batch=desired_destination,
             effective_capacity=context.effective_capacity,
             residual_capacity=residual_capacity,
-            projection_l2=0.0,
-            intervened=False,
+            projection_l2=decoder_adjustment_l2,
+            intervened=decoder_adjustment_l2 > tolerance,
             binding_deadline_step=binding,
             minimum_deadline_slack=float(minimum_slack),
             service_capacity_slack=float(
@@ -952,6 +1009,8 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             negative_flush_active=flush_active,
             exact_zero_drain_count=int(np.count_nonzero(drain_rates == 0.0)),
             exact_full_drain_count=int(np.count_nonzero(drain_rates == 1.0)),
+            decoder_adjustment_l2=decoder_adjustment_l2,
+            decoder_adjusted=decoder_adjustment_l2 > tolerance,
         )
 
     def _get_obs(self) -> np.ndarray:
@@ -1012,6 +1071,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
         self,
         action: np.ndarray,
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
+        executed_action = self.bound_action_to_space(action)
         t = self.step_index
         tolerance = self.safety_config.tolerance
         preexisting_backlog = np.array(
@@ -1056,7 +1116,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
         emergency_reason: str | None = None
         try:
             projection = self._decode_residual_action(
-                np.asarray(action, dtype=np.float64),
+                np.asarray(executed_action, dtype=np.float64),
                 context,
                 current_step=t,
             )
@@ -1065,7 +1125,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
         except (RuntimeError, ValueError) as exc:
             emergency_reason = str(exc)
             fallback_action = self._legacy_fallback_action(
-                np.asarray(action, dtype=np.float64)
+                np.asarray(executed_action, dtype=np.float64)
             )
             projection = self._decode_fallback_with_v4_shield(
                 fallback_action,
@@ -1241,10 +1301,27 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             self._start_billing_period(self.step_index)
 
         emergency_intervened = emergency_reason is not None
+        decoder_adjustment_l2 = (
+            0.0 if emergency_intervened else float(projection.decoder_adjustment_l2)
+        )
+        emergency_adjustment_l2 = (
+            float(projection.emergency_adjustment_l2)
+            if emergency_intervened
+            else 0.0
+        )
         safety_info = {
             "safety_enabled": True,
             "safety_intervened": emergency_intervened,
             "safety_projection_l2": float(projection.projection_l2),
+            "safety_projection_mode": (
+                "emergency_fallback" if emergency_intervened else "decoder"
+            ),
+            "safety_decoder_adjusted": bool(
+                not emergency_intervened and projection.decoder_adjusted
+            ),
+            "safety_decoder_adjustment_l2": decoder_adjustment_l2,
+            "safety_emergency_intervened": emergency_intervened,
+            "safety_emergency_adjustment_l2": emergency_adjustment_l2,
             "safety_mandatory_batch": float(projection.mandatory_total),
             "safety_mandatory_by_origin": (
                 projection.mandatory_by_origin.tolist()
@@ -1322,6 +1399,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             "reward_potential_delta": reward_potential_delta,
             "reward_penalty_adjustment": float(penalty_adjustment),
             "per_dc": info_per_dc,
+            "executed_action": executed_action.tolist(),
             **safety_info,
             **billing_info,
         }
@@ -1344,7 +1422,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
     ) -> SafetyProjectionResult:
         from env.safety_layer import project_joint_action
 
-        return project_joint_action(
+        projection = project_joint_action(
             fallback_action,
             context.pools_after_arrival,
             current_step=current_step,
@@ -1361,6 +1439,11 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
                 dtype=np.float64,
             ),
             config=self.safety_config,
+        )
+        return replace(
+            projection,
+            emergency_adjustment_l2=float(projection.projection_l2),
+            emergency_adjusted=bool(projection.intervened),
         )
 
     def status_quo_action(self) -> np.ndarray:
@@ -1380,11 +1463,13 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
         service_logits = _shares_to_logits(service)
         origin_logits = _shares_to_logits(pending_batch)
         destination_logits = origin_logits.copy()
-        return np.concatenate(
-            [
-                service_logits,
-                np.array([20.0], dtype=np.float64),
-                origin_logits,
-                destination_logits,
-            ]
-        ).astype(np.float32)
+        return self.bound_action_to_space(
+            np.concatenate(
+                [
+                    service_logits,
+                    np.array([20.0], dtype=np.float64),
+                    origin_logits,
+                    destination_logits,
+                ]
+            )
+        )

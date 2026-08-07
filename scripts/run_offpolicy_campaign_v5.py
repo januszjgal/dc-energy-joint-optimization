@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import hashlib
 import json
 import math
 import os
+import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import mean, pstdev
 from typing import Any
 
 import numpy as np
+import stable_baselines3 as sb3
 import torch as th
 import torch.nn.functional as F
 from stable_baselines3 import SAC, TD3
@@ -35,6 +38,7 @@ OUT_ROOT = ROOT / "output" / "offpolicy_v5_continuous"
 SCREEN_RESULTS_PATH = OUT_ROOT / "screen_results.json"
 ITERATE_RESULTS_PATH = OUT_ROOT / "iterate_results.json"
 SUMMARY_PATH = OUT_ROOT / "summary.json"
+EXPECTED_SB3_VERSION = "2.9.0"
 
 for env_name in (
     "OMP_NUM_THREADS",
@@ -54,10 +58,15 @@ EVAL_SEED = 42
 GOAL_SAVINGS = {"us": 5.0, "global": 10.0}
 GOAL_INTERVENTION = 0.01
 DEFAULT_WORKERS = 4
+DEFAULT_CAMPAIGN_SEEDS = (301, 302, 303, 304, 305)
+DESCRIPTIVE_TRANSFER_SEED = 42
 
 REGION_CONFIGS: dict[str, dict[str, Any]] = {
     "us": {
         "scenario": ROOT / "env" / "scenarios" / "us_model_v2_2025.yaml",
+        "descriptive_transfer_scenario": (
+            ROOT / "env" / "scenarios" / "us_model_eh_v2_2025.yaml"
+        ),
         "reward": {
             "service_backlog_weight": 700.0,
             "batch_completion_weight": 1000.0,
@@ -69,6 +78,9 @@ REGION_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "global": {
         "scenario": ROOT / "env" / "scenarios" / "global_model_v2_2025.yaml",
+        "descriptive_transfer_scenario": (
+            ROOT / "env" / "scenarios" / "global_model_eh_v2_2025.yaml"
+        ),
         "reward": {
             "service_backlog_weight": 700.0,
             "batch_completion_weight": 1500.0,
@@ -79,6 +91,13 @@ REGION_CONFIGS: dict[str, dict[str, Any]] = {
         },
     },
 }
+
+FROZEN_BC_PROFILE_V2 = (
+    "td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v2"
+)
+FROZEN_POSTRL_PROFILE_V2 = (
+    "td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v2"
+)
 
 ALGO_CONFIGS: dict[str, dict[str, dict[str, Any]]] = {
     "screen": {
@@ -139,6 +158,66 @@ ALGO_CONFIGS: dict[str, dict[str, dict[str, Any]]] = {
     },
 }
 
+CAMPAIGNS: dict[str, dict[str, Any]] = {
+    "td3bc_bconly_frozen_v2": {
+        "stage": "frozen_confirmation",
+        "algorithm": "td3_bc",
+        "profile": FROZEN_BC_PROFILE_V2,
+        "reward_scale_by_region": {"us": 5.0e-4, "global": 1.0e-4},
+        "learning_rate": 2e-4,
+        "buffer_size": 250_000,
+        "learning_starts": 0,
+        "batch_size": 256,
+        "tau": 0.01,
+        "train_freq": 16,
+        "gradient_steps": 8,
+        "action_noise_sigma": 0.08,
+        "policy_delay": 2,
+        "target_policy_noise": 0.16,
+        "target_noise_clip": 0.16,
+        "net_arch": (256, 256, 128),
+        "teacher_name": "native_marginal_cost",
+        "teacher_prefill_episodes": 1,
+        "teacher_bc_steps": 2000,
+        "teacher_bc_batch_size": 512,
+        "timesteps": 0,
+        "evaluation_label": "a-d-development-frozen-confirmation",
+        "descriptive_transfer_label": "e-h-descriptive-transfer",
+        "teacher_present_during_rl": False,
+        "teacher_present_at_inference": False,
+    },
+    "td3bc_postrl_frozen_v2": {
+        "stage": "frozen_confirmation",
+        "algorithm": "td3_bc",
+        "profile": FROZEN_POSTRL_PROFILE_V2,
+        "reward_scale_by_region": {"us": 5.0e-4, "global": 1.0e-4},
+        "learning_rate": 1e-5,
+        "buffer_size": 250_000,
+        "learning_starts": 0,
+        "batch_size": 256,
+        "tau": 0.01,
+        "train_freq": 16,
+        "gradient_steps": 4,
+        "action_noise_sigma": 0.01,
+        "policy_delay": 2,
+        "target_policy_noise": 0.02,
+        "target_noise_clip": 0.05,
+        "net_arch": (256, 256, 128),
+        "bc_alpha": 4.0,
+        "td3bc_lambda_alpha": 2.5,
+        "teacher_name": "native_marginal_cost",
+        "teacher_prefill_episodes": 1,
+        "teacher_bc_steps": 0,
+        "teacher_bc_batch_size": 512,
+        "timesteps": 8192,
+        "warm_start_campaign": "td3bc_bconly_frozen_v2",
+        "evaluation_label": "a-d-development-frozen-confirmation",
+        "descriptive_transfer_label": "e-h-descriptive-transfer",
+        "teacher_present_during_rl": False,
+        "teacher_present_at_inference": False,
+    },
+}
+
 
 @dataclass(frozen=True)
 class Job:
@@ -147,6 +226,7 @@ class Job:
     region: str
     seed: int
     timesteps: int
+    campaign: str | None = None
 
 
 class OffPolicyDiagnosticsCallback(BaseCallback):
@@ -155,8 +235,10 @@ class OffPolicyDiagnosticsCallback(BaseCallback):
     def __init__(self) -> None:
         super().__init__()
         self.steps = 0
-        self.interventions = 0
-        self.max_projection_l2 = 0.0
+        self.emergency_interventions = 0
+        self.decoder_adjustments = 0
+        self.max_decoder_adjustment_l2 = 0.0
+        self.max_emergency_adjustment_l2 = 0.0
         self.minimum_deadline_slack = math.inf
         self.max_batch_pool = 0.0
         self.action_values = 0
@@ -167,10 +249,24 @@ class OffPolicyDiagnosticsCallback(BaseCallback):
         for info in self.locals.get("infos", []):
             if not info.get("safety_enabled", False):
                 continue
-            self.interventions += int(bool(info.get("safety_intervened", False)))
-            self.max_projection_l2 = max(
-                self.max_projection_l2,
-                float(info.get("safety_projection_l2", 0.0)),
+            self.emergency_interventions += int(
+                bool(
+                    info.get(
+                        "safety_emergency_intervened",
+                        info.get("safety_intervened", False),
+                    )
+                )
+            )
+            self.decoder_adjustments += int(
+                bool(info.get("safety_decoder_adjusted", False))
+            )
+            self.max_decoder_adjustment_l2 = max(
+                self.max_decoder_adjustment_l2,
+                float(info.get("safety_decoder_adjustment_l2", 0.0)),
+            )
+            self.max_emergency_adjustment_l2 = max(
+                self.max_emergency_adjustment_l2,
+                float(info.get("safety_emergency_adjustment_l2", 0.0)),
             )
             slack = float(
                 info.get("safety_minimum_deadline_slack", math.inf)
@@ -196,10 +292,16 @@ class OffPolicyDiagnosticsCallback(BaseCallback):
     def summary(self) -> dict[str, Any]:
         return {
             "steps_observed": self.steps,
+            "emergency_intervention_count": self.emergency_interventions,
             "emergency_intervention_rate": (
-                self.interventions / self.steps if self.steps else 0.0
+                self.emergency_interventions / self.steps if self.steps else 0.0
             ),
-            "max_projection_l2": self.max_projection_l2,
+            "decoder_adjustment_count": self.decoder_adjustments,
+            "decoder_adjustment_rate": (
+                self.decoder_adjustments / self.steps if self.steps else 0.0
+            ),
+            "max_decoder_adjustment_l2": self.max_decoder_adjustment_l2,
+            "max_emergency_adjustment_l2": self.max_emergency_adjustment_l2,
             "minimum_deadline_slack": (
                 self.minimum_deadline_slack
                 if math.isfinite(self.minimum_deadline_slack)
@@ -212,6 +314,58 @@ class OffPolicyDiagnosticsCallback(BaseCallback):
                 else 0.0
             ),
         }
+
+
+def _require_tested_sb3() -> None:
+    if sb3.__version__ != EXPECTED_SB3_VERSION:
+        raise RuntimeError(
+            "Stable-Baselines3 runtime mismatch: "
+            f"expected {EXPECTED_SB3_VERSION}, got {sb3.__version__}"
+        )
+
+
+def _replay_discounts(replay_data: Any, gamma: float) -> th.Tensor:
+    discounts = getattr(replay_data, "discounts", None)
+    if discounts is None:
+        return th.full_like(replay_data.rewards, float(gamma))
+    if isinstance(discounts, th.Tensor):
+        return discounts
+    return th.full_like(replay_data.rewards, float(discounts))
+
+
+def _tensor_sha256(state_dict: dict[str, th.Tensor]) -> str:
+    digest = hashlib.sha256()
+    for key in sorted(state_dict):
+        digest.update(key.encode("utf-8"))
+        value = state_dict[key].detach().cpu().numpy()
+        digest.update(np.ascontiguousarray(value).tobytes())
+    return digest.hexdigest()
+
+
+def _module_state_dict(module: th.nn.Module) -> dict[str, th.Tensor]:
+    return {
+        key: value.detach().cpu().clone()
+        for key, value in module.state_dict().items()
+    }
+
+
+def _parameter_delta_l2(
+    before: dict[str, th.Tensor],
+    after: dict[str, th.Tensor],
+) -> float:
+    total = 0.0
+    for key in before:
+        diff = after[key].to(dtype=th.float64) - before[key].to(dtype=th.float64)
+        total += float(th.sum(diff * diff).item())
+    return math.sqrt(total)
+
+
+def _git_head() -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
 
 
 class TD3BehaviorCloning(TD3):
@@ -242,11 +396,7 @@ class TD3BehaviorCloning(TD3):
                 batch_size,
                 env=self._vec_normalize_env,
             )
-            discounts = (
-                replay_data.discounts
-                if replay_data.discounts is not None
-                else self.gamma
-            )
+            discounts = _replay_discounts(replay_data, self.gamma)
 
             with th.no_grad():
                 noise = replay_data.actions.clone().data.normal_(
@@ -372,8 +522,14 @@ def make_env(
     reward_scale: float,
     *,
     domain_randomization: bool,
+    scenario_kind: str = "development",
 ) -> ResidualSafeOffPolicyEnv:
-    scenario_path = Path(REGION_CONFIGS[region]["scenario"])
+    if scenario_kind == "development":
+        scenario_path = Path(REGION_CONFIGS[region]["scenario"])
+    elif scenario_kind == "descriptive_transfer":
+        scenario_path = Path(REGION_CONFIGS[region]["descriptive_transfer_scenario"])
+    else:
+        raise ValueError(f"unsupported scenario kind: {scenario_kind}")
     sites, power_model, batch_config = load_scenario(
         scenario_path,
         batch_enabled=True,
@@ -474,11 +630,11 @@ def make_model(
 
 def teacher_action(env: ResidualSafeOffPolicyEnv, teacher_name: str) -> np.ndarray:
     if teacher_name == "exact_native":
-        return env.exact_native_teacher_action()
+        return env.bound_action_to_space(env.exact_native_teacher_action())
     if teacher_name == "native_marginal_cost":
-        return env.marginal_cost_teacher_action()
+        return env.bound_action_to_space(env.marginal_cost_teacher_action())
     if teacher_name == "status_quo":
-        return env.status_quo_action()
+        return env.bound_action_to_space(env.status_quo_action())
     raise ValueError(f"unsupported teacher: {teacher_name}")
 
 
@@ -504,15 +660,30 @@ def collect_teacher_rollout(
     dones: list[float] = []
     infos: list[dict[str, Any]] = []
     completed = 0
+    preclip_action_violations = 0
+    clipped_actions = 0
+    executed_matches_stored = True
     try:
         while completed < episodes:
             obs, _ = env.reset(seed=seed + completed)
             while True:
-                action = teacher_action(env, teacher_name)
-                next_obs, reward, terminated, truncated, info = env.step(action)
+                raw_action = teacher_action(env, teacher_name)
+                bounded_action = env.bound_action_to_space(raw_action)
+                if not np.allclose(raw_action, bounded_action, atol=1e-8):
+                    clipped_actions += 1
+                preclip_action_violations += int(
+                    not env.action_space.contains(raw_action.astype(np.float32))
+                )
+                next_obs, reward, terminated, truncated, info = env.step(
+                    bounded_action
+                )
+                executed = np.asarray(info["executed_action"], dtype=np.float32)
+                executed_matches_stored = executed_matches_stored and bool(
+                    np.allclose(executed, bounded_action, atol=1e-8)
+                )
                 observations.append(np.asarray(obs, dtype=np.float32))
                 next_observations.append(np.asarray(next_obs, dtype=np.float32))
-                actions.append(np.asarray(action, dtype=np.float32))
+                actions.append(np.asarray(executed, dtype=np.float32))
                 rewards.append(float(reward))
                 dones.append(float(terminated or truncated))
                 infos.append(info)
@@ -532,6 +703,11 @@ def collect_teacher_rollout(
             "dones": np.asarray(dones, dtype=np.float32),
             "infos": infos,
             "summary": teacher_summary,
+            "teacher_action_audit": {
+                "preclip_action_space_violations": int(preclip_action_violations),
+                "clipped_action_count": int(clipped_actions),
+                "stored_action_matches_executed": bool(executed_matches_stored),
+            },
         }
     finally:
         env.close()
@@ -604,7 +780,7 @@ def behavior_clone_actor(
         )
         if algorithm == "sac":
             predicted = model.actor(obs_tensor, deterministic=True)
-        elif algorithm == "td3":
+        elif algorithm in {"td3", "td3_bc"}:
             predicted = model.actor(obs_tensor)
         else:
             raise ValueError(f"unsupported algorithm: {algorithm}")
@@ -620,17 +796,81 @@ def model_dir(job: Job, profile: str) -> Path:
     return MODEL_ROOT / job.stage / job.algorithm / job.region / profile / f"s{job.seed}"
 
 
-def baseline_summary(region: str, reward_scale: float) -> dict[str, Any]:
+def campaign_job(
+    campaign_name: str,
+    *,
+    region: str,
+    seed: int,
+) -> Job:
+    config = CAMPAIGNS[campaign_name]
+    return Job(
+        stage=str(config["stage"]),
+        algorithm=str(config["algorithm"]),
+        region=region,
+        seed=seed,
+        timesteps=int(config["timesteps"]),
+        campaign=campaign_name,
+    )
+
+
+def campaign_source_bc_model_path(job: Job, stage_config: dict[str, Any]) -> Path | None:
+    warm_start_campaign = stage_config.get("warm_start_campaign")
+    if warm_start_campaign is None:
+        return None
+    source_job = campaign_job(
+        str(warm_start_campaign),
+        region=job.region,
+        seed=job.seed,
+    )
+    source_profile = str(CAMPAIGNS[str(warm_start_campaign)]["profile"])
+    return model_dir(source_job, source_profile) / "model.zip"
+
+
+def _load_warm_start_parameters(
+    model: SAC | TD3,
+    source_model_path: Path,
+    *,
+    algorithm: str,
+    env: Monitor,
+) -> None:
+    if not source_model_path.exists():
+        raise FileNotFoundError(
+            f"warm-start model missing: {source_model_path}"
+        )
+    if algorithm == "td3_bc":
+        loaded = TD3BehaviorCloning.load(
+            source_model_path,
+            env=env,
+            device="auto",
+        )
+    elif algorithm == "td3":
+        loaded = TD3.load(source_model_path, env=env, device="auto")
+    elif algorithm == "sac":
+        loaded = SAC.load(source_model_path, env=env, device="auto")
+    else:
+        raise ValueError(f"unsupported warm-start algorithm: {algorithm}")
+    model.set_parameters(loaded.get_parameters(), exact_match=True)
+
+
+def baseline_summary(
+    region: str,
+    reward_scale: float,
+    *,
+    scenario_kind: str,
+) -> dict[str, Any]:
     env = make_env(
         region,
         EVAL_SEED,
         reward_scale,
         domain_randomization=False,
+        scenario_kind=scenario_kind,
     )
     try:
         total_reward, history = run_episode(
             env,
-            lambda _obs, wrapped_env: wrapped_env.status_quo_action(),
+            lambda _obs, wrapped_env: wrapped_env.bound_action_to_space(
+                wrapped_env.status_quo_action()
+            ),
             is_sb3=False,
         )
         summary = compute_summary(history, batch_enabled=True)
@@ -646,14 +886,18 @@ def evaluate_model(
     reward_scale: float,
     *,
     baseline: dict[str, Any],
+    scenario_kind: str,
+    forbid_teacher_policy_calls: bool,
 ) -> dict[str, Any]:
     env = make_env(
         region,
         EVAL_SEED,
         reward_scale,
         domain_randomization=False,
+        scenario_kind=scenario_kind,
     )
     try:
+        env.set_teacher_policy_calls_allowed(not forbid_teacher_policy_calls)
         total_reward, history = run_episode(env, model.predict, is_sb3=True)
         summary = compute_summary(history, batch_enabled=True)
         summary["episode_reward"] = float(total_reward)
@@ -666,6 +910,14 @@ def evaluate_model(
             100.0
             * (baseline_cost - float(summary["total_cost"]))
             / baseline_cost
+        )
+        summary["teacher_call_guard_enabled"] = bool(
+            forbid_teacher_policy_calls
+        )
+        summary["evaluation_scope"] = (
+            "a-d-development-frozen-confirmation"
+            if scenario_kind == "development"
+            else "e-h-descriptive-transfer"
         )
         return summary
     finally:
@@ -685,11 +937,32 @@ def safe_seed_passed(summary: dict[str, Any]) -> bool:
     )
 
 
+def resolve_stage_config(job: Job) -> dict[str, Any]:
+    if job.campaign is not None:
+        return CAMPAIGNS[job.campaign]
+    return ALGO_CONFIGS[job.stage][job.algorithm]
+
+
+def training_mode_label(
+    job: Job,
+    teacher_record: dict[str, Any] | None,
+) -> str:
+    if job.campaign == "td3bc_postrl_frozen_v2":
+        return "td3_bc_postrl"
+    if teacher_record is not None and job.timesteps <= 0:
+        return "teacher_bc_only"
+    if teacher_record is not None:
+        return "teacher_warmstart_rl"
+    return "rl_only"
+
+
 def run_job(job: Job) -> dict[str, Any]:
-    stage_config = ALGO_CONFIGS[job.stage][job.algorithm]
+    _require_tested_sb3()
+    stage_config = resolve_stage_config(job)
     reward_scale = float(
         stage_config["reward_scale_by_region"][job.region]
     )
+    source_commit = _git_head()
     set_random_seed(job.seed)
     train_env = Monitor(
         make_env(
@@ -697,10 +970,21 @@ def run_job(job: Job) -> dict[str, Any]:
             job.seed,
             reward_scale,
             domain_randomization=True,
+            scenario_kind="development",
         )
     )
     callback = OffPolicyDiagnosticsCallback()
     model = make_model(job.algorithm, train_env, job.seed, stage_config)
+    source_bc_model_path = campaign_source_bc_model_path(job, stage_config)
+    if source_bc_model_path is not None:
+        _load_warm_start_parameters(
+            model,
+            source_bc_model_path,
+            algorithm=job.algorithm,
+            env=train_env,
+        )
+    actor_before = _module_state_dict(model.actor)
+    critic_before = _module_state_dict(model.critic)
     teacher_record: dict[str, Any] | None = None
     if "teacher_name" in stage_config:
         dataset = collect_teacher_rollout(
@@ -730,6 +1014,7 @@ def run_job(job: Job) -> dict[str, Any]:
             "teacher_name": str(stage_config["teacher_name"]),
             "prefill_transitions": prefill_count,
             "rollout_summary": dataset["summary"],
+            "action_audit": dataset["teacher_action_audit"],
             "behavior_cloning": bc_summary,
         }
     if job.timesteps > 0:
@@ -739,12 +1024,33 @@ def run_job(job: Job) -> dict[str, Any]:
             progress_bar=False,
         )
 
-    baseline = baseline_summary(job.region, reward_scale)
+    actor_after = _module_state_dict(model.actor)
+    critic_after = _module_state_dict(model.critic)
+    baseline = baseline_summary(
+        job.region,
+        reward_scale,
+        scenario_kind="development",
+    )
     evaluation = evaluate_model(
         model,
         job.region,
         reward_scale,
         baseline=baseline,
+        scenario_kind="development",
+        forbid_teacher_policy_calls=True,
+    )
+    descriptive_transfer_baseline = baseline_summary(
+        job.region,
+        reward_scale,
+        scenario_kind="descriptive_transfer",
+    )
+    descriptive_transfer = evaluate_model(
+        model,
+        job.region,
+        reward_scale,
+        baseline=descriptive_transfer_baseline,
+        scenario_kind="descriptive_transfer",
+        forbid_teacher_policy_calls=True,
     )
     training = callback.summary()
     profile = str(stage_config["profile"])
@@ -752,30 +1058,81 @@ def run_job(job: Job) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     model_path = output_dir / "model"
     model.save(model_path)
+    actor_before_sha256 = _tensor_sha256(actor_before)
+    actor_after_sha256 = _tensor_sha256(actor_after)
+    critic_before_sha256 = _tensor_sha256(critic_before)
+    critic_after_sha256 = _tensor_sha256(critic_after)
     record = {
         "job": asdict(job),
+        "campaign": job.campaign,
         "profile": profile,
         "algorithm_config": {
             key: value
             for key, value in stage_config.items()
             if key != "reward_scale_by_region"
         },
-        "training_mode": (
-            "teacher_bc_only"
-            if teacher_record is not None and job.timesteps <= 0
-            else "teacher_warmstart_rl"
-            if teacher_record is not None
-            else "rl_only"
-        ),
+        "training_mode": training_mode_label(job, teacher_record),
         "reward_scale": reward_scale,
         "model_path": str(model_path.with_suffix(".zip").relative_to(ROOT)),
+        "source_commit": source_commit,
+        "stable_baselines3_version": sb3.__version__,
+        "evaluation_label": str(
+            stage_config.get("evaluation_label", "a-d-development")
+        ),
+        "descriptive_transfer_label": str(
+            stage_config.get(
+                "descriptive_transfer_label",
+                "e-h-descriptive-transfer",
+            )
+        ),
         "training": training,
+        "n_updates": int(getattr(model, "_n_updates", 0)),
+        "actor_hash_before": actor_before_sha256,
+        "actor_hash_after": actor_after_sha256,
+        "critic_hash_before": critic_before_sha256,
+        "critic_hash_after": critic_after_sha256,
+        "weight_update_evidence": {
+            "actor_hash_changed": actor_before_sha256 != actor_after_sha256,
+            "critic_hash_changed": critic_before_sha256 != critic_after_sha256,
+            "actor_parameter_delta_l2": _parameter_delta_l2(
+                actor_before,
+                actor_after,
+            ),
+            "critic_parameter_delta_l2": _parameter_delta_l2(
+                critic_before,
+                critic_after,
+            ),
+        },
         "baseline": baseline,
         "evaluation": evaluation,
+        "descriptive_transfer_baseline": descriptive_transfer_baseline,
+        "descriptive_transfer_eh": descriptive_transfer,
+        "teacher_present_during_rl": bool(
+            stage_config.get("teacher_present_during_rl", False)
+        ),
+        "teacher_present_at_inference": bool(
+            stage_config.get("teacher_present_at_inference", False)
+        ),
         "safe_seed_passed": safe_seed_passed(evaluation),
     }
+    if source_bc_model_path is not None:
+        record["source_bc_model"] = str(source_bc_model_path.relative_to(ROOT))
     if teacher_record is not None:
         record["teacher"] = teacher_record
+    if "bc_alpha" in stage_config or "td3bc_lambda_alpha" in stage_config:
+        record["rl_hyperparameters"] = {
+            "learning_rate": float(stage_config["learning_rate"]),
+            "learning_starts": int(stage_config["learning_starts"]),
+            "gradient_steps": int(stage_config["gradient_steps"]),
+            "train_freq_steps": int(stage_config["train_freq"]),
+            "action_noise_sigma": float(stage_config["action_noise_sigma"]),
+            "target_policy_noise": float(stage_config["target_policy_noise"]),
+            "target_noise_clip": float(stage_config["target_noise_clip"]),
+            "bc_alpha": float(stage_config.get("bc_alpha", 0.0)),
+            "td3bc_lambda_alpha": float(
+                stage_config.get("td3bc_lambda_alpha", 0.0)
+            ),
+        }
     record_path = output_dir / "record.json"
     record_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
     train_env.close()
@@ -797,31 +1154,51 @@ def stage_jobs(stage: str, algorithms: tuple[str, ...]) -> list[Job]:
     ]
 
 
+def campaign_jobs(
+    campaign_name: str,
+    *,
+    regions: tuple[str, ...],
+    seeds: tuple[int, ...],
+) -> list[Job]:
+    return [
+        campaign_job(campaign_name, region=region, seed=seed)
+        for region in regions
+        for seed in seeds
+    ]
+
+
 def aggregate_records(records: list[dict[str, Any]]) -> dict[str, Any]:
-    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    grouped: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     for record in records:
         key = (
             str(record["job"]["stage"]),
             str(record["job"]["algorithm"]),
             str(record["job"]["region"]),
+            str(record.get("profile")),
         )
         grouped.setdefault(key, []).append(record)
 
     aggregates: dict[str, Any] = {}
-    for (stage, algorithm, region), rows in sorted(grouped.items()):
+    for (stage, algorithm, region, profile), rows in sorted(grouped.items()):
         rows = sorted(rows, key=lambda row: int(row["job"]["seed"]))
         savings = [
             float(row["evaluation"]["savings_vs_status_quo_pct"]) for row in rows
         ]
-        interventions = [
-            float(row["evaluation"]["safety"]["intervention_rate"]) for row in rows
+        emergency_interventions = [
+            float(row["evaluation"]["safety"]["emergency_intervention_rate"])
+            for row in rows
+        ]
+        decoder_adjustments = [
+            float(row["evaluation"]["safety"]["decoder_adjustment_rate"])
+            for row in rows
         ]
         safe_count = sum(int(bool(row["safe_seed_passed"])) for row in rows)
         aggregate = {
             "stage": stage,
             "algorithm": algorithm,
             "region": region,
-            "profile": rows[0]["profile"],
+            "profile": profile,
+            "campaign": rows[0].get("campaign"),
             "mean_total_cost": mean(
                 float(row["evaluation"]["total_cost"]) for row in rows
             ),
@@ -832,20 +1209,22 @@ def aggregate_records(records: list[dict[str, Any]]) -> dict[str, Any]:
             else 0.0,
             "mean_savings_vs_status_quo_pct": mean(savings),
             "worst_savings_vs_status_quo_pct": min(savings),
-            "mean_emergency_intervention_rate": mean(interventions),
-            "max_emergency_intervention_rate": max(interventions),
+            "mean_emergency_intervention_rate": mean(emergency_interventions),
+            "max_emergency_intervention_rate": max(emergency_interventions),
+            "mean_decoder_adjustment_rate": mean(decoder_adjustments),
+            "max_decoder_adjustment_rate": max(decoder_adjustments),
             "safe_seed_count": safe_count,
             "seed_count": len(rows),
             "all_seeds_safe": safe_count == len(rows),
             "goal_savings_pct": GOAL_SAVINGS[region],
             "meets_goal": (
                 safe_count == len(rows)
-                and mean(interventions) < GOAL_INTERVENTION
+                and mean(emergency_interventions) < GOAL_INTERVENTION
                 and mean(savings) >= GOAL_SAVINGS[region]
             ),
             "records": rows,
         }
-        aggregates[f"{stage}:{algorithm}:{region}"] = aggregate
+        aggregates[f"{stage}:{algorithm}:{region}:{profile}"] = aggregate
     return aggregates
 
 
@@ -876,13 +1255,11 @@ def choose_best_algorithm(screen_aggregates: dict[str, Any]) -> str:
     return scored[0][1]
 
 
-def run_stage(
-    stage: str,
-    algorithms: tuple[str, ...],
+def execute_jobs(
+    jobs: list[Job],
     *,
     workers: int,
 ) -> dict[str, Any]:
-    jobs = stage_jobs(stage, algorithms)
     records: list[dict[str, Any]] = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
         futures = [executor.submit(run_job, job) for job in jobs]
@@ -891,7 +1268,7 @@ def run_stage(
     records.sort(
         key=lambda row: (
             str(row["job"]["stage"]),
-            str(row["job"]["algorithm"]),
+            str(row.get("campaign") or row["job"]["algorithm"]),
             str(row["job"]["region"]),
             int(row["job"]["seed"]),
         )
@@ -900,6 +1277,28 @@ def run_stage(
         "records": records,
         "aggregates": aggregate_records(records),
     }
+
+
+def run_stage(
+    stage: str,
+    algorithms: tuple[str, ...],
+    *,
+    workers: int,
+) -> dict[str, Any]:
+    return execute_jobs(stage_jobs(stage, algorithms), workers=workers)
+
+
+def run_campaign(
+    campaign_name: str,
+    *,
+    regions: tuple[str, ...],
+    seeds: tuple[int, ...],
+    workers: int,
+) -> dict[str, Any]:
+    return execute_jobs(
+        campaign_jobs(campaign_name, regions=regions, seeds=seeds),
+        workers=workers,
+    )
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -912,9 +1311,25 @@ def main(argv: list[str] | None = None) -> None:
         description="Run v5 residual-safe SAC/TD3 screens"
     )
     parser.add_argument(
+        "--campaign",
+        choices=tuple(sorted(CAMPAIGNS)),
+    )
+    parser.add_argument(
         "--phase",
         choices=("screen", "iterate", "all"),
         default="all",
+    )
+    parser.add_argument(
+        "--regions",
+        nargs="+",
+        choices=("us", "global"),
+        default=["us", "global"],
+    )
+    parser.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=list(DEFAULT_CAMPAIGN_SEEDS),
     )
     parser.add_argument(
         "--workers",
@@ -924,6 +1339,17 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     workers = max(1, int(args.workers))
+    if args.campaign is not None:
+        results = run_campaign(
+            str(args.campaign),
+            regions=tuple(str(region) for region in args.regions),
+            seeds=tuple(int(seed) for seed in args.seeds),
+            workers=workers,
+        )
+        output_path = OUT_ROOT / "campaigns" / f"{args.campaign}_results.json"
+        write_json(output_path, results)
+        return
+
     summary: dict[str, Any] = {
         "stage_timesteps": STAGE_TIMESTEPS,
         "seeds": list(SCREEN_SEEDS),

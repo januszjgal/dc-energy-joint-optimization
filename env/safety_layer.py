@@ -106,6 +106,10 @@ class SafetyProjectionResult:
     negative_flush_active: bool
     exact_zero_drain_count: int
     exact_full_drain_count: int
+    decoder_adjustment_l2: float = 0.0
+    decoder_adjusted: bool = False
+    emergency_adjustment_l2: float = 0.0
+    emergency_adjusted: bool = False
 
 
 class SafetyInfeasibleError(RuntimeError):
