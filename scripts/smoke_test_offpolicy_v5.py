@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from stable_baselines3.common.monitor import Monitor
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -14,6 +15,7 @@ from env.data_loader import load_scenario
 from env.residual_safe_offpolicy_env import ResidualSafeOffPolicyEnv
 from env.reward import RewardConfig
 from env.safety_layer import SafetyConfig
+from scripts.run_offpolicy_campaign_v5 import make_model, prefill_replay_buffer
 
 
 def make_env() -> ResidualSafeOffPolicyEnv:
@@ -113,12 +115,50 @@ def test_exact_teacher_action_stays_native_safe() -> None:
     env.close()
 
 
+def test_prefill_normalizes_td3_actions() -> None:
+    env = Monitor(make_env())
+    obs, _ = env.reset(seed=17)
+    action = env.unwrapped.status_quo_action()
+    next_obs, reward, terminated, truncated, info = env.step(action)
+    model = make_model(
+        "td3_bc",
+        env,
+        17,
+        {
+            "learning_rate": 1e-5,
+            "buffer_size": 32,
+            "learning_starts": 0,
+            "batch_size": 8,
+            "tau": 0.01,
+            "train_freq": 1,
+            "gradient_steps": 1,
+            "action_noise_sigma": 0.01,
+            "net_arch": (32, 32),
+            "bc_alpha": 1.0,
+            "td3bc_lambda_alpha": 2.5,
+        },
+    )
+    dataset = {
+        "observations": np.asarray([obs], dtype=np.float32),
+        "next_observations": np.asarray([next_obs], dtype=np.float32),
+        "actions": np.asarray([action], dtype=np.float32),
+        "rewards": np.asarray([reward], dtype=np.float32),
+        "dones": np.asarray([terminated or truncated], dtype=np.float32),
+        "infos": [info],
+    }
+    prefill_replay_buffer(model, dataset, env)
+    stored = np.asarray(model.replay_buffer.actions[0, 0], dtype=np.float32)
+    assert np.max(np.abs(stored)) <= 1.0 + 1e-6
+    env.close()
+
+
 def main() -> None:
     test_observation_contains_residual_features()
     test_status_quo_action_stays_native_safe()
     test_random_action_preserves_hard_safety()
     test_teacher_action_stays_native_safe()
     test_exact_teacher_action_stays_native_safe()
+    test_prefill_normalizes_td3_actions()
     print("smoke_test_offpolicy_v5: PASS")
 
 

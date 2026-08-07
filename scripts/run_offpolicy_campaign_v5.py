@@ -19,7 +19,7 @@ from stable_baselines3 import SAC, TD3
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.noise import NormalActionNoise
-from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.utils import polyak_update, set_random_seed
 
 ROOT = Path(__file__).resolve().parent.parent
 os.sys.path.insert(0, str(ROOT))
@@ -214,6 +214,130 @@ class OffPolicyDiagnosticsCallback(BaseCallback):
         }
 
 
+class TD3BehaviorCloning(TD3):
+    """TD3 actor update with TD3+BC-style Q normalization and BC regularization."""
+
+    def __init__(
+        self,
+        *args: Any,
+        bc_alpha: float = 1.0,
+        td3bc_lambda_alpha: float = 2.5,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.bc_alpha = float(bc_alpha)
+        self.td3bc_lambda_alpha = float(td3bc_lambda_alpha)
+
+    def train(self, gradient_steps: int, batch_size: int = 100) -> None:
+        self.policy.set_training_mode(True)
+        self._update_learning_rate([self.actor.optimizer, self.critic.optimizer])
+
+        actor_losses: list[float] = []
+        actor_bc_losses: list[float] = []
+        actor_q_lambdas: list[float] = []
+        critic_losses: list[float] = []
+        for _ in range(gradient_steps):
+            self._n_updates += 1
+            replay_data = self.replay_buffer.sample(
+                batch_size,
+                env=self._vec_normalize_env,
+            )
+            discounts = (
+                replay_data.discounts
+                if replay_data.discounts is not None
+                else self.gamma
+            )
+
+            with th.no_grad():
+                noise = replay_data.actions.clone().data.normal_(
+                    0,
+                    self.target_policy_noise,
+                )
+                noise = noise.clamp(
+                    -self.target_noise_clip,
+                    self.target_noise_clip,
+                )
+                next_actions = (
+                    self.actor_target(replay_data.next_observations) + noise
+                ).clamp(-1, 1)
+                next_q_values = th.cat(
+                    self.critic_target(
+                        replay_data.next_observations,
+                        next_actions,
+                    ),
+                    dim=1,
+                )
+                next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
+                target_q_values = (
+                    replay_data.rewards
+                    + (1 - replay_data.dones) * discounts * next_q_values
+                )
+
+            current_q_values = self.critic(
+                replay_data.observations,
+                replay_data.actions,
+            )
+            critic_loss = sum(
+                F.mse_loss(current_q, target_q_values)
+                for current_q in current_q_values
+            )
+            assert isinstance(critic_loss, th.Tensor)
+            critic_losses.append(float(critic_loss.item()))
+
+            self.critic.optimizer.zero_grad()
+            critic_loss.backward()
+            self.critic.optimizer.step()
+
+            if self._n_updates % self.policy_delay == 0:
+                predicted_actions = self.actor(replay_data.observations)
+                q_values = self.critic.q1_forward(
+                    replay_data.observations,
+                    predicted_actions,
+                )
+                q_scale = th.clamp(
+                    q_values.abs().mean().detach(),
+                    min=1e-6,
+                )
+                q_lambda = self.td3bc_lambda_alpha / q_scale
+                bc_loss = F.mse_loss(predicted_actions, replay_data.actions)
+                actor_loss = -q_lambda * q_values.mean() + self.bc_alpha * bc_loss
+                actor_losses.append(float(actor_loss.item()))
+                actor_bc_losses.append(float(bc_loss.item()))
+                actor_q_lambdas.append(float(q_lambda.item()))
+
+                self.actor.optimizer.zero_grad()
+                actor_loss.backward()
+                self.actor.optimizer.step()
+
+                polyak_update(
+                    self.critic.parameters(),
+                    self.critic_target.parameters(),
+                    self.tau,
+                )
+                polyak_update(
+                    self.actor.parameters(),
+                    self.actor_target.parameters(),
+                    self.tau,
+                )
+                polyak_update(
+                    self.critic_batch_norm_stats,
+                    self.critic_batch_norm_stats_target,
+                    1.0,
+                )
+                polyak_update(
+                    self.actor_batch_norm_stats,
+                    self.actor_batch_norm_stats_target,
+                    1.0,
+                )
+
+        self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
+        if actor_losses:
+            self.logger.record("train/actor_loss", np.mean(actor_losses))
+            self.logger.record("train/actor_bc_loss", np.mean(actor_bc_losses))
+            self.logger.record("train/actor_q_lambda", np.mean(actor_q_lambdas))
+        self.logger.record("train/critic_loss", np.mean(critic_losses))
+
+
 def reward_config(region: str, reward_scale: float) -> RewardConfig:
     reward = REGION_CONFIGS[region]["reward"]
     return RewardConfig(
@@ -312,7 +436,7 @@ def make_model(
             ent_coef=algo_config["ent_coef"],
             **common,
         )
-    if algorithm == "td3":
+    if algorithm in {"td3", "td3_bc"}:
         action_dim = int(np.prod(env.action_space.shape))
         sigma = float(algo_config["action_noise_sigma"])
         action_noise = NormalActionNoise(
@@ -325,12 +449,24 @@ def make_model(
         target_noise_clip = float(
             algo_config.get("target_noise_clip", max(0.1, sigma * 2.0))
         )
-        return TD3(
+        model_cls: type[TD3] = (
+            TD3BehaviorCloning
+            if algorithm == "td3_bc" or "bc_alpha" in algo_config
+            else TD3
+        )
+        model_kwargs: dict[str, Any] = {}
+        if model_cls is TD3BehaviorCloning:
+            model_kwargs["bc_alpha"] = float(algo_config.get("bc_alpha", 1.0))
+            model_kwargs["td3bc_lambda_alpha"] = float(
+                algo_config.get("td3bc_lambda_alpha", 2.5)
+            )
+        return model_cls(
             "MlpPolicy",
             action_noise=action_noise,
             policy_delay=int(algo_config.get("policy_delay", 2)),
             target_policy_noise=target_policy_noise,
             target_noise_clip=target_noise_clip,
+            **model_kwargs,
             **common,
         )
     raise ValueError(f"unsupported algorithm: {algorithm}")
@@ -404,13 +540,15 @@ def collect_teacher_rollout(
 def prefill_replay_buffer(
     model: SAC | TD3,
     dataset: dict[str, Any],
+    env: Monitor,
 ) -> int:
     count = int(dataset["observations"].shape[0])
+    normalized_actions = _normalize_to_policy_action(env, dataset["actions"])
     for index in range(count):
         model.replay_buffer.add(
             dataset["observations"][index : index + 1],
             dataset["next_observations"][index : index + 1],
-            dataset["actions"][index : index + 1],
+            normalized_actions[index : index + 1],
             dataset["rewards"][index : index + 1],
             dataset["dones"][index : index + 1],
             [dataset["infos"][index]],
@@ -575,7 +713,7 @@ def run_job(job: Job) -> dict[str, Any]:
             ),
             episodes=int(stage_config.get("teacher_prefill_episodes", 1)),
         )
-        prefill_count = prefill_replay_buffer(model, dataset)
+        prefill_count = prefill_replay_buffer(model, dataset, train_env)
         model.learning_starts = 0
         bc_summary = behavior_clone_actor(
             model,
