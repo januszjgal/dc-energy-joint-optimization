@@ -893,6 +893,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             max(maximum_total - mandatory_total, 0.0),
         )
         optional_origin = np.zeros(n_dc, dtype=np.float64)
+        desired_optional = np.zeros(n_dc, dtype=np.float64)
         if optional_total > tolerance:
             desired_optional = softmax(origin_logits) * optional_total
             optional_origin = project_capped_simplex(
@@ -977,7 +978,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             )
         decoder_adjustment_l2 = self._decoder_adjustment_l2(
             desired_service,
-            mandatory + optional_origin,
+            mandatory + desired_optional,
             desired_destination,
             service,
             origin_batch,
@@ -994,7 +995,7 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             mandatory_by_origin=mandatory,
             mandatory_total=float(mandatory_total),
             desired_service=desired_service,
-            desired_origin_batch=mandatory + optional_origin,
+            desired_origin_batch=mandatory + desired_optional,
             desired_destination_batch=desired_destination,
             effective_capacity=context.effective_capacity,
             residual_capacity=residual_capacity,

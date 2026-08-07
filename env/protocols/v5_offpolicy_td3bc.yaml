@@ -1,6 +1,6 @@
 protocol:
-  id: v5-offpolicy-td3bc-frozen-v2
-  title: Residual-safe TD3+BC frozen confirmation protocol
+  id: v5-offpolicy-td3bc-frozen-v3
+  title: Residual-safe TD3+BC corrected frozen confirmation protocol
   development_cells: a-d
   descriptive_transfer_cells: e-h
   headline_scope: a-d development / frozen confirmation only
@@ -29,10 +29,16 @@ shared:
     gamma: 1.0
 
 campaigns:
-  td3bc_bconly_frozen_v2:
+  td3bc_bconly_frozen_v3:
+    role: bc_only
+    expected_training_mode: teacher_bc_only
     stage: frozen_confirmation
     algorithm: td3_bc
-    profile: td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v2
+    profile: td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v3
+    evaluation_label: a-d-development-frozen-confirmation
+    descriptive_transfer_label: e-h-descriptive-transfer
+    teacher_present_during_rl: false
+    teacher_present_at_inference: false
     reward_scale_by_region:
       us: 5.0e-4
       global: 1.0e-4
@@ -50,10 +56,16 @@ campaigns:
     teacher_bc_steps: 2000
     teacher_bc_batch_size: 512
     timesteps: 0
-  td3bc_postrl_frozen_v2:
+  td3bc_postrl_frozen_v3:
+    role: post_rl
+    expected_training_mode: td3_bc_postrl
     stage: frozen_confirmation
     algorithm: td3_bc
-    profile: td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v2
+    profile: td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v3
+    evaluation_label: a-d-development-frozen-confirmation
+    descriptive_transfer_label: e-h-descriptive-transfer
+    teacher_present_during_rl: false
+    teacher_present_at_inference: false
     reward_scale_by_region:
       us: 5.0e-4
       global: 1.0e-4
@@ -76,4 +88,5 @@ campaigns:
     teacher_bc_steps: 0
     teacher_bc_batch_size: 512
     timesteps: 8192
-    warm_start_campaign: td3bc_bconly_frozen_v2
+    expected_n_updates: 2048
+    warm_start_campaign: td3bc_bconly_frozen_v3
