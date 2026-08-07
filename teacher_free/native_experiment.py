@@ -1101,6 +1101,48 @@ def semantic_action_from_raw_numpy(raw: np.ndarray) -> np.ndarray:
     return semantic.astype(np.float32)
 
 
+def split_semantic_heads_tensor(
+    action: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    n_dc = action.shape[-1] // 3
+    return (
+        action[..., :n_dc],
+        action[..., n_dc : 2 * n_dc],
+        action[..., 2 * n_dc :],
+    )
+
+
+def semantic_behavior_loss(
+    prediction: torch.Tensor,
+    target: torch.Tensor,
+) -> torch.Tensor:
+    pred_service, pred_drain, pred_batch = split_semantic_heads_tensor(prediction)
+    tgt_service, tgt_drain, tgt_batch = split_semantic_heads_tensor(target)
+    service_loss = torch.nn.functional.mse_loss(pred_service, tgt_service)
+    drain_loss = torch.nn.functional.binary_cross_entropy(
+        pred_drain.clamp(1e-6, 1.0 - 1e-6),
+        tgt_drain,
+    )
+    batch_loss = torch.nn.functional.mse_loss(pred_batch, tgt_batch)
+    return (service_loss + 2.0 * drain_loss + batch_loss) / 4.0
+
+
+def semantic_sample_weights(actions: np.ndarray) -> np.ndarray:
+    array = np.asarray(actions, dtype=np.float32)
+    n_dc = array.shape[1] // 3
+    service = array[:, :n_dc]
+    drain = array[:, n_dc : 2 * n_dc]
+    batch = array[:, 2 * n_dc :]
+    service_extreme = np.any((service < 0.02) | (service > 0.98), axis=1)
+    drain_extreme = np.any((drain < 0.02) | (drain > 0.98), axis=1)
+    batch_extreme = np.any((batch < 0.02) | (batch > 0.98), axis=1)
+    weights = np.ones(len(array), dtype=np.float64)
+    weights += service_extreme.astype(np.float64)
+    weights += 2.0 * drain_extreme.astype(np.float64)
+    weights += batch_extreme.astype(np.float64)
+    return weights
+
+
 def fold_observation_normalization(
     model_state: dict[str, torch.Tensor],
     obs_mean: np.ndarray,
@@ -1138,14 +1180,22 @@ def train_behavior_cloner(
     action_tensor = torch.from_numpy(actions)
     model = ActorMLP(obs.shape[1], actions.shape[1], hidden_sizes)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(learning_rate), weight_decay=float(weight_decay))
-    loss_fn = torch.nn.MSELoss()
     rng = np.random.default_rng(int(seed))
+    sample_weights = semantic_sample_weights(actions)
+    sample_prob = sample_weights / float(sample_weights.sum())
     best_loss = math.inf
     best_epoch = -1
     best_state: dict[str, torch.Tensor] | None = None
     losses: list[float] = []
     for epoch in range(int(epochs)):
-        permutation = torch.from_numpy(rng.permutation(len(obs_tensor)))
+        permutation = torch.from_numpy(
+            rng.choice(
+                len(obs_tensor),
+                size=len(obs_tensor),
+                replace=True,
+                p=sample_prob,
+            )
+        )
         epoch_losses: list[float] = []
         for start in range(0, len(obs_tensor), int(batch_size)):
             batch_indices = permutation[start : start + int(batch_size)]
@@ -1153,7 +1203,7 @@ def train_behavior_cloner(
             batch_actions = action_tensor[batch_indices]
             optimizer.zero_grad(set_to_none=True)
             prediction = semantic_action_from_raw_tensor(model(batch_obs))
-            loss = loss_fn(prediction, batch_actions)
+            loss = semantic_behavior_loss(prediction, batch_actions)
             loss.backward()
             optimizer.step()
             epoch_losses.append(float(loss.detach().cpu().item()))

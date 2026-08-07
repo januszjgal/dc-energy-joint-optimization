@@ -1,0 +1,36 @@
+name: teacher-free-us-v2-dagger
+status: exploratory-us-only-dagger
+parent_protocol: teacher-free-native-bc-ppo-v1
+parent_git_commit: ffad52b
+
+us_only: true
+
+failed_v1_reference:
+  source: resumed-parent-evaluation
+  a_d_mean_savings_pct: 0.5523
+  a_d_mean_intervention: 0.90565
+  e_h_mean_savings_pct: -0.5681
+  e_h_mean_intervention: 0.59345
+  note: safe only because the shield rewrites the policy heavily
+
+dataset:
+  teacher_rollout_seed: 1101
+  dagger_rollout_seed: 401
+  teacher_domain_randomization: true
+  dagger_policy_checkpoint: models/teacher_free_bc_ppo/us/bc/s2102.json
+
+dagger:
+  iterations: 4
+  rollout_seed: 401
+  policy_domain_randomization: false
+
+evaluation:
+  a_d_eval_seed: 401
+  e_h_eval_seed: 401
+
+behavior_cloning:
+  seeds: [3101, 3102, 3103]
+  hidden_sizes: [128, 128]
+  learning_rate: 0.001
+  epochs: 160
+  batch_size: 512
