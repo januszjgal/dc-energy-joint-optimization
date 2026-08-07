@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import stable_baselines3 as sb3
 from stable_baselines3.common.monitor import Monitor
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,7 +16,16 @@ from env.data_loader import load_scenario
 from env.residual_safe_offpolicy_env import ResidualSafeOffPolicyEnv
 from env.reward import RewardConfig
 from env.safety_layer import SafetyConfig
-from scripts.run_offpolicy_campaign_v5 import make_model, prefill_replay_buffer
+from scripts.run_offpolicy_campaign_v5 import (
+    EXPECTED_SB3_VERSION,
+    TD3BehaviorCloning,
+    campaign_job,
+    evaluate_model,
+    make_model,
+    prefill_replay_buffer,
+    resolve_stage_config,
+    teacher_action,
+)
 
 
 def make_env() -> ResidualSafeOffPolicyEnv:
@@ -107,11 +117,13 @@ def test_teacher_action_stays_native_safe() -> None:
 def test_exact_teacher_action_stays_native_safe() -> None:
     env = make_env()
     env.reset(seed=13)
-    action = env.exact_native_teacher_action()
+    action = teacher_action(env, "exact_native")
+    assert env.action_space.contains(action)
     _, _, _, _, info = env.step(action)
     assert info["native_decoder_used"] is True
     assert info["safety_intervened"] is False
     assert info["total_batch_expired"] == 0.0
+    assert np.allclose(np.asarray(info["executed_action"], dtype=np.float32), action)
     env.close()
 
 
@@ -152,6 +164,103 @@ def test_prefill_normalizes_td3_actions() -> None:
     env.close()
 
 
+def test_teacher_step_store_pairing_uses_executed_action() -> None:
+    env = make_env()
+    obs, _ = env.reset(seed=19)
+    for _ in range(3):
+        action = teacher_action(env, "exact_native")
+        assert env.action_space.contains(action)
+        next_obs, reward, terminated, truncated, info = env.step(action)
+        executed = np.asarray(info["executed_action"], dtype=np.float32)
+        assert np.allclose(executed, action, atol=1e-8)
+        obs = next_obs
+        if terminated or truncated:
+            break
+    assert np.isfinite(obs).all()
+    assert np.isfinite(reward)
+    env.close()
+
+
+def test_campaign_cli_uses_td3_behavior_cloning() -> None:
+    env = Monitor(make_env())
+    job = campaign_job("td3bc_bconly_frozen_v2", region="us", seed=23)
+    config = resolve_stage_config(job)
+    model = make_model(job.algorithm, env, job.seed, config)
+    assert isinstance(model, TD3BehaviorCloning)
+    env.close()
+
+
+def test_teacher_guard_blocks_inference_teacher_calls() -> None:
+    env = make_env()
+    env.set_teacher_policy_calls_allowed(False)
+    try:
+        env.marginal_cost_teacher_action()
+    except RuntimeError as exc:
+        assert "disabled" in str(exc)
+    else:
+        raise AssertionError("teacher action should be blocked during inference")
+    env.close()
+
+    eval_env = Monitor(make_env())
+    job = campaign_job("td3bc_bconly_frozen_v2", region="us", seed=29)
+    config = resolve_stage_config(job)
+    model = make_model(job.algorithm, eval_env, job.seed, config)
+    baseline = {
+        "total_cost": 1.0,
+    }
+    summary = evaluate_model(
+        model,
+        "us",
+        float(config["reward_scale_by_region"]["us"]),
+        baseline=baseline,
+        scenario_kind="development",
+        forbid_teacher_policy_calls=True,
+    )
+    assert summary["teacher_call_guard_enabled"] is True
+    eval_env.close()
+
+
+def test_decoder_and_emergency_telemetry_are_separate() -> None:
+    env = make_env()
+    env.reset(seed=31)
+    action = teacher_action(env, "exact_native")
+    _, _, _, _, info = env.step(action)
+    assert "safety_decoder_adjustment_l2" in info
+    assert "safety_emergency_adjustment_l2" in info
+    assert "safety_decoder_adjusted" in info
+    assert "safety_emergency_intervened" in info
+    assert info["safety_emergency_intervened"] is False
+    summary = evaluate_model(
+        make_model(
+            "td3_bc",
+            Monitor(make_env()),
+            31,
+            {
+                **resolve_stage_config(
+                    campaign_job("td3bc_bconly_frozen_v2", region="us", seed=31)
+                ),
+            },
+        ),
+        "us",
+        float(
+            resolve_stage_config(
+                campaign_job("td3bc_bconly_frozen_v2", region="us", seed=31)
+            )["reward_scale_by_region"]["us"]
+        ),
+        baseline={"total_cost": 1.0},
+        scenario_kind="development",
+        forbid_teacher_policy_calls=True,
+    )
+    safety = summary["safety"]
+    assert "decoder_adjustment_rate" in safety
+    assert "emergency_intervention_rate" in safety
+    env.close()
+
+
+def test_sb3_runtime_is_pinned() -> None:
+    assert sb3.__version__ == EXPECTED_SB3_VERSION
+
+
 def main() -> None:
     test_observation_contains_residual_features()
     test_status_quo_action_stays_native_safe()
@@ -159,6 +268,11 @@ def main() -> None:
     test_teacher_action_stays_native_safe()
     test_exact_teacher_action_stays_native_safe()
     test_prefill_normalizes_td3_actions()
+    test_teacher_step_store_pairing_uses_executed_action()
+    test_campaign_cli_uses_td3_behavior_cloning()
+    test_teacher_guard_blocks_inference_teacher_calls()
+    test_decoder_and_emergency_telemetry_are_separate()
+    test_sb3_runtime_is_pinned()
     print("smoke_test_offpolicy_v5: PASS")
 
 

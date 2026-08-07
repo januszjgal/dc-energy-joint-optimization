@@ -1,0 +1,79 @@
+protocol:
+  id: v5-offpolicy-td3bc-frozen-v2
+  title: Residual-safe TD3+BC frozen confirmation protocol
+  development_cells: a-d
+  descriptive_transfer_cells: e-h
+  headline_scope: a-d development / frozen confirmation only
+  descriptive_scope: e-h transfer is descriptive only and not for tuning
+
+regions:
+  us:
+    development_scenario: env/scenarios/us_model_v2_2025.yaml
+    descriptive_transfer_scenario: env/scenarios/us_model_eh_v2_2025.yaml
+    goal_savings_pct: 5.0
+  global:
+    development_scenario: env/scenarios/global_model_v2_2025.yaml
+    descriptive_transfer_scenario: env/scenarios/global_model_eh_v2_2025.yaml
+    goal_savings_pct: 10.0
+
+shared:
+  safety_goal:
+    exact_completion: true
+    emergency_intervention_rate_lt: 0.01
+  decoder:
+    architecture: residual native constraint decoder with v4 shield retained only for unexpected states
+  inference:
+    teacher_present_at_inference: false
+  training:
+    stable_baselines3: 2.9.0
+    gamma: 1.0
+
+campaigns:
+  td3bc_bconly_frozen_v2:
+    stage: frozen_confirmation
+    algorithm: td3_bc
+    profile: td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v2
+    reward_scale_by_region:
+      us: 5.0e-4
+      global: 1.0e-4
+    learning_rate: 2.0e-4
+    buffer_size: 250000
+    learning_starts: 0
+    batch_size: 256
+    tau: 0.01
+    train_freq: 16
+    gradient_steps: 8
+    action_noise_sigma: 0.08
+    net_arch: [256, 256, 128]
+    teacher_name: native_marginal_cost
+    teacher_prefill_episodes: 1
+    teacher_bc_steps: 2000
+    teacher_bc_batch_size: 512
+    timesteps: 0
+  td3bc_postrl_frozen_v2:
+    stage: frozen_confirmation
+    algorithm: td3_bc
+    profile: td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v2
+    reward_scale_by_region:
+      us: 5.0e-4
+      global: 1.0e-4
+    learning_rate: 1.0e-5
+    buffer_size: 250000
+    learning_starts: 0
+    batch_size: 256
+    tau: 0.01
+    train_freq: 16
+    gradient_steps: 4
+    action_noise_sigma: 0.01
+    policy_delay: 2
+    target_policy_noise: 0.02
+    target_noise_clip: 0.05
+    net_arch: [256, 256, 128]
+    bc_alpha: 4.0
+    td3bc_lambda_alpha: 2.5
+    teacher_name: native_marginal_cost
+    teacher_prefill_episodes: 1
+    teacher_bc_steps: 0
+    teacher_bc_batch_size: 512
+    timesteps: 8192
+    warm_start_campaign: td3bc_bconly_frozen_v2
