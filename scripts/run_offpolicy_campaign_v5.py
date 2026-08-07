@@ -72,6 +72,11 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_normalized_text(path: Path) -> str:
+    text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def _load_frozen_protocol() -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     raw = yaml.safe_load(PROTOCOL_PATH.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or not isinstance(raw.get("campaigns"), dict):
@@ -89,7 +94,7 @@ def _load_frozen_protocol() -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
 
 V5_PROTOCOL, CAMPAIGNS = _load_frozen_protocol()
 PROTOCOL_ID = str(V5_PROTOCOL["protocol"]["id"])
-PROTOCOL_SHA256 = _sha256_file(PROTOCOL_PATH)
+PROTOCOL_SHA256 = _sha256_normalized_text(PROTOCOL_PATH)
 
 REGION_CONFIGS: dict[str, dict[str, Any]] = {
     "us": {
@@ -312,6 +317,10 @@ def _module_state_dict(module: th.nn.Module) -> dict[str, th.Tensor]:
     }
 
 
+def module_sha256(module: th.nn.Module) -> str:
+    return _tensor_sha256(_module_state_dict(module))
+
+
 def _parameter_delta_l2(
     before: dict[str, th.Tensor],
     after: dict[str, th.Tensor],
@@ -351,8 +360,8 @@ def actor_target_sync_summary(
         "synchronized": distance_after <= 1e-12,
         "distance_l2_before": distance_before,
         "distance_l2_after": distance_after,
-        "actor_hash": _tensor_sha256(_module_state_dict(model.actor)),
-        "actor_target_hash": _tensor_sha256(_module_state_dict(model.actor_target)),
+        "actor_hash": module_sha256(model.actor),
+        "actor_target_hash": module_sha256(model.actor_target),
     }
 
 
@@ -986,8 +995,10 @@ def run_job(job: Job) -> dict[str, Any]:
     callback = OffPolicyDiagnosticsCallback()
     model = make_model(job.algorithm, train_env, job.seed, stage_config)
     source_bc_model_path = campaign_source_bc_model_path(job, stage_config)
+    source_bc_model_sha256: str | None = None
     warm_start_actor_target_sync: dict[str, Any] | None = None
     if source_bc_model_path is not None:
+        source_bc_model_sha256 = _sha256_file(source_bc_model_path)
         _load_warm_start_parameters(
             model,
             source_bc_model_path,
@@ -1140,6 +1151,7 @@ def run_job(job: Job) -> dict[str, Any]:
     }
     if source_bc_model_path is not None:
         record["source_bc_model"] = str(source_bc_model_path.relative_to(ROOT))
+        record["source_bc_model_sha256"] = source_bc_model_sha256
         record["warm_start_actor_target_sync"] = warm_start_actor_target_sync
     if teacher_record is not None:
         record["teacher"] = teacher_record

@@ -22,7 +22,9 @@ from scripts.run_offpolicy_campaign_v5 import (  # noqa: E402
     PROTOCOL_ID,
     PROTOCOL_PATH,
     PROTOCOL_SHA256,
+    TD3BehaviorCloning,
     campaign_job,
+    module_sha256,
     model_dir,
 )
 
@@ -38,6 +40,15 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def saved_model_hashes(path: Path) -> dict[str, str]:
+    model = TD3BehaviorCloning.load(path, device="cpu")
+    return {
+        "actor": module_sha256(model.actor),
+        "actor_target": module_sha256(model.actor_target),
+        "critic": module_sha256(model.critic),
+    }
 
 
 def git_status_short() -> list[str]:
@@ -288,6 +299,12 @@ def post_rl_seed_provenance_pass(row: dict[str, Any]) -> bool:
         and weight.get("critic_hash_changed") is True
         and row.get("actor_hash_before") != row.get("actor_hash_after")
         and row.get("critic_hash_before") != row.get("critic_hash_after")
+        and row.get("saved_actor_hash") == row.get("actor_hash_after")
+        and row.get("saved_critic_hash") == row.get("critic_hash_after")
+        and row.get("source_bc_model_sha256")
+        == row.get("verified_source_bc_model_sha256")
+        and row.get("actor_hash_before") == row.get("source_bc_actor_hash")
+        and row.get("critic_hash_before") == row.get("source_bc_critic_hash")
         and float(weight.get("actor_parameter_delta_l2", 0.0)) > 0.0
         and float(weight.get("critic_parameter_delta_l2", 0.0)) > 0.0
         and sync.get("synchronized") is True
@@ -311,12 +328,52 @@ def seed_record(campaign_name: str, region: str, seed: int) -> dict[str, Any]:
     if not record_path.is_file() or not model_path.is_file():
         raise FileNotFoundError(f"missing model evidence under {seed_dir}")
     record = json.loads(record_path.read_text(encoding="utf-8"))
+    saved_hashes = saved_model_hashes(model_path)
     errors = _record_contract_errors(
         record,
         campaign_name=campaign_name,
         region=region,
         seed=seed,
     )
+    if record.get("actor_hash_after") != saved_hashes["actor"]:
+        errors.append("saved actor hash does not match record")
+    if record.get("critic_hash_after") != saved_hashes["critic"]:
+        errors.append("saved critic hash does not match record")
+    if config["role"] == "bc_only":
+        bc = record.get("teacher", {}).get("behavior_cloning", {})
+        if bc.get("actor_target_hash") != saved_hashes["actor_target"]:
+            errors.append("saved BC actor_target hash does not match record")
+        if saved_hashes["actor"] != saved_hashes["actor_target"]:
+            errors.append("saved BC actor and actor_target differ")
+
+    source_bc_fields: dict[str, Any] = {}
+    if config["role"] == "post_rl":
+        warm_campaign = str(config["warm_start_campaign"])
+        warm_job = campaign_job(warm_campaign, region=region, seed=seed)
+        warm_profile = str(CAMPAIGNS[warm_campaign]["profile"])
+        source_model = model_dir(warm_job, warm_profile) / "model.zip"
+        source_record_path = source_model.with_name("record.json")
+        if not source_model.is_file() or not source_record_path.is_file():
+            errors.append("source BC model or record is missing")
+        else:
+            source_record = json.loads(source_record_path.read_text(encoding="utf-8"))
+            source_saved_hashes = saved_model_hashes(source_model)
+            verified_source_sha = sha256(source_model)
+            if record.get("source_bc_model_sha256") != verified_source_sha:
+                errors.append("source BC model SHA-256 does not match training record")
+            if source_record.get("actor_hash_after") != source_saved_hashes["actor"]:
+                errors.append("source BC actor hash does not match its saved model")
+            if source_record.get("critic_hash_after") != source_saved_hashes["critic"]:
+                errors.append("source BC critic hash does not match its saved model")
+            if record.get("actor_hash_before") != source_saved_hashes["actor"]:
+                errors.append("post-RL actor-before hash does not match source BC actor")
+            if record.get("critic_hash_before") != source_saved_hashes["critic"]:
+                errors.append("post-RL critic-before hash does not match source BC critic")
+            source_bc_fields = {
+                "verified_source_bc_model_sha256": verified_source_sha,
+                "source_bc_actor_hash": source_saved_hashes["actor"],
+                "source_bc_critic_hash": source_saved_hashes["critic"],
+            }
     if errors:
         raise ValueError(
             f"{campaign_name}/{region}/s{seed} violates evidence contract: "
@@ -361,6 +418,9 @@ def seed_record(campaign_name: str, region: str, seed: int) -> dict[str, Any]:
         "critic_hash_before": record["critic_hash_before"],
         "critic_hash_after": record["critic_hash_after"],
         "weight_update_evidence": record["weight_update_evidence"],
+        "saved_actor_hash": saved_hashes["actor"],
+        "saved_actor_target_hash": saved_hashes["actor_target"],
+        "saved_critic_hash": saved_hashes["critic"],
         "warm_start_actor_target_sync": record.get(
             "warm_start_actor_target_sync",
             {},
@@ -387,9 +447,11 @@ def seed_record(campaign_name: str, region: str, seed: int) -> dict[str, Any]:
         "protocol_sha256": record["protocol_sha256"],
         "stable_baselines3_version": record["stable_baselines3_version"],
         "provenance_pass": True,
+        **source_bc_fields,
     }
     if "source_bc_model" in record:
         row["source_bc_model"] = record["source_bc_model"]
+        row["source_bc_model_sha256"] = record["source_bc_model_sha256"]
     if "rl_hyperparameters" in record:
         row["rl_hyperparameters"] = record["rl_hyperparameters"]
     if config["role"] == "post_rl":
@@ -447,24 +509,34 @@ def variant_manifest(
     }
 
 
-def _commit_is_available_ancestor(commit: str) -> bool:
-    exists = (
-        subprocess.run(
-            ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
-            cwd=ROOT,
-            check=False,
-        ).returncode
-        == 0
+def _git_head() -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
+
+
+def _protocol_hash_at_commit(commit: str) -> str:
+    relative = PROTOCOL_PATH.relative_to(ROOT).as_posix()
+    payload = subprocess.check_output(
+        ["git", "show", f"{commit}:{relative}"],
+        cwd=ROOT,
     )
-    ancestor = (
-        subprocess.run(
-            ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
-            cwd=ROOT,
-            check=False,
-        ).returncode
-        == 0
+    normalized = payload.decode("utf-8").replace("\r\n", "\n").encode("utf-8")
+    return hashlib.sha256(normalized).hexdigest()
+
+
+def source_commit_contract_pass(
+    source_commits: set[str],
+    *,
+    current_head: str,
+    committed_protocol_sha256: str,
+) -> bool:
+    return bool(
+        source_commits == {current_head}
+        and committed_protocol_sha256 == PROTOCOL_SHA256
     )
-    return exists and ancestor
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -542,8 +614,16 @@ def main(argv: list[str] | None = None) -> None:
     if len(source_commits) != 1:
         raise ValueError(f"records span multiple source commits: {sorted(source_commits)}")
     source_commit = next(iter(source_commits))
-    if not _commit_is_available_ancestor(source_commit):
-        raise ValueError(f"record source commit is unavailable or not an ancestor: {source_commit}")
+    current_head = _git_head()
+    committed_protocol_sha256 = _protocol_hash_at_commit(source_commit)
+    if not source_commit_contract_pass(
+        source_commits,
+        current_head=current_head,
+        committed_protocol_sha256=committed_protocol_sha256,
+    ):
+        raise ValueError(
+            "record source commit/protocol does not match the current committed source"
+        )
 
     canonical_dir = OUT_ROOT / f"canonical_v5_{args.suffix}"
     canonical_dir.mkdir(parents=True, exist_ok=True)

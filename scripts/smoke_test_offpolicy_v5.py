@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from scripts.run_offpolicy_campaign_v5 import (
     campaign_job,
     evaluate_model,
     make_model,
+    module_sha256,
     prefill_replay_buffer,
     resolve_stage_config,
     teacher_action,
@@ -34,6 +36,8 @@ from scripts.run_offpolicy_campaign_v5 import (
 from scripts.build_offpolicy_evidence_v5 import (
     classify_workspace_state,
     post_rl_seed_provenance_pass,
+    saved_model_hashes,
+    source_commit_contract_pass,
     validate_campaign_roles,
 )
 
@@ -382,6 +386,12 @@ def test_evidence_rejects_wrong_roles_dirty_source_and_tampered_hashes() -> None
         "actor_hash_after": "actor-after",
         "critic_hash_before": "critic-before",
         "critic_hash_after": "critic-after",
+        "saved_actor_hash": "actor-after",
+        "saved_critic_hash": "critic-after",
+        "source_bc_model_sha256": "bc-model-sha",
+        "verified_source_bc_model_sha256": "bc-model-sha",
+        "source_bc_actor_hash": "actor-before",
+        "source_bc_critic_hash": "critic-before",
         "weight_update_evidence": {
             "actor_hash_changed": True,
             "critic_hash_changed": True,
@@ -401,13 +411,51 @@ def test_evidence_rejects_wrong_roles_dirty_source_and_tampered_hashes() -> None
     }
     assert post_rl_seed_provenance_pass(valid) is True
     tampered = deepcopy(valid)
-    tampered["actor_hash_after"] = tampered["actor_hash_before"]
+    tampered["actor_hash_after"] = "arbitrary-unequal-tampered-hash"
     assert post_rl_seed_provenance_pass(tampered) is False
+    replaced_bc = deepcopy(valid)
+    replaced_bc["verified_source_bc_model_sha256"] = "replacement-sha"
+    assert post_rl_seed_provenance_pass(replaced_bc) is False
     bc_only = deepcopy(valid)
     bc_only["campaign_role"] = "bc_only"
     bc_only["training_mode"] = "teacher_bc_only"
     bc_only["n_updates"] = 0
     assert post_rl_seed_provenance_pass(bc_only) is False
+    assert source_commit_contract_pass(
+        {"source-head"},
+        current_head="source-head",
+        committed_protocol_sha256=PROTOCOL_SHA256,
+    )
+    assert not source_commit_contract_pass(
+        {"41aff32-old-source"},
+        current_head="source-head",
+        committed_protocol_sha256=PROTOCOL_SHA256,
+    )
+    assert not source_commit_contract_pass(
+        {"source-head"},
+        current_head="source-head",
+        committed_protocol_sha256="tampered-protocol",
+    )
+
+
+def test_saved_model_hashes_are_recomputed() -> None:
+    env = Monitor(make_env())
+    job = campaign_job("td3bc_bconly_frozen_v3", region="us", seed=43)
+    config = {
+        **resolve_stage_config(job),
+        "buffer_size": 32,
+        "batch_size": 8,
+        "net_arch": (32, 32),
+    }
+    model = make_model(job.algorithm, env, job.seed, config)
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "model"
+        model.save(path)
+        hashes = saved_model_hashes(path.with_suffix(".zip"))
+    assert hashes["actor"] == module_sha256(model.actor)
+    assert hashes["actor_target"] == module_sha256(model.actor_target)
+    assert hashes["critic"] == module_sha256(model.critic)
+    env.close()
 
 
 def test_sb3_runtime_is_pinned() -> None:
@@ -428,6 +476,7 @@ def main() -> None:
     test_behavior_clone_synchronizes_actor_target()
     test_origin_decoder_adjustment_is_measured()
     test_evidence_rejects_wrong_roles_dirty_source_and_tampered_hashes()
+    test_saved_model_hashes_are_recomputed()
     test_sb3_runtime_is_pinned()
     print("smoke_test_offpolicy_v5: PASS")
 
