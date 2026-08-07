@@ -93,10 +93,167 @@ def _greedy_linear_allocation(
     return allocation
 
 
+def _drain_exact_edf(
+    pools: tuple[BatchPool, ...],
+    amount: float,
+) -> tuple[np.ndarray, list[tuple[int, int, float]]]:
+    remaining = [
+        [int(entry.deadline_step), origin, float(entry.cpu_demand)]
+        for origin, pool in enumerate(pools)
+        for entry in pool.entries
+        if float(entry.cpu_demand) > 0.0
+    ]
+    remaining.sort(key=lambda item: (item[0], item[1]))
+    drained = np.zeros(len(pools), dtype=np.float64)
+    left = float(amount)
+    for entry in remaining:
+        if left <= _EPS:
+            break
+        take = min(float(entry[2]), left)
+        if take > 0.0:
+            drained[int(entry[1])] += take
+            entry[2] -= take
+            left -= take
+    if left > 1e-8:
+        raise RuntimeError("exact EDF drain exceeded available pool demand")
+    return drained, [
+        (int(deadline), int(origin), float(cpu))
+        for deadline, origin, cpu in remaining
+        if cpu > 1e-12
+    ]
+
+
 def _rates_to_logits(values: np.ndarray) -> np.ndarray:
     values = np.asarray(values, dtype=np.float64)
     clipped = np.clip(values, _EPS, 1.0 - _EPS)
     return np.log(clipped / (1.0 - clipped))
+
+
+def _urgency_segments(
+    remaining_entries: list[tuple[int, int, float]],
+    current_step: int,
+    urgency_weight: float,
+) -> list[tuple[float, float]]:
+    segments: list[tuple[float, float]] = []
+    if urgency_weight <= 0.0:
+        return segments
+    for deadline, _origin, amount in remaining_entries:
+        remaining = max(int(deadline) - int(current_step), 1)
+        benefit = float(urgency_weight) / float(remaining)
+        segments.append((benefit, float(amount)))
+    segments.sort(key=lambda item: (-item[0], item[1]))
+    return segments
+
+
+def _total_alloc_for_mu(
+    mu: float,
+    linear: np.ndarray,
+    quad: np.ndarray,
+    capacities: np.ndarray,
+) -> float:
+    total = 0.0
+    for a_i, b_i, cap_i in zip(linear, quad, capacities):
+        if b_i <= 0.0:
+            if mu > a_i + 1e-12:
+                total += float(cap_i)
+            continue
+        total += float(np.clip((mu - a_i) / (2.0 * b_i), 0.0, cap_i))
+    return total
+
+
+def _economic_dispatch(
+    linear: np.ndarray,
+    quad: np.ndarray,
+    capacities: np.ndarray,
+    total_load: float,
+) -> tuple[np.ndarray, float, float]:
+    linear = np.asarray(linear, dtype=np.float64)
+    quad = np.asarray(quad, dtype=np.float64)
+    capacities = np.asarray(capacities, dtype=np.float64)
+    total_load = float(total_load)
+    capacity_total = float(capacities.sum())
+    if total_load < -1e-12 or total_load > capacity_total + 1e-12:
+        raise ValueError(
+            f"requested load {total_load} outside feasible range [0, {capacity_total}]"
+        )
+    if total_load <= 1e-12:
+        return (
+            np.zeros_like(capacities),
+            0.0,
+            float(np.min(linear)) if linear.size else 0.0,
+        )
+    if capacity_total - total_load <= 1e-12:
+        alloc = capacities.copy()
+        cost = float(np.dot(linear, alloc) + np.dot(quad, alloc * alloc))
+        mu = float(np.max(linear + 2.0 * quad * alloc))
+        return alloc, cost, mu
+    if np.all(quad <= 1e-12):
+        alloc = np.zeros_like(capacities)
+        remaining = total_load
+        for index in np.argsort(linear):
+            take = min(float(capacities[index]), remaining)
+            alloc[index] = take
+            remaining -= take
+            if remaining <= 1e-12:
+                break
+        if remaining > 1e-8:
+            raise RuntimeError("linear dispatch failed to place the requested load")
+        cost = float(np.dot(linear, alloc))
+        active = alloc > 1e-12
+        mu = (
+            float(np.max(linear[active]))
+            if np.any(active)
+            else float(np.min(linear))
+        )
+        return alloc, cost, mu
+
+    low = float(np.min(linear) - 1.0)
+    high = float(np.max(linear + 2.0 * quad * capacities) + 1.0)
+    for _ in range(120):
+        midpoint = 0.5 * (low + high)
+        if _total_alloc_for_mu(midpoint, linear, quad, capacities) >= total_load:
+            high = midpoint
+        else:
+            low = midpoint
+    mu = high
+    alloc = np.zeros_like(capacities)
+    residual = total_load
+    for index, (a_i, b_i, cap_i) in enumerate(zip(linear, quad, capacities)):
+        if b_i <= 0.0:
+            if mu > a_i + 1e-10:
+                alloc[index] = float(cap_i)
+                residual -= alloc[index]
+            continue
+        value = float(np.clip((mu - a_i) / (2.0 * b_i), 0.0, cap_i))
+        alloc[index] = value
+        residual -= value
+    if residual > 1e-8:
+        marginals = linear + 2.0 * quad * alloc
+        room = capacities - alloc
+        candidates = np.argsort(marginals)
+        for index in candidates:
+            if room[index] <= 1e-12:
+                continue
+            take = min(float(room[index]), residual)
+            alloc[index] += take
+            residual -= take
+            if residual <= 1e-8:
+                break
+    elif residual < -1e-8:
+        marginals = linear + 2.0 * quad * alloc
+        candidates = np.argsort(-marginals)
+        for index in candidates:
+            if alloc[index] <= 1e-12:
+                continue
+            take = min(float(alloc[index]), -residual)
+            alloc[index] -= take
+            residual += take
+            if residual >= -1e-8:
+                break
+    if abs(residual) > 1e-6:
+        raise RuntimeError(f"dispatch residual too large: {residual}")
+    cost = float(np.dot(linear, alloc) + np.dot(quad, alloc * alloc))
+    return alloc, cost, float(mu)
 
 
 class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
@@ -255,6 +412,39 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             marginal_demand_charge_cost=marginal_demand,
         )
 
+    def _economic_coefficients(
+        self,
+        current_step: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        linear = np.zeros(self.n_dc, dtype=np.float64)
+        quad = np.zeros(self.n_dc, dtype=np.float64)
+        for index, site in enumerate(self.sites):
+            power_model = site.power_model or self.power_model
+            rated_power = site.rated_power_mw
+            linear[index] = (
+                float(site.get_price(current_step))
+                * 1000.0
+                * INTERVAL_HOURS
+                * power_model.slope
+                * rated_power
+            )
+            positive_demand = max(float(site.get_net_demand(current_step)), 0.0)
+            quad[index] = (
+                self.peak_penalty_weight
+                * positive_demand
+                * (power_model.slope * rated_power) ** 2
+            )
+            linear[index] += (
+                2.0
+                * self.peak_penalty_weight
+                * positive_demand
+                * power_model.idle_power
+                * rated_power
+                * power_model.slope
+                * rated_power
+            )
+        return linear, quad
+
     def _optional_total_from_logit(
         self,
         logit: float,
@@ -407,6 +597,165 @@ class ResidualSafeOffPolicyEnv(SafeMultiDCEnv):
             destination_batch
             if float(destination_batch.sum()) > _EPS
             else np.maximum(candidate_capacity, _EPS)
+        )
+        return np.concatenate(
+            [
+                service_logits,
+                np.array([optional_total_logit], dtype=np.float64),
+                origin_logits,
+                destination_logits,
+            ]
+        ).astype(np.float32)
+
+    def exact_native_teacher_action(self) -> np.ndarray:
+        """Translate the exact native teacher into the residual decoder action space."""
+        current_step = self.step_index
+        context = self.residual_decoder_context(current_step)
+        maximum_total = min(
+            float(context.pool_totals.sum()),
+            max(
+                float(context.effective_capacity.sum()) - float(context.total_service),
+                0.0,
+            ),
+        )
+        mandatory_total = float(context.mandatory_hint_total)
+        if mandatory_total > maximum_total + 1e-8:
+            raise SafetyInfeasibleError(
+                {
+                    "reason": "teacher_mandatory_batch_capacity_deficit",
+                    "step": current_step,
+                    "mandatory_batch": mandatory_total,
+                    "available_batch_capacity": maximum_total,
+                }
+            )
+        urgency_weight = (
+            float(self.reward_config.urgency_potential_weight)
+            if self.reward_config is not None
+            else 0.0
+        )
+        linear, quad = self._economic_coefficients(current_step)
+        if maximum_total - mandatory_total <= _EPS:
+            total_batch_target = mandatory_total
+        else:
+            _mandatory_drain, remaining_entries = _drain_exact_edf(
+                context.pools_after_arrival,
+                mandatory_total,
+            )
+            segments = _urgency_segments(
+                remaining_entries,
+                current_step,
+                urgency_weight,
+            )
+            batch_weight = float(self.reward_batch_completion_weight)
+            current = mandatory_total
+            segment_index = 0
+            total_batch_target = maximum_total
+            while current < maximum_total - 1e-12:
+                benefit = (
+                    segments[segment_index][0]
+                    if segment_index < len(segments)
+                    else 0.0
+                )
+                segment_room = (
+                    segments[segment_index][1]
+                    if segment_index < len(segments)
+                    else maximum_total - current
+                )
+                upper = min(maximum_total, current + segment_room)
+                target_mu = batch_weight + benefit
+                low_load = context.total_service + current
+                high_load = context.total_service + upper
+                _low_alloc, _low_cost, mu_low = _economic_dispatch(
+                    linear,
+                    quad,
+                    context.effective_capacity,
+                    low_load,
+                )
+                if mu_low >= target_mu - 1e-10:
+                    total_batch_target = current
+                    break
+                _high_alloc, _high_cost, mu_high = _economic_dispatch(
+                    linear,
+                    quad,
+                    context.effective_capacity,
+                    high_load,
+                )
+                if mu_high <= target_mu + 1e-10:
+                    current = upper
+                    if segment_index < len(segments):
+                        segment_index += 1
+                    total_batch_target = current
+                    continue
+                left = current
+                right = upper
+                for _ in range(80):
+                    midpoint = 0.5 * (left + right)
+                    _mid_alloc, _mid_cost, mu_mid = _economic_dispatch(
+                        linear,
+                        quad,
+                        context.effective_capacity,
+                        context.total_service + midpoint,
+                    )
+                    if mu_mid >= target_mu:
+                        right = midpoint
+                    else:
+                        left = midpoint
+                total_batch_target = right
+                break
+
+        origin_batch, _remaining = _drain_exact_edf(
+            context.pools_after_arrival,
+            total_batch_target,
+        )
+        total_load_target = context.total_service + float(total_batch_target)
+        if total_load_target <= _EPS:
+            load_share = np.full(self.n_dc, 1.0 / self.n_dc, dtype=np.float64)
+        else:
+            total_load_alloc, _dispatch_cost, _mu = _economic_dispatch(
+                linear,
+                quad,
+                context.effective_capacity,
+                total_load_target,
+            )
+            load_share = total_load_alloc / total_load_target
+
+        service = load_share * context.total_service
+        residual_capacity = np.maximum(context.effective_capacity - service, 0.0)
+        destination_batch = load_share * float(origin_batch.sum())
+        optional_origin = np.maximum(
+            origin_batch - np.asarray(context.mandatory_hint_by_origin, dtype=np.float64),
+            0.0,
+        )
+        optional_total = float(optional_origin.sum())
+        optional_upper_total = max(
+            min(
+                float(context.pool_totals.sum()),
+                float(residual_capacity.sum()),
+            )
+            - mandatory_total,
+            0.0,
+        )
+        optional_upper = np.maximum(
+            np.asarray(context.pool_totals, dtype=np.float64)
+            - np.asarray(context.mandatory_hint_by_origin, dtype=np.float64),
+            0.0,
+        )
+        service_logits = _shares_to_logits(
+            service if float(service.sum()) > _EPS else context.effective_capacity
+        )
+        optional_total_logit = self._optional_total_logit(
+            optional_total,
+            optional_upper_total,
+        )
+        origin_logits = _shares_to_logits(
+            optional_origin
+            if float(optional_origin.sum()) > _EPS
+            else np.maximum(optional_upper, _EPS)
+        )
+        destination_logits = _shares_to_logits(
+            destination_batch
+            if float(destination_batch.sum()) > _EPS
+            else np.maximum(residual_capacity, _EPS)
         )
         return np.concatenate(
             [

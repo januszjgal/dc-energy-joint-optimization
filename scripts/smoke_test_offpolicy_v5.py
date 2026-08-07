@@ -102,11 +102,23 @@ def test_teacher_action_stays_native_safe() -> None:
     env.close()
 
 
+def test_exact_teacher_action_stays_native_safe() -> None:
+    env = make_env()
+    env.reset(seed=13)
+    action = env.exact_native_teacher_action()
+    _, _, _, _, info = env.step(action)
+    assert info["native_decoder_used"] is True
+    assert info["safety_intervened"] is False
+    assert info["total_batch_expired"] == 0.0
+    env.close()
+
+
 def main() -> None:
     test_observation_contains_residual_features()
     test_status_quo_action_stays_native_safe()
     test_random_action_preserves_hard_safety()
     test_teacher_action_stays_native_safe()
+    test_exact_teacher_action_stays_native_safe()
     print("smoke_test_offpolicy_v5: PASS")
 
 

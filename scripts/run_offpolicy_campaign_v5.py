@@ -337,6 +337,8 @@ def make_model(
 
 
 def teacher_action(env: ResidualSafeOffPolicyEnv, teacher_name: str) -> np.ndarray:
+    if teacher_name == "exact_native":
+        return env.exact_native_teacher_action()
     if teacher_name == "native_marginal_cost":
         return env.marginal_cost_teacher_action()
     if teacher_name == "status_quo":
