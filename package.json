@@ -1,0 +1,12 @@
+{
+  "name": "dc-energy-joint-optimization",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reproducible thesis artifacts for joint data-center energy optimization",
+  "scripts": {
+    "build:thesis": "python scripts/build_final_thesis.py"
+  },
+  "dependencies": {
+    "docx": "9.7.1"
+  }
+}
