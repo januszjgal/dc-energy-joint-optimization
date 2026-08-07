@@ -1287,9 +1287,24 @@ class MultiDCEnv(gym.Env):
                 svc = site.get_service_demand(t)
                 batch_arrival = site.get_batch_demand(t)
                 total_service += svc
-                pool_size = site.batch_pool.total_demand
+                actionable_state = bool(
+                    getattr(self, "actionable_deadline_state", False)
+                )
+                pool_size = (
+                    site.batch_pool.actionable_total_demand(t)
+                    if actionable_state
+                    else site.batch_pool.total_demand
+                )
                 total_batch_pool += pool_size
-                urgency = site.batch_pool.urgency(t, self.urgency_horizon_steps)
+                urgency = (
+                    site.batch_pool.actionable_urgency(
+                        t, self.urgency_horizon_steps
+                    )
+                    if actionable_state
+                    else site.batch_pool.urgency(
+                        t, self.urgency_horizon_steps
+                    )
+                )
                 per_dc = [
                     svc,
                     # This arrival is injected later in the same step and can
@@ -1314,9 +1329,16 @@ class MultiDCEnv(gym.Env):
                     per_dc.append(self._billed_peak_mw[i] / site.rated_power_mw)
                 if self.deadline_bucket_edges:
                     deadline_buckets = list(
-                        site.batch_pool.deadline_histogram(
-                            t,
-                            self.deadline_bucket_edges,
+                        (
+                            site.batch_pool.actionable_deadline_histogram(
+                                t,
+                                self.deadline_bucket_edges,
+                            )
+                            if actionable_state
+                            else site.batch_pool.deadline_histogram(
+                                t,
+                                self.deadline_bucket_edges,
+                            )
                         )
                     )
                     arrival_bucket = bisect_left(
