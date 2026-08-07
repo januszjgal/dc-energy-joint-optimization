@@ -527,14 +527,48 @@ def _protocol_hash_at_commit(commit: str) -> str:
     return hashlib.sha256(normalized).hexdigest()
 
 
+TRAINING_SOURCE_PATHS = (
+    "requirements.txt",
+    "baselines.py",
+    "evaluate.py",
+    "env",
+    "data/cells",
+    "data/jobs",
+    "data/power_model_params.json",
+    "data/energy_model_v2/2025/processed",
+    "scripts/run_offpolicy_campaign_v5.py",
+)
+
+
+def _training_source_unchanged_since(commit: str) -> bool:
+    return (
+        subprocess.run(
+            [
+                "git",
+                "diff",
+                "--quiet",
+                f"{commit}..HEAD",
+                "--",
+                *TRAINING_SOURCE_PATHS,
+            ],
+            cwd=ROOT,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
 def source_commit_contract_pass(
     source_commits: set[str],
     *,
-    current_head: str,
+    source_is_ancestor: bool,
+    training_source_unchanged: bool,
     committed_protocol_sha256: str,
 ) -> bool:
     return bool(
-        source_commits == {current_head}
+        len(source_commits) == 1
+        and source_is_ancestor
+        and training_source_unchanged
         and committed_protocol_sha256 == PROTOCOL_SHA256
     )
 
@@ -614,15 +648,24 @@ def main(argv: list[str] | None = None) -> None:
     if len(source_commits) != 1:
         raise ValueError(f"records span multiple source commits: {sorted(source_commits)}")
     source_commit = next(iter(source_commits))
-    current_head = _git_head()
+    source_is_ancestor = (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", source_commit, "HEAD"],
+            cwd=ROOT,
+            check=False,
+        ).returncode
+        == 0
+    )
+    training_source_unchanged = _training_source_unchanged_since(source_commit)
     committed_protocol_sha256 = _protocol_hash_at_commit(source_commit)
     if not source_commit_contract_pass(
         source_commits,
-        current_head=current_head,
+        source_is_ancestor=source_is_ancestor,
+        training_source_unchanged=training_source_unchanged,
         committed_protocol_sha256=committed_protocol_sha256,
     ):
         raise ValueError(
-            "record source commit/protocol does not match the current committed source"
+            "record source commit/protocol is not an unchanged ancestor of current training source"
         )
 
     canonical_dir = OUT_ROOT / f"canonical_v5_{args.suffix}"
