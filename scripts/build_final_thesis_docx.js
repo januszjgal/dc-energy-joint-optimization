@@ -12,6 +12,8 @@ const {
   HeadingLevel,
   ImageRun,
   LevelFormat,
+  Math: OfficeMath,
+  MathRun,
   Packer,
   PageBreak,
   PageNumber,
@@ -48,17 +50,164 @@ function readFrontMatter(lines) {
   while (index < lines.length && lines[index] !== "---") {
     const match = lines[index].match(/^([^:]+):\s*(.*)$/);
     if (match) {
-      metadata[match[1].trim()] = match[2].trim();
+      const value = match[2].trim();
+      metadata[match[1].trim()] =
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+          ? value.slice(1, -1)
+          : value;
     }
     index += 1;
   }
   return { metadata, start: Math.min(index + 1, lines.length) };
 }
 
+function readBracedGroup(text, start) {
+  if (text[start] !== "{") return null;
+  let depth = 0;
+  for (let index = start; index < text.length; index += 1) {
+    if (text[index] === "{") depth += 1;
+    if (text[index] === "}") depth -= 1;
+    if (depth === 0) {
+      return {
+        content: text.slice(start + 1, index),
+        end: index + 1,
+      };
+    }
+  }
+  return null;
+}
+
+function replaceLatexFractions(source) {
+  let text = source;
+  for (let pass = 0; pass < 20; pass += 1) {
+    const marker = text.indexOf("\\frac");
+    if (marker < 0) break;
+    let cursor = marker + 5;
+    while (text[cursor] === " ") cursor += 1;
+    const numerator = readBracedGroup(text, cursor);
+    if (!numerator) {
+      text = `${text.slice(0, marker)}/${text.slice(cursor)}`;
+      continue;
+    }
+    cursor = numerator.end;
+    while (text[cursor] === " ") cursor += 1;
+    const denominator = readBracedGroup(text, cursor);
+    if (!denominator) {
+      text = `${text.slice(0, marker)}(${numerator.content})/${text.slice(cursor)}`;
+      continue;
+    }
+    text =
+      text.slice(0, marker) +
+      `(${numerator.content})/(${denominator.content})` +
+      text.slice(denominator.end);
+  }
+  return text;
+}
+
+function normalizeMathText(source) {
+  let text = replaceLatexFractions(source)
+    .replace(/\\begin\{(?:aligned|array|cases)\}/g, "")
+    .replace(/\\end\{(?:aligned|array|cases)\}/g, "")
+    .replace(/\\\\/g, "; ")
+    .replace(/&/g, "")
+    .replace(/\\mathbb\s*E/g, "𝔼")
+    .replace(/\\mathbb\s*P/g, "ℙ")
+    .replace(/\\mathcal\s*([A-Za-z])/g, "$1")
+    .replace(/\\(?:mathrm|textrm|text|operatorname|mathbf|mathit)\s+([A-Za-z]+)/g, "$1")
+    .replace(/\\mathbb\{R\}/g, "ℝ")
+    .replace(/\\mathbb\{N\}/g, "ℕ")
+    .replace(/\\mathbb\{Z\}/g, "ℤ")
+    .replace(/\\bar\s*([A-Za-z])/g, "$1̄")
+    .replace(/\\widehat\s*([A-Za-z])/g, "$1̂")
+    .replace(/\\tilde\s*([A-Za-z])/g, "$1̃");
+
+  for (let pass = 0; pass < 6; pass += 1) {
+    const before = text;
+    text = text
+      .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1)/($2)")
+      .replace(
+        /\\(?:mathrm|textrm|text|operatorname|mathbf|mathit|mathcal|underbrace)\{([^{}]*)\}/g,
+        "$1",
+      )
+      .replace(/_\{([^{}]*)\}/g, "_$1")
+      .replace(/\^\{([^{}]*)\}/g, "^$1");
+    if (text === before) break;
+  }
+
+  const symbols = {
+    "\\\\sum": "∑",
+    "\\\\prod": "∏",
+    "\\\\int": "∫",
+    "\\\\cdot": "·",
+    "\\\\times": "×",
+    "\\\\leq": "≤",
+    "\\\\le": "≤",
+    "\\\\geq": "≥",
+    "\\\\ge": "≥",
+    "\\\\neq": "≠",
+    "\\\\approx": "≈",
+    "\\\\equiv": "≡",
+    "\\\\in": "∈",
+    "\\\\notin": "∉",
+    "\\\\subset": "⊂",
+    "\\\\subseteq": "⊆",
+    "\\\\mid": "|",
+    "\\\\forall": "∀",
+    "\\\\exists": "∃",
+    "\\\\rightarrow": "→",
+    "\\\\longrightarrow": "→",
+    "\\\\to": "→",
+    "\\\\mapsto": "↦",
+    "\\\\infty": "∞",
+    "\\\\partial": "∂",
+    "\\\\nabla": "∇",
+    "\\\\alpha": "α",
+    "\\\\beta": "β",
+    "\\\\gamma": "γ",
+    "\\\\delta": "δ",
+    "\\\\epsilon": "ε",
+    "\\\\varepsilon": "ε",
+    "\\\\eta": "η",
+    "\\\\theta": "θ",
+    "\\\\kappa": "κ",
+    "\\\\lambda": "λ",
+    "\\\\mu": "μ",
+    "\\\\rho": "ρ",
+    "\\\\sigma": "σ",
+    "\\\\tau": "τ",
+    "\\\\phi": "φ",
+    "\\\\pi": "π",
+    "\\\\psi": "ψ",
+    "\\\\varrho": "ϱ",
+    "\\\\ell": "ℓ",
+    "\\\\omega": "ω",
+    "\\\\Delta": "Δ",
+    "\\\\Phi": "Φ",
+    "\\\\Psi": "Ψ",
+    "\\\\Omega": "Ω",
+    "\\\\lceil": "⌈",
+    "\\\\rceil": "⌉",
+    "\\\\ldots": "…",
+  };
+  for (const [pattern, replacement] of Object.entries(symbols)) {
+    text = text.replace(new RegExp(pattern, "g"), replacement);
+  }
+  return text
+    .replace(/\\(?:left|right|big|Big|bigg|Bigg|Bigl|Bigr)/g, "")
+    .replace(/\\(?:quad|qquad|,|;|!)/g, " ")
+    .replace(/\\(?:bar|widehat|tilde|underbrace)/g, "")
+    .replace(/\\frac/g, "/")
+    .replace(/\\([A-Za-z]+)/g, "$1")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function parseInline(text, options = {}) {
   const runs = [];
   const tokenPattern =
-    /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
+    /(\*\*[^*]+\*\*|`[^`]+`|\$[^$]+\$|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   let cursor = 0;
   for (const match of text.matchAll(tokenPattern)) {
     if (match.index > cursor) {
@@ -89,6 +238,15 @@ function parseInline(text, options = {}) {
           font: MONO_FONT,
           size: options.size || 20,
           shading: { fill: "EEF1F4", type: ShadingType.CLEAR },
+        }),
+      );
+    } else if (token.startsWith("$")) {
+      runs.push(
+        new TextRun({
+          text: normalizeMathText(token.slice(1, -1)),
+          italics: true,
+          font: "Cambria Math",
+          size: options.size,
         }),
       );
     } else if (token.startsWith("*")) {
@@ -401,11 +559,10 @@ function bodyBlocks(lines, start) {
           alignment: AlignmentType.CENTER,
           spacing: { before: 120, after: 120 },
           children: [
-            new TextRun({
-              text: equation.join(" "),
-              font: "Cambria Math",
-              size: 22,
-              italics: true,
+            new OfficeMath({
+              children: [
+                new MathRun(normalizeMathText(equation.join(" "))),
+              ],
             }),
           ],
         }),
