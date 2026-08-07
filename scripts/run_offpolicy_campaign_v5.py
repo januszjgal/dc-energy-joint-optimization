@@ -18,6 +18,7 @@ import numpy as np
 import stable_baselines3 as sb3
 import torch as th
 import torch.nn.functional as F
+import yaml
 from stable_baselines3 import SAC, TD3
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
@@ -39,6 +40,7 @@ SCREEN_RESULTS_PATH = OUT_ROOT / "screen_results.json"
 ITERATE_RESULTS_PATH = OUT_ROOT / "iterate_results.json"
 SUMMARY_PATH = OUT_ROOT / "summary.json"
 EXPECTED_SB3_VERSION = "2.9.0"
+PROTOCOL_PATH = ROOT / "env" / "protocols" / "v5_offpolicy_td3bc.yaml"
 
 for env_name in (
     "OMP_NUM_THREADS",
@@ -60,6 +62,34 @@ GOAL_INTERVENTION = 0.01
 DEFAULT_WORKERS = 4
 DEFAULT_CAMPAIGN_SEEDS = (301, 302, 303, 304, 305)
 DESCRIPTIVE_TRANSFER_SEED = 42
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_frozen_protocol() -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    raw = yaml.safe_load(PROTOCOL_PATH.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or not isinstance(raw.get("campaigns"), dict):
+        raise ValueError(f"invalid v5 protocol: {PROTOCOL_PATH}")
+    campaigns: dict[str, dict[str, Any]] = {}
+    for name, config in raw["campaigns"].items():
+        if not isinstance(config, dict):
+            raise ValueError(f"invalid campaign {name!r} in {PROTOCOL_PATH}")
+        campaign = dict(config)
+        if "net_arch" in campaign:
+            campaign["net_arch"] = tuple(int(value) for value in campaign["net_arch"])
+        campaigns[str(name)] = campaign
+    return raw, campaigns
+
+
+V5_PROTOCOL, CAMPAIGNS = _load_frozen_protocol()
+PROTOCOL_ID = str(V5_PROTOCOL["protocol"]["id"])
+PROTOCOL_SHA256 = _sha256_file(PROTOCOL_PATH)
 
 REGION_CONFIGS: dict[str, dict[str, Any]] = {
     "us": {
@@ -91,13 +121,6 @@ REGION_CONFIGS: dict[str, dict[str, Any]] = {
         },
     },
 }
-
-FROZEN_BC_PROFILE_V2 = (
-    "td3bc-bconly-native-marginal-cost-ad-frozen-confirmation-v2"
-)
-FROZEN_POSTRL_PROFILE_V2 = (
-    "td3bc-postrl8k-bca4-lr1e5-noise001-ad-frozen-confirmation-v2"
-)
 
 ALGO_CONFIGS: dict[str, dict[str, dict[str, Any]]] = {
     "screen": {
@@ -155,66 +178,6 @@ ALGO_CONFIGS: dict[str, dict[str, dict[str, Any]]] = {
             "action_noise_sigma": 0.08,
             "net_arch": (256, 256, 128),
         },
-    },
-}
-
-CAMPAIGNS: dict[str, dict[str, Any]] = {
-    "td3bc_bconly_frozen_v2": {
-        "stage": "frozen_confirmation",
-        "algorithm": "td3_bc",
-        "profile": FROZEN_BC_PROFILE_V2,
-        "reward_scale_by_region": {"us": 5.0e-4, "global": 1.0e-4},
-        "learning_rate": 2e-4,
-        "buffer_size": 250_000,
-        "learning_starts": 0,
-        "batch_size": 256,
-        "tau": 0.01,
-        "train_freq": 16,
-        "gradient_steps": 8,
-        "action_noise_sigma": 0.08,
-        "policy_delay": 2,
-        "target_policy_noise": 0.16,
-        "target_noise_clip": 0.16,
-        "net_arch": (256, 256, 128),
-        "teacher_name": "native_marginal_cost",
-        "teacher_prefill_episodes": 1,
-        "teacher_bc_steps": 2000,
-        "teacher_bc_batch_size": 512,
-        "timesteps": 0,
-        "evaluation_label": "a-d-development-frozen-confirmation",
-        "descriptive_transfer_label": "e-h-descriptive-transfer",
-        "teacher_present_during_rl": False,
-        "teacher_present_at_inference": False,
-    },
-    "td3bc_postrl_frozen_v2": {
-        "stage": "frozen_confirmation",
-        "algorithm": "td3_bc",
-        "profile": FROZEN_POSTRL_PROFILE_V2,
-        "reward_scale_by_region": {"us": 5.0e-4, "global": 1.0e-4},
-        "learning_rate": 1e-5,
-        "buffer_size": 250_000,
-        "learning_starts": 0,
-        "batch_size": 256,
-        "tau": 0.01,
-        "train_freq": 16,
-        "gradient_steps": 4,
-        "action_noise_sigma": 0.01,
-        "policy_delay": 2,
-        "target_policy_noise": 0.02,
-        "target_noise_clip": 0.05,
-        "net_arch": (256, 256, 128),
-        "bc_alpha": 4.0,
-        "td3bc_lambda_alpha": 2.5,
-        "teacher_name": "native_marginal_cost",
-        "teacher_prefill_episodes": 1,
-        "teacher_bc_steps": 0,
-        "teacher_bc_batch_size": 512,
-        "timesteps": 8192,
-        "warm_start_campaign": "td3bc_bconly_frozen_v2",
-        "evaluation_label": "a-d-development-frozen-confirmation",
-        "descriptive_transfer_label": "e-h-descriptive-transfer",
-        "teacher_present_during_rl": False,
-        "teacher_present_at_inference": False,
     },
 }
 
@@ -360,12 +323,54 @@ def _parameter_delta_l2(
     return math.sqrt(total)
 
 
+def _module_distance_l2(left: th.nn.Module, right: th.nn.Module) -> float:
+    return _parameter_delta_l2(
+        _module_state_dict(left),
+        _module_state_dict(right),
+    )
+
+
+def actor_target_sync_summary(
+    model: SAC | TD3,
+    *,
+    synchronize: bool,
+) -> dict[str, Any]:
+    if not isinstance(model, TD3):
+        return {
+            "supported": False,
+            "synchronized": True,
+            "distance_l2_before": 0.0,
+            "distance_l2_after": 0.0,
+        }
+    distance_before = _module_distance_l2(model.actor, model.actor_target)
+    if synchronize:
+        model.actor_target.load_state_dict(model.actor.state_dict())
+    distance_after = _module_distance_l2(model.actor, model.actor_target)
+    return {
+        "supported": True,
+        "synchronized": distance_after <= 1e-12,
+        "distance_l2_before": distance_before,
+        "distance_l2_after": distance_after,
+        "actor_hash": _tensor_sha256(_module_state_dict(model.actor)),
+        "actor_target_hash": _tensor_sha256(_module_state_dict(model.actor_target)),
+    }
+
+
 def _git_head() -> str:
     return subprocess.check_output(
         ["git", "rev-parse", "HEAD"],
         cwd=ROOT,
         text=True,
     ).strip()
+
+
+def _require_tracked_source_clean() -> None:
+    commands = (
+        ["git", "diff", "--quiet", "--"],
+        ["git", "diff", "--cached", "--quiet", "--"],
+    )
+    if any(subprocess.run(command, cwd=ROOT, check=False).returncode for command in commands):
+        raise RuntimeError("tracked source must be committed before a frozen v5 run")
 
 
 class TD3BehaviorCloning(TD3):
@@ -754,11 +759,12 @@ def behavior_clone_actor(
     steps: int,
     batch_size: int,
     seed: int,
-) -> dict[str, float]:
+) -> dict[str, Any]:
     observations = dataset["observations"]
     targets = _normalize_to_policy_action(env, dataset["actions"])
     if steps <= 0 or len(observations) == 0:
-        return {"steps": 0.0, "final_loss": 0.0}
+        sync = actor_target_sync_summary(model, synchronize=False)
+        return {"steps": 0.0, "final_loss": 0.0, **sync}
     rng = np.random.default_rng(seed)
     model.actor.train()
     final_loss = 0.0
@@ -789,7 +795,10 @@ def behavior_clone_actor(
         loss.backward()
         model.actor.optimizer.step()
         final_loss = float(loss.detach().cpu().item())
-    return {"steps": float(steps), "final_loss": final_loss}
+    sync = actor_target_sync_summary(model, synchronize=True)
+    if not sync["synchronized"]:
+        raise RuntimeError("behavior-cloned actor target did not synchronize")
+    return {"steps": float(steps), "final_loss": final_loss, **sync}
 
 
 def model_dir(job: Job, profile: str) -> Path:
@@ -947,8 +956,8 @@ def training_mode_label(
     job: Job,
     teacher_record: dict[str, Any] | None,
 ) -> str:
-    if job.campaign == "td3bc_postrl_frozen_v2":
-        return "td3_bc_postrl"
+    if job.campaign is not None:
+        return str(CAMPAIGNS[job.campaign]["expected_training_mode"])
     if teacher_record is not None and job.timesteps <= 0:
         return "teacher_bc_only"
     if teacher_record is not None:
@@ -957,6 +966,7 @@ def training_mode_label(
 
 
 def run_job(job: Job) -> dict[str, Any]:
+    _require_tracked_source_clean()
     _require_tested_sb3()
     stage_config = resolve_stage_config(job)
     reward_scale = float(
@@ -976,6 +986,7 @@ def run_job(job: Job) -> dict[str, Any]:
     callback = OffPolicyDiagnosticsCallback()
     model = make_model(job.algorithm, train_env, job.seed, stage_config)
     source_bc_model_path = campaign_source_bc_model_path(job, stage_config)
+    warm_start_actor_target_sync: dict[str, Any] | None = None
     if source_bc_model_path is not None:
         _load_warm_start_parameters(
             model,
@@ -983,6 +994,14 @@ def run_job(job: Job) -> dict[str, Any]:
             algorithm=job.algorithm,
             env=train_env,
         )
+        warm_start_actor_target_sync = actor_target_sync_summary(
+            model,
+            synchronize=False,
+        )
+        if not warm_start_actor_target_sync["synchronized"]:
+            raise RuntimeError(
+                "warm-start BC checkpoint has a stale actor_target"
+            )
     actor_before = _module_state_dict(model.actor)
     critic_before = _module_state_dict(model.critic)
     teacher_record: dict[str, Any] | None = None
@@ -1075,6 +1094,10 @@ def run_job(job: Job) -> dict[str, Any]:
         "reward_scale": reward_scale,
         "model_path": str(model_path.with_suffix(".zip").relative_to(ROOT)),
         "source_commit": source_commit,
+        "protocol_id": PROTOCOL_ID,
+        "protocol_path": str(PROTOCOL_PATH.relative_to(ROOT)).replace("/", "\\"),
+        "protocol_sha256": PROTOCOL_SHA256,
+        "campaign_role": str(stage_config["role"]),
         "stable_baselines3_version": sb3.__version__,
         "evaluation_label": str(
             stage_config.get("evaluation_label", "a-d-development")
@@ -1117,6 +1140,7 @@ def run_job(job: Job) -> dict[str, Any]:
     }
     if source_bc_model_path is not None:
         record["source_bc_model"] = str(source_bc_model_path.relative_to(ROOT))
+        record["warm_start_actor_target_sync"] = warm_start_actor_target_sync
     if teacher_record is not None:
         record["teacher"] = teacher_record
     if "bc_alpha" in stage_config or "td3bc_lambda_alpha" in stage_config:

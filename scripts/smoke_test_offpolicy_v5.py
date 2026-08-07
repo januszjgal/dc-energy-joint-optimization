@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -18,13 +19,22 @@ from env.reward import RewardConfig
 from env.safety_layer import SafetyConfig
 from scripts.run_offpolicy_campaign_v5 import (
     EXPECTED_SB3_VERSION,
+    PROTOCOL_ID,
+    PROTOCOL_SHA256,
     TD3BehaviorCloning,
+    actor_target_sync_summary,
+    behavior_clone_actor,
     campaign_job,
     evaluate_model,
     make_model,
     prefill_replay_buffer,
     resolve_stage_config,
     teacher_action,
+)
+from scripts.build_offpolicy_evidence_v5 import (
+    classify_workspace_state,
+    post_rl_seed_provenance_pass,
+    validate_campaign_roles,
 )
 
 
@@ -183,7 +193,7 @@ def test_teacher_step_store_pairing_uses_executed_action() -> None:
 
 def test_campaign_cli_uses_td3_behavior_cloning() -> None:
     env = Monitor(make_env())
-    job = campaign_job("td3bc_bconly_frozen_v2", region="us", seed=23)
+    job = campaign_job("td3bc_bconly_frozen_v3", region="us", seed=23)
     config = resolve_stage_config(job)
     model = make_model(job.algorithm, env, job.seed, config)
     assert isinstance(model, TD3BehaviorCloning)
@@ -202,7 +212,7 @@ def test_teacher_guard_blocks_inference_teacher_calls() -> None:
     env.close()
 
     eval_env = Monitor(make_env())
-    job = campaign_job("td3bc_bconly_frozen_v2", region="us", seed=29)
+    job = campaign_job("td3bc_bconly_frozen_v3", region="us", seed=29)
     config = resolve_stage_config(job)
     model = make_model(job.algorithm, eval_env, job.seed, config)
     baseline = {
@@ -237,14 +247,14 @@ def test_decoder_and_emergency_telemetry_are_separate() -> None:
             31,
             {
                 **resolve_stage_config(
-                    campaign_job("td3bc_bconly_frozen_v2", region="us", seed=31)
+                campaign_job("td3bc_bconly_frozen_v3", region="us", seed=31)
                 ),
             },
         ),
         "us",
         float(
             resolve_stage_config(
-                campaign_job("td3bc_bconly_frozen_v2", region="us", seed=31)
+                campaign_job("td3bc_bconly_frozen_v3", region="us", seed=31)
             )["reward_scale_by_region"]["us"]
         ),
         baseline={"total_cost": 1.0},
@@ -255,6 +265,149 @@ def test_decoder_and_emergency_telemetry_are_separate() -> None:
     assert "decoder_adjustment_rate" in safety
     assert "emergency_intervention_rate" in safety
     env.close()
+
+
+def test_behavior_clone_synchronizes_actor_target() -> None:
+    env = Monitor(make_env())
+    obs, _ = env.reset(seed=37)
+    action = env.unwrapped.status_quo_action()
+    next_obs, reward, terminated, truncated, info = env.step(action)
+    job = campaign_job("td3bc_bconly_frozen_v3", region="us", seed=37)
+    config = {
+        **resolve_stage_config(job),
+        "buffer_size": 32,
+        "batch_size": 8,
+        "net_arch": (32, 32),
+    }
+    model = make_model(job.algorithm, env, job.seed, config)
+    dataset = {
+        "observations": np.repeat(np.asarray([obs], dtype=np.float32), 8, axis=0),
+        "next_observations": np.repeat(
+            np.asarray([next_obs], dtype=np.float32),
+            8,
+            axis=0,
+        ),
+        "actions": np.repeat(np.asarray([action], dtype=np.float32), 8, axis=0),
+        "rewards": np.repeat(np.asarray([reward], dtype=np.float32), 8, axis=0),
+        "dones": np.repeat(
+            np.asarray([terminated or truncated], dtype=np.float32),
+            8,
+            axis=0,
+        ),
+        "infos": [info] * 8,
+    }
+    summary = behavior_clone_actor(
+        model,
+        env,
+        dataset,
+        algorithm=job.algorithm,
+        steps=2,
+        batch_size=8,
+        seed=37,
+    )
+    assert summary["distance_l2_before"] > 0.0
+    assert summary["distance_l2_after"] <= 1e-12
+    assert summary["synchronized"] is True
+    assert summary["actor_hash"] == summary["actor_target_hash"]
+    assert actor_target_sync_summary(model, synchronize=False)["synchronized"] is True
+    env.close()
+
+
+def test_origin_decoder_adjustment_is_measured() -> None:
+    env = make_env()
+    env.reset(seed=41)
+    context = env.residual_decoder_context()
+    action = env.status_quo_action()
+    action[env.n_dc] = env.decoder_logit_bound
+    origin_start = env.n_dc + 1
+    origin_logits = np.full(env.n_dc, -env.decoder_logit_bound, dtype=np.float32)
+    origin_logits[int(np.argmin(context.pool_totals))] = env.decoder_logit_bound
+    action[origin_start : origin_start + env.n_dc] = origin_logits
+    projection = env._decode_residual_action(
+        action,
+        context,
+        current_step=env.step_index,
+    )
+    origin_delta = float(
+        np.linalg.norm(
+            projection.desired_origin_batch - projection.origin_batch,
+        )
+    )
+    assert origin_delta > 1e-6
+    assert projection.decoder_adjustment_l2 >= origin_delta - 1e-10
+    assert projection.decoder_adjusted is True
+    env.close()
+
+
+def test_evidence_rejects_wrong_roles_dirty_source_and_tampered_hashes() -> None:
+    validate_campaign_roles(
+        "td3bc_bconly_frozen_v3",
+        "td3bc_postrl_frozen_v3",
+    )
+    try:
+        validate_campaign_roles(
+            "td3bc_bconly_frozen_v3",
+            "td3bc_bconly_frozen_v3",
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("evidence accepted the same BC and post-RL campaign")
+
+    dirty = classify_workspace_state(
+        [" M scripts/run_offpolicy_campaign_v5.py"],
+        unstaged_tracked_clean=False,
+        staged_tracked_clean=True,
+    )
+    assert dirty["tracked_source_clean"] is False
+    nongenerated = classify_workspace_state(
+        ["?? unexpected.txt"],
+        unstaged_tracked_clean=True,
+        staged_tracked_clean=True,
+    )
+    assert nongenerated["untracked_generated_only"] is False
+    generated = classify_workspace_state(
+        ["?? models/offpolicy_v5_continuous/example/model.zip"],
+        unstaged_tracked_clean=True,
+        staged_tracked_clean=True,
+    )
+    assert generated["tracked_source_clean"] is True
+    assert generated["untracked_generated_only"] is True
+
+    valid = {
+        "campaign_role": "post_rl",
+        "training_mode": "td3_bc_postrl",
+        "n_updates": 1,
+        "actor_hash_before": "actor-before",
+        "actor_hash_after": "actor-after",
+        "critic_hash_before": "critic-before",
+        "critic_hash_after": "critic-after",
+        "weight_update_evidence": {
+            "actor_hash_changed": True,
+            "critic_hash_changed": True,
+            "actor_parameter_delta_l2": 1.0,
+            "critic_parameter_delta_l2": 1.0,
+        },
+        "warm_start_actor_target_sync": {
+            "synchronized": True,
+            "distance_l2_after": 0.0,
+        },
+        "teacher_present_during_rl": False,
+        "teacher_present_at_inference": False,
+        "teacher_action_audit": {"stored_action_matches_executed": True},
+        "stable_baselines3_version": EXPECTED_SB3_VERSION,
+        "protocol_id": PROTOCOL_ID,
+        "protocol_sha256": PROTOCOL_SHA256,
+    }
+    assert post_rl_seed_provenance_pass(valid) is True
+    tampered = deepcopy(valid)
+    tampered["actor_hash_after"] = tampered["actor_hash_before"]
+    assert post_rl_seed_provenance_pass(tampered) is False
+    bc_only = deepcopy(valid)
+    bc_only["campaign_role"] = "bc_only"
+    bc_only["training_mode"] = "teacher_bc_only"
+    bc_only["n_updates"] = 0
+    assert post_rl_seed_provenance_pass(bc_only) is False
 
 
 def test_sb3_runtime_is_pinned() -> None:
@@ -272,6 +425,9 @@ def main() -> None:
     test_campaign_cli_uses_td3_behavior_cloning()
     test_teacher_guard_blocks_inference_teacher_calls()
     test_decoder_and_emergency_telemetry_are_separate()
+    test_behavior_clone_synchronizes_actor_target()
+    test_origin_decoder_adjustment_is_measured()
+    test_evidence_rejects_wrong_roles_dirty_source_and_tampered_hashes()
     test_sb3_runtime_is_pinned()
     print("smoke_test_offpolicy_v5: PASS")
 
