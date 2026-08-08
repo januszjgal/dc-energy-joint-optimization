@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import sys
+from io import BytesIO
 from pathlib import Path
 from statistics import mean, stdev
 from typing import Any
@@ -14,6 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from PIL import Image  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -35,10 +37,85 @@ MANIFEST_PATHS = {
 T_95_DF4 = 2.7764451051977987
 REGION_COLORS = {"us": "#2F5597", "global": "#C55A11"}
 VARIANT_COLORS = {"bc_only": "#70AD47", "post_rl_td3bc": "#4472C4"}
+PAPER_FIGURE_DIR = ROOT / "output" / "paper_figs"
 
 
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save_figure_if_changed(
+    figure: Any,
+    path: Path,
+    *,
+    dpi: int,
+    bbox_inches: str | None = None,
+    flatten: bool = False,
+) -> None:
+    rendered = BytesIO()
+    figure.savefig(
+        rendered,
+        format="png",
+        dpi=dpi,
+        bbox_inches=bbox_inches,
+    )
+    payload = rendered.getvalue()
+    if flatten:
+        flattened = BytesIO()
+        with Image.open(BytesIO(payload)) as image:
+            image.convert("RGB").save(flattened, format="PNG")
+        payload = flattened.getvalue()
+    if path.is_file() and path.read_bytes() == payload:
+        return
+    temporary = path.with_name(f"{path.stem}.tmp{path.suffix}")
+    try:
+        temporary.write_bytes(payload)
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def save_tier_example_figure() -> None:
+    source = ROOT / "data" / "cells" / "cell_b_tiers.csv"
+    values = np.genfromtxt(source, delimiter=",", names=True)
+    count = 3 * 288
+    days = np.arange(count) / 288
+    fig, axis = plt.subplots(figsize=(6.61, 4.51), constrained_layout=True)
+    axis.plot(
+        days,
+        values["cpu_demand_norm"][:count],
+        color="#333333",
+        linewidth=0.9,
+        label="aggregate (measured)",
+    )
+    axis.plot(
+        days,
+        values["service_demand_norm"][:count],
+        color="#7FB3D5",
+        linewidth=0.8,
+        label="service / residual",
+    )
+    axis.plot(
+        days,
+        values["batch_demand_norm"][:count],
+        color="#27AE60",
+        linewidth=0.8,
+        label="batch (matched priority <=115)",
+    )
+    axis.set_xlabel("Days")
+    axis.set_ylabel("CPU (fraction of capacity)")
+    axis.set_title("Cell b: measured aggregate and classified batch")
+    axis.legend(loc="center right")
+    axis.grid(True, alpha=0.3)
+    PAPER_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = PAPER_FIGURE_DIR / "fig2_tiers.png"
+    save_figure_if_changed(
+        fig,
+        output_path,
+        dpi=200,
+        bbox_inches="tight",
+    )
+    plt.close(fig)
 
 
 def descriptive_stats(values: list[float]) -> dict[str, Any]:
@@ -94,10 +171,11 @@ def safety_pass(summary: dict[str, Any]) -> bool:
     )
 
 
-def evaluate_teacher(
+def evaluate_analytic_policy(
     region: str,
     reward_scale: float,
     scenario_kind: str,
+    teacher_name: str,
 ) -> dict[str, Any]:
     baseline = baseline_summary(
         region,
@@ -114,7 +192,7 @@ def evaluate_teacher(
     try:
         total_reward, history = run_episode(
             env,
-            lambda _obs, active_env: teacher_action(active_env, "exact_native"),
+            lambda _obs, active_env: teacher_action(active_env, teacher_name),
             is_sb3=False,
         )
         summary = compute_summary(history, batch_enabled=True)
@@ -129,6 +207,7 @@ def evaluate_teacher(
             / baseline["total_cost"]
         )
         return {
+            "teacher_name": teacher_name,
             "scenario_kind": scenario_kind,
             "savings_vs_status_quo_pct": summary["savings_vs_status_quo_pct"],
             "total_cost": summary["total_cost"],
@@ -321,30 +400,50 @@ def build_results() -> dict[str, Any]:
             ),
         }
         reward_scale = 5.0e-4 if region == "us" else 1.0e-4
-        region_result["analytic_teacher_benchmark"] = {
-            "development": evaluate_teacher(
+        region_result["demonstration_teacher"] = {
+            "development": evaluate_analytic_policy(
                 region,
                 reward_scale,
                 "development",
+                "native_marginal_cost",
             ),
-            "descriptive_transfer": evaluate_teacher(
+            "descriptive_transfer": evaluate_analytic_policy(
                 region,
                 reward_scale,
                 "descriptive_transfer",
+                "native_marginal_cost",
             ),
             "attribution": (
-                "Causal current-state analytic benchmark and offline teacher; "
-                "not an RL result and absent at inference."
+                "Greedy linear current-state policy used to generate the frozen "
+                "offline demonstrations; not an RL result and absent at inference."
+            ),
+        }
+        region_result["exact_native_benchmark"] = {
+            "development": evaluate_analytic_policy(
+                region,
+                reward_scale,
+                "development",
+                "exact_native",
+            ),
+            "descriptive_transfer": evaluate_analytic_policy(
+                region,
+                reward_scale,
+                "descriptive_transfer",
+                "exact_native",
+            ),
+            "attribution": (
+                "Separate exact-native convex current-state analytic benchmark; "
+                "not the frozen demonstration teacher and not an RL result."
             ),
         }
         post_mean = region_result["variants"]["post_rl_td3bc"][
             "development_savings_pct"
         ]["mean"]
-        teacher_mean = region_result["analytic_teacher_benchmark"]["development"][
+        benchmark_mean = region_result["exact_native_benchmark"]["development"][
             "savings_vs_status_quo_pct"
         ]
-        region_result["teacher_savings_capture_pct"] = (
-            100.0 * post_mean / teacher_mean
+        region_result["exact_native_savings_capture_pct"] = (
+            100.0 * post_mean / benchmark_mean
         )
         region_result["headline_gate_passed"] = bool(
             region_result["variants"]["post_rl_td3bc"]["all_safe"]
@@ -385,7 +484,10 @@ def save_savings_figure(results: dict[str, Any]) -> None:
                 alpha=0.82,
                 label=label,
             )
-        teacher = region_result["analytic_teacher_benchmark"]["development"][
+        demonstration_teacher = region_result["demonstration_teacher"]["development"][
+            "savings_vs_status_quo_pct"
+        ]
+        exact_benchmark = region_result["exact_native_benchmark"]["development"][
             "savings_vs_status_quo_pct"
         ]
         axis.axhline(
@@ -396,11 +498,18 @@ def save_savings_figure(results: dict[str, Any]) -> None:
             label="Savings gate",
         )
         axis.axhline(
-            teacher,
+            demonstration_teacher,
+            color="#7F6000",
+            linestyle="-.",
+            linewidth=1.5,
+            label="Demonstration teacher",
+        )
+        axis.axhline(
+            exact_benchmark,
             color="#7030A0",
             linestyle=":",
             linewidth=1.8,
-            label="Causal teacher",
+            label="Exact-native benchmark",
         )
         axis.set_xticks(x, seeds)
         axis.set_xlabel("Training seed")
@@ -413,7 +522,8 @@ def save_savings_figure(results: dict[str, Any]) -> None:
         fontsize=14,
         fontweight="bold",
     )
-    fig.savefig(CANONICAL_DIR / "v5_savings_by_seed.png", dpi=180)
+    output_path = CANONICAL_DIR / "v5_savings_by_seed.png"
+    save_figure_if_changed(fig, output_path, dpi=180)
     plt.close(fig)
 
 
@@ -478,7 +588,13 @@ def save_attribution_safety_figure(results: dict[str, Any]) -> None:
     axes[1].grid(axis="y", alpha=0.25)
     axes[1].legend(fontsize=8)
 
-    fig.savefig(CANONICAL_DIR / "v5_attribution_and_safety.png", dpi=180)
+    output_path = CANONICAL_DIR / "v5_attribution_and_safety_rgb.png"
+    save_figure_if_changed(
+        fig,
+        output_path,
+        dpi=180,
+        flatten=True,
+    )
     plt.close(fig)
 
 
@@ -533,7 +649,8 @@ def save_report(results: dict[str, Any]) -> None:
         transfer = result["variants"]["post_rl_td3bc"][
             "descriptive_transfer_savings_pct"
         ]
-        teacher = result["analytic_teacher_benchmark"]
+        demonstration_teacher = result["demonstration_teacher"]
+        exact_benchmark = result["exact_native_benchmark"]
         lines.extend(
             [
                 f"### {region.upper()}",
@@ -544,12 +661,16 @@ def save_report(results: dict[str, Any]) -> None:
                 f"{rl['optimization_seed_t95_interval'][1]:.6f}%].",
                 f"- e-h descriptive post-RL mean: **{transfer['mean']:.6f}%**; "
                 f"minimum: **{transfer['minimum']:.6f}%**.",
-                f"- Causal analytic teacher benchmark: "
-                f"{teacher['development']['savings_vs_status_quo_pct']:.6f}% a-d "
-                f"and {teacher['descriptive_transfer']['savings_vs_status_quo_pct']:.6f}% "
-                "e-h. This is not an RL result.",
-                f"- Post-RL network captures {result['teacher_savings_capture_pct']:.2f}% "
-                "of the teacher's a-d primary savings.",
+                f"- Frozen greedy demonstration teacher: "
+                f"{demonstration_teacher['development']['savings_vs_status_quo_pct']:.6f}% "
+                f"a-d and {demonstration_teacher['descriptive_transfer']['savings_vs_status_quo_pct']:.6f}% "
+                "e-h. This is the offline label policy, not an RL result.",
+                f"- Separate exact-native analytic benchmark: "
+                f"{exact_benchmark['development']['savings_vs_status_quo_pct']:.6f}% "
+                f"a-d and {exact_benchmark['descriptive_transfer']['savings_vs_status_quo_pct']:.6f}% "
+                "e-h. It is not the demonstration teacher.",
+                f"- Post-RL network captures {result['exact_native_savings_capture_pct']:.2f}% "
+                "of the exact-native a-d benchmark.",
                 "",
             ]
         )
@@ -601,10 +722,19 @@ def save_report(results: dict[str, Any]) -> None:
             "",
             "## Reproduction",
             "",
+            "The published model records were generated from source commit "
+            f"`{results['source_commit']}`. Recreate that source identity in a "
+            "separate worktree; final reporting and thesis builders live on the "
+            "later final branch tip.",
+            "",
             "```powershell",
+            f"git worktree add ..\\dc-energy-v5-training {results['source_commit']}",
+            "Push-Location ..\\dc-energy-v5-training",
             "python scripts\\run_offpolicy_campaign_v5.py --campaign td3bc_bconly_frozen_v3 --regions us global --seeds 301 302 303 304 305 --workers 4",
             "python scripts\\run_offpolicy_campaign_v5.py --campaign td3bc_postrl_frozen_v3 --regions us global --seeds 301 302 303 304 305 --workers 4",
             "python scripts\\build_offpolicy_evidence_v5.py --bc-campaign td3bc_bconly_frozen_v3 --postrl-campaign td3bc_postrl_frozen_v3 --seeds 301 302 303 304 305 --workers 4 --suffix v3",
+            "Pop-Location",
+            "# Back on the final branch tip:",
             "python scripts\\build_v5_results.py",
             "```",
             "",
@@ -625,6 +755,7 @@ def main() -> None:
     )
     save_savings_figure(results)
     save_attribution_safety_figure(results)
+    save_tier_example_figure()
     save_report(results)
     print(CANONICAL_DIR / "canonical_results.json")
 
