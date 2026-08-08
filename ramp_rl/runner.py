@@ -118,6 +118,31 @@ class EvidenceCallback(BaseCallback):
             self.episode_status_quo_energy[index] += float(
                 info.get("status_quo_energy_cost", 0.0)
             )
+            if bool(info.get("actual_terminal", False)) and not bool(
+                info.get("ramp_terminal_tail_emitted_in_steps", False)
+            ):
+                self.episode_energy[index] += sum(
+                    float(value)
+                    for value in info.get("terminal_tail_energy_cost", ())
+                )
+                self.episode_status_quo_energy[index] += sum(
+                    float(value)
+                    for value in info.get(
+                        "terminal_tail_status_quo_energy_cost", ()
+                    )
+                )
+                self.emergency += sum(
+                    bool(value)
+                    for value in info.get(
+                        "terminal_tail_emergency_feasibility", ()
+                    )
+                )
+                self.semantic_adjustment_sum += sum(
+                    float(value)
+                    for value in info.get(
+                        "terminal_tail_semantic_adjustment_l2", ()
+                    )
+                )
         if self.last_step_all_terminal:
             energy_cost = float(self.episode_energy.mean())
             status_quo_energy_cost = float(self.episode_status_quo_energy.mean())
@@ -181,19 +206,31 @@ def _normalization_summary(vec: VecNormalize) -> dict[str, Any]:
 def source_bundle_hash() -> str:
     root = Path(__file__).resolve().parent.parent
     paths = [
-        root / "ramp_rl" / name
-        for name in (
-            "campaign.py",
-            "contract.py",
-            "evaluation.py",
-            "evidence.py",
-            "runner.py",
-            "schema.py",
+        root / relative
+        for relative in (
+            "ramp_rl/campaign.py",
+            "ramp_rl/contract.py",
+            "ramp_rl/evaluation.py",
+            "ramp_rl/evidence.py",
+            "ramp_rl/runner.py",
+            "ramp_rl/schema.py",
+            "env/ramp_v6/environment.py",
+            "env/ramp_v6/factory.py",
+            "env/ramp_v6/fixture.py",
+            "env/ramp_v6/models.py",
+            "env/ramp_v6/panel.py",
+            "env/ramp_v6/projection.py",
+            "env/ramp_v6/protocol.py",
+            "env/ramp_v6/reward.py",
+            "env/protocols/v6_ramp_pure_rl.yaml",
+            "env/protocols/v6_pure_ramp_rl.yaml",
+            "env/protocols/v6_pure_ramp_rl.schema.json",
+            "env/protocols/v6_ramp_panel.schema.json",
         )
     ]
     digest = hashlib.sha256()
     for path in paths:
-        digest.update(path.name.encode("utf-8"))
+        digest.update(str(path.relative_to(root)).encode("utf-8"))
         digest.update(path.read_bytes())
     return digest.hexdigest()
 
@@ -351,6 +388,8 @@ def run_training(
         base_vec.close()
         raise RuntimeError("all vector environments must use the same decision_steps")
     factory_identity = _factory_identity(factory)
+    environment_contract = dict(base_vec.envs[0].contract)
+    integrated_source_sha256 = source_bundle_hash()
     job_identity = {
         "protocol_sha256": protocol["_sha256"],
         "algorithm": algorithm,
@@ -359,7 +398,12 @@ def run_training(
         "epsilon_pct": float(epsilon_pct),
         "config_sha256": sha256_json(config),
         "factory": factory_identity,
+        "source_bundle_sha256": integrated_source_sha256,
         "decision_steps": decision_steps,
+        "semantic_action_id": environment_contract["semantic_action_id"],
+        "action_shape": environment_contract["action_shape"],
+        "action_low": environment_contract["action_low"],
+        "action_high": environment_contract["action_high"],
     }
     if resumed:
         if prior_manifest.get("job_identity") != job_identity:
@@ -455,12 +499,13 @@ def run_training(
         "protocol_id": protocol["protocol"]["id"],
         "protocol_path": protocol["_path"],
         "protocol_sha256": protocol["_sha256"],
-        "source_bundle_sha256": source_bundle_hash(),
+        "source_bundle_sha256": integrated_source_sha256,
         "job_identity": job_identity,
         "algorithm": algorithm,
         "seed": seed,
         "stable_baselines3_version": sb3.__version__,
         "semantic_feasible_action": True,
+        "environment_contract": environment_contract,
         "raw_redundant_projected_logits": False,
         "gamma": 1.0,
         "credit_assignment": {
@@ -499,7 +544,18 @@ def run_training(
             "environment_factory": factory_identity,
         },
         "normalization": _normalization_summary(vec_env),
-        "forecast_identity": protocol["data"]["forecast"],
+        "forecast_identity": {
+            "protocol": protocol["data"]["forecast"],
+            "observed_training_episodes": sorted(
+                {
+                    (
+                        row["forecast_model"],
+                        row["forecast_vintage"],
+                    )
+                    for row in callback.episode_records.values()
+                }
+            ),
+        },
         "multiobjective": {
             "training_epsilon_pct": float(epsilon_pct),
             "primary_energy_budget_pct": float(

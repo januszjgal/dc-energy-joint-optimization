@@ -8,7 +8,7 @@ under `tests/fixtures/ramp_v6`, and its sanity evidence under
 
 ## Integration boundary
 
-The future energy-model v3 integration must produce the long-form columns in
+The energy-model v3 handoff must produce the long-form columns in
 `env/protocols/v6_ramp_panel.schema.json`, one row per market and contiguous
 UTC hour. Each controller row includes gross demand, net load, wind, solar,
 market scale, day-ahead LMP, quality, and h1/h2/h3 forecast endpoints with an
@@ -78,9 +78,11 @@ status-quo/no-proxy comparators, and forecast-error strata.
 ```powershell
 python -m unittest discover -s tests\ramp_v6 -t . -v
 python scripts\run_ramp_v6_fixture.py
+python scripts\smoke_test_ramp_rl_v6.py
 python scripts\run_ramp_v6_fixture.py --scale-multiplier 10 --output-root output\ramp_v6_fixture_1gw_per_site
 ```
 
-The committed fixture evidence is an implementation/oracle check only. It does
-not claim trained-policy performance, and the final long RL campaign has not
-been run.
+The committed fixture evidence is an implementation check only. Miniature
+random-initialized PPO/SAC metrics are smoke evidence, not a trained-policy
+claim. The final long RL campaign has not been run and remains blocked only on
+the energy-model v3 ramp panel described in `docs/ramp_rl_v6.md`.

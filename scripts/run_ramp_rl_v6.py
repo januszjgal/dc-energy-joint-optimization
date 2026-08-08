@@ -20,7 +20,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("plan", "train", "evaluate"))
     parser.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL_PATH)
-    parser.add_argument("--env-factory", default="ramp_rl.fixture_env:make_fixture_env")
+    parser.add_argument(
+        "--env-factory", default="env.ramp_v6.factory:make_fixture_env"
+    )
     parser.add_argument("--algorithm", choices=("ppo", "sac"), default="ppo")
     parser.add_argument("--seed", type=int, default=2601)
     parser.add_argument("--timesteps", type=int, default=128)

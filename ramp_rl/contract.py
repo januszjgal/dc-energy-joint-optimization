@@ -10,6 +10,7 @@ import numpy as np
 from gymnasium import spaces
 
 CONTRACT_VERSION = "ramp-v6-semantic-action-v1"
+SEMANTIC_ACTION_ID = "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"
 REQUIRED_STEP_INFO = (
     "ramp_h1_adjusted",
     "ramp_h3_adjusted",
@@ -22,6 +23,18 @@ REQUIRED_STEP_INFO = (
     "emergency_feasibility",
     "semantic_adjustment_l2",
     "action_provenance",
+    "status_quo_energy_cost",
+    "terminal_work",
+    "deferrable_pre_service",
+    "dc_power_during_realized_ramp",
+    "step_ramp_h1_adjusted",
+    "step_ramp_h3_adjusted",
+    "step_incremental_ramp_impact",
+    "step_energy_cost",
+    "step_service_unserved",
+    "step_batch_unfinished",
+    "step_batch_expired",
+    "step_certificate_violations",
 )
 
 
@@ -66,6 +79,8 @@ class RampEnvAdapter(gym.Wrapper):
             raise RampContractError("unsupported ramp environment contract version")
         if self.contract.get("semantic_feasible_action") is not True:
             raise RampContractError("trainer requires the environment's semantic feasible action")
+        if self.contract.get("semantic_action_id") != SEMANTIC_ACTION_ID:
+            raise RampContractError("environment returned the wrong semantic action ID")
         if self.contract.get("raw_redundant_projected_logits") is not False:
             raise RampContractError("raw redundant projected logits are prohibited")
         if int(self.contract.get("history_hours", -1)) != 3:
@@ -76,10 +91,23 @@ class RampEnvAdapter(gym.Wrapper):
             raise RampContractError("finite windows must use actual terminal states")
         if int(self.contract.get("decision_steps", 0)) <= 0:
             raise RampContractError("environment must declare a fixed positive decision_steps")
+        interval_minutes = int(self.contract.get("interval_minutes", 0))
+        if interval_minutes <= 0 or 180 % interval_minutes:
+            raise RampContractError("interval_minutes must divide the 3h ramp horizon")
         if not isinstance(self.action_space, spaces.Box):
             raise RampContractError("SB3 PPO/SAC integration requires a bounded Box semantic action")
         if not np.isfinite(self.action_space.low).all() or not np.isfinite(self.action_space.high).all():
             raise RampContractError("semantic action bounds must be finite")
+        if tuple(self.contract.get("action_shape", ())) != self.action_space.shape:
+            raise RampContractError("declared semantic action shape does not match the environment")
+        if not np.array_equal(
+            np.asarray(self.contract.get("action_low"), dtype=np.float32),
+            self.action_space.low,
+        ) or not np.array_equal(
+            np.asarray(self.contract.get("action_high"), dtype=np.float32),
+            self.action_space.high,
+        ):
+            raise RampContractError("declared semantic action bounds do not match the environment")
         if self.request.training and not callable(
             getattr(self.env.unwrapped, "set_lagrangian_multiplier", None)
         ):
@@ -147,12 +175,23 @@ class RampEnvAdapter(gym.Wrapper):
                 "terminal_tail_ramp_h1_adjusted",
                 "terminal_tail_ramp_h3_adjusted",
                 "terminal_tail_incremental_ramp_impact",
+                "terminal_tail_energy_cost",
+                "terminal_tail_status_quo_energy_cost",
+                "terminal_tail_service_unserved",
+                "terminal_tail_batch_unfinished",
+                "terminal_tail_batch_expired",
+                "terminal_tail_certificate_violations",
+                "terminal_tail_emergency_feasibility",
+                "terminal_tail_semantic_adjustment_l2",
             ):
                 values = info.get(key)
                 if not isinstance(values, (list, tuple)) or len(values) != expected_tail_steps:
                     raise RampContractError(f"terminal transition must expose {expected_tail_steps} values for {key}")
         info = dict(info)
         info["ramp_episode_context"] = dict(self.episode_context)
+        info["ramp_terminal_tail_emitted_in_steps"] = bool(
+            self.contract.get("terminal_tail_emitted_in_step_metrics", False)
+        )
         return np.asarray(observation, dtype=np.float32), float(reward), bool(terminated), False, dict(info)
 
     def set_lagrangian_multiplier(self, value: float) -> None:

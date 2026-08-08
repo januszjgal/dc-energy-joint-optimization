@@ -1,0 +1,1122 @@
+{
+  "actual_terminal_count_this_invocation": 32,
+  "algorithm": "ppo",
+  "artifacts": {
+    "model": {
+      "path": "models\\ramp_rl_v6\\integration_smoke\\ppo\\model.zip",
+      "sha256": "1f3b73d7aeb061d84d1dfd9afeebb8b076a7ae745dd30fa78848290c7273c533"
+    },
+    "normalization": {
+      "path": "models\\ramp_rl_v6\\integration_smoke\\ppo\\vecnormalize.pkl",
+      "sha256": "5e4ebed8718a87c442f8fb80fff70e6e2906f1419190d32099d54b4f735b0ad8"
+    },
+    "replay": null
+  },
+  "checkpoint_boundary_quantum": 288,
+  "credit_assignment": {
+    "actual_terminals": true,
+    "bootstrap_across_terminal_or_tail": false,
+    "ppo_gae_lambda": 0.95,
+    "sac_n_steps": null
+  },
+  "data_split": {
+    "test": {
+      "months": [
+        9,
+        10
+      ],
+      "sealed": true,
+      "tune_or_select": false
+    },
+    "train": {
+      "months": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "randomized_chronological_windows": true
+    },
+    "validation": {
+      "months": [
+        7,
+        8
+      ],
+      "sealed_from_normalization": true
+    }
+  },
+  "effective_boundary_target_timesteps": 288,
+  "environment_contract": {
+    "action_high": [
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0
+    ],
+    "action_low": [
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0
+    ],
+    "action_shape": [
+      13
+    ],
+    "active_arrival_steps": 6,
+    "actual_terminal": true,
+    "decision_steps": 9,
+    "history_hours": 3,
+    "interval_minutes": 60,
+    "raw_redundant_projected_logits": false,
+    "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+    "semantic_feasible_action": true,
+    "terminal_tail_emitted_in_step_metrics": true,
+    "terminal_tail_hours": 3,
+    "version": "ramp-v6-semantic-action-v1"
+  },
+  "final_critic_sha256": "ba5eee97b83b525f52ff4db4a71a3241af6d30ff4969af47d8a31c954965ab2d",
+  "final_policy_sha256": "09d7e863330aecfcea8ab7f51649d321bdefe0d3c9e869d0274ee6980d53ba56",
+  "forecast_identity": {
+    "observed_training_episodes": [
+      [
+        "ramp-core-deterministic-causal-forecast-v1",
+        "fixture-six-market-2026-08-08"
+      ]
+    ],
+    "protocol": {
+      "identity_required_in_every_manifest": true,
+      "model_id": "supplied-by-v6-adapter",
+      "realized_future_features_prohibited": true,
+      "vintage_id": "supplied-by-v6-adapter"
+    }
+  },
+  "gamma": 1.0,
+  "initial_critic_sha256": "d1a6429e2abb41caa78d5672963b78ce7d6d61068512352c8fe58ba193b7d477",
+  "initial_policy_sha256": "332f6749d881aacd38f193b4492c506ee6abec7e0691a31f45ff287f0487714d",
+  "interaction_count": 288,
+  "interaction_count_this_invocation": 288,
+  "job_identity": {
+    "action_high": [
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0,
+      6.0
+    ],
+    "action_low": [
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0,
+      -6.0
+    ],
+    "action_shape": [
+      13
+    ],
+    "algorithm": "ppo",
+    "config_sha256": "a0ccdc7857c9729360f744e4fe7be2027dd7c055c12d1f2d0028641c323155f6",
+    "decision_steps": 9,
+    "epsilon_pct": 2.0,
+    "factory": {
+      "callable": "env.ramp_v6.factory:make_fixture_env",
+      "source_path": "env\\ramp_v6\\factory.py",
+      "source_sha256": "2b022f64425b89924397accce5081128c4be326f2eae5cf5c6bb53455d109aad"
+    },
+    "n_envs": 2,
+    "protocol_sha256": "03271cd1a3c8cf66c5c8be1e324bf1e07e096ffb650fccb1ac53f87d3672a8fd",
+    "seed": 2601,
+    "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+    "source_bundle_sha256": "1a799fb79aabb5eca09d3deb895d2ce2948ad0fd0d5331f12bf88cfbc52e86ca"
+  },
+  "multiobjective": {
+    "epsilon_sensitivity_pct": [
+      0.0,
+      2.0,
+      5.0
+    ],
+    "final_lagrangian_multiplier": 0.0,
+    "initial_lagrangian_multiplier_this_invocation": 0.0,
+    "lagrangian_update": {
+      "initial_multiplier": 0.0,
+      "learning_rate": 0.01,
+      "maximum": 100.0,
+      "rule": "projected_dual_ascent",
+      "test_updates": false,
+      "update_data": [
+        "train",
+        "validation"
+      ]
+    },
+    "lagrangian_updates": [
+      {
+        "energy_cost": 266941.76952717756,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266826.3949822905,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266841.54081231914,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266875.94528429117,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266888.5238801143,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266840.7722450377,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266822.3430781943,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266913.70707137143,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266817.782462411,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266818.96586799214,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266753.70658350317,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266836.78380355024,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266892.55115353875,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 267013.81172389723,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266936.97723265574,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      },
+      {
+        "energy_cost": 266856.5748320669,
+        "multiplier": 0.0,
+        "split": "train",
+        "status_quo_energy_cost": 266617.50000000006
+      }
+    ],
+    "primary_energy_budget_pct": 2.0,
+    "selection_data": "validation",
+    "test_used_for_selection": false,
+    "training_epsilon_pct": 2.0
+  },
+  "normalization": {
+    "fit_split": "train",
+    "frozen_for": [
+      "validation",
+      "test"
+    ],
+    "observation_mean": [
+      0.13793098979781396,
+      0.08866992268820373,
+      0.008866996009524376,
+      -0.11822656221405042,
+      0.1755485340394712,
+      0.12351093637183504,
+      0.031974925327912934,
+      -0.10909085458227619,
+      0.0023850565130934995,
+      0.004348657739658395,
+      0.18522160916486807,
+      0.15763541121558194,
+      0.06798026868968889,
+      0.010034479440273318,
+      0.23573659905064043,
+      0.20062689357871166,
+      0.08652035303011742,
+      0.010034479440273318,
+      0.4460688129829368,
+      0.0,
+      0.9999996551725323,
+      0.13793098979781396,
+      0.08866992268820373,
+      0.008866996009524376,
+      -0.11822656221405042,
+      0.1755485340394712,
+      0.12351093637183504,
+      0.031974925327912934,
+      -0.10909085458227619,
+      0.0023850565130934995,
+      0.004348657739658395,
+      0.18522160916486807,
+      0.15763541121558194,
+      0.06798026868968889,
+      0.010034479440273318,
+      0.23573659905064043,
+      0.20062689357871166,
+      0.08652035303011742,
+      0.010034479440273318,
+      0.4460688129829368,
+      0.0,
+      0.9999996551725323,
+      0.13793098979781396,
+      0.08866992268820373,
+      0.008866996009524376,
+      -0.11822656221405042,
+      0.1755485340394712,
+      0.12351093637183504,
+      0.031974925327912934,
+      -0.10909085458227619,
+      0.0023850565130934995,
+      0.004348657739658395,
+      0.18522160916486807,
+      0.15763541121558194,
+      0.06798026868968889,
+      0.010034479440273318,
+      0.23573659905064043,
+      0.20062689357871166,
+      0.08652035303011742,
+      0.010034479440273318,
+      0.4460688129829368,
+      0.0,
+      0.9999996551725323,
+      0.13793098979781396,
+      0.08866992268820373,
+      0.008866996009524376,
+      -0.11822656221405042,
+      0.1755485340394712,
+      0.12351093637183504,
+      0.031974925327912934,
+      -0.10909085458227619,
+      0.0023850565130934995,
+      0.004348657739658395,
+      0.18522160916486807,
+      0.15763541121558194,
+      0.06798026868968889,
+      0.010034479440273318,
+      0.23573659905064043,
+      0.20062689357871166,
+      0.08652035303011742,
+      0.010034479440273318,
+      0.4460688129829368,
+      0.0,
+      0.9999996551725323,
+      0.13793098979781396,
+      0.08866992268820373,
+      0.008866996009524376,
+      -0.11822656221405042,
+      0.1755485340394712,
+      0.12351093637183504,
+      0.031974925327912934,
+      -0.10909085458227619,
+      0.0023850565130934995,
+      0.004348657739658395,
+      0.18522160916486807,
+      0.15763541121558194,
+      0.06798026868968889,
+      0.010034479440273318,
+      0.23573659905064043,
+      0.20062689357871166,
+      0.08652035303011742,
+      0.010034479440273318,
+      0.4460688129829368,
+      0.0,
+      0.9999996551725323,
+      0.13793098979781396,
+      0.08866992268820373,
+      0.008866996009524376,
+      -0.11822656221405042,
+      0.1755485340394712,
+      0.12351093637183504,
+      0.031974925327912934,
+      -0.10909085458227619,
+      0.0023850565130934995,
+      0.004348657739658395,
+      0.18522160916486807,
+      0.15763541121558194,
+      0.06798026868968889,
+      0.010034479440273318,
+      0.23573659905064043,
+      0.20062689357871166,
+      0.08652035303011742,
+      0.010034479440273318,
+      0.4460688129829368,
+      0.0,
+      0.9999996551725323,
+      0.20068958901099943,
+      0.044827571417096396,
+      0.05337329046057785,
+      0.6877348147944021,
+      1.666666052217805,
+      1.666666052217805,
+      0.549999822265818,
+      0.4499998329067149,
+      0.20068958901099943,
+      0.044827571417096396,
+      0.06469724661055966,
+      0.6751828627814771,
+      1.666666052217805,
+      1.666666052217805,
+      0.549999822265818,
+      0.4499998329067149,
+      0.20068958901099943,
+      0.044827571417096396,
+      0.07763390682099042,
+      0.6791004913959903,
+      1.666666052217805,
+      1.666666052217805,
+      0.549999822265818,
+      0.4499998329067149,
+      0.20068958901099943,
+      0.044827571417096396,
+      0.09338330344214824,
+      0.676815778323607,
+      1.666666052217805,
+      1.666666052217805,
+      0.549999822265818,
+      0.4499998329067149,
+      0.20068958901099943,
+      0.044827571417096396,
+      0.10912925799581241,
+      0.6763705432905266,
+      1.666666052217805,
+      1.666666052217805,
+      0.549999822265818,
+      0.4499998329067149,
+      0.20068958901099943,
+      0.044827571417096396,
+      0.1137598736312066,
+      0.6798286107977618,
+      1.666666052217805,
+      1.666666052217805,
+      0.549999822265818,
+      0.4499998329067149,
+      0.004561763530354214,
+      0.06973323557542205,
+      0.011034479118054497,
+      0.0,
+      0.0,
+      0.0,
+      0.49655155291325787,
+      0.33103436860883845,
+      0.7592967485788451,
+      -0.19726967298499656,
+      0.4338835769818057,
+      -0.9009685389801596
+    ],
+    "observation_variance": [
+      0.30525397258524506,
+      0.3800337255190663,
+      0.4909842045645614,
+      0.6233203171774437,
+      0.4944607641421157,
+      0.5907868208745072,
+      0.7472820644076779,
+      0.9166828598002773,
+      0.0006183391180133081,
+      0.00037229170512306553,
+      0.2818649029718434,
+      0.3088881140761104,
+      0.3317335939347267,
+      0.0005654201269074875,
+      0.4565743319513417,
+      0.500347465464435,
+      0.5373533690243348,
+      0.0005654201269074875,
+      0.006098752224601061,
+      3.4482746730087354e-07,
+      6.896548156957649e-07,
+      0.30525397258524506,
+      0.3800337255190663,
+      0.4909842045645614,
+      0.6233203171774437,
+      0.4944607641421157,
+      0.5907868208745072,
+      0.7472820644076779,
+      0.9166828598002773,
+      0.0006183391180133081,
+      0.00037229170512306553,
+      0.2818649029718434,
+      0.3088881140761104,
+      0.3317335939347267,
+      0.0005654201269074875,
+      0.4565743319513417,
+      0.500347465464435,
+      0.5373533690243348,
+      0.0005654201269074875,
+      0.006098752224601061,
+      3.4482746730087354e-07,
+      6.896548156957649e-07,
+      0.30525397258524506,
+      0.3800337255190663,
+      0.4909842045645614,
+      0.6233203171774437,
+      0.4944607641421157,
+      0.5907868208745072,
+      0.7472820644076779,
+      0.9166828598002773,
+      0.0006183391180133081,
+      0.00037229170512306553,
+      0.2818649029718434,
+      0.3088881140761104,
+      0.3317335939347267,
+      0.0005654201269074875,
+      0.4565743319513417,
+      0.500347465464435,
+      0.5373533690243348,
+      0.0005654201269074875,
+      0.006098752224601061,
+      3.4482746730087354e-07,
+      6.896548156957649e-07,
+      0.30525397258524506,
+      0.3800337255190663,
+      0.4909842045645614,
+      0.6233203171774437,
+      0.4944607641421157,
+      0.5907868208745072,
+      0.7472820644076779,
+      0.9166828598002773,
+      0.0006183391180133081,
+      0.00037229170512306553,
+      0.2818649029718434,
+      0.3088881140761104,
+      0.3317335939347267,
+      0.0005654201269074875,
+      0.4565743319513417,
+      0.500347465464435,
+      0.5373533690243348,
+      0.0005654201269074875,
+      0.006098752224601061,
+      3.4482746730087354e-07,
+      6.896548156957649e-07,
+      0.30525397258524506,
+      0.3800337255190663,
+      0.4909842045645614,
+      0.6233203171774437,
+      0.4944607641421157,
+      0.5907868208745072,
+      0.7472820644076779,
+      0.9166828598002773,
+      0.0006183391180133081,
+      0.00037229170512306553,
+      0.2818649029718434,
+      0.3088881140761104,
+      0.3317335939347267,
+      0.0005654201269074875,
+      0.4565743319513417,
+      0.500347465464435,
+      0.5373533690243348,
+      0.0005654201269074875,
+      0.006098752224601061,
+      3.4482746730087354e-07,
+      6.896548156957649e-07,
+      0.30525397258524506,
+      0.3800337255190663,
+      0.4909842045645614,
+      0.6233203171774437,
+      0.4944607641421157,
+      0.5907868208745072,
+      0.7472820644076779,
+      0.9166828598002773,
+      0.0006183391180133081,
+      0.00037229170512306553,
+      0.2818649029718434,
+      0.3088881140761104,
+      0.3317335939347267,
+      0.0005654201269074875,
+      0.4565743319513417,
+      0.500347465464435,
+      0.5373533690243348,
+      0.0005654201269074875,
+      0.006098752224601061,
+      3.4482746730087354e-07,
+      6.896548156957649e-07,
+      0.022689531044337654,
+      0.0019218669126962963,
+      0.0026855707124543095,
+      0.0133993310165811,
+      1.3026811671682138e-06,
+      1.3026811671682138e-06,
+      4.4913774471205606e-07,
+      4.146550016512428e-07,
+      0.022689531044337654,
+      0.0019218669126962963,
+      0.002994872853325036,
+      0.010797331906009434,
+      1.3026811671682138e-06,
+      1.3026811671682138e-06,
+      4.4913774471205606e-07,
+      4.146550016512428e-07,
+      0.022689531044337654,
+      0.0019218669126962963,
+      0.0028303078297978704,
+      0.011720068891824824,
+      1.3026811671682138e-06,
+      1.3026811671682138e-06,
+      4.4913774471205606e-07,
+      4.146550016512428e-07,
+      0.022689531044337654,
+      0.0019218669126962963,
+      0.002599807630850634,
+      0.011184681130231286,
+      1.3026811671682138e-06,
+      1.3026811671682138e-06,
+      4.4913774471205606e-07,
+      4.146550016512428e-07,
+      0.022689531044337654,
+      0.0019218669126962963,
+      0.002140204216500099,
+      0.011542627239663227,
+      1.3026811671682138e-06,
+      1.3026811671682138e-06,
+      4.4913774471205606e-07,
+      4.146550016512428e-07,
+      0.022689531044337654,
+      0.0019218669126962963,
+      0.0024331359864235716,
+      0.012681575792923571,
+      1.3026811671682138e-06,
+      1.3026811671682138e-06,
+      4.4913774471205606e-07,
+      4.146550016512428e-07,
+      0.00014618782413163779,
+      0.002033389108571458,
+      0.0009820330263086243,
+      3.4482746730087354e-07,
+      3.4482746730087354e-07,
+      3.4482746730087354e-07,
+      0.10516091677379043,
+      0.22145096023605346,
+      0.05400789191567424,
+      0.33054555099963,
+      4.097429701886411e-07,
+      6.247392977257169e-07
+    ],
+    "reward_normalization_training_only": true,
+    "sample_count": 290.0001
+  },
+  "protocol_id": "v6-ramp-pure-rl-preregistered-v1",
+  "protocol_path": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-ubiquitous-disco\\env\\protocols\\v6_pure_ramp_rl.yaml",
+  "protocol_sha256": "03271cd1a3c8cf66c5c8be1e324bf1e07e096ffb650fccb1ac53f87d3672a8fd",
+  "pure_rl_assertions": {
+    "analytic_economic_base": false,
+    "behavior_cloning": false,
+    "curriculum_trajectories": false,
+    "demonstrations": false,
+    "expert_replay": false,
+    "mpc_actions": false,
+    "offline_expert_labels": false,
+    "optimizer_actions": false,
+    "oracle_reward_shaping": false,
+    "random_initialization_only": true,
+    "teacher": false,
+    "warm_start": false
+  },
+  "pure_rl_verification": {
+    "errors": [],
+    "passed": true
+  },
+  "raw_redundant_projected_logits": false,
+  "replay_provenance": {
+    "demonstration_rows": 0,
+    "external_rows": 0,
+    "optimizer_rows": 0,
+    "randomly_initialized_policy_rows": 288,
+    "safe_random_feasible_warmup_rows": 0,
+    "sources": [
+      "randomly_initialized_policy"
+    ],
+    "teacher_rows": 0
+  },
+  "requested_target_timesteps": 64,
+  "resume": {
+    "isolated_job_directory": "models\\ramp_rl_v6\\integration_smoke\\ppo",
+    "loaded_critic_sha256": null,
+    "loaded_policy_sha256": null,
+    "prior_final_policy_sha256": null,
+    "resumed": false,
+    "starting_interaction_count": 0
+  },
+  "safety_telemetry": {
+    "emergency_count_this_invocation": 0,
+    "non_agent_action_count": 0,
+    "semantic_adjustment_l2_sum_this_invocation": 0.0
+  },
+  "schema_version": "ramp-pure-rl-evidence-v1",
+  "seed": 2601,
+  "semantic_feasible_action": true,
+  "source_bundle_sha256": "1a799fb79aabb5eca09d3deb895d2ce2948ad0fd0d5331f12bf88cfbc52e86ca",
+  "stable_baselines3_version": "2.9.0",
+  "training_data_provenance": {
+    "environment_factory": {
+      "callable": "env.ramp_v6.factory:make_fixture_env",
+      "source_path": "env\\ramp_v6\\factory.py",
+      "source_sha256": "2b022f64425b89924397accce5081128c4be326f2eae5cf5c6bb53455d109aad"
+    },
+    "episodes": [
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000000"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000000"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000001"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000001"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000002"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000002"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000003"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000003"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000004"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000004"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000005"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000005"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000006"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000006"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000007"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000007"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000008"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000008"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000009"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000009"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000010"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000010"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000011"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000011"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000012"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000012"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000013"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000013"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000014"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000014"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-0-seed-2601-episode-000015"
+      },
+      {
+        "forecast_model": "ramp-core-deterministic-causal-forecast-v1",
+        "forecast_vintage": "fixture-six-market-2026-08-08",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "canonical_panel": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+          "fixture": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78",
+          "six_market_transform": "488114bbf11f007371de675a3ef0b2c350735be0c48ef6a8a22a1cd26732f937"
+        },
+        "split": "train",
+        "window_id": "ramp-core-m-01-rank-1-seed-2602-episode-000015"
+      }
+    ],
+    "split": "train",
+    "validation_or_test_rows": 0
+  },
+  "update_count": 18
+}

@@ -1,8 +1,17 @@
 protocol:
   id: v6-ramp-pure-rl-preregistered-v1
   title: Pure PPO/SAC ramp and terminal-tail campaign
-  status: preregistered-awaiting-v6-and-energy-v3-integration
+  status: preregistered-awaiting-energy-v3-panel
   frozen_predecessors_untouched: [v2, v3, v4, v5]
+
+environment_protocol:
+  path: env/protocols/v6_ramp_pure_rl.yaml
+  id: ramp-v6-pure-rl-frozen-v1
+  panel_schema: env/protocols/v6_ramp_panel.schema.json
+  cadence: hourly UTC
+  semantic_action_id: ramp-v6-constraint-decoded-preferences-2n-plus-1-v1
+  dimensions_for_n_sites: 2N+1
+  bounds: [-6.0, 6.0]
 
 attribution:
   random_initialization_only: true
@@ -21,7 +30,7 @@ attribution:
   analytic_or_qp_controller_role: evaluation-only-oracle-bound
 
 data:
-  interval_minutes: 5
+  interval_minutes: 60
   split:
     train:
       months: [1, 2, 3, 4, 5, 6]
@@ -48,7 +57,7 @@ training:
   terminal_tail_hours: 3
   ramp_horizons_hours: [1, 3]
   vectorized_environments: 4
-  action_contract: semantic-feasible-v6-action
+  action_contract: ramp-v6-constraint-decoded-preferences-2n-plus-1-v1
   raw_redundant_projected_logits: false
   normalization:
     fit_split: train
@@ -117,8 +126,7 @@ campaign:
   resumable_isolated_jobs: true
   deterministic_evaluation: true
   final_campaign_blocked_until:
-    - integrated-v6-ramp-environment
-    - integrated-energy-model-v3
+    - energy-model-v3-ramp-panel
 
 success_gate:
   exact_service_completion_all_seeds: true

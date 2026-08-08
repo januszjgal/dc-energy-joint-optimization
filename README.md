@@ -1,9 +1,10 @@
 # Safe Joint Energy Optimization for Geo-Distributed Data Centers
 
-The preregistered, additive pure-PPO/SAC harness for the forthcoming ramp-aware
-v6 environment is documented in [`docs/ramp_rl_v6.md`](docs/ramp_rl_v6.md).
-It remains fixture-only until the v6 ramp environment and energy-model v3 are
-integrated; frozen v2-v5 behavior and artifacts are not imported or modified.
+The preregistered, additive pure-PPO/SAC harness is integrated with the
+ramp-aware v6 core and documented in
+[`docs/ramp_rl_v6.md`](docs/ramp_rl_v6.md). Miniature jobs run against the real
+six-market ramp-core fixture. The long campaign remains blocked only on the
+energy-model v3 ramp panel; frozen v2-v5 behavior and artifacts are untouched.
 
 This repository is the executable companion to a thesis on joint spatial and
 temporal workload scheduling across four proxy data centers.
@@ -252,7 +253,9 @@ The DOCX builder uses the pinned local `docx` package from `package.json`.
 | `data/` | Active Borg, PowerData2019, and CAISO inputs |
 | `env/` | Simulator, accounting, safety layer, and v5 decoder |
 | `env/scenarios/` | US/Global a-d and e-h scenario wiring |
-| `env/protocols/` | Frozen v2-v5 protocol files |
+| `env/protocols/` | Frozen v2-v6 environment, panel, and campaign contracts |
+| `env/ramp_v6/` | Hourly six-market ramp environment and trainer factories |
+| `ramp_rl/` | Pure PPO/SAC campaign, resume, evaluation, and evidence harness |
 | `scripts/run_offpolicy_campaign_v5.py` | Teacher collection, BC, TD3+BC, evaluation |
 | `scripts/build_offpolicy_evidence_v5.py` | Cryptographic evidence validation |
 | `scripts/build_v5_results.py` | Final metrics, report, and figures |

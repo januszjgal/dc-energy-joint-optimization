@@ -1,6 +1,7 @@
 protocol:
   id: ramp-v6-pure-rl-frozen-v1
   status: additive
+  trainer_campaign_protocol: env/protocols/v6_pure_ramp_rl.yaml
   frozen_predecessors_untouched: [v2, v3, v4, v5]
   cadence: hourly UTC
   primary_sites: 6
@@ -38,6 +39,7 @@ state:
     - UTC time features
 
 action:
+  semantic_action_id: ramp-v6-constraint-decoded-preferences-2n-plus-1-v1
   dimensions_for_n_sites: 2N+1
   fields:
     - N service allocation preferences

@@ -27,6 +27,9 @@ def _episode(
     request = EnvRequest(split=split, seed=seed, window_id=window_id, training=False)
     adapter = RampEnvAdapter(factory(request), request)
     if model is None:
+        tail_emitted_in_steps = bool(
+            adapter.contract.get("terminal_tail_emitted_in_step_metrics", False)
+        )
         observation, reset_info = adapter.reset(seed=seed)
         infos: list[dict[str, Any]] = []
         while True:
@@ -44,6 +47,11 @@ def _episode(
             return RampEnvAdapter(factory(local_request), local_request)
 
         base_vec = DummyVecEnv([make])
+        tail_emitted_in_steps = bool(
+            base_vec.envs[0].contract.get(
+                "terminal_tail_emitted_in_step_metrics", False
+            )
+        )
         vec = VecNormalize.load(normalization_path, base_vec)
         vec.training = False
         vec.norm_reward = False
@@ -57,6 +65,65 @@ def _episode(
             if bool(dones[0]):
                 break
         vec.close()
+    tail_h1 = [] if tail_emitted_in_steps else infos[-1]["terminal_tail_ramp_h1_adjusted"]
+    tail_h3 = [] if tail_emitted_in_steps else infos[-1]["terminal_tail_ramp_h3_adjusted"]
+    tail_incremental = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_incremental_ramp_impact"]
+    )
+    tail_energy = (
+        [] if tail_emitted_in_steps else infos[-1]["terminal_tail_energy_cost"]
+    )
+    tail_status_quo_energy = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_status_quo_energy_cost"]
+    )
+    tail_service_unserved = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_service_unserved"]
+    )
+    tail_batch_unfinished = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_batch_unfinished"]
+    )
+    tail_batch_expired = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_batch_expired"]
+    )
+    tail_certificates = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_certificate_violations"]
+    )
+    tail_emergency = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_emergency_feasibility"]
+    )
+    tail_semantic_adjustment = (
+        []
+        if tail_emitted_in_steps
+        else infos[-1]["terminal_tail_semantic_adjustment_l2"]
+    )
+    per_market_incremental: dict[str, list[float]] = defaultdict(list)
+    for info in infos:
+        for market, row in info.get("per_market", {}).items():
+            per_market_incremental[str(market)].append(
+                sum(
+                    weight
+                    * float(
+                        row["windows"][f"{horizon}h"][
+                            "incremental_squared_impact"
+                        ]
+                    )
+                    for horizon, weight in ((1, 0.4), (3, 0.6))
+                )
+            )
     return {
         "window_id": window_id,
         "evaluation_seed": seed,
@@ -66,26 +133,46 @@ def _episode(
         "future_realized_features_exposed": bool(reset_info["episode_context"]["future_realized_features_exposed"]),
         "ramp_h1": (
             [float(info["ramp_h1_adjusted"]) for info in infos]
-            + [float(value) for value in infos[-1]["terminal_tail_ramp_h1_adjusted"]]
+            + [float(value) for value in tail_h1]
         ),
         "ramp_h3": (
             [float(info["ramp_h3_adjusted"]) for info in infos]
-            + [float(value) for value in infos[-1]["terminal_tail_ramp_h3_adjusted"]]
+            + [float(value) for value in tail_h3]
         ),
         "incremental": (
             [float(info["incremental_ramp_impact"]) for info in infos]
-            + [float(value) for value in infos[-1]["terminal_tail_incremental_ramp_impact"]]
+            + [float(value) for value in tail_incremental]
         ),
-        "energy_cost": sum(float(info["energy_cost"]) for info in infos),
-        "status_quo_energy_cost": sum(float(info["status_quo_energy_cost"]) for info in infos),
-        "service_unserved": sum(float(info["service_unserved"]) for info in infos),
-        "batch_unfinished": float(infos[-1]["batch_unfinished"]),
-        "batch_expired": sum(float(info["batch_expired"]) for info in infos),
-        "certificate_violations": sum(int(info["certificate_violations"]) for info in infos),
+        "per_market_incremental": dict(per_market_incremental),
+        "energy_cost": sum(float(info["energy_cost"]) for info in infos)
+        + sum(float(value) for value in tail_energy),
+        "status_quo_energy_cost": sum(
+            float(info["status_quo_energy_cost"]) for info in infos
+        )
+        + sum(float(value) for value in tail_status_quo_energy),
+        "service_unserved": sum(float(info["service_unserved"]) for info in infos)
+        + sum(float(value) for value in tail_service_unserved),
+        "batch_unfinished": (
+            float(tail_batch_unfinished[-1])
+            if tail_batch_unfinished
+            else float(infos[-1]["batch_unfinished"])
+        ),
+        "batch_expired": sum(float(info["batch_expired"]) for info in infos)
+        + sum(float(value) for value in tail_batch_expired),
+        "certificate_violations": sum(
+            int(info["certificate_violations"]) for info in infos
+        )
+        + sum(int(value) for value in tail_certificates),
         "terminal_work": float(infos[-1]["terminal_work"]),
-        "emergency_count": sum(bool(info["emergency_feasibility"]) for info in infos),
-        "step_count": len(infos),
-        "semantic_adjustment_l2": sum(float(info["semantic_adjustment_l2"]) for info in infos),
+        "emergency_count": sum(
+            bool(info["emergency_feasibility"]) for info in infos
+        )
+        + sum(bool(value) for value in tail_emergency),
+        "step_count": len(infos) + len(tail_emergency),
+        "semantic_adjustment_l2": sum(
+            float(info["semantic_adjustment_l2"]) for info in infos
+        )
+        + sum(float(value) for value in tail_semantic_adjustment),
         "deferrable_pre_service": sum(float(info["deferrable_pre_service"]) for info in infos),
         "ramp_power": sum(float(info["dc_power_during_realized_ramp"]) for info in infos),
     }
@@ -99,7 +186,13 @@ def _aggregate(policy: list[dict[str, Any]], baseline: list[dict[str, Any]], spl
     baseline_cost = sum(episode["energy_cost"] for episode in baseline)
     market_values: dict[str, list[float]] = defaultdict(list)
     for episode in policy:
-        market_values[f"fixture-month-{episode['month']:02d}"].extend(episode["incremental"])
+        if episode["per_market_incremental"]:
+            for market, values in episode["per_market_incremental"].items():
+                market_values[market].extend(values)
+        else:
+            market_values[f"fixture-month-{episode['month']:02d}"].extend(
+                episode["incremental"]
+            )
     per_evaluation_seed: dict[int, list[float]] = defaultdict(list)
     for episode in policy:
         per_evaluation_seed[int(episode["evaluation_seed"])].extend(episode["incremental"])
