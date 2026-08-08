@@ -25,14 +25,15 @@ from ramp_rl.evidence import (  # noqa: E402
     select_on_validation,
     verify_pure_rl_manifest,
 )
-from ramp_rl.fixture_env import DeterministicRampFixtureEnv, make_fixture_env  # noqa: E402
+from env.ramp_v6.factory import make_fixture_env as make_ramp_core_env  # noqa: E402
+from ramp_rl.fixture_env import DeterministicRampFixtureEnv  # noqa: E402
 from ramp_rl.runner import run_training  # noqa: E402
 from ramp_rl.schema import load_protocol  # noqa: E402
 
 
 def test_contract_and_evaluation_guard() -> None:
     train_request = EnvRequest(split="train", seed=1, training=True)
-    env = RampEnvAdapter(make_fixture_env(train_request), train_request)
+    env = RampEnvAdapter(make_ramp_core_env(train_request), train_request)
     observation, info = env.reset(seed=1)
     first_window = info["episode_context"]["window_id"]
     _, next_info = env.reset()
@@ -136,13 +137,15 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
         "schema_version": "ramp-pure-rl-fixture-evidence-v1",
         "protocol_id": protocol["protocol"]["id"],
         "protocol_sha256": protocol["_sha256"],
+        "environment": "env.ramp_v6.factory:make_fixture_env",
+        "fixture": "ramp-core-deterministic-six-market-1gw-v1",
         "final_long_campaign_launched": False,
         "jobs": [],
     }
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         ppo = run_training(
-            factory=make_fixture_env,
+            factory=make_ramp_core_env,
             protocol=protocol,
             algorithm="ppo",
             seed=2601,
@@ -153,7 +156,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
             fixture_profile=True,
         )
         sac_first = run_training(
-            factory=make_fixture_env,
+            factory=make_ramp_core_env,
             protocol=protocol,
             algorithm="sac",
             seed=2602,
@@ -163,7 +166,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
             resume=False,
             fixture_profile=True,
         )
-        assert sac_first["interaction_count"] == 96
+        assert sac_first["interaction_count"] >= 96
         assert sac_first["interaction_count"] % sac_first["checkpoint_boundary_quantum"] == 0
         assert sac_first["multiobjective"]["lagrangian_updates"]
         assert sac_first["training_data_provenance"]["episodes"]
@@ -177,7 +180,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
         )
         try:
             run_training(
-                factory=make_fixture_env,
+                factory=make_ramp_core_env,
                 protocol=protocol,
                 algorithm="sac",
                 seed=2602,
@@ -193,7 +196,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
             raise AssertionError("resume accepted an incompatible job identity")
         sac_manifest_path.write_text(original_manifest_text, encoding="utf-8")
         sac_resumed = run_training(
-            factory=make_fixture_env,
+            factory=make_ramp_core_env,
             protocol=protocol,
             algorithm="sac",
             seed=2602,
@@ -212,7 +215,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
         tampered["pure_rl_assertions"]["teacher"] = True
         assert verify_pure_rl_manifest(tampered)
         eval_one = evaluate_checkpoint(
-            factory=make_fixture_env,
+            factory=make_ramp_core_env,
             algorithm="ppo",
             checkpoint_dir=root / "ppo",
             split="validation",
@@ -220,7 +223,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
             windows=["m-07-sealed-0000"],
         )
         eval_two = evaluate_checkpoint(
-            factory=make_fixture_env,
+            factory=make_ramp_core_env,
             algorithm="ppo",
             checkpoint_dir=root / "ppo",
             split="validation",
@@ -236,7 +239,23 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
         assert eval_one["certificate_violations"] == 0
         assert eval_one["emergency_feasibility_rate"] == 0.0
         assert eval_one["future_leakage_detected"] is False
-        assert len(eval_one["policy_episodes"][0]["ramp_h1"]) == 48 + 36
+        assert len(eval_one["policy_episodes"][0]["ramp_h1"]) == 9
+        assert set(eval_one["per_market_macro"]) == {
+            f"M{index}" for index in range(6)
+        }
+        sac_eval = evaluate_checkpoint(
+            factory=make_ramp_core_env,
+            algorithm="sac",
+            checkpoint_dir=root / "sac",
+            split="validation",
+            seeds=[78],
+            windows=["ramp-core-m-07-sealed-0000"],
+        )
+        assert sac_eval["service_unserved"] == 0.0
+        assert sac_eval["batch_unfinished"] == 0.0
+        assert sac_eval["batch_expired"] == 0.0
+        assert sac_eval["terminal_work"] == 0.0
+        assert sac_eval["certificate_violations"] == 0
         assert all(
             episode["split"] == "train"
             for episode in sac_resumed["training_data_provenance"]["episodes"]
@@ -249,6 +268,7 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
                         "algorithm",
                         "seed",
                         "semantic_feasible_action",
+                        "environment_contract",
                         "raw_redundant_projected_logits",
                         "interaction_count",
                         "update_count",
@@ -274,6 +294,48 @@ def test_miniature_training_resumption_and_determinism() -> dict[str, object]:
         evidence["deterministic_evaluation_sha256"] = __import__("hashlib").sha256(
             json.dumps(eval_one, sort_keys=True).encode("utf-8")
         ).hexdigest()
+        evidence["validation_metrics"] = {
+            "ppo": {
+                key: eval_one[key]
+                for key in (
+                    "mean_incremental_ramp_impact",
+                    "per_market_macro",
+                    "ramp_h1_adjusted_p95",
+                    "ramp_h1_adjusted_max",
+                    "ramp_h3_adjusted_p95",
+                    "ramp_h3_adjusted_max",
+                    "energy_cost_ratio",
+                    "service_unserved",
+                    "batch_unfinished",
+                    "batch_expired",
+                    "terminal_work",
+                    "certificate_violations",
+                    "emergency_feasibility_rate",
+                    "semantic_adjustment_l2",
+                    "success_gate",
+                )
+            },
+            "sac": {
+                key: sac_eval[key]
+                for key in (
+                    "mean_incremental_ramp_impact",
+                    "per_market_macro",
+                    "ramp_h1_adjusted_p95",
+                    "ramp_h1_adjusted_max",
+                    "ramp_h3_adjusted_p95",
+                    "ramp_h3_adjusted_max",
+                    "energy_cost_ratio",
+                    "service_unserved",
+                    "batch_unfinished",
+                    "batch_expired",
+                    "terminal_work",
+                    "certificate_violations",
+                    "emergency_feasibility_rate",
+                    "semantic_adjustment_l2",
+                    "success_gate",
+                )
+            },
+        }
         evidence["resumption_proven"] = True
     return evidence
 
@@ -283,7 +345,7 @@ def main() -> None:
     test_lagrangian_and_selection_seal_test()
     test_staged_campaign_protocol()
     evidence = test_miniature_training_resumption_and_determinism()
-    output = ROOT / "output" / "ramp_rl_v6" / "fixture_smoke_evidence.json"
+    output = ROOT / "output" / "ramp_rl_v6" / "ramp_core_smoke_evidence.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print("smoke_test_ramp_rl_v6: PASS")

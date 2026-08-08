@@ -10,7 +10,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from ramp_rl.contract import CONTRACT_VERSION, EnvRequest
+from ramp_rl.contract import CONTRACT_VERSION, SEMANTIC_ACTION_ID, EnvRequest
 
 INTERVALS_PER_HOUR = 12
 HISTORY_STEPS = 3 * INTERVALS_PER_HOUR
@@ -59,13 +59,16 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
         return {
             "version": CONTRACT_VERSION,
             "semantic_feasible_action": True,
-            "semantic_action_name": "feasible_deferrable_service_fraction",
+            "semantic_action_id": SEMANTIC_ACTION_ID,
             "raw_redundant_projected_logits": False,
             "history_hours": 3,
             "terminal_tail_hours": 3,
             "actual_terminal": True,
             "interval_minutes": 5,
             "decision_steps": self.decision_steps,
+            "action_shape": list(self.action_space.shape),
+            "action_low": self.action_space.low.tolist(),
+            "action_high": self.action_space.high.tolist(),
         }
 
     def set_lagrangian_multiplier(self, value: float) -> None:
@@ -201,7 +204,9 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
         status_quo_cost = float(self._price[absolute] * status_quo_power)
         self._energy_cost += cost
         self._status_quo_cost += status_quo_cost
-        budget = status_quo_cost * (1.0 + self.request.epsilon_pct / 100.0)
+        budget = status_quo_cost + abs(status_quo_cost) * (
+            self.request.epsilon_pct / 100.0
+        )
         violation = max(cost - budget, 0.0)
         reward = -(incremental + self._lagrangian_multiplier * violation)
         self._step += 1
@@ -209,6 +214,8 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
         tail_h1: list[float] = []
         tail_h3: list[float] = []
         tail_incremental: list[float] = []
+        tail_energy: list[float] = []
+        tail_status_quo_energy: list[float] = []
         if terminated:
             for tail in range(TAIL_STEPS):
                 tail_absolute = HISTORY_STEPS + self.decision_steps + tail
@@ -219,6 +226,9 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
                 tail_h1.append(tail_h1_value)
                 tail_h3.append(tail_h3_value)
                 tail_incremental.append(tail_value)
+                tail_cost = float(self._price[tail_absolute] * tail_power)
+                tail_energy.append(tail_cost)
+                tail_status_quo_energy.append(tail_cost)
                 self._power_history.append(tail_power)
             reward -= sum(tail_incremental)
             self._terminal = True
@@ -246,8 +256,24 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
             "terminal_tail_ramp_h1_adjusted": tail_h1,
             "terminal_tail_ramp_h3_adjusted": tail_h3,
             "terminal_tail_incremental_ramp_impact": tail_incremental,
+            "terminal_tail_energy_cost": tail_energy,
+            "terminal_tail_status_quo_energy_cost": tail_status_quo_energy,
+            "terminal_tail_service_unserved": [0.0] * len(tail_h1),
+            "terminal_tail_batch_unfinished": [0.0] * len(tail_h1),
+            "terminal_tail_batch_expired": [0.0] * len(tail_h1),
+            "terminal_tail_certificate_violations": [0] * len(tail_h1),
+            "terminal_tail_emergency_feasibility": [False] * len(tail_h1),
+            "terminal_tail_semantic_adjustment_l2": [0.0] * len(tail_h1),
             "deferrable_pre_service": service if absolute < HISTORY_STEPS + self.decision_steps // 2 else 0.0,
             "dc_power_during_realized_ramp": power if absolute >= HISTORY_STEPS + self.decision_steps // 2 else 0.0,
+            "step_ramp_h1_adjusted": [h1],
+            "step_ramp_h3_adjusted": [h3],
+            "step_incremental_ramp_impact": [incremental],
+            "step_energy_cost": [cost],
+            "step_service_unserved": [0.0],
+            "step_batch_unfinished": [self._backlog],
+            "step_batch_expired": [0.0],
+            "step_certificate_violations": [0],
         }
         observation = self._observation() if not terminated else np.zeros(self.observation_space.shape, dtype=np.float32)
         return observation, float(reward), terminated, False, info

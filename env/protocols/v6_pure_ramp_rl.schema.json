@@ -3,14 +3,27 @@
   "$id": "https://example.invalid/dc-energy/v6-pure-ramp-rl.schema.json",
   "title": "v6 pure ramp RL protocol",
   "type": "object",
-  "required": ["protocol", "attribution", "data", "training", "algorithms", "multiobjective", "campaign", "success_gate"],
+  "required": ["protocol", "environment_protocol", "attribution", "data", "training", "algorithms", "multiobjective", "campaign", "success_gate"],
   "properties": {
     "protocol": {
       "type": "object",
       "required": ["id", "status"],
       "properties": {
         "id": {"const": "v6-ramp-pure-rl-preregistered-v1"},
-        "status": {"const": "preregistered-awaiting-v6-and-energy-v3-integration"}
+        "status": {"const": "preregistered-awaiting-energy-v3-panel"}
+      }
+    },
+    "environment_protocol": {
+      "type": "object",
+      "required": ["path", "id", "panel_schema", "cadence", "semantic_action_id", "dimensions_for_n_sites", "bounds"],
+      "properties": {
+        "path": {"const": "env/protocols/v6_ramp_pure_rl.yaml"},
+        "id": {"const": "ramp-v6-pure-rl-frozen-v1"},
+        "panel_schema": {"const": "env/protocols/v6_ramp_panel.schema.json"},
+        "cadence": {"const": "hourly UTC"},
+        "semantic_action_id": {"const": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"},
+        "dimensions_for_n_sites": {"const": "2N+1"},
+        "bounds": {"const": [-6.0, 6.0]}
       }
     },
     "attribution": {
@@ -40,7 +53,7 @@
         "bootstrap_across_terminal": {"const": false},
         "history_hours": {"const": 3},
         "terminal_tail_hours": {"const": 3},
-        "action_contract": {"const": "semantic-feasible-v6-action"},
+        "action_contract": {"const": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"},
         "raw_redundant_projected_logits": {"const": false}
       }
     },

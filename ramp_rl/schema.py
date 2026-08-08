@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,27 @@ def _require(condition: bool, message: str) -> None:
 
 
 def validate_protocol(protocol: dict[str, Any]) -> None:
+    environment = protocol["environment_protocol"]
+    _require(
+        environment["id"] == "ramp-v6-pure-rl-frozen-v1",
+        "trainer must bind the frozen ramp-core protocol",
+    )
+    _require(
+        environment["panel_schema"] == "env/protocols/v6_ramp_panel.schema.json",
+        "trainer and ramp core must share one canonical panel schema",
+    )
+    _require(environment["cadence"] == "hourly UTC", "ramp core cadence must be hourly UTC")
+    _require(
+        environment["semantic_action_id"]
+        == "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+        "semantic action ID does not match the ramp-core decoder",
+    )
+    _require(
+        environment["dimensions_for_n_sites"] == "2N+1"
+        and [float(value) for value in environment["bounds"]] == [-6.0, 6.0],
+        "semantic action shape/bounds do not match the ramp core",
+    )
+
     attribution = protocol["attribution"]
     _require(attribution["random_initialization_only"] is True, "random initialization is required")
     _require(attribution["safe_random_feasible_warmup_allowed"] is True, "safe random warmup must be allowed")
@@ -45,6 +67,7 @@ def validate_protocol(protocol: dict[str, Any]) -> None:
         _require(attribution[key] is False, f"pure-RL protocol requires attribution.{key}=false")
 
     training = protocol["training"]
+    _require(int(protocol["data"]["interval_minutes"]) == 60, "v6 ramp cadence is hourly")
     _require(training["stable_baselines3"] == EXPECTED_SB3_VERSION, "SB3 must be pinned to 2.9.0")
     _require(float(training["gamma"]) == 1.0, "finite-horizon ramp training requires gamma=1")
     _require(training["actual_terminals"] is True, "actual terminal states are required")
@@ -53,6 +76,14 @@ def validate_protocol(protocol: dict[str, Any]) -> None:
     _require(int(training["terminal_tail_hours"]) == 3, "v6 contract requires a 3h terminal tail")
     _require(set(training["ramp_horizons_hours"]) == {1, 3}, "ramp horizons must be exactly 1h and 3h")
     _require(int(training["vectorized_environments"]) == 4, "integrated campaign requires four vector environments")
+    _require(
+        training["action_contract"] == environment["semantic_action_id"],
+        "training action contract does not match the ramp environment",
+    )
+    _require(
+        training["raw_redundant_projected_logits"] is False,
+        "trainer may not reinterpret the bounded preference semantics",
+    )
 
     algorithms = protocol["algorithms"]
     _require(float(algorithms["ppo"]["gamma"]) == 1.0, "PPO gamma must be 1")
@@ -83,6 +114,11 @@ def validate_protocol(protocol: dict[str, Any]) -> None:
     _require(len(stages["extension"]["seed_values"]) == 5, "extension seed list must retain five seeds")
     _require(stages["extension"]["max_timesteps"] == 2_000_000, "extension cap must be 2M")
     _require(stages["extension"]["validation_curve_materiality_required"] is True, "2M extension needs validation materiality")
+    _require(
+        protocol["campaign"]["final_campaign_blocked_until"]
+        == ["energy-model-v3-ramp-panel"],
+        "the real campaign must be blocked only on the energy-model-v3 ramp panel",
+    )
 
 
 def load_protocol(path: Path = DEFAULT_PROTOCOL_PATH) -> dict[str, Any]:
@@ -90,6 +126,37 @@ def load_protocol(path: Path = DEFAULT_PROTOCOL_PATH) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"invalid protocol document: {path}")
     validate_protocol(payload)
+    environment_path = ROOT / payload["environment_protocol"]["path"]
+    environment_payload = yaml.safe_load(environment_path.read_text(encoding="utf-8"))
+    if environment_payload["protocol"]["id"] != payload["environment_protocol"]["id"]:
+        raise ValueError("ramp-core protocol ID does not match the trainer binding")
+    if (
+        environment_payload["protocol"]["trainer_campaign_protocol"]
+        != path.relative_to(ROOT).as_posix()
+    ):
+        raise ValueError("ramp-core protocol does not point back to this campaign")
+    if (
+        environment_payload["data"]["panel_schema"]
+        != payload["environment_protocol"]["panel_schema"]
+    ):
+        raise ValueError("ramp-core and trainer panel schema references differ")
+    if (
+        environment_payload["action"]["semantic_action_id"]
+        != payload["environment_protocol"]["semantic_action_id"]
+    ):
+        raise ValueError("ramp-core and trainer semantic action IDs differ")
+    panel_schema_path = ROOT / payload["environment_protocol"]["panel_schema"]
+    component_hashes = {
+        "campaign": normalized_sha256(path),
+        "environment": normalized_sha256(environment_path),
+        "panel_schema": normalized_sha256(panel_schema_path),
+    }
     payload["_path"] = str(path)
-    payload["_sha256"] = normalized_sha256(path)
+    payload["_document_sha256"] = component_hashes["campaign"]
+    payload["_environment_protocol_path"] = str(environment_path)
+    payload["_panel_schema_path"] = str(panel_schema_path)
+    payload["_component_sha256"] = component_hashes
+    payload["_sha256"] = hashlib.sha256(
+        json.dumps(component_hashes, sort_keys=True).encode("utf-8")
+    ).hexdigest()
     return payload

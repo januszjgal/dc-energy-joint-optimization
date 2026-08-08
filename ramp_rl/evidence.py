@@ -12,6 +12,7 @@ from typing import Any, Iterable, Sequence
 import numpy as np
 
 from ramp_rl.schema import FORBIDDEN_TRAINING_INPUTS
+from ramp_rl.contract import SEMANTIC_ACTION_ID
 
 
 def sha256_file(path: Path) -> str:
@@ -42,6 +43,11 @@ def verify_pure_rl_manifest(manifest: dict[str, Any]) -> list[str]:
         errors.append("semantic feasible action assertion missing")
     if manifest.get("raw_redundant_projected_logits") is not False:
         errors.append("raw redundant logits were not rejected")
+    contract = manifest.get("environment_contract", {})
+    if contract.get("semantic_action_id") != SEMANTIC_ACTION_ID:
+        errors.append("semantic action ID does not match the ramp-core contract")
+    if contract.get("interval_minutes") != 60:
+        errors.append("integrated ramp-core evidence must use hourly intervals")
     if manifest.get("initial_policy_sha256") == manifest.get("final_policy_sha256"):
         errors.append("policy parameters did not update")
     if manifest.get("initial_critic_sha256") == manifest.get("final_critic_sha256"):
@@ -74,13 +80,18 @@ def verify_pure_rl_manifest(manifest: dict[str, Any]) -> list[str]:
             errors.append("training window is missing forecast identity")
         if row.get("future_realized_features_exposed") is not False:
             errors.append("training window exposes realized future features")
-    if manifest.get("algorithm") == "sac":
-        provenance = manifest.get("replay_provenance", {})
-        allowed = {"safe_random_feasible_warmup", "randomly_initialized_policy"}
-        if set(provenance.get("sources", [])) - allowed:
-            errors.append("SAC replay contains a prohibited source")
-        if provenance.get("external_rows", -1) != 0:
-            errors.append("SAC replay contains external rows")
+    provenance = manifest.get("replay_provenance", {})
+    allowed = {"safe_random_feasible_warmup", "randomly_initialized_policy"}
+    if set(provenance.get("sources", [])) - allowed:
+        errors.append("training replay contains a prohibited source")
+    for key in (
+        "external_rows",
+        "teacher_rows",
+        "optimizer_rows",
+        "demonstration_rows",
+    ):
+        if provenance.get(key, -1) != 0:
+            errors.append(f"training replay contains prohibited {key}")
     return errors
 
 
@@ -95,7 +106,7 @@ class FrozenLagrangian:
     def update(self, energy_cost: float, status_quo_cost: float, epsilon_pct: float, *, split: str) -> float:
         if split == "test":
             raise ValueError("sealed test data may not update the Lagrangian")
-        budget = status_quo_cost * (1.0 + epsilon_pct / 100.0)
+        budget = status_quo_cost + abs(status_quo_cost) * epsilon_pct / 100.0
         self.multiplier = float(np.clip(self.multiplier + self.learning_rate * (energy_cost - budget), 0.0, self.maximum))
         return self.multiplier
 

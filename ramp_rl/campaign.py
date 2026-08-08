@@ -126,7 +126,7 @@ def extension_allowed(
 
 
 def assert_long_campaign_ready(integration: dict[str, bool]) -> None:
-    required = ("integrated_v6_ramp_environment", "integrated_energy_model_v3")
+    required = ("energy_model_v3_ramp_panel",)
     missing = [name for name in required if integration.get(name) is not True]
     if missing:
         raise RuntimeError("final long campaign remains blocked: " + ", ".join(missing))
