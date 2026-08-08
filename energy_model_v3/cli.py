@@ -3,16 +3,30 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import io
 import json
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import requests
 
-from .adapters import ADAPTERS, get_adapter
+from .adapters import (
+    ADAPTERS,
+    get_adapter,
+    parse_caiso_da,
+    parse_ercot_da,
+    parse_miso_da,
+    parse_nyiso_da,
+    parse_spp_da,
+    read_ercot_xlsx_sheet,
+)
 from .adapters.base import download_raw
 from .builder import (
     MARKETS,
@@ -113,6 +127,219 @@ def command_download_samples(args: argparse.Namespace) -> int:
     return 2 if any(item["status"] == "BLOCKED" for item in records) else 0
 
 
+def _live_parse_record(
+    market: str,
+    raw: bytes,
+    parsed: pd.DataFrame,
+    *,
+    source: str,
+) -> dict[str, object]:
+    return {
+        "market": market,
+        "status": "PARSED",
+        "source": source,
+        "raw_bytes": len(raw),
+        "raw_sha256": hashlib.sha256(raw).hexdigest(),
+        "raw_persisted": False,
+        "canonical_rows": len(parsed),
+        "start_utc": parsed["interval_start_utc"].min().isoformat(),
+        "end_utc": parsed["interval_end_utc"].max().isoformat(),
+    }
+
+
+def _collect_live_parser_records(
+    args: argparse.Namespace,
+) -> list[dict[str, object]]:
+    headers = {
+        "User-Agent": "dc-energy-joint-optimization/energy-model-v3"
+    }
+    records: list[dict[str, object]] = []
+
+    nyiso_url = (
+        "https://mis.nyiso.com/public/csv/damlbmp/"
+        "20250901damlbmp_zone_csv.zip"
+    )
+    nyiso_raw = requests.get(
+        nyiso_url, headers=headers, timeout=args.timeout
+    ).content
+    with zipfile.ZipFile(io.BytesIO(nyiso_raw)) as archive:
+        nyiso_source = pd.concat(
+            [pd.read_csv(archive.open(name)) for name in archive.namelist()],
+            ignore_index=True,
+        )
+    records.append(
+        _live_parse_record(
+            "NYISO_NYC_J",
+            nyiso_raw,
+            parse_nyiso_da(nyiso_source),
+            source=nyiso_url,
+        )
+    )
+
+    caiso_url = "https://oasis.caiso.com/oasisapi/SingleZip"
+    caiso_params = {
+        "queryname": "PRC_LMP",
+        "version": 12,
+        "market_run_id": "DAM",
+        "startdatetime": "20250901T00:00-0000",
+        "enddatetime": "20250901T01:00-0000",
+        "node": "TH_NP15_GEN-APND",
+        "resultformat": 6,
+    }
+    caiso_response = requests.get(
+        caiso_url,
+        params=caiso_params,
+        headers=headers,
+        timeout=args.timeout,
+    )
+    caiso_response.raise_for_status()
+    caiso_raw = caiso_response.content
+    with zipfile.ZipFile(io.BytesIO(caiso_raw)) as archive:
+        caiso_source = pd.read_csv(archive.open(archive.namelist()[0]))
+    records.append(
+        _live_parse_record(
+            "CAISO_NP15",
+            caiso_raw,
+            parse_caiso_da(caiso_source),
+            source=caiso_response.url,
+        )
+    )
+
+    ercot_discovery = requests.get(
+        "https://www.ercot.com/misapp/servlets/IceDocListJsonWS",
+        params={"reportTypeId": 13060},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    ercot_discovery.raise_for_status()
+    documents = ercot_discovery.json()["ListDocsByRptTypeRes"]["DocumentList"]
+    annual = next(
+        item["Document"]
+        for item in documents
+        if item["Document"]["FriendlyName"] == "DAMLZHBSPP_2025"
+    )
+    ercot_response = requests.get(
+        "https://www.ercot.com/misdownload/servlets/mirDownload",
+        params={"doclookupId": annual["DocID"]},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    ercot_response.raise_for_status()
+    ercot_raw = ercot_response.content
+    with zipfile.ZipFile(io.BytesIO(ercot_raw)) as archive:
+        workbook = archive.read(archive.namelist()[0])
+    ercot_source = read_ercot_xlsx_sheet(workbook, sheet_number=9)
+    records.append(
+        {
+            **_live_parse_record(
+                "ERCOT_LZ_NORTH",
+                ercot_raw,
+                parse_ercot_da(ercot_source),
+                source=ercot_response.url,
+            ),
+            "doc_id": annual["DocID"],
+            "filename": annual["ConstructedName"],
+        }
+    )
+
+    miso_url = (
+        "https://docs.misoenergy.org/marketreports/"
+        "20250901_da_expost_lmp.csv"
+    )
+    miso_response = requests.get(
+        miso_url, headers=headers, timeout=args.timeout
+    )
+    miso_response.raise_for_status()
+    miso_raw = miso_response.content
+    miso_source = pd.read_csv(io.BytesIO(miso_raw), skiprows=4)
+    records.append(
+        _live_parse_record(
+            "MISO_MINN_HUB",
+            miso_raw,
+            parse_miso_da(miso_source, "2025-09-01"),
+            source=miso_url,
+        )
+    )
+
+    spp_url = (
+        "https://portal.spp.org/file-browser-api/download/"
+        "da-lmp-by-settlement-location"
+    )
+    spp_response = requests.get(
+        spp_url,
+        params={
+            "path": "/2025/09/By_Day/DA-LMP-SL-202509010100.csv"
+        },
+        headers=headers,
+        timeout=args.timeout,
+    )
+    spp_response.raise_for_status()
+    spp_raw = spp_response.content
+    spp_source = pd.read_csv(io.BytesIO(spp_raw))
+    records.append(
+        _live_parse_record(
+            "SPP_NORTH_HUB",
+            spp_raw,
+            parse_spp_da(spp_source),
+            source=spp_response.url,
+        )
+    )
+
+    records.insert(
+        0,
+        get_adapter("PJM_DOM").capability().to_dict(),
+    )
+    return records
+
+
+def command_probe_parsers(args: argparse.Namespace) -> int:
+    output = Path(args.output)
+    generated_at = datetime.now(timezone.utc).isoformat()
+    write_json(
+        output,
+        {
+            "schema_version": "energy-model-v3",
+            "generated_at_utc": generated_at,
+            "status": "RUNNING",
+            "records": [],
+        },
+    )
+    try:
+        records = _collect_live_parser_records(args)
+    except (
+        requests.RequestException,
+        OSError,
+        KeyError,
+        IndexError,
+        StopIteration,
+        ET.ParseError,
+        zipfile.BadZipFile,
+        ContractError,
+        ValueError,
+    ) as exc:
+        write_json(
+            output,
+            {
+                "schema_version": "energy-model-v3",
+                "generated_at_utc": generated_at,
+                "status": "FAILED",
+                "records": [],
+                "failure": f"{type(exc).__name__}: {exc}",
+            },
+        )
+        return 2
+    write_json(
+        output,
+        {
+            "schema_version": "energy-model-v3",
+            "generated_at_utc": generated_at,
+            "status": "COMPLETED_WITH_CREDENTIAL_BLOCKERS",
+            "records": records,
+        },
+    )
+    return 2
+
+
 def command_preflight(args: argparse.Namespace) -> int:
     capability_path = Path(args.capabilities)
     capabilities = (
@@ -169,6 +396,7 @@ def command_manifest(args: argparse.Namespace) -> int:
         DEFAULT_DATA / "provenance" / "forecast_capabilities.json",
         DEFAULT_OUTPUT / "capabilities.json",
         DEFAULT_OUTPUT / "sample-download-manifest.json",
+        DEFAULT_OUTPUT / "live-parser-probes.json",
         DEFAULT_OUTPUT / "blocked-capability-report.json",
         DEFAULT_OUTPUT / "fixture-only" / "fixture_diagnostics.json",
         DEFAULT_OUTPUT / "fixture-only" / "fixture_quality_diagnostics.png",
@@ -316,6 +544,13 @@ def parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_OUTPUT / "sample-download-manifest.json"),
     )
     samples.set_defaults(func=command_download_samples)
+    parser_probes = commands.add_parser("probe-parsers")
+    parser_probes.add_argument("--timeout", type=int, default=180)
+    parser_probes.add_argument(
+        "--output",
+        default=str(DEFAULT_OUTPUT / "live-parser-probes.json"),
+    )
+    parser_probes.set_defaults(func=command_probe_parsers)
     preflight = commands.add_parser("preflight")
     preflight.add_argument("--data-root", default=str(DEFAULT_DATA))
     preflight.add_argument(

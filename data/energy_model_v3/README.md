@@ -113,6 +113,7 @@ From the repository root:
 python scripts\build_energy_model_v3.py describe-sources
 python scripts\build_energy_model_v3.py probe
 python scripts\build_energy_model_v3.py download-samples
+python scripts\build_energy_model_v3.py probe-parsers
 python scripts\build_energy_model_v3.py preflight
 python scripts\build_energy_model_v3.py fixture-diagnostics
 python scripts\build_energy_model_v3.py build
@@ -125,6 +126,12 @@ does not bypass redistribution limits. Full builds consume explicitly staged
 native canonical files under `native/<MARKET>/` and modeled DC power under
 `modeled_dc_power/`; they fail unless every required file has the exact common
 calendar.
+
+`probe-parsers` downloads representative locked public price products, parses
+their production schemas into canonical rows, records raw hashes and canonical
+coverage, and discards the raw bytes. PJM remains an explicit credential
+block. These are parser/schema probes, not a substitute for the complete
+all-six physical and price calendar.
 
 ## Current live capability status
 
