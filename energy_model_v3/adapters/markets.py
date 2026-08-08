@@ -269,20 +269,51 @@ class ERCOTAdapter(MarketAdapter):
                 },
             ),
             _descriptor(
-                **common,
-                feed="reports 13101 and 13424",
-                product="total system load and wind+solar physical tuple",
-                location="ERCOT total physical / LZ_NORTH price",
+                **{**common, "source": "ERCOT"},
+                feed="public Native_Load_YYYY.zip archives",
+                product="total ERCOT hourly native load",
+                location="ERCOT system",
                 cadence="hourly",
                 units="MW",
                 interval_semantics="interval_ending",
                 query={
-                    "load_report": 13101,
-                    "renewable_report": 13424,
-                    "rt_sensitivity_report": 13061,
-                    "forbidden_substitute": 12300,
+                    "archive_page": "https://www.ercot.com/gridinfo/load/load_hist",
+                    "2025_archive": "Native_Load_2025.zip",
+                    "2026_archive": "Native_Load_2026.zip",
                 },
                 quality_flags=("price_physical_boundary_mismatch_explicit",),
+            ),
+            _descriptor(
+                **common,
+                feed="report 13052 NP3-965-ER",
+                product=(
+                    "60-Day SCED Disclosure WGR/PVGR time-weighted renewable "
+                    "reconstruction"
+                ),
+                location="ERCOT system resources",
+                cadence="irregular SCED executions aggregated to hourly",
+                units="MW",
+                interval_semantics="interval_beginning",
+                query={
+                    "reportTypeId": 13052,
+                    "discovery": "IceDocListJsonWS",
+                    "download": "mirDownload?doclookupId=discovered_DocID",
+                    "resource_types": [
+                        "WIND source class normalized to WGR",
+                        "PVGR",
+                    ],
+                    "validation_report": 13424,
+                    "rt_sensitivity_report": 13061,
+                    "forbidden_retrospective_reports": [
+                        13028, 13483, 14787, 21809
+                    ],
+                    "forbidden_price_substitute": 12300,
+                },
+                quality_flags=(
+                    "duration_weight_irregular_executions",
+                    "preserve_resource_classification_and_gap_diagnostics",
+                    "report_13424_validation_only",
+                ),
             ),
         ]
 

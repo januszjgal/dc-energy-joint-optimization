@@ -20,14 +20,21 @@ import requests
 
 from .adapters import (
     ADAPTERS,
+    compare_ercot_renewables,
     get_adapter,
     parse_caiso_da,
+    parse_ercot_annual_renewables_xlsx,
     parse_ercot_da,
+    parse_ercot_sced_executions,
     parse_miso_da,
     parse_nyiso_da,
     parse_spp_da,
+    read_ercot_native_load_xlsx,
+    read_ercot_sced_generation_zip,
     read_ercot_xlsx_sheet,
     select_ercot_document,
+    select_ercot_sced_document,
+    time_weight_ercot_sced_hourly,
 )
 from .adapters.base import download_raw
 from .builder import (
@@ -38,6 +45,7 @@ from .builder import (
     sha256,
 )
 from .calendar import make_calendar
+from .canonical import derive_net_load
 from .contract import ContractError
 from .coverage import assess_candidate_coverage
 from .derivations import (
@@ -342,6 +350,618 @@ def command_probe_parsers(args: argparse.Namespace) -> int:
     return 2
 
 
+def command_probe_ercot_physical(args: argparse.Namespace) -> int:
+    """Probe the public load/SCED path without retaining source bulk data."""
+    headers = {
+        "User-Agent": "dc-energy-joint-optimization/energy-model-v3"
+    }
+    session = requests.Session()
+    discovery_url = (
+        "https://www.ercot.com/misapp/servlets/IceDocListJsonWS"
+    )
+    download_url = (
+        "https://www.ercot.com/misdownload/servlets/mirDownload"
+    )
+    retrieved_at = datetime.now(timezone.utc).isoformat()
+
+    discovery = session.get(
+        discovery_url,
+        params={"reportTypeId": 13052},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    discovery.raise_for_status()
+    documents = discovery.json()["ListDocsByRptTypeRes"]["DocumentList"]
+    selected = select_ercot_sced_document(
+        documents, sced_date=args.sced_date
+    )
+    response = session.get(
+        download_url,
+        params={"doclookupId": selected["DocID"]},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    response.raise_for_status()
+    sced_raw = response.content
+    executions = parse_ercot_sced_executions(
+        read_ercot_sced_generation_zip(sced_raw)
+    )
+    validation_start = executions["timestamp_utc"].min().ceil("1h")
+    validation_end = executions["timestamp_utc"].max().floor("1h")
+    if validation_end <= validation_start:
+        raise ContractError(
+            "SCED disclosure lacks an interior full-hour validation window"
+        )
+    reconstructed = time_weight_ercot_sced_hourly(
+        executions,
+        start_utc=validation_start,
+        end_utc=validation_end,
+    )
+
+    load_urls = {
+        2025: (
+            "https://www.ercot.com/files/docs/2025/02/11/"
+            "Native_Load_2025.zip"
+        ),
+        2026: (
+            "https://www.ercot.com/files/docs/2026/02/10/"
+            "Native_Load_2026.zip"
+        ),
+    }
+    load_frames: list[pd.DataFrame] = []
+    load_records: list[dict[str, object]] = []
+    for year, url in load_urls.items():
+        load_response = session.get(
+            url, headers=headers, timeout=args.timeout
+        )
+        load_response.raise_for_status()
+        raw = load_response.content
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            names = archive.namelist()
+            expected_name = f"Native_Load_{year}.xlsx"
+            if names != [expected_name]:
+                raise ContractError(
+                    f"ERCOT load ZIP contents changed for {year}: {names}"
+                )
+            workbook = archive.read(expected_name)
+        frame = read_ercot_native_load_xlsx(
+            workbook,
+            start_utc="2025-09-01T00:00:00Z",
+            end_utc="2026-05-01T00:00:00Z",
+        )
+        load_frames.append(frame)
+        load_records.append(
+            {
+                "year": year,
+                "url": url,
+                "http_last_modified": load_response.headers.get(
+                    "Last-Modified"
+                ),
+                "http_etag": load_response.headers.get("ETag"),
+                "raw_bytes": len(raw),
+                "raw_sha256": hashlib.sha256(raw).hexdigest(),
+                "canonical_rows_in_candidate": len(frame),
+                "start_utc": frame["interval_start_utc"].min().isoformat(),
+                "end_utc": frame["interval_end_utc"].max().isoformat(),
+            }
+        )
+    load = (
+        pd.concat(load_frames, ignore_index=True)
+        .sort_values("interval_start_utc")
+        .reset_index(drop=True)
+    )
+    candidate_index = pd.date_range(
+        "2025-09-01T00:00:00Z",
+        "2026-05-01T00:00:00Z",
+        freq="1h",
+        inclusive="left",
+    )
+    load_index = pd.DatetimeIndex(load["interval_start_utc"])
+    if not load_index.equals(candidate_index):
+        raise ContractError(
+            "public ERCOT native-load archives do not form the exact "
+            "5,808-hour candidate index"
+        )
+
+    annual_discovery = session.get(
+        discovery_url,
+        params={"reportTypeId": 13424},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    annual_discovery.raise_for_status()
+    annual_documents = annual_discovery.json()[
+        "ListDocsByRptTypeRes"
+    ]["DocumentList"]
+    annual_document = select_ercot_document(
+        annual_documents,
+        friendly_name="ERCOT_2025_Hourly_WindSolar_Output",
+    )
+    annual_response = session.get(
+        download_url,
+        params={"doclookupId": annual_document["DocID"]},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    annual_response.raise_for_status()
+    annual_raw = annual_response.content
+    annual = parse_ercot_annual_renewables_xlsx(annual_raw)
+    comparison = compare_ercot_renewables(
+        reconstructed,
+        annual,
+        start_utc=validation_start,
+        end_utc=validation_end,
+    )
+
+    publication_dates = [
+        pd.Timestamp(item["Document"]["PublishDate"])
+        for item in documents
+        if item.get("Document", {}).get("FriendlyName")
+        == "60_Day_SCED_Disclosure"
+        and item.get("Document", {}).get("SecurityStatus") == "P"
+    ]
+    operating_dates = [
+        timestamp.date() - pd.Timedelta(days=60)
+        for timestamp in publication_dates
+    ]
+    write_json(
+        Path(args.output),
+        {
+            "schema_version": "energy-model-v3-ercot-physical-probe",
+            "generated_at_utc": retrieved_at,
+            "status": "PUBLIC_PRIMARY_PATH_CONFIRMED",
+            "raw_persisted": False,
+            "candidate_native_load": {
+                "status": "EXACT_CANDIDATE_INDEX_CONFIRMED",
+                "rows": len(load),
+                "start_utc": load["interval_start_utc"].min().isoformat(),
+                "end_utc": load["interval_end_utc"].max().isoformat(),
+                "archives": load_records,
+            },
+            "sced_discovery": {
+                "report_type_id": 13052,
+                "documents": len(publication_dates),
+                "earliest_operating_date": min(operating_dates).isoformat(),
+                "latest_operating_date": max(operating_dates).isoformat(),
+                "selection_rule": (
+                    "public report 13052, publication date equals operating "
+                    "date plus 60 days, newest same-day revision"
+                ),
+            },
+            "sced_sample": {
+                "operating_date": args.sced_date,
+                "doc_id_observed_not_hard_coded": selected["DocID"],
+                "filename": selected["ConstructedName"],
+                "publish_date": selected["PublishDate"],
+                "raw_bytes": len(sced_raw),
+                "raw_sha256": hashlib.sha256(sced_raw).hexdigest(),
+                "execution_rows": len(executions),
+                "first_execution_utc": (
+                    executions["timestamp_utc"].min().isoformat()
+                ),
+                "last_execution_utc": (
+                    executions["timestamp_utc"].max().isoformat()
+                ),
+                "interior_hourly_rows": len(reconstructed),
+                "classification": (
+                    "source WIND class normalized to WGR; PVGR retained"
+                ),
+            },
+            "report_13424_validation": {
+                "doc_id_observed_not_hard_coded": annual_document["DocID"],
+                "filename": annual_document["ConstructedName"],
+                "raw_bytes": len(annual_raw),
+                "raw_sha256": hashlib.sha256(annual_raw).hexdigest(),
+                **comparison,
+            },
+            "retrospective_reports_forbidden": [
+                13028,
+                13483,
+                14787,
+                21809,
+            ],
+            "eia_bulk_sensitivity_only": {
+                "url": "https://api.eia.gov/bulk/EBA.zip",
+                "series": [
+                    "EBA.ERCO-ALL.D.H",
+                    "EBA.ERCO-ALL.NG.WND.H",
+                    "EBA.ERCO-ALL.NG.SUN.H",
+                ],
+                "known_gap": "24-hour renewable gap around 2025-12-05/06",
+                "primary_substitution": False,
+            },
+        },
+    )
+    return 0
+
+
+def _download_bytes(
+    session: requests.Session,
+    *,
+    url: str,
+    destination: Path,
+    headers: dict[str, str],
+    timeout: int,
+    params: dict[str, object] | None = None,
+) -> tuple[bytes, bool]:
+    if destination.is_file():
+        return destination.read_bytes(), True
+    response = session.get(
+        url, params=params, headers=headers, timeout=timeout
+    )
+    response.raise_for_status()
+    raw = response.content
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_suffix(destination.suffix + ".partial")
+    temporary.write_bytes(raw)
+    temporary.replace(destination)
+    return raw, False
+
+
+def _write_canonical_product(
+    frame: pd.DataFrame,
+    *,
+    path: Path,
+    source: str,
+    feed: str,
+    product: str,
+    location: str,
+) -> None:
+    output = frame.copy()
+    output["source"] = source
+    output["feed"] = feed
+    output["product"] = product
+    output["location"] = location
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".partial")
+    output.to_csv(temporary, index=False)
+    temporary.replace(path)
+
+
+def _ercot_native_load_years(
+    start_utc: pd.Timestamp,
+    end_utc: pd.Timestamp,
+) -> list[int]:
+    first_year = start_utc.tz_convert("America/Chicago").year
+    last_year = (
+        end_utc - pd.Timedelta(microseconds=1)
+    ).tz_convert("America/Chicago").year
+    return list(range(first_year, last_year + 1))
+
+
+def command_download_ercot_physical(args: argparse.Namespace) -> int:
+    """Stage the exact public ERCOT physical tuple and provenance."""
+    start = pd.Timestamp(args.start)
+    end = pd.Timestamp(args.end)
+    if start.tzinfo is None or end.tzinfo is None:
+        raise ContractError("ERCOT download bounds must be timezone aware")
+    start = start.tz_convert("UTC")
+    end = end.tz_convert("UTC")
+    expected_index = pd.date_range(start, end, freq="1h", inclusive="left")
+    if end <= start or start != start.floor("1h") or end != end.floor("1h"):
+        raise ContractError("ERCOT download bounds must be increasing UTC hours")
+    data_root = Path(args.data_root)
+    raw_root = data_root / "raw" / "ERCOT_LZ_NORTH"
+    native_root = data_root / "native" / "ERCOT_LZ_NORTH"
+    provenance_root = (
+        data_root
+        / "provenance"
+        / "raw_manifests"
+        / "ERCOT_LZ_NORTH"
+    )
+    headers = {
+        "User-Agent": "dc-energy-joint-optimization/energy-model-v3"
+    }
+    session = requests.Session()
+    discovery_url = (
+        "https://www.ercot.com/misapp/servlets/IceDocListJsonWS"
+    )
+    download_url = (
+        "https://www.ercot.com/misdownload/servlets/mirDownload"
+    )
+    discovery = session.get(
+        discovery_url,
+        params={"reportTypeId": 13052},
+        headers=headers,
+        timeout=args.timeout,
+    )
+    discovery.raise_for_status()
+    documents = discovery.json()["ListDocsByRptTypeRes"]["DocumentList"]
+    first_operating_date = start.tz_convert("America/Chicago").date()
+    last_operating_date = (
+        end - pd.Timedelta(microseconds=1)
+    ).tz_convert("America/Chicago").date()
+    operating_dates = pd.date_range(
+        first_operating_date, last_operating_date, freq="1D"
+    )
+    execution_frames: list[pd.DataFrame] = []
+    sced_files: dict[str, str] = {}
+    sced_documents: list[dict[str, object]] = []
+    resumed = 0
+    for operating_timestamp in operating_dates:
+        operating_date = operating_timestamp.date()
+        document = select_ercot_sced_document(
+            documents, sced_date=operating_date
+        )
+        destination = (
+            raw_root
+            / "report_13052"
+            / str(document["ConstructedName"])
+        )
+        raw, was_resumed = _download_bytes(
+            session,
+            url=download_url,
+            destination=destination,
+            headers=headers,
+            timeout=args.timeout,
+            params={"doclookupId": document["DocID"]},
+        )
+        resumed += int(was_resumed)
+        execution_frames.append(
+            parse_ercot_sced_executions(
+                read_ercot_sced_generation_zip(raw)
+            )
+        )
+        relative = str(destination.relative_to(ROOT)).replace("\\", "/")
+        raw_hash = hashlib.sha256(raw).hexdigest()
+        sced_files[relative] = raw_hash
+        sced_documents.append(
+            {
+                "operating_date": operating_date.isoformat(),
+                "doc_id": document["DocID"],
+                "filename": document["ConstructedName"],
+                "publish_date": document["PublishDate"],
+                "expired_date": document.get("ExpiredDate"),
+                "content_size": document.get("ContentSize"),
+                "sha256": raw_hash,
+            }
+        )
+    executions = (
+        pd.concat(execution_frames, ignore_index=True)
+        .sort_values("timestamp_utc")
+        .reset_index(drop=True)
+    )
+    if executions["timestamp_utc"].duplicated().any():
+        raise ContractError(
+            "adjacent report-13052 disclosures conflict at a SCED execution"
+        )
+    renewables = time_weight_ercot_sced_hourly(
+        executions, start_utc=start, end_utc=end
+    )
+    if not pd.DatetimeIndex(
+        renewables["interval_start_utc"]
+    ).equals(expected_index):
+        raise ContractError("SCED reconstruction does not match requested index")
+
+    load_urls = {
+        2025: (
+            "https://www.ercot.com/files/docs/2025/02/11/"
+            "Native_Load_2025.zip"
+        ),
+        2026: (
+            "https://www.ercot.com/files/docs/2026/02/10/"
+            "Native_Load_2026.zip"
+        ),
+    }
+    load_frames: list[pd.DataFrame] = []
+    load_files: dict[str, str] = {}
+    load_archives: list[dict[str, object]] = []
+    for year in _ercot_native_load_years(start, end):
+        if year not in load_urls:
+            raise ContractError(
+                f"no locked public native-load archive URL for {year}"
+            )
+        url = load_urls[year]
+        destination = raw_root / "native_load" / f"Native_Load_{year}.zip"
+        raw, was_resumed = _download_bytes(
+            session,
+            url=url,
+            destination=destination,
+            headers=headers,
+            timeout=args.timeout,
+        )
+        resumed += int(was_resumed)
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            expected_name = f"Native_Load_{year}.xlsx"
+            if archive.namelist() != [expected_name]:
+                raise ContractError(
+                    f"ERCOT load ZIP contents changed for {year}"
+                )
+            workbook = archive.read(expected_name)
+        load_frames.append(
+            read_ercot_native_load_xlsx(
+                workbook, start_utc=start, end_utc=end
+            )
+        )
+        relative = str(destination.relative_to(ROOT)).replace("\\", "/")
+        raw_hash = hashlib.sha256(raw).hexdigest()
+        load_files[relative] = raw_hash
+        load_archives.append(
+            {"year": year, "url": url, "sha256": raw_hash}
+        )
+    load = (
+        pd.concat(load_frames, ignore_index=True)
+        .sort_values("interval_start_utc")
+        .reset_index(drop=True)
+    )
+    if not pd.DatetimeIndex(load["interval_start_utc"]).equals(expected_index):
+        raise ContractError(
+            "native-load archives do not match requested exact index"
+        )
+
+    load_product = native_root / "ercot_native_load_archive.csv"
+    renewable_product = native_root / "ercot_sced_renewables_13052.csv"
+    _write_canonical_product(
+        load,
+        path=load_product,
+        source="ERCOT",
+        feed="Native_Load_YYYY.zip",
+        product="ercot_native_load_archive",
+        location="ERCOT system",
+    )
+    _write_canonical_product(
+        renewables,
+        path=renewable_product,
+        source="ERCOT MIS",
+        feed="report 13052 NP3-965-ER",
+        product="ercot_sced_renewables_13052",
+        location="ERCOT system WGR/PVGR resources",
+    )
+    physical = load.merge(
+        renewables,
+        on=["interval_start_utc", "interval_end_utc", "market"],
+        how="inner",
+        validate="one_to_one",
+        suffixes=("_load", "_renewables"),
+    )
+    physical["source_quality_flags"] = (
+        physical["source_quality_flags_load"]
+        + ";"
+        + physical["source_quality_flags_renewables"]
+    )
+    physical = derive_net_load(
+        physical[
+            [
+                "interval_start_utc",
+                "interval_end_utc",
+                "market",
+                "gross_demand_mw",
+                "wind_mw",
+                "solar_mw",
+                "source_quality_flags",
+            ]
+        ],
+        method="gross-minus-wind-solar",
+    )
+    if (
+        physical[["gross_demand_mw", "wind_mw", "solar_mw"]] < 0
+    ).any().any():
+        raise ContractError(
+            "ERCOT physical reconstruction has negative primary values"
+        )
+    physical_path = native_root / "physical_hourly.csv"
+    physical_path.parent.mkdir(parents=True, exist_ok=True)
+    physical.to_csv(physical_path, index=False)
+
+    provenance_root.mkdir(parents=True, exist_ok=True)
+    load_manifest = provenance_root / "ercot_native_load_archive.json"
+    sced_manifest = provenance_root / "ercot_sced_renewables_13052.json"
+    write_json(
+        load_manifest,
+        {
+            "schema_version": "energy-model-v3-raw-hash-manifest",
+            "product": "ercot_native_load_archive",
+            "source": "ERCOT",
+            "feed": "Native_Load_YYYY.zip",
+            "location": "ERCOT system",
+            "start_utc": start.isoformat(),
+            "end_utc": end.isoformat(),
+            "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+            "archives": load_archives,
+            "files": load_files,
+        },
+    )
+    write_json(
+        sced_manifest,
+        {
+            "schema_version": "energy-model-v3-raw-hash-manifest",
+            "product": "ercot_sced_renewables_13052",
+            "source": "ERCOT MIS",
+            "feed": "report 13052 NP3-965-ER",
+            "location": "ERCOT system WGR/PVGR resources",
+            "start_utc": start.isoformat(),
+            "end_utc": end.isoformat(),
+            "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+            "selection_rule": (
+                "report 13052 public ZIP published operating_date + 60 days; "
+                "newest same-day revision"
+            ),
+            "documents": sced_documents,
+            "files": sced_files,
+        },
+    )
+
+    validation: dict[str, object] = {
+        "status": "NOT_REQUESTED_OUTSIDE_2025"
+    }
+    if start.year <= 2025 and end > pd.Timestamp("2025-09-01T00:00:00Z"):
+        annual_discovery = session.get(
+            discovery_url,
+            params={"reportTypeId": 13424},
+            headers=headers,
+            timeout=args.timeout,
+        )
+        annual_discovery.raise_for_status()
+        annual_document = select_ercot_document(
+            annual_discovery.json()["ListDocsByRptTypeRes"]["DocumentList"],
+            friendly_name="ERCOT_2025_Hourly_WindSolar_Output",
+        )
+        annual_path = (
+            raw_root
+            / "report_13424_validation"
+            / str(annual_document["ConstructedName"])
+        )
+        annual_raw, was_resumed = _download_bytes(
+            session,
+            url=download_url,
+            destination=annual_path,
+            headers=headers,
+            timeout=args.timeout,
+            params={"doclookupId": annual_document["DocID"]},
+        )
+        resumed += int(was_resumed)
+        annual = parse_ercot_annual_renewables_xlsx(annual_raw)
+        validation_start = max(start, pd.Timestamp("2025-09-01T00:00:00Z"))
+        validation_end = min(end, pd.Timestamp("2026-01-01T00:00:00Z"))
+        validation = {
+            "doc_id": annual_document["DocID"],
+            "filename": annual_document["ConstructedName"],
+            "raw_sha256": hashlib.sha256(annual_raw).hexdigest(),
+            **compare_ercot_renewables(
+                renewables,
+                annual,
+                start_utc=validation_start,
+                end_utc=validation_end,
+            ),
+        }
+        if (
+            validation["missing_sced_hours"] != 0
+            or validation["missing_annual_hours"] != 0
+        ):
+            raise ContractError(
+                "report 13424 validation does not cover the exact requested "
+                "2025 validation index"
+            )
+    write_json(
+        Path(args.output),
+        {
+            "schema_version": "energy-model-v3-ercot-physical-download",
+            "status": "COMPLETE",
+            "start_utc": start.isoformat(),
+            "end_utc": end.isoformat(),
+            "hourly_rows": len(physical),
+            "sced_documents": len(sced_documents),
+            "resumed_files": resumed,
+            "canonical_files": {
+                str(load_product.relative_to(ROOT)).replace("\\", "/"):
+                    sha256(load_product),
+                str(renewable_product.relative_to(ROOT)).replace("\\", "/"):
+                    sha256(renewable_product),
+                str(physical_path.relative_to(ROOT)).replace("\\", "/"):
+                    sha256(physical_path),
+            },
+            "raw_manifests": {
+                str(load_manifest.relative_to(ROOT)).replace("\\", "/"):
+                    sha256(load_manifest),
+                str(sced_manifest.relative_to(ROOT)).replace("\\", "/"):
+                    sha256(sced_manifest),
+            },
+            "report_13424_validation": validation,
+        },
+    )
+    return 0
+
+
 def command_preflight(args: argparse.Namespace) -> int:
     capability_path = Path(args.capabilities)
     capabilities = (
@@ -410,6 +1030,7 @@ def command_manifest(args: argparse.Namespace) -> int:
         DEFAULT_OUTPUT / "capabilities.json",
         DEFAULT_OUTPUT / "sample-download-manifest.json",
         DEFAULT_OUTPUT / "live-parser-probes.json",
+        DEFAULT_OUTPUT / "ercot-physical-probe.json",
         DEFAULT_OUTPUT / "blocked-capability-report.json",
         DEFAULT_OUTPUT / "fixture-only" / "fixture_diagnostics.json",
         DEFAULT_OUTPUT / "fixture-only" / "fixture_quality_diagnostics.png",
@@ -667,6 +1288,32 @@ def parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_OUTPUT / "live-parser-probes.json"),
     )
     parser_probes.set_defaults(func=command_probe_parsers)
+    ercot_physical = commands.add_parser("probe-ercot-physical")
+    ercot_physical.add_argument("--timeout", type=int, default=300)
+    ercot_physical.add_argument(
+        "--sced-date",
+        default="2025-09-01",
+        help="SCED operating date used for the live schema/weighting probe",
+    )
+    ercot_physical.add_argument(
+        "--output",
+        default=str(DEFAULT_OUTPUT / "ercot-physical-probe.json"),
+    )
+    ercot_physical.set_defaults(func=command_probe_ercot_physical)
+    ercot_download = commands.add_parser("download-ercot-physical")
+    ercot_download.add_argument("--timeout", type=int, default=300)
+    ercot_download.add_argument(
+        "--start", default="2025-09-01T00:00:00Z"
+    )
+    ercot_download.add_argument(
+        "--end", default="2026-05-01T00:00:00Z"
+    )
+    ercot_download.add_argument("--data-root", default=str(DEFAULT_DATA))
+    ercot_download.add_argument(
+        "--output",
+        default=str(DEFAULT_OUTPUT / "ercot-physical-download.json"),
+    )
+    ercot_download.set_defaults(func=command_download_ercot_physical)
     preflight = commands.add_parser("preflight")
     preflight.add_argument("--data-root", default=str(DEFAULT_DATA))
     preflight.add_argument(
@@ -687,8 +1334,8 @@ def parser() -> argparse.ArgumentParser:
         "--enable-eia-ercot-fallback",
         action="store_true",
         help=(
-            "Explicitly enable same-BA EIA-930 retrieval for the ERCOT "
-            "physical gap; also requires EIA_API_KEY"
+            "Record explicit ERCO EIA-930 sensitivity intent; this can never "
+            "clear the primary native-load/SCED coverage gate"
         ),
     )
     preflight.set_defaults(func=command_preflight)

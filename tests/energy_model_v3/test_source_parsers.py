@@ -1,21 +1,89 @@
 from __future__ import annotations
 
+import io
 import unittest
+import zipfile
 
 import pandas as pd
 
 from energy_model_v3.adapters.parsers import (
+    compare_ercot_renewables,
     parse_caiso_da,
     parse_ercot_da,
+    parse_ercot_sced_executions,
     parse_miso_da,
     parse_nyiso_da,
     parse_pjm_da,
     parse_spp_da,
+    read_ercot_native_load_xlsx,
     select_ercot_document,
+    select_ercot_sced_document,
+    time_weight_ercot_sced_hourly,
 )
+from energy_model_v3.cli import _ercot_native_load_years
+
+
+def native_load_workbook(rows: list[list[str]]) -> bytes:
+    headers = [
+        "Hour Ending",
+        "COAST",
+        "EAST",
+        "FWEST",
+        "NORTH",
+        "NCENT",
+        "SOUTH",
+        "SCENT",
+        "WEST",
+        "ERCOT",
+    ]
+    shared = headers + [row[0] for row in rows]
+    strings = "".join(f"<si><t>{value}</t></si>" for value in shared)
+    sheet_rows = [
+        "<row r=\"1\">"
+        + "".join(
+            f'<c r="{chr(65 + index)}1" t="s"><v>{index}</v></c>'
+            for index in range(len(headers))
+        )
+        + "</row>"
+    ]
+    for row_number, row in enumerate(rows, start=2):
+        cells = [
+            f'<c r="A{row_number}" t="s">'
+            f"<v>{len(headers) + row_number - 2}</v></c>"
+        ]
+        cells.extend(
+            f'<c r="{chr(65 + index)}{row_number}"><v>{value}</v></c>'
+            for index, value in enumerate(row[1:], start=1)
+        )
+        sheet_rows.append(
+            f'<row r="{row_number}">' + "".join(cells) + "</row>"
+        )
+    namespace = (
+        "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    )
+    with io.BytesIO() as buffer:
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr(
+                "xl/sharedStrings.xml",
+                f'<sst xmlns="{namespace}">{strings}</sst>',
+            )
+            archive.writestr(
+                "xl/worksheets/sheet1.xml",
+                f'<worksheet xmlns="{namespace}"><sheetData>'
+                + "".join(sheet_rows)
+                + "</sheetData></worksheet>",
+            )
+        return buffer.getvalue()
 
 
 class LockedSourceParserTests(unittest.TestCase):
+    def test_ercot_load_archives_follow_central_year_boundaries(self) -> None:
+        years = _ercot_native_load_years(
+            pd.Timestamp("2026-01-01T00:00:00Z"),
+            pd.Timestamp("2026-01-02T00:00:00Z"),
+        )
+        self.assertEqual(years, [2025, 2026])
+
     def test_pjm_dom_parser(self) -> None:
         frame = pd.DataFrame(
             {
@@ -160,6 +228,164 @@ class LockedSourceParserTests(unittest.TestCase):
             documents, friendly_name="DAMLZHBSPP_2025"
         )
         self.assertEqual(selected["DocID"], "new")
+
+    def test_ercot_sced_document_selection_uses_operating_date(self) -> None:
+        documents = [
+            {
+                "Document": {
+                    "ReportTypeID": "13052",
+                    "FriendlyName": "60_Day_SCED_Disclosure",
+                    "SecurityStatus": "P",
+                    "Extension": "zip",
+                    "PublishDate": "2025-10-31T04:40:00-05:00",
+                    "DocID": "old",
+                }
+            },
+            {
+                "Document": {
+                    "ReportTypeID": "13052",
+                    "FriendlyName": "60_Day_SCED_Disclosure",
+                    "SecurityStatus": "P",
+                    "Extension": "zip",
+                    "PublishDate": "2025-10-31T04:43:35-05:00",
+                    "DocID": "new",
+                }
+            },
+            {
+                "Document": {
+                    "ReportTypeID": "13052",
+                    "FriendlyName": "60_Day_SCED_Disclosure",
+                    "SecurityStatus": "P",
+                    "Extension": "zip",
+                    "PublishDate": "2025-11-01T04:43:35-05:00",
+                    "DocID": "wrong-day",
+                }
+            },
+        ]
+        selected = select_ercot_sced_document(
+            documents, sced_date="2025-09-01"
+        )
+        self.assertEqual(selected["DocID"], "new")
+
+    def test_ercot_native_load_archive_resolves_repeated_hour(self) -> None:
+        workbook = native_load_workbook(
+            [
+                ["11/02/2025 02:00", *["1"] * 8, "100"],
+                ["11/02/2025 02:00 DST", *["2"] * 8, "200"],
+            ]
+        )
+        result = read_ercot_native_load_xlsx(workbook)
+        self.assertEqual(len(result), 2)
+        self.assertTrue(result["interval_start_utc"].is_unique)
+        self.assertEqual(
+            result.loc[0, "interval_start_utc"].isoformat(),
+            "2025-11-02T06:00:00+00:00",
+        )
+        self.assertEqual(result.loc[0, "gross_demand_mw"], 200)
+        self.assertEqual(
+            result.loc[1, "interval_start_utc"].isoformat(),
+            "2025-11-02T07:00:00+00:00",
+        )
+        self.assertEqual(result.loc[1, "gross_demand_mw"], 100)
+
+    def test_ercot_sced_parser_resolves_repeated_hour(self) -> None:
+        frame = pd.DataFrame(
+            [
+                {
+                    "SCED Time Stamp": f"11/02/2025 01:00:00",
+                    "Repeated Hour Flag": repeated,
+                    "Resource Name": f"{resource_type}-{repeated}",
+                    "Resource Type": resource_type,
+                    "Telemetered Net Output ": value,
+                }
+                for repeated in ("N", "Y")
+                for resource_type, value in (("WIND", 10), ("PVGR", 5))
+            ]
+        )
+        result = parse_ercot_sced_executions(frame)
+        self.assertEqual(len(result), 2)
+        self.assertTrue(result["timestamp_utc"].is_unique)
+        self.assertEqual(
+            result.loc[1, "timestamp_utc"] - result.loc[0, "timestamp_utc"],
+            pd.Timedelta(hours=1),
+        )
+
+    def test_ercot_sced_hourly_is_duration_weighted(self) -> None:
+        start = pd.Timestamp("2025-09-01T00:00:00Z")
+        executions = pd.DataFrame(
+            {
+                "timestamp_utc": [
+                    start - pd.Timedelta(minutes=5),
+                    start + pd.Timedelta(minutes=5),
+                    start + pd.Timedelta(minutes=35),
+                    start + pd.Timedelta(hours=1),
+                ],
+                "wind_mw": [10, 20, 40, 50],
+                "solar_mw": [0, 10, 30, 40],
+                "wind_resource_count": [2, 2, 2, 2],
+                "solar_resource_count": [1, 1, 1, 1],
+            }
+        )
+        result = time_weight_ercot_sced_hourly(
+            executions,
+            start_utc=start,
+            end_utc=start + pd.Timedelta(hours=1),
+        )
+        self.assertEqual(len(result), 1)
+        self.assertAlmostEqual(result.loc[0, "wind_mw"], 27.5)
+        self.assertAlmostEqual(result.loc[0, "solar_mw"], 17.5)
+        self.assertIn(
+            "SCED_EXECUTION_GAP_GT_20_MINUTES",
+            result.loc[0, "source_quality_flags"],
+        )
+
+    def test_ercot_renewable_comparison_never_calibrates(self) -> None:
+        timestamps = pd.date_range(
+            "2025-09-01T00:00:00Z", periods=3, freq="1h"
+        )
+        reconstructed = pd.DataFrame(
+            {
+                "interval_start_utc": timestamps,
+                "wind_mw": [10.0, 20.0, 30.0],
+                "solar_mw": [5.0, 6.0, 7.0],
+            }
+        )
+        annual = pd.DataFrame(
+            {
+                "interval_start_utc": timestamps,
+                "wind_mw": [9.0, 19.0, 29.0],
+                "solar_mw": [5.0, 5.0, 5.0],
+            }
+        )
+        result = compare_ercot_renewables(
+            reconstructed,
+            annual,
+            start_utc=timestamps[0],
+            end_utc=timestamps[-1] + pd.Timedelta(hours=1),
+        )
+        self.assertFalse(result["calibration_applied"])
+        self.assertEqual(result["matched_hours"], 3)
+        self.assertAlmostEqual(result["metrics"]["wind"]["bias_mw"], 1.0)
+
+    def test_ercot_renewable_comparison_counts_shared_missing_hours(self) -> None:
+        timestamps = pd.date_range(
+            "2025-09-01T00:00:00Z", periods=3, freq="1h"
+        )
+        partial = pd.DataFrame(
+            {
+                "interval_start_utc": timestamps[:2],
+                "wind_mw": [10.0, 20.0],
+                "solar_mw": [5.0, 6.0],
+            }
+        )
+        result = compare_ercot_renewables(
+            partial,
+            partial,
+            start_utc=timestamps[0],
+            end_utc=timestamps[-1] + pd.Timedelta(hours=1),
+        )
+        self.assertEqual(result["missing_sced_hours"], 1)
+        self.assertEqual(result["missing_annual_hours"], 1)
 
     def test_miso_fixed_est_hour_ending_parser(self) -> None:
         rows = []

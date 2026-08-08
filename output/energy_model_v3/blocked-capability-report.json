@@ -105,10 +105,10 @@
     "PJM_DOM": "required credential PJM_API_KEY is not set"
   },
   "coverage_assessment": {
-    "assessed_at_utc": "2026-08-08T23:00:25.582919+00:00",
+    "assessed_at_utc": "2026-08-08T23:31:02.555842+00:00",
     "blockers": {
       "CAISO_NP15": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
-      "ERCOT_LZ_NORTH": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+      "ERCOT_LZ_NORTH": "The public primary physical path is now confirmed for the full candidate, including an exact 5808-hour native-load index and report-13052 retention covering every required operating date, but the 243 daily SCED disclosures and complete DAM archive have not yet been persisted, hash-bound, and exact-index validated together",
       "MISO_MINN_HUB": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified",
       "NYISO_NYC_J": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
       "PJM_DOM": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified",
@@ -118,14 +118,14 @@
     "candidate_start_utc": "2025-09-01T00:00:00Z",
     "eia_api_key_available": false,
     "ercot_eia_fallback_activated": false,
-    "evidence_sha256": "eace0b1598a87d6488b52a4645ad141a09b814c70dcf185af39a757e81ed39f5",
+    "evidence_sha256": "6de2be728d990b9ff16ff3f0d2e2c90bce067942551ee30ce41d609f68cb2536",
     "markets": {
       "CAISO_NP15": {
         "reason": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
         "status": "BLOCKED"
       },
       "ERCOT_LZ_NORTH": {
-        "reason": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+        "reason": "The public primary physical path is now confirmed for the full candidate, including an exact 5808-hour native-load index and report-13052 retention covering every required operating date, but the 243 daily SCED disclosures and complete DAM archive have not yet been persisted, hash-bound, and exact-index validated together",
         "status": "BLOCKED"
       },
       "MISO_MINN_HUB": {
@@ -151,14 +151,14 @@
   },
   "coverage_failures": {
     "CAISO_NP15": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
-    "ERCOT_LZ_NORTH": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+    "ERCOT_LZ_NORTH": "The public primary physical path is now confirmed for the full candidate, including an exact 5808-hour native-load index and report-13052 retention covering every required operating date, but the 243 daily SCED disclosures and complete DAM archive have not yet been persisted, hash-bound, and exact-index validated together",
     "MISO_MINN_HUB": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified",
     "NYISO_NYC_J": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
     "PJM_DOM": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified",
     "SPP_NORTH_HUB": "GenMix365 spans 2025-08-08T10:10:00Z through 2026-08-08T09:30:00Z with 104748 rows, but the candidate subset has not been exact-index validated with all DAM products",
     "coverage_assessment": "coverage assessment is not fully verified"
   },
-  "generated_at_utc": "2026-08-08T23:00:25.582952+00:00",
+  "generated_at_utc": "2026-08-08T23:31:02.555879+00:00",
   "invalid_primary_inputs": {},
   "missing_primary_inputs": {
     "CAISO_NP15": [
