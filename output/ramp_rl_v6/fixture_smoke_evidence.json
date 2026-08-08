@@ -1,0 +1,611 @@
+{
+  "deterministic_evaluation_sha256": "7698d8e45e757adaf43d6ce7a83025299a22c4316fd90eb8451afea0a2d3d50d",
+  "final_long_campaign_launched": false,
+  "jobs": [
+    {
+      "algorithm": "ppo",
+      "credit_assignment": {
+        "actual_terminals": true,
+        "bootstrap_across_terminal_or_tail": false,
+        "ppo_gae_lambda": 0.95,
+        "sac_n_steps": null
+      },
+      "data_split": {
+        "test": {
+          "months": [
+            9,
+            10
+          ],
+          "sealed": true,
+          "tune_or_select": false
+        },
+        "train": {
+          "months": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "randomized_chronological_windows": true
+        },
+        "validation": {
+          "months": [
+            7,
+            8
+          ],
+          "sealed_from_normalization": true
+        }
+      },
+      "final_critic_sha256": "cfad878bb5f72856672cd5bc9e96d33e9bf35c2e735f4006f9ca833a521e164f",
+      "final_policy_sha256": "a1b2b0af1b0392cdf6f62348cd3440f1c460227e93587959c1ef224694dc3925",
+      "forecast_identity": {
+        "identity_required_in_every_manifest": true,
+        "model_id": "supplied-by-v6-adapter",
+        "realized_future_features_prohibited": true,
+        "vintage_id": "supplied-by-v6-adapter"
+      },
+      "initial_critic_sha256": "a9dddd15da21f1bf2177727da4b1e5614b741a7a3e45a46dca515fa9eac0405f",
+      "initial_policy_sha256": "81c38b18e66b4774e9a46a59beca7502aa5e049b7dd9f8da648400b90b1f3fae",
+      "interaction_count": 96,
+      "job_identity": {
+        "algorithm": "ppo",
+        "config_sha256": "a0ccdc7857c9729360f744e4fe7be2027dd7c055c12d1f2d0028641c323155f6",
+        "decision_steps": 48,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "ramp_rl.fixture_env:make_fixture_env",
+          "source_path": "ramp_rl\\fixture_env.py",
+          "source_sha256": "85751cb00d7e8a0496e3be2a4a321f33c97cc9c0a8d92d82c20743d147c1ceb2"
+        },
+        "n_envs": 2,
+        "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+        "seed": 2601
+      },
+      "multiobjective": {
+        "epsilon_sensitivity_pct": [
+          0.0,
+          2.0,
+          5.0
+        ],
+        "final_lagrangian_multiplier": 0.0,
+        "initial_lagrangian_multiplier_this_invocation": 0.0,
+        "lagrangian_update": {
+          "initial_multiplier": 0.0,
+          "learning_rate": 0.01,
+          "maximum": 100.0,
+          "rule": "projected_dual_ascent",
+          "test_updates": false,
+          "update_data": [
+            "train",
+            "validation"
+          ]
+        },
+        "lagrangian_updates": [
+          {
+            "energy_cost": 17.701343789969258,
+            "multiplier": 0.0,
+            "split": "train",
+            "status_quo_energy_cost": 21.0852508765884
+          }
+        ],
+        "primary_energy_budget_pct": 2.0,
+        "selection_data": "validation",
+        "test_used_for_selection": false,
+        "training_epsilon_pct": 2.0
+      },
+      "normalization": {
+        "fit_split": "train",
+        "frozen_for": [
+          "validation",
+          "test"
+        ],
+        "observation_mean": [
+          2.1638703307497296,
+          2.1644119271936217,
+          1.0013620500620892,
+          2.3686339959907188,
+          0.40927576066840426,
+          -0.35005020247245583,
+          -1.4490980767215278,
+          0.5204076322751232,
+          0.9153198723574554
+        ],
+        "observation_variance": [
+          0.18872668310232368,
+          0.19476598583947424,
+          0.012965426122068609,
+          2.2288295409477246,
+          0.11893217535248686,
+          0.6223085895063603,
+          1.0869115650881849,
+          0.08639027110470505,
+          0.008506016381037115
+        ],
+        "reward_normalization_training_only": true,
+        "sample_count": 98.0001
+      },
+      "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+      "pure_rl_assertions": {
+        "analytic_economic_base": false,
+        "behavior_cloning": false,
+        "curriculum_trajectories": false,
+        "demonstrations": false,
+        "expert_replay": false,
+        "mpc_actions": false,
+        "offline_expert_labels": false,
+        "optimizer_actions": false,
+        "oracle_reward_shaping": false,
+        "random_initialization_only": true,
+        "teacher": false,
+        "warm_start": false
+      },
+      "pure_rl_verification": {
+        "errors": [],
+        "passed": true
+      },
+      "raw_redundant_projected_logits": false,
+      "replay_provenance": {
+        "demonstration_rows": 0,
+        "external_rows": 0,
+        "optimizer_rows": 0,
+        "randomly_initialized_policy_rows": 96,
+        "safe_random_feasible_warmup_rows": 0,
+        "sources": [
+          "randomly_initialized_policy"
+        ],
+        "teacher_rows": 0
+      },
+      "seed": 2601,
+      "semantic_feasible_action": true,
+      "source_bundle_sha256": "2a2d8043c7ea0bdffe6264d485ee1bcfd1e81e43b844f4bc4c3053d14efecaa0",
+      "training_data_provenance": {
+        "environment_factory": {
+          "callable": "ramp_rl.fixture_env:make_fixture_env",
+          "source_path": "ramp_rl\\fixture_env.py",
+          "source_sha256": "85751cb00d7e8a0496e3be2a4a321f33c97cc9c0a8d92d82c20743d147c1ceb2"
+        },
+        "episodes": [
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "aaf7aec7ec825de2c114119af8ce50d962c5f51346d9c1561479b73ac51a004e"
+            },
+            "split": "train",
+            "window_id": "m-01-random-2194"
+          },
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "aaf7aec7ec825de2c114119af8ce50d962c5f51346d9c1561479b73ac51a004e"
+            },
+            "split": "train",
+            "window_id": "m-01-random-8600"
+          }
+        ],
+        "split": "train",
+        "validation_or_test_rows": 0
+      },
+      "update_count": 6
+    },
+    {
+      "algorithm": "sac",
+      "credit_assignment": {
+        "actual_terminals": true,
+        "bootstrap_across_terminal_or_tail": false,
+        "ppo_gae_lambda": null,
+        "sac_n_steps": 36
+      },
+      "data_split": {
+        "test": {
+          "months": [
+            9,
+            10
+          ],
+          "sealed": true,
+          "tune_or_select": false
+        },
+        "train": {
+          "months": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "randomized_chronological_windows": true
+        },
+        "validation": {
+          "months": [
+            7,
+            8
+          ],
+          "sealed_from_normalization": true
+        }
+      },
+      "final_critic_sha256": "4ac30ed60ea6ab4ea374ccf084f654307a39b70dda5f8e7548b647a05fcbee04",
+      "final_policy_sha256": "c925ddbb400d828f3477001f511796e2e1ab8bbc3d8bcfe1f7fedfd66cb511a1",
+      "forecast_identity": {
+        "identity_required_in_every_manifest": true,
+        "model_id": "supplied-by-v6-adapter",
+        "realized_future_features_prohibited": true,
+        "vintage_id": "supplied-by-v6-adapter"
+      },
+      "initial_critic_sha256": "159b237cc9fda3c4e32a008f5beac6b94879487a0cc6a05c4f03837aff33aa19",
+      "initial_policy_sha256": "ff335f519a4eb07737db5eb3a760eb5f9e8e23ea3dadfc1a7502ff29af33a5c5",
+      "interaction_count": 96,
+      "job_identity": {
+        "algorithm": "sac",
+        "config_sha256": "700d1811a4e9f12c892f9ea57ec88b142f3cf6b988fd678a555d72f14762f4b5",
+        "decision_steps": 48,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "ramp_rl.fixture_env:make_fixture_env",
+          "source_path": "ramp_rl\\fixture_env.py",
+          "source_sha256": "85751cb00d7e8a0496e3be2a4a321f33c97cc9c0a8d92d82c20743d147c1ceb2"
+        },
+        "n_envs": 2,
+        "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+        "seed": 2602
+      },
+      "multiobjective": {
+        "epsilon_sensitivity_pct": [
+          0.0,
+          2.0,
+          5.0
+        ],
+        "final_lagrangian_multiplier": 0.0,
+        "initial_lagrangian_multiplier_this_invocation": 0.0,
+        "lagrangian_update": {
+          "initial_multiplier": 0.0,
+          "learning_rate": 0.01,
+          "maximum": 100.0,
+          "rule": "projected_dual_ascent",
+          "test_updates": false,
+          "update_data": [
+            "train",
+            "validation"
+          ]
+        },
+        "lagrangian_updates": [
+          {
+            "energy_cost": 17.7862175506709,
+            "multiplier": 0.0,
+            "split": "train",
+            "status_quo_energy_cost": 18.022445061030666
+          }
+        ],
+        "primary_energy_budget_pct": 2.0,
+        "selection_data": "validation",
+        "test_used_for_selection": false,
+        "training_epsilon_pct": 2.0
+      },
+      "normalization": {
+        "fit_split": "train",
+        "frozen_for": [
+          "validation",
+          "test"
+        ],
+        "observation_mean": [
+          2.185778903031545,
+          2.1863204970425967,
+          1.034076039346075,
+          0.3374829659033421,
+          0.41212747751743745,
+          -0.3654067327187722,
+          -1.4048386741942354,
+          0.5204076322751232,
+          0.9153198723574554
+        ],
+        "observation_variance": [
+          0.14772008316968618,
+          0.15229114940726363,
+          0.010964963707813705,
+          0.052690387851792336,
+          0.0938393463360161,
+          0.450743963202564,
+          0.7937962238705699,
+          0.08639027110470505,
+          0.008506016381037115
+        ],
+        "reward_normalization_training_only": true,
+        "sample_count": 98.0001
+      },
+      "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+      "pure_rl_assertions": {
+        "analytic_economic_base": false,
+        "behavior_cloning": false,
+        "curriculum_trajectories": false,
+        "demonstrations": false,
+        "expert_replay": false,
+        "mpc_actions": false,
+        "offline_expert_labels": false,
+        "optimizer_actions": false,
+        "oracle_reward_shaping": false,
+        "random_initialization_only": true,
+        "teacher": false,
+        "warm_start": false
+      },
+      "pure_rl_verification": {
+        "errors": [],
+        "passed": true
+      },
+      "raw_redundant_projected_logits": false,
+      "replay_provenance": {
+        "demonstration_rows": 0,
+        "external_rows": 0,
+        "optimizer_rows": 0,
+        "randomly_initialized_policy_rows": 88,
+        "safe_random_feasible_warmup_rows": 8,
+        "sources": [
+          "safe_random_feasible_warmup",
+          "randomly_initialized_policy"
+        ],
+        "teacher_rows": 0
+      },
+      "seed": 2602,
+      "semantic_feasible_action": true,
+      "source_bundle_sha256": "2a2d8043c7ea0bdffe6264d485ee1bcfd1e81e43b844f4bc4c3053d14efecaa0",
+      "training_data_provenance": {
+        "environment_factory": {
+          "callable": "ramp_rl.fixture_env:make_fixture_env",
+          "source_path": "ramp_rl\\fixture_env.py",
+          "source_sha256": "85751cb00d7e8a0496e3be2a4a321f33c97cc9c0a8d92d82c20743d147c1ceb2"
+        },
+        "episodes": [
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "d29f7b4dcea90eb8cbb53f89387c314c8fc023132f995aa777c074366bd53bbc"
+            },
+            "split": "train",
+            "window_id": "m-05-random-0869"
+          },
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "4c312ed37a2bf2f4f68f105952e52764f1f328324e8109a9ebfc6cdbc00e0ee4"
+            },
+            "split": "train",
+            "window_id": "m-02-random-9138"
+          }
+        ],
+        "split": "train",
+        "validation_or_test_rows": 0
+      },
+      "update_count": 44
+    },
+    {
+      "algorithm": "sac",
+      "credit_assignment": {
+        "actual_terminals": true,
+        "bootstrap_across_terminal_or_tail": false,
+        "ppo_gae_lambda": null,
+        "sac_n_steps": 36
+      },
+      "data_split": {
+        "test": {
+          "months": [
+            9,
+            10
+          ],
+          "sealed": true,
+          "tune_or_select": false
+        },
+        "train": {
+          "months": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "randomized_chronological_windows": true
+        },
+        "validation": {
+          "months": [
+            7,
+            8
+          ],
+          "sealed_from_normalization": true
+        }
+      },
+      "final_critic_sha256": "4fd69ee03ebee7bfa17a6b63889d6fb0b35d81d081a8060acea7dbcc7159f1e0",
+      "final_policy_sha256": "df9762d0e3b35ecb3b975c7925e46187986e23eabe6ae01c990feb9197760469",
+      "forecast_identity": {
+        "identity_required_in_every_manifest": true,
+        "model_id": "supplied-by-v6-adapter",
+        "realized_future_features_prohibited": true,
+        "vintage_id": "supplied-by-v6-adapter"
+      },
+      "initial_critic_sha256": "159b237cc9fda3c4e32a008f5beac6b94879487a0cc6a05c4f03837aff33aa19",
+      "initial_policy_sha256": "ff335f519a4eb07737db5eb3a760eb5f9e8e23ea3dadfc1a7502ff29af33a5c5",
+      "interaction_count": 192,
+      "job_identity": {
+        "algorithm": "sac",
+        "config_sha256": "700d1811a4e9f12c892f9ea57ec88b142f3cf6b988fd678a555d72f14762f4b5",
+        "decision_steps": 48,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "ramp_rl.fixture_env:make_fixture_env",
+          "source_path": "ramp_rl\\fixture_env.py",
+          "source_sha256": "85751cb00d7e8a0496e3be2a4a321f33c97cc9c0a8d92d82c20743d147c1ceb2"
+        },
+        "n_envs": 2,
+        "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+        "seed": 2602
+      },
+      "multiobjective": {
+        "epsilon_sensitivity_pct": [
+          0.0,
+          2.0,
+          5.0
+        ],
+        "final_lagrangian_multiplier": 0.0,
+        "initial_lagrangian_multiplier_this_invocation": 0.0,
+        "lagrangian_update": {
+          "initial_multiplier": 0.0,
+          "learning_rate": 0.01,
+          "maximum": 100.0,
+          "rule": "projected_dual_ascent",
+          "test_updates": false,
+          "update_data": [
+            "train",
+            "validation"
+          ]
+        },
+        "lagrangian_updates": [
+          {
+            "energy_cost": 17.7862175506709,
+            "multiplier": 0.0,
+            "split": "train",
+            "status_quo_energy_cost": 18.022445061030666
+          },
+          {
+            "energy_cost": 17.806351352632536,
+            "multiplier": 0.0,
+            "split": "train",
+            "status_quo_energy_cost": 18.398038662944117
+          }
+        ],
+        "primary_energy_budget_pct": 2.0,
+        "selection_data": "validation",
+        "test_used_for_selection": false,
+        "training_epsilon_pct": 2.0
+      },
+      "normalization": {
+        "fit_split": "train",
+        "frozen_for": [
+          "validation",
+          "test"
+        ],
+        "observation_mean": [
+          2.1857800182242944,
+          2.186321612511668,
+          1.0340765669356222,
+          0.3752799743853907,
+          0.41141327189640947,
+          -0.36514259701201374,
+          -1.405465905389461,
+          0.5204078977890857,
+          0.9153203393571522
+        ],
+        "observation_variance": [
+          0.1477172107671888,
+          0.15228827812882803,
+          0.010963913530371423,
+          0.061292482698574846,
+          0.09375958089132547,
+          0.4477752989885321,
+          0.7948369433148685,
+          0.08638966680196704,
+          0.008505083062697073
+        ],
+        "reward_normalization_training_only": true,
+        "sample_count": 196.0001
+      },
+      "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+      "pure_rl_assertions": {
+        "analytic_economic_base": false,
+        "behavior_cloning": false,
+        "curriculum_trajectories": false,
+        "demonstrations": false,
+        "expert_replay": false,
+        "mpc_actions": false,
+        "offline_expert_labels": false,
+        "optimizer_actions": false,
+        "oracle_reward_shaping": false,
+        "random_initialization_only": true,
+        "teacher": false,
+        "warm_start": false
+      },
+      "pure_rl_verification": {
+        "errors": [],
+        "passed": true
+      },
+      "raw_redundant_projected_logits": false,
+      "replay_provenance": {
+        "demonstration_rows": 0,
+        "external_rows": 0,
+        "optimizer_rows": 0,
+        "randomly_initialized_policy_rows": 184,
+        "safe_random_feasible_warmup_rows": 8,
+        "sources": [
+          "safe_random_feasible_warmup",
+          "randomly_initialized_policy"
+        ],
+        "teacher_rows": 0
+      },
+      "seed": 2602,
+      "semantic_feasible_action": true,
+      "source_bundle_sha256": "2a2d8043c7ea0bdffe6264d485ee1bcfd1e81e43b844f4bc4c3053d14efecaa0",
+      "training_data_provenance": {
+        "environment_factory": {
+          "callable": "ramp_rl.fixture_env:make_fixture_env",
+          "source_path": "ramp_rl\\fixture_env.py",
+          "source_sha256": "85751cb00d7e8a0496e3be2a4a321f33c97cc9c0a8d92d82c20743d147c1ceb2"
+        },
+        "episodes": [
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "d29f7b4dcea90eb8cbb53f89387c314c8fc023132f995aa777c074366bd53bbc"
+            },
+            "split": "train",
+            "window_id": "m-05-random-0869"
+          },
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "4c312ed37a2bf2f4f68f105952e52764f1f328324e8109a9ebfc6cdbc00e0ee4"
+            },
+            "split": "train",
+            "window_id": "m-02-random-9138"
+          },
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "d29f7b4dcea90eb8cbb53f89387c314c8fc023132f995aa777c074366bd53bbc"
+            },
+            "split": "train",
+            "window_id": "m-05-random-0869"
+          },
+          {
+            "forecast_model": "deterministic-fixture-causal-v1",
+            "forecast_vintage": "fixture-2026-08-08",
+            "future_realized_features_exposed": false,
+            "source_hashes": {
+              "fixture_timeseries": "4c312ed37a2bf2f4f68f105952e52764f1f328324e8109a9ebfc6cdbc00e0ee4"
+            },
+            "split": "train",
+            "window_id": "m-02-random-9138"
+          }
+        ],
+        "split": "train",
+        "validation_or_test_rows": 0
+      },
+      "update_count": 92
+    }
+  ],
+  "protocol_id": "v6-ramp-pure-rl-preregistered-v1",
+  "protocol_sha256": "15a3d2d92d0efa9eac5e5e7f2ee750cd7e36c72ac8061b7d49c67c9203a9ed2b",
+  "resumption_proven": true,
+  "schema_version": "ramp-pure-rl-fixture-evidence-v1"
+}

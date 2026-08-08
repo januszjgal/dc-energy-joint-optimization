@@ -1,5 +1,10 @@
 # Safe Joint Energy Optimization for Geo-Distributed Data Centers
 
+The preregistered, additive pure-PPO/SAC harness for the forthcoming ramp-aware
+v6 environment is documented in [`docs/ramp_rl_v6.md`](docs/ramp_rl_v6.md).
+It remains fixture-only until the v6 ramp environment and energy-model v3 are
+integrated; frozen v2-v5 behavior and artifacts are not imported or modified.
+
 This repository is the executable companion to a thesis on joint spatial and
 temporal workload scheduling across four proxy data centers.
 
