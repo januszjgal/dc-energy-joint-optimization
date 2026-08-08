@@ -106,20 +106,34 @@ function replaceLatexFractions(source) {
 }
 
 function normalizeMathText(source) {
-  let text = replaceLatexFractions(source)
+  let text = replaceLatexFractions(
+    source.replace(/\\frac(\d)(\d)/g, "$1/$2"),
+  )
     .replace(/\\begin\{(?:aligned|array|cases)\}/g, "")
     .replace(/\\end\{(?:aligned|array|cases)\}/g, "")
+    .replace(/\\begin\{(?:bmatrix|pmatrix|matrix)\}/g, "[")
+    .replace(/\\end\{(?:bmatrix|pmatrix|matrix)\}/g, "]")
     .replace(/\\\\/g, "; ")
     .replace(/&/g, "")
+    .replace(/\\\$/g, "$")
+    .replace(/\\\|/g, "‖")
+    .replace(/\\\{/g, "__THESIS_LEFT_BRACE__")
+    .replace(/\\\}/g, "__THESIS_RIGHT_BRACE__")
+    .replace(/\\\s/g, " ")
+    .replace(/\\(?:left|right|big|Big|bigg|Bigg|Bigl|Bigr)(?![A-Za-z])/g, "")
     .replace(/\\mathbb\s*E/g, "𝔼")
     .replace(/\\mathbb\s*P/g, "ℙ")
-    .replace(/\\mathcal\s*([A-Za-z])/g, "$1")
+    .replace(/\\mathbb\s*R/g, "ℝ")
+    .replace(/\\mathbb\s*N/g, "ℕ")
+    .replace(/\\mathbb\s*Z/g, "ℤ")
+    .replace(/\\mathcal\s*([A-Za-z])/g, " $1")
     .replace(/\\(?:mathrm|textrm|text|operatorname|mathbf|mathit)\s+([A-Za-z]+)/g, "$1")
     .replace(/\\mathbb\{R\}/g, "ℝ")
     .replace(/\\mathbb\{N\}/g, "ℕ")
     .replace(/\\mathbb\{Z\}/g, "ℤ")
     .replace(/\\bar\s*([A-Za-z])/g, "$1̄")
     .replace(/\\widehat\s*([A-Za-z])/g, "$1̂")
+    .replace(/\\widetilde\s*([A-Za-z])/g, "$1̃")
     .replace(/\\tilde\s*([A-Za-z])/g, "$1̃");
 
   for (let pass = 0; pass < 6; pass += 1) {
@@ -130,6 +144,7 @@ function normalizeMathText(source) {
         /\\(?:mathrm|textrm|text|operatorname|mathbf|mathit|mathcal|underbrace)\{([^{}]*)\}/g,
         "$1",
       )
+      .replace(/\\sqrt\{([^{}]+)\}/g, "√($1)")
       .replace(/_\{([^{}]*)\}/g, "_$1")
       .replace(/\^\{([^{}]*)\}/g, "^$1");
     if (text === before) break;
@@ -141,24 +156,24 @@ function normalizeMathText(source) {
     "\\\\int": "∫",
     "\\\\cdot": "·",
     "\\\\times": "×",
-    "\\\\leq": "≤",
-    "\\\\le": "≤",
-    "\\\\geq": "≥",
-    "\\\\ge": "≥",
-    "\\\\neq": "≠",
-    "\\\\approx": "≈",
-    "\\\\equiv": "≡",
-    "\\\\in": "∈",
-    "\\\\notin": "∉",
-    "\\\\subset": "⊂",
-    "\\\\subseteq": "⊆",
-    "\\\\mid": "|",
-    "\\\\forall": "∀",
-    "\\\\exists": "∃",
-    "\\\\rightarrow": "→",
-    "\\\\longrightarrow": "→",
-    "\\\\to": "→",
-    "\\\\mapsto": "↦",
+    "\\\\leq": " ≤ ",
+    "\\\\le": " ≤ ",
+    "\\\\geq": " ≥ ",
+    "\\\\ge": " ≥ ",
+    "\\\\neq": " ≠ ",
+    "\\\\approx": " ≈ ",
+    "\\\\equiv": " ≡ ",
+    "\\\\in": " ∈ ",
+    "\\\\notin": " ∉ ",
+    "\\\\subset": " ⊂ ",
+    "\\\\subseteq": " ⊆ ",
+    "\\\\mid": " | ",
+    "\\\\forall": "∀ ",
+    "\\\\exists": "∃ ",
+    "\\\\rightarrow": " → ",
+    "\\\\longrightarrow": " → ",
+    "\\\\to": " → ",
+    "\\\\mapsto": " ↦ ",
     "\\\\infty": "∞",
     "\\\\partial": "∂",
     "\\\\nabla": "∇",
@@ -190,16 +205,22 @@ function normalizeMathText(source) {
     "\\\\rceil": "⌉",
     "\\\\ldots": "…",
   };
-  for (const [pattern, replacement] of Object.entries(symbols)) {
-    text = text.replace(new RegExp(pattern, "g"), replacement);
+  for (const [pattern, replacement] of Object.entries(symbols).sort(
+    ([left], [right]) => right.length - left.length,
+  )) {
+    text = text.replace(
+      new RegExp(`${pattern}(?![A-Za-z])`, "g"),
+      replacement,
+    );
   }
   return text
-    .replace(/\\(?:left|right|big|Big|bigg|Bigg|Bigl|Bigr)/g, "")
     .replace(/\\(?:quad|qquad|,|;|!)/g, " ")
-    .replace(/\\(?:bar|widehat|tilde|underbrace)/g, "")
+    .replace(/\\(?:bar|widehat|widetilde|tilde|underbrace)/g, "")
     .replace(/\\frac/g, "/")
     .replace(/\\([A-Za-z]+)/g, "$1")
     .replace(/[{}]/g, "")
+    .replace(/__THESIS_LEFT_BRACE__/g, "{")
+    .replace(/__THESIS_RIGHT_BRACE__/g, "}")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -207,7 +228,7 @@ function normalizeMathText(source) {
 function parseInline(text, options = {}) {
   const runs = [];
   const tokenPattern =
-    /(\*\*[^*]+\*\*|`[^`]+`|\$[^$]+\$|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
+    /(\*\*[^*]+\*\*|`[^`]+`|\$(?:\\\$|[^$])+\$|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   let cursor = 0;
   for (const match of text.matchAll(tokenPattern)) {
     if (match.index > cursor) {
@@ -343,7 +364,7 @@ function markdownTable(rows) {
   const tableRows = rows.map(
     (row, rowIndex) =>
       new TableRow({
-        tableHeader: rowIndex === 0,
+        ...(rowIndex === 0 ? { tableHeader: true } : {}),
         children: widths.map(
           (width, columnIndex) =>
             new TableCell({
@@ -754,6 +775,8 @@ const children = [...titlePage(metadata), ...bodyBlocks(lines, start)];
 
 const doc = new Document({
   creator: "GitHub Copilot CLI",
+  lastModifiedBy: "GitHub Copilot CLI",
+  revision: 1,
   title: metadata.title || "Joint Energy Optimization Thesis",
   description:
     "Reproducible thesis on safe spatio-temporal data-center energy optimization.",
@@ -763,57 +786,35 @@ const doc = new Document({
         run: { font: BODY_FONT, size: 22, color: "202020" },
         paragraph: { spacing: { after: 120, line: 276 } },
       },
-    },
-    paragraphStyles: [
-      {
-        id: "Heading1",
-        name: "Heading 1",
-        basedOn: "Normal",
-        next: "Normal",
-        quickFormat: true,
+      heading1: {
         run: { font: BODY_FONT, size: 32, bold: true, color: "1F4E79" },
         paragraph: {
           spacing: { before: 240, after: 180 },
           outlineLevel: 0,
         },
       },
-      {
-        id: "Heading2",
-        name: "Heading 2",
-        basedOn: "Normal",
-        next: "Normal",
-        quickFormat: true,
+      heading2: {
         run: { font: BODY_FONT, size: 27, bold: true, color: "2F5597" },
         paragraph: {
           spacing: { before: 200, after: 140 },
           outlineLevel: 1,
         },
       },
-      {
-        id: "Heading3",
-        name: "Heading 3",
-        basedOn: "Normal",
-        next: "Normal",
-        quickFormat: true,
+      heading3: {
         run: { font: BODY_FONT, size: 24, bold: true, color: "404040" },
         paragraph: {
           spacing: { before: 160, after: 100 },
           outlineLevel: 2,
         },
       },
-      {
-        id: "Heading4",
-        name: "Heading 4",
-        basedOn: "Normal",
-        next: "Normal",
-        quickFormat: true,
+      heading4: {
         run: { font: BODY_FONT, size: 22, bold: true, italics: true },
         paragraph: {
           spacing: { before: 140, after: 80 },
           outlineLevel: 3,
         },
       },
-    ],
+    },
   },
   numbering: {
     config: [
@@ -904,7 +905,13 @@ const doc = new Document({
   ],
 });
 
-Packer.toBuffer(doc).then((buffer) => {
+async function writeDocument() {
+  const buffer = await Packer.toBuffer(doc);
   fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
   fs.writeFileSync(OUTPUT, buffer);
+}
+
+writeDocument().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
 });

@@ -201,8 +201,30 @@
         },
         "interpretation": "The reward-trained actor and critics changed, but the paired economic difference from BC-only is the incremental RL effect. Most absolute savings are attributable to teacher imitation."
       },
-      "analytic_teacher_benchmark": {
+      "demonstration_teacher": {
         "development": {
+          "teacher_name": "native_marginal_cost",
+          "scenario_kind": "development",
+          "savings_vs_status_quo_pct": 6.088524719233519,
+          "total_cost": 6167831.952190354,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.9828629032258065
+        },
+        "descriptive_transfer": {
+          "teacher_name": "native_marginal_cost",
+          "scenario_kind": "descriptive_transfer",
+          "savings_vs_status_quo_pct": 6.343857013838858,
+          "total_cost": 5824471.426050754,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.9368279569892473
+        },
+        "attribution": "Greedy linear current-state policy used to generate the frozen offline demonstrations; not an RL result and absent at inference."
+      },
+      "exact_native_benchmark": {
+        "development": {
+          "teacher_name": "exact_native",
           "scenario_kind": "development",
           "savings_vs_status_quo_pct": 7.21599088161977,
           "total_cost": 6093783.261116244,
@@ -211,6 +233,7 @@
           "decoder_adjustment_rate": 0.702844982078853
         },
         "descriptive_transfer": {
+          "teacher_name": "exact_native",
           "scenario_kind": "descriptive_transfer",
           "savings_vs_status_quo_pct": 7.227750029534877,
           "total_cost": 5769502.158158012,
@@ -218,9 +241,9 @@
           "emergency_intervention_rate": 0.0,
           "decoder_adjustment_rate": 0.9208109318996416
         },
-        "attribution": "Causal current-state analytic benchmark and offline teacher; not an RL result and absent at inference."
+        "attribution": "Separate exact-native convex current-state analytic benchmark; not the frozen demonstration teacher and not an RL result."
       },
-      "teacher_savings_capture_pct": 87.1706443114476,
+      "exact_native_savings_capture_pct": 87.1706443114476,
       "headline_gate_passed": true
     },
     "global": {
@@ -412,8 +435,30 @@
         },
         "interpretation": "The reward-trained actor and critics changed, but the paired economic difference from BC-only is the incremental RL effect. Most absolute savings are attributable to teacher imitation."
       },
-      "analytic_teacher_benchmark": {
+      "demonstration_teacher": {
         "development": {
+          "teacher_name": "native_marginal_cost",
+          "scenario_kind": "development",
+          "savings_vs_status_quo_pct": 13.886388338980286,
+          "total_cost": 5682190.277490104,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.985103046594982
+        },
+        "descriptive_transfer": {
+          "teacher_name": "native_marginal_cost",
+          "scenario_kind": "descriptive_transfer",
+          "savings_vs_status_quo_pct": 13.914521061028376,
+          "total_cost": 5402635.206694332,
+          "safe": true,
+          "emergency_intervention_rate": 0.0,
+          "decoder_adjustment_rate": 0.9718862007168458
+        },
+        "attribution": "Greedy linear current-state policy used to generate the frozen offline demonstrations; not an RL result and absent at inference."
+      },
+      "exact_native_benchmark": {
+        "development": {
+          "teacher_name": "exact_native",
           "scenario_kind": "development",
           "savings_vs_status_quo_pct": 15.715358095166328,
           "total_cost": 5561506.056192623,
@@ -422,6 +467,7 @@
           "decoder_adjustment_rate": 0.6911962365591398
         },
         "descriptive_transfer": {
+          "teacher_name": "exact_native",
           "scenario_kind": "descriptive_transfer",
           "savings_vs_status_quo_pct": 16.36113445518972,
           "total_cost": 5249088.292355426,
@@ -429,9 +475,9 @@
           "emergency_intervention_rate": 0.0,
           "decoder_adjustment_rate": 0.9200268817204301
         },
-        "attribution": "Causal current-state analytic benchmark and offline teacher; not an RL result and absent at inference."
+        "attribution": "Separate exact-native convex current-state analytic benchmark; not the frozen demonstration teacher and not an RL result."
       },
-      "teacher_savings_capture_pct": 89.0851569517796,
+      "exact_native_savings_capture_pct": 89.0851569517796,
       "headline_gate_passed": true
     }
   },

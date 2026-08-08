@@ -1,305 +1,269 @@
-# Grid-Aware Spatio-Temporal Load Shaping
+# Safe Joint Energy Optimization for Geo-Distributed Data Centers
 
-This repository implements and evaluates a controlled single-source CAISO
-energy archetype for geo-distributed workload shaping.
+This repository is the executable companion to a thesis on joint spatial and
+temporal workload scheduling across four proxy data centers.
 
-## Current status: frozen v2 campaign complete
-
-**80/80 PPO models trained; all eight held-out evaluations completed.**
-
-The completed v1 campaigns, exact energy inputs, models, logs, outputs, and
-manuscript snapshot are archived under:
+The final controller is:
 
 ```text
-archive/energy_model_v1_mixed_20260805/
+trained TD3+BC network chooses routing/timing preferences
+  -> constraint-only decoder enforces feasibility
+  -> emergency fallback handles unexpected decoder failures
 ```
 
-Historical DQN/CFWS work is separately archived under:
+The analytic teacher is used only for offline demonstrations. It is disabled
+during reward-driven TD3 updates and at inference.
+
+## Final verified result
+
+The corrected frozen-v3 study uses five training seeds per region. Cells a-d
+are the development/frozen-confirmation scope; cells e-h are descriptive
+transfer only.
+
+| Region | BC-only a-d mean | Post-RL a-d mean | Post-RL minimum | e-h descriptive mean | Emergency fallback |
+|---|---:|---:|---:|---:|---:|
+| US | 6.289% | **6.290%** | 6.112% | 5.685% | 0.00% |
+| Global | 14.017% | **14.000%** | 13.822% | 12.890% | 0.00% |
+
+Every post-RL seed has:
+
+- exact service and batch completion;
+- zero expiry, terminal pool, and terminal backlog;
+- zero infeasibility certificates;
+- zero emergency fallback;
+- changed actor and critic hashes; and
+- 2,048 genuine TD3 reward updates.
+
+The result clears the requested >5% US and >10% Global thresholds on every
+a-d seed. The e-h descriptive means also exceed those thresholds, but e-h is
+not fresh confirmatory data.
+
+### Attribution
+
+The result is primarily **teacher imitation preserved by reward training**:
+
+- paired post-RL minus BC: **+0.0013 percentage points US**;
+- paired post-RL minus BC: **-0.0172 percentage points Global**.
+
+The short TD3+BC phase is genuine RL, but it does not explain most of the
+absolute savings. The frozen greedy demonstration teacher scores 6.089% US and
+13.886% Global on a-d. A separate exact-native analytic benchmark scores
+7.216% and 15.715%; the post-RL networks capture 87.17% and 89.09% of that
+stronger benchmark.
+
+Normal decoder adjustment is frequent (98.22% US, 95.12% Global on a-d).
+That is expected constraint enforcement, not emergency intervention, but it
+means the executed solution is properly attributed to the learned preference
+network **plus** the deterministic feasibility decoder.
+
+## Demand-charge finding
+
+Demand charge is excluded from the primary training objective and reported as
+a secondary sensitivity at an illustrative $15/kW-cycle.
+
+| Scope | Demand-charge change | Primary + demand-charge sensitivity |
+|---|---:|---:|
+| US a-d | +18.536% (+$870,104) | **-4.058%** |
+| Global a-d | +18.536% (+$870,104) | **+0.475%** |
+| US e-h descriptive | +16.152% (+$747,240) | **-3.630%** |
+| Global e-h descriptive | +16.152% (+$747,240) | **+0.566%** |
+
+The energy/grid-stress controller concentrates load spatially and increases
+the sum of site peaks. Optimizing primary energy cost does **not** guarantee
+demand-charge savings. This is not a production tariff forecast: the model
+uses five-minute peaks, while real tariffs commonly use 15-minute windows,
+ratchets, and utility-specific rules.
+
+## Data contract
+
+### Workload
+
+- Google ClusterData 2019 cells a-h.
+- 96,580 source machines (metadata only).
+- Measured five-minute aggregate CPU usage.
+- Measured aggregate usage and classified no-SLO batch usage for every cell:
+  - batch/no-SLO: matched priority <=115;
+  - service/residual: aggregate minus classified batch, including unmatched
+    priority metadata.
+- Exact `service + batch = aggregate` conservation.
+- Experimental deadline horizons, not Borg SLOs.
+
+See [`data/README.md`](data/README.md).
+
+### Energy
+
+- CAISO Today's Outlook native five-minute net demand and solar.
+- CAISO OASIS NP15 hourly day-ahead LMP expanded stepwise.
+- May 1-June 1, 2025: 8,928 five-minute intervals.
+- Signed negative net demand and negative prices preserved.
+- One CAISO tuple shifted together by IANA local wall time across US and
+  Global slots.
+
+The slots are a controlled archetype, not eight independent electricity
+markets. See
+[`data/energy_model_v2/README.md`](data/energy_model_v2/README.md).
+
+### Proxy facilities
+
+Each site is an equal 100 MW proxy with normalized compute capacity 1.0.
+Per-cell affine PowerData2019 fits map CPU utilization to power:
 
 ```text
-archive/dqn_cfws_20260805/
+power_utilization = idle + slope * cpu_utilization
+grid_power_mw = 100 MW * power_utilization
 ```
 
-## Energy model v2
+Routing is unrestricted. Latency, residency, transfer bandwidth, transfer
+energy, and movement cost are out of scope.
 
-The primary experiment is:
+## Primary objective
 
-> A controlled geo-distributed workload-shaping experiment driven by one real
-> May-2025 CAISO duck-curve/price archetype, time-shifted across US and global
-> market slots.
+For five-minute interval duration `delta_h = 1/12`:
 
-Market slots:
+```text
+energy_cost_i
+  = price_i_usd_per_kwh * grid_power_i_mw * 1000 * delta_h
 
-- **US:** Pacific, Mountain, Central, Eastern.
-- **Global:** Pacific, Central, Amsterdam, Singapore.
+grid_stress_i
+  = 0.015 * grid_power_i_mw^2 * max(signed_net_demand_i, 0)
+```
 
-Net demand and price:
+The primary objective sums energy cost and grid stress. Carbon intensity is
+not an input and carbon is not optimized.
 
-- come from one co-timestamped CAISO calendar;
-- retain UTC and local timestamps;
-- shift together using IANA time zones and daylight-saving rules;
-- use the same price level in the primary experiment;
-- cover a validated complete May calendar with adjacent-day buffers; and
-- are graphed and reviewed before any new training begins.
+## Final v5 policy
 
-The source build and market diagnostics are complete:
+The network action has 13 dimensions:
 
-- 8,928 five-minute intervals (744 hours);
-- real CAISO Today's Outlook net demand and solar;
-- real CAISO OASIS NP15 hourly DAM LMP expanded stepwise;
-- negative prices preserved;
-- average local trough near 12:00 PDT and peak near 20:00 PDT;
-- price/net-demand correlation about 0.895.
+1. four service-routing logits;
+2. one optional batch-total scalar;
+3. four batch-origin logits; and
+4. four batch-destination logits.
 
-The corrected gate finds 8.0–17.4% joint headroom and 0.6–2.3% incremental
-temporal headroom. Spatial routing remains the dominant lever.
+The decoder applies:
 
-## Frozen held-out result
+- capped-simplex service allocation;
+- cumulative EDF deadline lower bounds;
+- bounded batch-origin drain;
+- residual-capacity destination allocation; and
+- exact origin-to-destination transport.
 
-The broad joint-shaping headline criterion **failed**.
+The v4 shield remains only as a separately measured emergency fallback.
 
-- **Global spatial PPO is the only robust learned success:** +0.90% and +1.19%
-  mean savings on the two held-out workload folds, with positive optimizer CIs
-  and complete service.
-- **US spatial savings are not established:** −0.29% and +0.07%; both CIs cross
-  zero, and the negative fold also loses to Round Robin.
-- **Joint batch control is unstable:** only 9/40 batch seeds meet the frozen
-  99.99% completion floor; it does not reliably improve over spatial-only PPO.
-- Spatial PPO lowers the secondary demand-charge reference; joint PPO raises it
-  and worsens rare maximum three-hour ramps.
+## Authoritative evidence
 
-Canonical results: `output/oof_v2_2025/results_report.md`.
+| Artifact | Purpose |
+|---|---|
+| [`env/protocols/v5_offpolicy_td3bc.yaml`](env/protocols/v5_offpolicy_td3bc.yaml) | Frozen BC and post-RL protocol |
+| [`output/offpolicy_v5_continuous/canonical_v5_v3/evidence_manifest.json`](output/offpolicy_v5_continuous/canonical_v5_v3/evidence_manifest.json) | Cryptographic source/model/record provenance |
+| [`output/offpolicy_v5_continuous/canonical_v5_v3/canonical_results.json`](output/offpolicy_v5_continuous/canonical_v5_v3/canonical_results.json) | Canonical metrics, attribution, demonstration teacher, exact-native benchmark, and demand-charge sensitivity |
+| [`output/offpolicy_v5_continuous/canonical_v5_v3/results_report.md`](output/offpolicy_v5_continuous/canonical_v5_v3/results_report.md) | Human-readable final result |
+| [`output/offpolicy_v5_continuous/final_td3bc_manifest_us_v3.json`](output/offpolicy_v5_continuous/final_td3bc_manifest_us_v3.json) | Per-seed US hashes and metrics |
+| [`output/offpolicy_v5_continuous/final_td3bc_manifest_global_v3.json`](output/offpolicy_v5_continuous/final_td3bc_manifest_global_v3.json) | Per-seed Global hashes and metrics |
+| [`models/offpolicy_v5_continuous/frozen_confirmation/`](models/offpolicy_v5_continuous/frozen_confirmation/) | Twenty persisted BC/post-RL model and record pairs |
 
-## Post-v2 exploratory PPO v3 recovery study (non-headline)
+Published model-training source commit:
+`81d50713b85e5f96809b37c16855289d13b1ad4d`
 
-**The frozen v2 held-out result above remains the primary evidence and is
-unchanged.** After the frozen campaign, a post-hoc, exploratory-only PPO
-recovery study (`ppo-reward-sweep-v3`) trained and reward-tuned joint
-controllers on development cells a–d, to test whether the v2 joint-negative
-result was an algorithmic/observability artifact rather than a ceiling on PPO
-itself. Full raw artifacts: `output/ppo_v3_reward_sweep/`; full narrative:
-`output/thesis_overview.md` §7A.
+Protocol SHA-256:
+`af656597d178f64ccf1f37ce635e3d1c9dc9167f13efe104deee86b44c4e1349`
 
-- **A genuine v2 state defect, reframed rather than retracted.** Frozen v2
-  charged joint policies for terminal unfinished batch work while omitting
-  episode/month position from the observation whenever the primary
-  demand-charge rate was zero (the default). The v2 joint-negative result is
-  therefore conditional on that partially observable state and the frozen
-  budget — it is not clean proof that PPO cannot learn joint spatio-temporal
-  control.
-- **v3 partially repairs the state** (episode progress +
-  `[1,3,6,12,24]`-step deadline buckets), keeps a fixed full-dollar evaluation
-  objective regardless of
-  training reward weights, and runs a successive-halving reward/training
-  sweep (6 candidates → 4 reward-weight variants → full 10-seed development)
-  at exact rollout-aligned budgets with matched seeds and a safety-first
-  selection rule (`all_seeds_safe → safe_seed_count → worst-seed cost →
-  mean cost`). **v3 trains and evaluates joint control only** — no
-  spatial-only, temporal-only, or MPC controller is trained or activated in
-  this protocol; **Status Quo remains the primary comparator**, not
-  spatial-only PPO.
-- **Budget scaling is a standalone compute-limitation diagnostic, not a
-  retroactive rescue of v2.** More training budget monotonically improves
-  Global's mean savings (0.89% → 1.23% → 1.76% at 5 seeds) but actively hurts
-  US at 1M steps (0.21% → 0.35% → **−0.24%**, with batch completion falling to
-  99.54% and 16.7 units expiring).
-- **Selected final a–d results (10-seed replication):** US (151,552 steps)
-  is 1/10 safe with **+0.051%** mean savings, optimizer CI crossing zero;
-  Global (1,003,520 steps) is 1/10 safe with **+2.032%** mean savings and a
-  fully positive optimizer CI. **Both fail the frozen 99.99% completion
-  reliability requirement and the final all-seeds-safe gate**
-  (`output/ppo_v3_reward_sweep/budget_selected_gate.json`: `"passed": false`
-  for both regions).
-- **Exact reading:** more compute improves Global's cost but not its safety;
-  reward tuning and better observability reduce some catastrophic behavior
-  (e.g., service backlog no longer spikes to millions of dollars) but do not
-  yield a trustworthy unconstrained joint PPO controller.
-- **e–h transfer is descriptive only.** A one-time post-selection check that
-  re-evaluates the *same* region-selected budget models used for the a–d
-  gate above — US R3_P1 at 151,552 steps, Global R0_P3 at 1,003,520 steps —
-  on cells already exposed by frozen v2 (not fresh confirmatory data): US
-  −0.155% (7/10 safe), Global +2.826% (5/10 safe). Not headline-eligible.
-- **Limitations carried over:** v2's spatial-vs-joint reward-scale confound
-  is not resolved because v3 never trains or compares a spatial-only
-  controller; the equal 100 MW/unit-capacity proxy still removes real
-  fleet-size heterogeneity and may help explain the weaker US opportunity
-  seen in both v2 and v3.
-- **A deadline-boundary audit found one remaining v3 observation defect.**
-  At step `t`, the observation can include carried pool entries with
-  `deadline_step <= t`, although the transition expires those entries before
-  service. Selected US training had no expiry, but **9/10 selected Global
-  trainings accumulated 127.597 expired units across their randomized
-  episodes**. All selected a–d and descriptive e–h evaluations had zero expiry,
-  so their reported failures are terminal-pool failures rather than this
-  boundary artifact; nevertheless, v3 is not a fully repaired Markov/state-
-  faithful formulation. A future protocol must compute actionable pool,
-  urgency, and deadline buckets only from entries with `deadline_step > t`
-  (optionally exposing unavoidable due-now mass separately), then retrain.
-- **Safety remains soft, not hard.** Feasibility is still enforced only
-  through reward penalties; the drain action is sigmoid-bounded by the
-  inherited ±3 action clip, so a single step can reach at most
-  `sigmoid(3) ≈ 95.257%` drain — but this cap is not the sole failure cause,
-  since some seeds carry terminal batch pools far larger than one step's
-  residual would explain. Widening the action bound alone would still never
-  reach exact 100%, since a sigmoid link only approaches 1.0 asymptotically;
-  the priority fix is instead a non-MPC safety layer with an **exact
-  0.0–100% drain-reachability decoder / hard feasibility override** (not
-  merely a wider sigmoid), which is future work, not part of v3.
-- **Negative net-demand behavior — now with a deterministic conditioned
-  probe against a uniform-routing benchmark, not just whole-episode
-  averages.** The objective structurally rewards concentrating batch
-  execution during negative-net-demand/low-price windows, and selected
-  policies do show much lower whole-episode average drain rates than Status
-  Quo (~0.43–0.63 vs. ~1.0). A deterministic probe
-  (`negative_net_demand_probe` in `output/ppo_v3_reward_sweep/canonical_results.json`;
-  `output/ppo_v3_reward_sweep/results_report.md`;
-  `output/ppo_v3_reward_sweep/ppo_v3_negative_net_demand_probe.png`) — all 10
-  selected a–d models/region re-evaluated with domain randomization
-  disabled — splits mean drain, actual pool clearance, and batch routing
-  share by negative- vs. non-negative-demand step, and compares routing
-  share against the **conditioned uniform benchmark** (mean fraction of
-  destinations negative when available), not raw negative-step incidence:
-  - **US:** negative-step share 0.238911; mean drain 0.509108 (any
-    destination negative) vs. 0.513233 (otherwise); clearance 0.508187 vs.
-    0.507867; actual route share to negative destinations **0.611085** vs.
-    uniform benchmark **0.611814** (**−0.07 pp**); 0 negative steps with mean
-    drain > 90%.
-  - **Global:** negative-step share 0.482527; mean drain 0.520032 vs.
-    0.521231; clearance 0.501521 vs. 0.502063; actual route share
-    **0.332631** vs. uniform benchmark **0.300487** (**+3.21 pp**); 0
-    negative steps with mean drain > 90%.
-  - **Exact reading:** neither region increases drain or clearance during
-    negative-demand windows (both are slightly lower). Once compared against
-    the uniform benchmark rather than zero, **the US shows no measurable
-    negative-site routing preference** (essentially uniform, −0.07 pp), while
-    **Global shows only a modest +3.21 pp positive spatial tilt** — the
-    opposite of, and a correction to, an earlier reading that had the US
-    showing "much stronger" redirection than Global. Neither region ever
-    "blasts through" the batch pool on a negative-demand step. Descriptive
-    only (domain randomization disabled, already-selected models, no
-    retraining) — **no causal or confirmatory claim**.
-- The demand-charge opt-in guard (`rate=0.0` by default, γ=1 required when
-  enabled, period must evenly divide `max_steps`) is unchanged from v2 and is
-  covered by two already-published exact identities in
-  `scripts/smoke_test_demand_charge.py` — incremental demand charge sums to
-  `rate × period max`, and dense arrival-minus-completion shaping sums to
-  `λ_x × (expired + terminal pool)` — plus v3's new potential-shaping
-  telescoping identity (`scripts/smoke_test_ppo_v3.py::test_potential_telescopes`).
-  All three are exact-accounting regression tests, not statistical checks.
+## Setup
 
-Time-zone shifts are continuous, not circular. Each slot has equal duration,
-but adjacent real boundary hours can produce small monthly-mean differences.
-Singapore's 0.59% higher mean is such a boundary effect, not a regional price
-premium or extra simulated time.
+```powershell
+python -m pip install -r requirements.txt
+npm install
+```
 
-Regional price-level and real multi-market data are future sensitivity work,
-not assumptions in the primary model. Historical 2019/2024 duck-curve
-comparison and multi-year extrapolation are future work; they are not additional
-training scenarios.
+Tested final RL stack:
 
-## Post-v3 exploratory PPO v4 hard-safety study (non-headline)
+- Stable-Baselines3 2.9.0
+- PyTorch 2.11 CPU
+- Gymnasium-compatible environment
 
-A further post-v3, non-headline, exploratory study (`ppo-hard-safety-v4`)
-adds a **causal, one-step hard feasibility projector** — not an MPC
-controller — around the same selected v3 joint PPO configurations
-(US `R3_P1`, Global `R0_P3`). Full raw artifacts: `output/ppo_v4_safety/`
-and `models/ppo_v4_safety/`; full narrative: `output/thesis_overview.md`
-§7B.
+## Validation
 
-- **Closes both open v3 items named above.** Deadline-actionable state now
-  excludes `deadline_step <= t` entries from actionable pool/urgency/bucket
-  features, and drains are decided by an exact box/simplex projection that
-  can land exactly on 0%/100% instead of the old `sigmoid(3) ≈ 95.257%` cap.
-- **Frozen, train-only, a–d-only envelope** (`service_envelope_total=2.25`,
-  `batch_arrival_envelope_total=1.0`, `future_fleet_capacity_total=4.0`),
-  never fit to e–h or any future trace, drives a cumulative causal
-  earliest-deadline-first feasibility check plus exact-transport routing
-  (real row/column conservation, not a `serve_ratio` approximation).
-  Infeasible states fail closed with a structured certificate rather than
-  degrading silently; the guarantee holds only from a clean (zero
-  pre-existing local backlog) state, which is audited, not merely assumed.
-- **Replay** wraps the archived, unmodified v3 policies in the projector at
-  evaluation only (no retraining): 10/10 seeds safe in both regions/modes;
-  minimal safety-only intervention (US 0.011%, Global 0.473%). The optional
-  negative-demand-flush ablation stays safe and lowers absolute cost, but raises
-  intervention to 23.9%/48.5% and yields less relative savings against its own
-  flush-enabled Status Quo baseline, so it stays disabled primary.
-- **36 freshly trained hard-safe joint PPO models** (short 3-seed, medium
-  5-seed, full 10-seed, ×2 regions) are safe in **every** seed at every
-  stage — zero expiry, zero terminal pool/backlog, zero certificates,
-  transport-conservation error ~1e-16. US economics remain unresolved
-  (full-budget mean −0.246%, CI crosses zero); **Global turns robustly
-  positive at full budget** (+3.262%, CI `[+$160,775, +$267,541]`, all ten
-  seeds positive) but at an **18.786%** mean intervention rate — that result
-  is a property of **PPO + projector jointly**, not of an unconstrained PPO
-  policy. A descriptive-only e–h transfer (US −0.149%/10-10 safe, Global
-  +3.611%/10-10 safe) mirrors v3 and sets no gate.
-- **Optional power/ramp caps are implemented and unit-tested but disabled
-  (`null`) in every reported run; no MPC controller is built anywhere in
-  v4.** All 10 requirement-mapped unit tests in
-  `scripts/smoke_test_safety_v4.py` pass.
-- v4 does not overturn the frozen v2 headline or the v3 recovery-study
-  conclusion above — it establishes deterministic hard safety under its
-  frozen assumptions, not new projector-independent economic evidence. Any
-  wider safety/economic claim needs new workload/energy data, not reuse of
-  this frozen envelope.
+```powershell
+python scripts\preflight_energy_model_v2.py
+python scripts\smoke_test_demand_charge.py
+python scripts\smoke_test_ppo_v3.py
+python scripts\smoke_test_safety_v4.py
+python scripts\smoke_test_offpolicy_v5.py
+```
 
-## Frozen historical conclusion
+## Reproduce the final campaign
 
-Energy-model v1 is reproducible as an 8,917-step synthetic objective (v1 only;
-v2 has 8,928 steps) but is not valid evidence of synchronized real market
-economics. Its OOF campaign failed the frozen joint-shaping headline criterion
-and is retained only for historical analysis.
+The published models record training-source commit
+`81d50713b85e5f96809b37c16855289d13b1ad4d`. Use a separate worktree to
+regenerate that exact source identity without overwriting the final branch's
+committed artifacts:
 
-## Frozen campaign protocol
+```powershell
+git worktree add ..\dc-energy-v5-training 81d50713b85e5f96809b37c16855289d13b1ad4d
+Push-Location ..\dc-energy-v5-training
 
-The protocol freezes **501,760 steps = 245 PPO rollouts**, 10 seeds per fold,
-`gamma=1`, domain randomization, and every objective/assumption above.
+python scripts\run_offpolicy_campaign_v5.py --campaign td3bc_bconly_frozen_v3 --regions us global --seeds 301 302 303 304 305 --workers 4
 
-- `output/oof_v2_2025/protocol.json` — frozen source/data/package provenance.
-- `models/oof_v2_2025/manifest.json` — 80 model hashes and completion records.
-- `output/oof_v2_2025/summary.json` — raw canonical held-out evaluation.
-- `output/oof_v2_2025/canonical_results.json` — compact publication source.
+python scripts\run_offpolicy_campaign_v5.py --campaign td3bc_postrl_frozen_v3 --regions us global --seeds 301 302 303 304 305 --workers 4
 
-The separate, non-frozen exploratory v3 recovery protocol and raw sweep/gate
-results are under `output/ppo_v3_reward_sweep/` (`protocol.json`,
-`round1_results.json`, `round2_results.json`, `full_results.json`/`full_gate.json`,
-`budget_curve_results.json`, `budget_selection.json`,
-`budget_selected_results.json`/`budget_selected_gate.json`,
-`final_eh_transfer.json`, `budget_selected_eh_results.json`,
-`canonical_results.json`, `results_report.md`,
-`ppo_v3_negative_net_demand_probe.png`); see the "Post-v2 exploratory PPO v3
-recovery study" section above.
+python scripts\build_offpolicy_evidence_v5.py --bc-campaign td3bc_bconly_frozen_v3 --postrl-campaign td3bc_postrl_frozen_v3 --seeds 301 302 303 304 305 --workers 4 --suffix v3
 
-The separate, non-frozen exploratory v4 hard-safety protocol and raw
-replay/gate/results are under `output/ppo_v4_safety/` (`protocol.json`,
-`preflight.json`, `replay_results.json`, `short_results.json`/`short_gate.json`,
-`medium_results.json`/`medium_gate.json`, `full_results.json`/`full_gate.json`,
-`final_results.json`) and `models/ppo_v4_safety/manifest.json`; see the
-"Post-v3 exploratory PPO v4 hard-safety study" section above.
+Pop-Location
+```
 
-## Frozen simplifying assumptions
+On the checked-out final package commit, rebuild the canonical report from the committed
+verified package:
 
-- Every modeled site is an equal 100 MW proxy with normalized capacity 1.0.
-- Current measured batch arrival is present in the pre-action observation.
-- Net demand retains a signed `[-1,1]` scale; real low/negative LMP rewards
-  execution during renewable oversupply.
-- Routing is unrestricted across all four slots; latency, residency, and
-  movement costs are future work. Spatial headroom is therefore an optimistic
-  upper bound, not a deployment-feasibility claim.
-- MPC is future work; QP is a clairvoyant diagnostic only.
-- Ramp rate is not directly penalized. Evaluation reports per-region 1h/3h
-  maximum and p95 upward ramps; a ramp-aware reward is added only if v2
-  policies worsen them.
-- The primary deadline uses `flexibility_factor=1`; factors 0 and 2 are
-  robustness cases.
-- OOF holds out workload cells, not the single May-2025 energy calendar.
+```powershell
+python scripts\build_v5_results.py
+```
 
-No-training ablations use a–d only. They show shifted market phase is the
-dominant Global lever, while per-cell power heterogeneity materially increases
-US headroom. Lower-slope routing is treated as a direct model consequence, not
-a novel RL discovery. Fixed-α headroom is also reported for 50/100/200 MW.
+The reporting/thesis builders were added after the frozen training commit;
+the multi-revision provenance is intentional and documented in the final
+paper. Running training from a later commit creates a new `source_commit` and
+a new evidence package.
 
-`output/thesis_overview.md` is the living end-to-end technical reference.
-`thesis_paper.docx` is regenerated from `scripts/build_thesis_paper.py`; v1
-results remain explicitly historical.
+## Build the thesis
+
+The final paper is authored at the repository root and regenerated from
+scratch:
+
+```powershell
+python scripts\build_final_thesis.py
+```
+
+Outputs:
+
+- [`thesis_paper.md`](thesis_paper.md)
+- [`thesis_paper.docx`](thesis_paper.docx)
+
+The DOCX builder uses the pinned local `docx` package from `package.json`.
+
+## Repository map
+
+| Path | Role |
+|---|---|
+| `data/` | Active Borg, PowerData2019, and CAISO inputs |
+| `env/` | Simulator, accounting, safety layer, and v5 decoder |
+| `env/scenarios/` | US/Global a-d and e-h scenario wiring |
+| `env/protocols/` | Frozen v2-v5 protocol files |
+| `scripts/run_offpolicy_campaign_v5.py` | Teacher collection, BC, TD3+BC, evaluation |
+| `scripts/build_offpolicy_evidence_v5.py` | Cryptographic evidence validation |
+| `scripts/build_v5_results.py` | Final metrics, report, and figures |
+| `scripts/build_final_thesis.py` | Final DOCX entry point |
+| `models/offpolicy_v5_continuous/` | Final network artifacts |
+| `output/offpolicy_v5_continuous/` | Final evidence and results |
+| `archive/` | Historical/invalid/superseded material only |
+
+Nothing under `archive/` is required to run or explain the final solution.
+
+## Version lineage
+
+- **v1:** mixed/synthetic market and accounting issues; invalidated.
+- **v2:** frozen 80-model PPO study; only Global spatial robust; joint unsafe.
+- **v3:** observability/reward recovery; economics improved but only 1/10 safe.
+- **v4:** exact hard safety; Global +3.262% but 18.786% projector intervention.
+- **v5:** structured network preferences, constraint decoder, offline causal
+  teacher, BC, and verified post-BC TD3+BC.
+
+The detailed history and limitations are in `thesis_paper.md`.

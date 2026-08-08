@@ -17,6 +17,23 @@ DEFAULT_SOURCE = ROOT / "thesis_paper.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.docx"
 NODE_BUILDER = ROOT / "scripts" / "build_final_thesis_docx.js"
 IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+HYPERLINK_RELATIONSHIP_TYPE = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+)
+WORD_SAFE_HYPERLINK_IDS = (
+    "rIdgpazldmzsaqs3jmtjnap6",
+    "rIdlcv604cskny45r_xtsr72",
+    "rIdf92p52yjfvj1hnpcw43fb",
+    "rIdo2knrcuw_fop4eazz3xme",
+    "rIdo6gg1tyvs5wvapldijwzk",
+    "rIdkx8df7z9jrlblht5lmkyr",
+    "rIdgegxjdwhdozd88xtnxppl",
+    "rIdbz_slxcjojckeebgjcgne",
+    "rIdikl4avk_4afim2fldmbew",
+    "rIdsqlfw8mw8qkztfwi8e_d1",
+)
+FIXED_CORE_TIMESTAMP = "2026-08-07T00:00:00.000Z"
+FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,6 +83,126 @@ def validate_docx(output: Path) -> None:
         for name in names:
             if name.endswith(".xml"):
                 ElementTree.fromstring(package.read(name))
+        document_xml = package.read("word/document.xml").decode("utf-8")
+        styles_xml = package.read("word/styles.xml").decode("utf-8")
+        drawing_ids = re.findall(
+            r'<wp:docPr[^>]*\bid="([^"]+)"',
+            document_xml,
+        )
+        picture_ids = re.findall(
+            r'<pic:cNvPr[^>]*\bid="([^"]+)"',
+            document_xml,
+        )
+        style_ids = re.findall(
+            r'<w:style[^>]*w:styleId="([^"]+)"',
+            styles_xml,
+        )
+        for name, identifiers in (
+            ("wp:docPr", drawing_ids),
+            ("pic:cNvPr", picture_ids),
+            ("w:style", style_ids),
+        ):
+            if len(identifiers) != len(set(identifiers)):
+                raise RuntimeError(f"DOCX contains duplicate {name} identifiers")
+        if re.search(r"<w:tblHeader\b[^>]*w:val=\"false\"", document_xml):
+            raise RuntimeError("DOCX contains schema-invalid false table-header flags")
+
+
+def _replace_indexed_id(
+    xml: str,
+    pattern: str,
+) -> str:
+    counter = iter(range(1, 1_000_000))
+    return re.sub(
+        pattern,
+        lambda match: f"{match.group(1)}{next(counter)}{match.group(2)}",
+        xml,
+    )
+
+
+def normalize_docx_package(output: Path) -> None:
+    """Normalize IDs, metadata, and ZIP timestamps for Word and reproducibility."""
+    relationships_path = "word/_rels/document.xml.rels"
+    document_path = "word/document.xml"
+    core_properties_path = "docProps/core.xml"
+    with zipfile.ZipFile(output) as package:
+        entries = [
+            (entry, package.read(entry.filename))
+            for entry in package.infolist()
+        ]
+    payloads = {entry.filename: data for entry, data in entries}
+    relationships = payloads[relationships_path].decode("utf-8")
+    document_xml = payloads[document_path].decode("utf-8")
+    current_ids = re.findall(
+        rf'<Relationship Id="([^"]+)" Type="{re.escape(HYPERLINK_RELATIONSHIP_TYPE)}"',
+        relationships,
+    )
+    if len(current_ids) != len(WORD_SAFE_HYPERLINK_IDS):
+        raise RuntimeError(
+            "The frozen thesis expects exactly "
+            f"{len(WORD_SAFE_HYPERLINK_IDS)} external hyperlinks, found "
+            f"{len(current_ids)}. Update the compatibility ID pool and revalidate "
+            "with Microsoft Word before accepting a changed bibliography."
+        )
+    for current_id, safe_id in zip(
+        current_ids,
+        WORD_SAFE_HYPERLINK_IDS,
+        strict=True,
+    ):
+        relationships = relationships.replace(
+            f'Id="{current_id}"',
+            f'Id="{safe_id}"',
+        )
+        document_xml = document_xml.replace(
+            f'r:id="{current_id}"',
+            f'r:id="{safe_id}"',
+        )
+    document_xml = _replace_indexed_id(
+        document_xml,
+        r'(<wp:docPr\b[^>]*\bid=")[^"]+(")',
+    )
+    document_xml = _replace_indexed_id(
+        document_xml,
+        r'(<pic:cNvPr\b[^>]*\bid=")[^"]+(")',
+    )
+    core_properties = payloads[core_properties_path].decode("utf-8")
+    core_properties = re.sub(
+        r"(<dcterms:created\b[^>]*>).*?(</dcterms:created>)",
+        rf"\g<1>{FIXED_CORE_TIMESTAMP}\g<2>",
+        core_properties,
+    )
+    core_properties = re.sub(
+        r"(<dcterms:modified\b[^>]*>).*?(</dcterms:modified>)",
+        rf"\g<1>{FIXED_CORE_TIMESTAMP}\g<2>",
+        core_properties,
+    )
+    payloads[relationships_path] = relationships.encode("utf-8")
+    payloads[document_path] = document_xml.encode("utf-8")
+    payloads[core_properties_path] = core_properties.encode("utf-8")
+    temporary = output.with_name(f"{output.stem}.tmp{output.suffix}")
+    try:
+        with zipfile.ZipFile(
+            temporary,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as package:
+            for entry, _ in entries:
+                normalized = zipfile.ZipInfo(
+                    entry.filename,
+                    date_time=FIXED_ZIP_TIMESTAMP,
+                )
+                normalized.compress_type = (
+                    zipfile.ZIP_STORED
+                    if entry.is_dir()
+                    else zipfile.ZIP_DEFLATED
+                )
+                normalized.external_attr = entry.external_attr
+                normalized.create_system = entry.create_system
+                normalized.comment = entry.comment
+                package.writestr(normalized, payloads[entry.filename])
+        temporary.replace(output)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -89,6 +226,7 @@ def main() -> int:
         cwd=ROOT,
         check=True,
     )
+    normalize_docx_package(output)
     validate_docx(output)
 
     digest = hashlib.sha256(output.read_bytes()).hexdigest()

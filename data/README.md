@@ -34,14 +34,19 @@ market replay.
 
 ### Measured service and batch tiers
 
-`cells/cell_a_tiers.csv` through `cells/cell_h_tiers.csv` are measured
-five-minute CPU-usage splits from BigQuery `instance_usage`, joined to
+`cells/cell_a_tiers.csv` through `cells/cell_h_tiers.csv` are five-minute
+CPU-usage decompositions from BigQuery `instance_usage`, left-joined to
 `collection_events` for priority:
 
 ```text
-batch (deferrable, no SLO): priority <= 115
-service (non-deferrable):  priority >= 116
+batch (deferrable, no SLO): usage with matched priority <= 115
+service/residual: aggregate usage - classified batch usage
 ```
+
+The service/residual curve contains matched priorities at or above 116 and any
+usage without matched priority metadata. The committed extraction does not
+include a canonical unmatched-priority-rate audit, so it does not assert that
+every service/residual sample has an observed priority at or above 116.
 
 At every timestep:
 
