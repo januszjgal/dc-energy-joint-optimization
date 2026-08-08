@@ -53,6 +53,7 @@ def _descriptor(
 class PJMAdapter(MarketAdapter):
     market = "PJM_DOM"
     credential = "PJM_API_KEY"
+    redistribution = "code_query_metadata_hashes_and_derived_metrics_only"
 
     def descriptors(self) -> list[SourceDescriptor]:
         auth = "PJM_API_KEY subscription key"
@@ -117,6 +118,7 @@ class PJMAdapter(MarketAdapter):
 
 class NYISOAdapter(MarketAdapter):
     market = "NYISO_NYC_J"
+    redistribution = "raw_redistribution_caveat_metadata_required"
 
     def descriptors(self) -> list[SourceDescriptor]:
         common = {
@@ -169,6 +171,7 @@ class NYISOAdapter(MarketAdapter):
 
 class CAISOAdapter(MarketAdapter):
     market = "CAISO_NP15"
+    redistribution = "attribution_and_terms_metadata_required"
 
     def descriptors(self) -> list[SourceDescriptor]:
         common = {
@@ -198,6 +201,7 @@ class CAISOAdapter(MarketAdapter):
                     "node": "TH_NP15_GEN-APND",
                     "lmp_type": "LMP",
                     "timestamp": "INTERVALSTARTTIME_GMT",
+                    "rt_sensitivity": "PRC_INTVL_LMP v3 RTM",
                 },
             ),
             _descriptor(
@@ -235,6 +239,7 @@ class CAISOAdapter(MarketAdapter):
 
 class ERCOTAdapter(MarketAdapter):
     market = "ERCOT_LZ_NORTH"
+    redistribution = "public_with_notices"
 
     def descriptors(self) -> list[SourceDescriptor]:
         common = {
@@ -291,6 +296,7 @@ class ERCOTAdapter(MarketAdapter):
 class MISOAdapter(MarketAdapter):
     market = "MISO_MINN_HUB"
     credential = "MISO_API_KEY"
+    redistribution = "code_query_metadata_hashes_and_derived_metrics_only"
 
     def descriptors(self) -> list[SourceDescriptor]:
         restricted = "code_query_metadata_hashes_and_derived_metrics_only"
@@ -328,7 +334,10 @@ class MISOAdapter(MarketAdapter):
                 dst_rule="fixed EST hour-ending",
                 status_field="Data Exchange version metadata",
                 revision_policy="retain query version and response hash",
-                query={"current_display_api_acceptable": False},
+                query={
+                    "current_display_api_acceptable": False,
+                    "rt_sensitivity": "YYYYMMDD_rt_lmp_final.csv",
+                },
                 redistribution=restricted,
             ),
         ]
@@ -344,6 +353,7 @@ class MISOAdapter(MarketAdapter):
 
 class SPPAdapter(MarketAdapter):
     market = "SPP_NORTH_HUB"
+    redistribution = "derived_metrics_only"
 
     def descriptors(self) -> list[SourceDescriptor]:
         common = {

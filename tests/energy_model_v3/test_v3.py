@@ -7,9 +7,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from energy_model_v3.builder import (
     MARKETS,
+    blocked_preflight,
     build_panel,
     fixture_market_frame,
     load_scenario,
@@ -48,6 +50,42 @@ class CalendarAndScenarioTests(unittest.TestCase):
         ]
         self.assertEqual(len(stress), 1)
         self.assertTrue(stress[0]["penetration_override"])
+
+    def test_primary_role_cannot_redeclare_capacity(self) -> None:
+        source = (
+            ROOT / "env" / "scenarios" / "us_six_market_v3_primary.yaml"
+        ).read_text(encoding="utf-8")
+        modified = source.replace(
+            "total_dc_power_mw: 600.0", "total_dc_power_mw: 1200.0"
+        ).replace("rated_power_mw: 100.0", "rated_power_mw: 200.0")
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "invalid.yaml"
+            path.write_text(modified, encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "total must be 600"):
+                load_scenario(path)
+
+    def test_primary_role_cannot_use_robustness_mapping_or_nan_gate(self) -> None:
+        source = (
+            ROOT / "env" / "scenarios" / "us_six_market_v3_primary.yaml"
+        ).read_text(encoding="utf-8")
+        mapping = yaml.safe_load(source)
+        mapping["mapping"] = "robustness_overlapping_non_oof"
+        for site, cell in zip(mapping["sites"], "cdefgh", strict=True):
+            site["borg_cell"] = cell
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "invalid.yaml"
+            path.write_text(yaml.safe_dump(mapping), encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "mapping must be"):
+                load_scenario(path)
+            path.write_text(
+                source.replace(
+                    "max_penetration_fraction: 0.05",
+                    "max_penetration_fraction: .nan",
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ContractError, "must be finite"):
+                load_scenario(path)
 
 
 class CanonicalTests(unittest.TestCase):
@@ -92,6 +130,57 @@ class CanonicalTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ContractError, "realized future"):
             validate_forecasts(frame)
+
+    def test_short_or_inconsistent_forecast_horizon_is_rejected(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "interval_start_utc": ["2025-09-01T01:00:00Z"],
+                "market": ["CAISO_NP15"],
+                "forecast_target": ["net_load_mw"],
+                "forecast_value_mw": [1.0],
+                "forecast_issue_utc": ["2025-09-01T00:00:00Z"],
+                "forecast_vintage_utc": ["2025-09-01T00:00:00Z"],
+                "forecast_horizon_hours": [1],
+                "forecast_capability": ["native_causal"],
+                "source_quality_flags": ["ok"],
+            }
+        )
+        with self.assertRaisesRegex(ContractError, "at least three"):
+            validate_forecasts(frame)
+
+    def test_nonfinite_and_case_variant_forbidden_forecasts_fail(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "interval_start_utc": ["2025-09-01T03:00:00Z"],
+                "market": ["CAISO_NP15"],
+                "forecast_target": ["net_load_mw"],
+                "forecast_value_mw": [np.inf],
+                "forecast_issue_utc": ["2025-09-01T00:00:00Z"],
+                "forecast_vintage_utc": ["2025-09-01T00:00:00Z"],
+                "forecast_horizon_hours": [3],
+                "forecast_capability": ["REALIZED_FUTURE"],
+                "source_quality_flags": ["bad"],
+            }
+        )
+        with self.assertRaisesRegex(ContractError, "finite"):
+            validate_forecasts(frame)
+        frame["forecast_value_mw"] = 1.0
+        with self.assertRaisesRegex(ContractError, "realized future"):
+            validate_forecasts(frame)
+
+    def test_misaligned_native_grid_fails(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "interval_start_utc": pd.date_range(
+                    "2025-09-01T00:00:00Z", periods=12, freq="1min"
+                ),
+                "value": np.arange(12),
+            }
+        )
+        with self.assertRaisesRegex(ContractError, "do not match"):
+            aggregate_native_hourly(
+                frame, value_columns=["value"], native_minutes=5
+            )
 
 
 class DerivationTests(unittest.TestCase):
@@ -207,10 +296,110 @@ class EndToEndFixtureTests(unittest.TestCase):
                 ),
                 dc_power=dc_power,
                 calendar=calendar,
+                fixture_mode=True,
             )
             self.assertEqual(set(manifest["scales"]), set(MARKETS))
             self.assertEqual(len(manifest["outputs"]), 6)
             self.assertTrue(manifest["training_only_calibration"])
+            self.assertTrue(manifest["fixture_mode"])
+            capabilities = [
+                {
+                    "market": market,
+                    "status": "AVAILABLE",
+                    "reason": "test",
+                }
+                for market in MARKETS
+            ]
+            report = blocked_preflight(
+                data_root, capabilities, calendar
+            )
+            self.assertEqual(report["status"], "BLOCKED")
+            self.assertEqual(set(report["invalid_primary_inputs"]), set(MARKETS))
+            dc_power[MARKETS[0]] = pd.Series(
+                np.full(len(frame), 101.0)
+            )
+            with self.assertRaisesRegex(
+                ContractError, "exceeds 100.0 MW site rating"
+            ):
+                build_panel(
+                    data_root=data_root,
+                    output_root=output_root,
+                    scenario_path=(
+                        ROOT / "env" / "scenarios"
+                        / "us_six_market_v3_primary.yaml"
+                    ),
+                    dc_power=dc_power,
+                    calendar=calendar,
+                    fixture_mode=True,
+                )
+
+    def test_live_build_rejects_synthetic_fixture(self) -> None:
+        calendar = make_calendar()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            frame = fixture_market_frame("PJM_DOM", calendar=calendar)
+            market_root = root / "native" / "PJM_DOM"
+            market_root.mkdir(parents=True)
+            physical = [
+                "interval_start_utc", "interval_end_utc", "market",
+                "gross_demand_mw", "wind_mw", "solar_mw", "net_load_mw",
+                "net_load_method", "source_quality_flags",
+            ]
+            price = [
+                "interval_start_utc", "interval_end_utc", "market",
+                "price_market", "price_location", "da_lmp_usd_mwh",
+                "rt_lmp_usd_mwh", "energy_component_usd_mwh",
+                "congestion_component_usd_mwh", "loss_component_usd_mwh",
+                "source_quality_flags",
+            ]
+            frame[physical].to_csv(
+                market_root / "physical_hourly.csv", index=False
+            )
+            frame[price].to_csv(
+                market_root / "price_hourly.csv", index=False
+            )
+            dc = {
+                market: pd.Series(np.full(len(frame), 50.0))
+                for market in MARKETS
+            }
+            with self.assertRaisesRegex(
+                ContractError, "synthetic fixture data is forbidden"
+            ):
+                build_panel(
+                    data_root=root,
+                    output_root=root / "output",
+                    scenario_path=(
+                        ROOT / "env" / "scenarios"
+                        / "us_six_market_v3_primary.yaml"
+                    ),
+                    dc_power=dc,
+                    calendar=calendar,
+                )
+
+    def test_preflight_validates_capability_and_content(self) -> None:
+        calendar = make_calendar()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for market in MARKETS:
+                market_root = root / "native" / market
+                market_root.mkdir(parents=True)
+                (market_root / "physical_hourly.csv").write_text(
+                    "bad\n", encoding="utf-8"
+                )
+                (market_root / "price_hourly.csv").write_text(
+                    "bad\n", encoding="utf-8"
+                )
+            capabilities = [
+                {
+                    "market": market,
+                    "status": "AVAILABLE",
+                    "reason": "test",
+                }
+                for market in MARKETS
+            ]
+            report = blocked_preflight(root, capabilities, calendar)
+            self.assertEqual(report["status"], "BLOCKED")
+            self.assertEqual(set(report["invalid_primary_inputs"]), set(MARKETS))
 
 
 class FrozenLegacyRegressionTests(unittest.TestCase):
@@ -233,7 +422,7 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
                 "git",
                 "diff",
                 "--name-only",
-                "--diff-filter=ACMRTUXB",
+                "--diff-filter=ACDMRTUXB",
                 "origin/master",
             ],
             cwd=ROOT,
@@ -241,7 +430,10 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        changed = [line.strip().replace("\\", "/") for line in result.stdout.splitlines()]
+        changed = [
+            line.strip().replace("\\", "/")
+            for line in result.stdout.splitlines()
+        ]
         forbidden = [
             path
             for path in changed

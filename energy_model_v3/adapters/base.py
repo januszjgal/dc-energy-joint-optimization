@@ -121,11 +121,13 @@ def download_raw(
             headers=headers,
             timeout=timeout,
         )
-        if response.status_code == 429 and attempt + 1 < retries:
+        if response.status_code == 429:
             response.close()
-            time.sleep(delay)
-            delay = min(delay * 2.0, 60.0)
-            continue
+            if attempt + 1 < retries:
+                time.sleep(delay)
+                delay = min(delay * 2.0, 60.0)
+                continue
+            raise ContractError(f"rate limit persisted for {url}")
         response.raise_for_status()
         content = response.content
         if not content:
@@ -141,4 +143,4 @@ def download_raw(
                 for key in ("Content-Type", "ETag", "Last-Modified")
             },
         }
-    raise ContractError(f"rate limit persisted for {url}")
+    raise ContractError(f"download retries exhausted for {url}")

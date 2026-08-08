@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-08T21:24:33.572189+00:00",
+  "generated_at_utc": "2026-08-08T21:35:22.150284+00:00",
   "schema_version": "energy-model-v3",
   "sources": {
     "CAISO_NP15": [
@@ -19,6 +19,7 @@
           "market_run_id": "DAM",
           "node": "TH_NP15_GEN-APND",
           "queryname": "PRC_LMP",
+          "rt_sensitivity": "PRC_INTVL_LMP v3 RTM",
           "timestamp": "INTERVALSTARTTIME_GMT",
           "version": 12
         },
@@ -151,7 +152,8 @@
         "product": "historical physical stress tuple",
         "quality_flags": [],
         "query": {
-          "current_display_api_acceptable": false
+          "current_display_api_acceptable": false,
+          "rt_sensitivity": "YYYYMMDD_rt_lmp_final.csv"
         },
         "raw_sha256": null,
         "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",

@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
+import numpy as np
 import pandas as pd
 
 
@@ -140,6 +141,8 @@ def validate_native_table(
     expected_market: str | None = None,
     non_nullable: Iterable[str] | None = None,
     unique_columns: Iterable[str] = ("market", "interval_start_utc"),
+    numeric_columns: Iterable[str] = (),
+    non_negative_columns: Iterable[str] = (),
 ) -> pd.DataFrame:
     """Validate a native long-form table without filling or coercing evidence."""
     required_set = set(required)
@@ -185,6 +188,15 @@ def validate_native_table(
             raise ContractError(
                 f"{table_name} mixes record statuses: {sorted(statuses)}"
             )
+    for column in numeric_columns:
+        numeric = pd.to_numeric(result[column], errors="raise")
+        present = numeric.dropna()
+        if not np.isfinite(present.to_numpy()).all():
+            raise ContractError(f"{table_name}.{column} is not finite")
+        result[column] = numeric
+    for column in non_negative_columns:
+        if (result[column].dropna() < 0).any():
+            raise ContractError(f"{table_name}.{column} must be non-negative")
     return result.sort_values(["market", "interval_start_utc"]).reset_index(
         drop=True
     )
@@ -209,6 +221,10 @@ def validate_forecasts(frame: pd.DataFrame) -> pd.DataFrame:
     result["forecast_vintage_utc"] = _validate_utc(
         result["forecast_vintage_utc"], "forecast.forecast_vintage_utc"
     )
+    values = pd.to_numeric(result["forecast_value_mw"], errors="raise")
+    if not np.isfinite(values.to_numpy()).all():
+        raise ContractError("forecast values must be finite")
+    result["forecast_value_mw"] = values
     if (
         result["forecast_issue_utc"] > result["interval_start_utc"]
     ).any():
@@ -217,10 +233,29 @@ def validate_forecasts(frame: pd.DataFrame) -> pd.DataFrame:
         result["forecast_vintage_utc"] > result["forecast_issue_utc"]
     ).any():
         raise ContractError("forecast vintage occurs after issue time")
-    if (pd.to_numeric(result["forecast_horizon_hours"]) < 0).any():
-        raise ContractError("forecast horizon must be non-negative")
-    forbidden = {"realized_future", "future_rt", "realized_load"}
-    if set(result["forecast_capability"].astype(str)) & forbidden:
+    horizon = pd.to_numeric(
+        result["forecast_horizon_hours"], errors="raise"
+    )
+    if (horizon < 3).any():
+        raise ContractError("forecast horizon must be at least three hours")
+    actual_horizon = (
+        result["interval_start_utc"] - result["forecast_issue_utc"]
+    ).dt.total_seconds() / 3600.0
+    if not (actual_horizon.sub(horizon).abs() < 1e-9).all():
+        raise ContractError(
+            "forecast horizon does not match target minus issue time"
+        )
+    forbidden = {
+        "realized_future",
+        "future_rt",
+        "realized_load",
+        "realized_future_rt",
+        "realized_future_load",
+    }
+    capabilities = set(
+        result["forecast_capability"].astype(str).str.strip().str.lower()
+    )
+    if capabilities & forbidden:
         raise ContractError("realized future values cannot be used as forecasts")
     return result
 
@@ -246,4 +281,12 @@ def validate_hourly_index(
             f"missing={len(missing)}, extra={len(extra)}, "
             f"expected={len(expected)}, actual={len(actual)}"
         )
+    if "interval_end_utc" not in frame:
+        raise ContractError(f"{table_name} lacks hourly interval ends")
+    ends = pd.DatetimeIndex(
+        pd.to_datetime(frame["interval_end_utc"], utc=True, errors="raise")
+    )
+    expected_ends = actual + pd.Timedelta(hours=1)
+    if not ends.equals(expected_ends):
+        raise ContractError(f"{table_name} interval ends are not exact hours")
     return frame

@@ -1,0 +1,47 @@
+{
+  "calendar": {
+    "discovery": "locked_candidate",
+    "end_utc": "2026-05-01T00:00:00+00:00",
+    "rows": 5808,
+    "start_utc": "2025-09-01T00:00:00+00:00",
+    "test_end_utc": "2026-05-01T00:00:00+00:00",
+    "test_start_utc": "2026-03-01T00:00:00+00:00",
+    "train_end_utc": "2026-02-01T00:00:00+00:00",
+    "train_start_utc": "2025-09-01T00:00:00+00:00",
+    "validation_end_utc": "2026-03-01T00:00:00+00:00",
+    "validation_start_utc": "2026-02-01T00:00:00+00:00"
+  },
+  "diagnostics": {
+    "effective_rank": 9,
+    "matrix_rank": 9,
+    "numeric_columns": 27,
+    "ramp_distributions": {
+      "1h": {
+        "max": 0.04910676140021517,
+        "q05": -0.056613415216140196,
+        "q50": 0.012325079984398241,
+        "q90": 0.03414188536158948,
+        "q95": 0.037092601067400394
+      },
+      "3h": {
+        "max": 0.036305074956504604,
+        "q05": -0.05477271998945343,
+        "q50": 0.014151499314900005,
+        "q90": 0.03146153279492121,
+        "q95": 0.033003243387030326
+      }
+    },
+    "rows": 5808
+  },
+  "market_label": "CAISO_NP15 fixture schema",
+  "plot": "fixture_quality_diagnostics.png",
+  "scale": {
+    "gross_demand_q95_mw": 22942.76889443833,
+    "market": "CAISO_NP15",
+    "net_load_q90_fraction": 0.8960748419715137,
+    "train_end_utc": "2026-02-01T00:00:00+00:00",
+    "train_start_utc": "2025-09-01T00:00:00+00:00"
+  },
+  "schema_version": "energy-model-v3",
+  "status": "SYNTHETIC_FIXTURE_ONLY_NOT_MARKET_EVIDENCE"
+}
