@@ -1,0 +1,16 @@
+schema_version: energy-model-v3
+name: us-six-market-v3-price-taking-stress-6gw
+protocol: env/protocols/independent_us_v3.yaml
+study_role: non_primary_price_taking_stress
+mapping: primary_independent
+label: non-primary price-taking stress; explicit penetration override
+total_dc_power_mw: 6000.0
+max_penetration_fraction: 1.0
+penetration_override: true
+sites:
+  - {name: Northern Virginia, market: PJM_DOM, borg_cell: a, rated_power_mw: 1000.0}
+  - {name: New York City, market: NYISO_NYC_J, borg_cell: b, rated_power_mw: 1000.0}
+  - {name: Northern California, market: CAISO_NP15, borg_cell: c, rated_power_mw: 1000.0}
+  - {name: North Texas, market: ERCOT_LZ_NORTH, borg_cell: d, rated_power_mw: 1000.0}
+  - {name: Minnesota, market: MISO_MINN_HUB, borg_cell: e, rated_power_mw: 1000.0}
+  - {name: SPP North, market: SPP_NORTH_HUB, borg_cell: f, rated_power_mw: 1000.0}

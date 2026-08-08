@@ -1,0 +1,331 @@
+{
+  "generated_at_utc": "2026-08-08T21:24:33.572189+00:00",
+  "schema_version": "energy-model-v3",
+  "sources": {
+    "CAISO_NP15": [
+      {
+        "authentication": "public unauthenticated endpoint",
+        "cadence": "hourly",
+        "dst_rule": "GMT field authoritative; blank/repeated display times retained",
+        "feed": "PRC_LMP v12",
+        "interval_semantics": "interval_beginning",
+        "licensing": "CAISO attribution and OASIS terms apply",
+        "location": "TH_NP15_GEN-APND",
+        "market": "CAISO_NP15",
+        "product": "DAM LMP; LMP_TYPE=LMP",
+        "quality_flags": [],
+        "query": {
+          "lmp_type": "LMP",
+          "market_run_id": "DAM",
+          "node": "TH_NP15_GEN-APND",
+          "queryname": "PRC_LMP",
+          "timestamp": "INTERVALSTARTTIME_GMT",
+          "version": 12
+        },
+        "raw_sha256": null,
+        "redistribution": "attribution_and_terms_metadata_required",
+        "retrieval_time_utc": null,
+        "revision_policy": "cache immutable response hashes; bounded 429 backoff",
+        "source": "CAISO OASIS",
+        "source_timezone": "UTC plus America/Los_Angeles display time",
+        "status_field": "OASIS result/retrieval metadata",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "public unauthenticated endpoint",
+        "cadence": "5-minute native; hourly canonical",
+        "dst_rule": "GMT field authoritative; blank/repeated display times retained",
+        "feed": "netdemand.csv and fuelsource.csv",
+        "interval_semantics": "interval_beginning",
+        "licensing": "CAISO attribution and OASIS terms apply",
+        "location": "CAISO system",
+        "market": "CAISO_NP15",
+        "product": "Current demand, published Net demand, Solar, Wind",
+        "quality_flags": [],
+        "query": {
+          "net_load": "published Net demand used directly",
+          "no_double_subtract": true
+        },
+        "raw_sha256": null,
+        "redistribution": "attribution_and_terms_metadata_required",
+        "retrieval_time_utc": null,
+        "revision_policy": "cache immutable response hashes; bounded 429 backoff",
+        "source": "CAISO Today's Outlook history",
+        "source_timezone": "UTC plus America/Los_Angeles display time",
+        "status_field": "OASIS result/retrieval metadata",
+        "units": "MW"
+      }
+    ],
+    "ERCOT_LZ_NORTH": [
+      {
+        "authentication": "public MIS report discovery",
+        "cadence": "hourly",
+        "dst_rule": "parse delivery date/hour/interval/DSTFlag",
+        "feed": "report 13060",
+        "interval_semantics": "interval_ending",
+        "licensing": "public reuse with ERCOT notices",
+        "location": "LZ_NORTH",
+        "market": "ERCOT_LZ_NORTH",
+        "product": "annual DAM hourly settlement price",
+        "quality_flags": [],
+        "query": {
+          "discovery": "IceDocListJsonWS",
+          "download": "mirDownload?doclookupId=DocID",
+          "reportTypeId": 13060
+        },
+        "raw_sha256": null,
+        "redistribution": "public_with_notices",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain all DocID filename hashes and revisions",
+        "source": "ERCOT MIS",
+        "source_timezone": "CST6CDT",
+        "status_field": "DocID filename and publication metadata",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "public MIS report discovery",
+        "cadence": "hourly",
+        "dst_rule": "parse delivery date/hour/interval/DSTFlag",
+        "feed": "reports 13101 and 13424",
+        "interval_semantics": "interval_ending",
+        "licensing": "public reuse with ERCOT notices",
+        "location": "ERCOT total physical / LZ_NORTH price",
+        "market": "ERCOT_LZ_NORTH",
+        "product": "total system load and wind+solar physical tuple",
+        "quality_flags": [
+          "price_physical_boundary_mismatch_explicit"
+        ],
+        "query": {
+          "forbidden_substitute": 12300,
+          "load_report": 13101,
+          "renewable_report": 13424,
+          "rt_sensitivity_report": 13061
+        },
+        "raw_sha256": null,
+        "redistribution": "public_with_notices",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain all DocID filename hashes and revisions",
+        "source": "ERCOT MIS",
+        "source_timezone": "CST6CDT",
+        "status_field": "DocID filename and publication metadata",
+        "units": "MW"
+      }
+    ],
+    "MISO_MINN_HUB": [
+      {
+        "authentication": "public price report; physical tuple requires MISO_API_KEY",
+        "cadence": "hourly",
+        "dst_rule": "fixed EST hour-ending, never civil-time inference",
+        "feed": "YYYYMMDD_da_expost_lmp.csv",
+        "interval_semantics": "interval_ending",
+        "licensing": "MISO restrictive redistribution terms apply",
+        "location": "MINN.HUB / Hub / LMP",
+        "market": "MISO_MINN_HUB",
+        "product": "DA ex-post Hub LMP",
+        "quality_flags": [],
+        "query": {
+          "row": [
+            "MINN.HUB",
+            "Hub",
+            "LMP"
+          ]
+        },
+        "raw_sha256": null,
+        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain replaced daily report hashes",
+        "source": "MISO Market Reports",
+        "source_timezone": "fixed EST",
+        "status_field": "daily final report filename/hash",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "MISO_API_KEY and subscription required",
+        "cadence": "hourly",
+        "dst_rule": "fixed EST hour-ending",
+        "feed": "historical load/fuel/wind/solar subscription",
+        "interval_semantics": "interval_ending",
+        "licensing": "MISO restrictive redistribution terms apply",
+        "location": "MISO system",
+        "market": "MISO_MINN_HUB",
+        "product": "historical physical stress tuple",
+        "quality_flags": [],
+        "query": {
+          "current_display_api_acceptable": false
+        },
+        "raw_sha256": null,
+        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain query version and response hash",
+        "source": "MISO Data Exchange",
+        "source_timezone": "fixed EST",
+        "status_field": "Data Exchange version metadata",
+        "units": "MW"
+      }
+    ],
+    "NYISO_NYC_J": [
+      {
+        "authentication": "public unauthenticated archive",
+        "cadence": "hourly",
+        "dst_rule": "resolve EST/EDT using America/New_York",
+        "feed": "damlbmp",
+        "interval_semantics": "interval_beginning",
+        "licensing": "NYISO archive terms; preserve correction hashes",
+        "location": "N.Y.C. Zone J PTID 61761",
+        "market": "NYISO_NYC_J",
+        "product": "DAM zonal LBMP",
+        "quality_flags": [],
+        "query": {
+          "archive": "monthly ZIP",
+          "ptid": 61761
+        },
+        "raw_sha256": null,
+        "redistribution": "raw_redistribution_caveat_metadata_required",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain every corrected archive hash",
+        "source": "NYISO MIS",
+        "source_timezone": "America/New_York",
+        "status_field": "archive correction/retrieval hash",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "public unauthenticated archive",
+        "cadence": "hourly canonical; RT retained at native 5-minute",
+        "dst_rule": "resolve EST/EDT using America/New_York",
+        "feed": "pal plus system fuel mix and BTM solar",
+        "interval_semantics": "interval_beginning",
+        "licensing": "NYISO archive terms; preserve correction hashes",
+        "location": "Zone J load / NYCA wind and BTM solar",
+        "market": "NYISO_NYC_J",
+        "product": "zonal actual load plus system renewable context",
+        "quality_flags": [
+          "renewable_geography_systemwide"
+        ],
+        "query": {
+          "net_load": "PAL directly; do not subtract BTM solar twice",
+          "pal": "actual zonal load",
+          "solar": "BTM estimate",
+          "wind": "system fuel mix"
+        },
+        "raw_sha256": null,
+        "redistribution": "raw_redistribution_caveat_metadata_required",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain every corrected archive hash",
+        "source": "NYISO MIS",
+        "source_timezone": "America/New_York",
+        "status_field": "archive correction/retrieval hash",
+        "units": "MW"
+      }
+    ],
+    "PJM_DOM": [
+      {
+        "authentication": "PJM_API_KEY subscription key",
+        "cadence": "hourly",
+        "dst_rule": "PJM EPT with explicit UTC conversion",
+        "feed": "rt_da_monthly_lmps",
+        "interval_semantics": "interval_beginning",
+        "licensing": "PJM data-use and redistribution restrictions apply",
+        "location": "DOM zone pnode 34964545",
+        "market": "PJM_DOM",
+        "product": "settlement-final total_lmp_da",
+        "quality_flags": [],
+        "query": {
+          "fields": [
+            "total_lmp_da",
+            "total_lmp_rt"
+          ],
+          "pnode_id": 34964545
+        },
+        "raw_sha256": null,
+        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "preserve versions and refresh trailing 90 days",
+        "source": "PJM Data Miner 2",
+        "source_timezone": "EPT",
+        "status_field": "is_verified/current/version",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "PJM_API_KEY subscription key",
+        "cadence": "hourly",
+        "dst_rule": "PJM EPT with explicit UTC conversion",
+        "feed": "hrl_load_metered plus RTO wind/solar",
+        "interval_semantics": "interval_ending",
+        "licensing": "PJM data-use and redistribution restrictions apply",
+        "location": "PJM RTO physical / DOM price",
+        "market": "PJM_DOM",
+        "product": "PJM RTO physical stress tuple; DOM load diagnostic",
+        "quality_flags": [
+          "price_physical_geography_mismatch_explicit"
+        ],
+        "query": {
+          "diagnostic": "DOM hrl_load_metered",
+          "gross": "PJM RTO gross load",
+          "renewables": [
+            "PJM RTO wind",
+            "PJM RTO solar"
+          ]
+        },
+        "raw_sha256": null,
+        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "preserve versions and refresh trailing 90 days",
+        "source": "PJM Data Miner 2",
+        "source_timezone": "EPT",
+        "status_field": "is_verified/current/version",
+        "units": "MW"
+      }
+    ],
+    "SPP_NORTH_HUB": [
+      {
+        "authentication": "public unauthenticated file browser",
+        "cadence": "hourly",
+        "dst_rule": "UTC physical timestamps authoritative",
+        "feed": "da-lmp-by-settlement-location",
+        "interval_semantics": "interval_beginning",
+        "licensing": "no clear bulk redistribution license; derived metrics only",
+        "location": "SPPNORTH_HUB",
+        "market": "SPP_NORTH_HUB",
+        "product": "DAM hourly LMP",
+        "quality_flags": [],
+        "query": {
+          "path": "/YYYY/MM/By_Day/DA-LMP-SL-YYYYMMDDHH00.csv",
+          "rt_sensitivity": "rtbm-lmp-by-location"
+        },
+        "raw_sha256": null,
+        "redistribution": "derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "freeze rolling-retention files with retrieval hash",
+        "source": "SPP Marketplace Public Data",
+        "source_timezone": "UTC for GenMix; market report fields normalized explicitly",
+        "status_field": "path filename retrieval hash",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "public unauthenticated file browser",
+        "cadence": "5-minute native; hourly canonical",
+        "dst_rule": "UTC physical timestamps authoritative",
+        "feed": "GenMix365_SPP.csv / GenMixYTD",
+        "interval_semantics": "interval_beginning",
+        "licensing": "no clear bulk redistribution license; derived metrics only",
+        "location": "SPP balancing authority",
+        "market": "SPP_NORTH_HUB",
+        "product": "Load, Wind Market+Self, Solar Market+Self",
+        "quality_flags": [],
+        "query": {
+          "detect_hourly_load_schema_changes": true,
+          "net_load": "load-wind-solar",
+          "rolling_retention": "365 days"
+        },
+        "raw_sha256": null,
+        "redistribution": "derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "freeze rolling-retention files with retrieval hash",
+        "source": "SPP Marketplace Public Data",
+        "source_timezone": "UTC for GenMix; market report fields normalized explicitly",
+        "status_field": "path filename retrieval hash",
+        "units": "MW"
+      }
+    ]
+  }
+}
