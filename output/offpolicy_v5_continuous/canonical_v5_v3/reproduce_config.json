@@ -1,0 +1,7 @@
+{
+  "bc_command": "python scripts\\run_offpolicy_campaign_v5.py --campaign td3bc_bconly_frozen_v3 --regions us global --seeds 301 302 303 304 305 --workers 4",
+  "postrl_command": "python scripts\\run_offpolicy_campaign_v5.py --campaign td3bc_postrl_frozen_v3 --regions us global --seeds 301 302 303 304 305 --workers 4",
+  "build_command": "python scripts\\build_offpolicy_evidence_v5.py --bc-campaign td3bc_bconly_frozen_v3 --postrl-campaign td3bc_postrl_frozen_v3 --seeds 301 302 303 304 305 --workers 4 --suffix v3",
+  "smoke_test_command": "python scripts\\smoke_test_offpolicy_v5.py",
+  "teacher_present_during_rl_semantics": "false means no teacher policy calls or fresh labels during reward-update rollouts or gradients; bounded offline teacher demonstrations prefill replay."
+}
