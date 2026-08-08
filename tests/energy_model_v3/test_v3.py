@@ -400,6 +400,9 @@ class EndToEndFixtureTests(unittest.TestCase):
             report = blocked_preflight(root, capabilities, calendar)
             self.assertEqual(report["status"], "BLOCKED")
             self.assertEqual(set(report["invalid_primary_inputs"]), set(MARKETS))
+            self.assertIn(
+                "coverage_assessment", report["coverage_failures"]
+            )
 
 
 class FrozenLegacyRegressionTests(unittest.TestCase):
