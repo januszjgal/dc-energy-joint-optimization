@@ -103,6 +103,22 @@ def aggregate_native_hourly(
             f"native-to-hourly aggregation has {len(bad)} incomplete hours; "
             "forward filling is forbidden"
         )
+    cadence = pd.Timedelta(minutes=native_minutes)
+    for hour, group in result.groupby("hour_utc"):
+        expected_index = pd.date_range(
+            hour,
+            hour + pd.Timedelta(hours=1),
+            freq=cadence,
+            inclusive="left",
+        )
+        actual_index = pd.DatetimeIndex(
+            group["interval_start_utc"].sort_values()
+        )
+        if not actual_index.equals(expected_index):
+            raise ContractError(
+                f"native timestamps do not match the {native_minutes}-minute "
+                f"grid for {hour}"
+            )
     numeric = result[value_columns].apply(pd.to_numeric, errors="raise")
     if not np.isfinite(numeric.to_numpy()).all():
         raise ContractError("native input has non-finite values")

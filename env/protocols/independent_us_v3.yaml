@@ -63,6 +63,11 @@ physical:
     - source_quality_flags
   primary_tuple_required: true
   no_synthetic_substitution: true
+  optional_eia_930_fallback:
+    credential: EIA_API_KEY
+    geography: same_balancing_authority_only
+    activation: explicit_capability_only
+    silent_substitution: forbidden
 forecasts:
   causal_only: true
   minimum_horizon_hours: 3

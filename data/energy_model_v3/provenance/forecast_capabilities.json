@@ -1,0 +1,41 @@
+{
+  "schema_version": "energy-model-v3",
+  "minimum_horizon_hours": 3,
+  "causal_only": true,
+  "realized_future_values_forbidden": true,
+  "markets": {
+    "PJM_DOM": {
+      "status": "BLOCKED_UNSTAGED",
+      "reason": "PJM_API_KEY absent and no causal forecast product has been staged"
+    },
+    "NYISO_NYC_J": {
+      "status": "BLOCKED_UNSTAGED",
+      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+    },
+    "CAISO_NP15": {
+      "status": "BLOCKED_UNSTAGED",
+      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+    },
+    "ERCOT_LZ_NORTH": {
+      "status": "BLOCKED_UNSTAGED",
+      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+    },
+    "MISO_MINN_HUB": {
+      "status": "BLOCKED_UNSTAGED",
+      "reason": "MISO_API_KEY absent and no causal forecast product has been staged"
+    },
+    "SPP_NORTH_HUB": {
+      "status": "BLOCKED_UNSTAGED",
+      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+    }
+  },
+  "required_fields_when_available": [
+    "forecast_target",
+    "forecast_value_mw",
+    "forecast_issue_utc",
+    "forecast_vintage_utc",
+    "forecast_horizon_hours",
+    "forecast_capability",
+    "source_quality_flags"
+  ]
+}
