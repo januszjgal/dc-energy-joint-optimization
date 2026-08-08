@@ -218,10 +218,11 @@ verified package:
 python scripts\build_v5_results.py
 ```
 
-The reporting/thesis builders were added after the frozen training commit;
-the multi-revision provenance is intentional and documented in the final
-paper. Running training from a later commit creates a new `source_commit` and
-a new evidence package.
+The final results builder and completed paper/artifact package were added after
+the frozen training commit; the thesis builder infrastructure itself predates
+that commit. This multi-revision provenance is intentional and documented in
+the final paper. Running training from a later commit creates a new
+`source_commit` and a new evidence package.
 
 ## Build the thesis
 
