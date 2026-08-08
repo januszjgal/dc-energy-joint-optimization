@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/dc-energy/v6-pure-ramp-rl.schema.json",
+  "title": "v6 pure ramp RL protocol",
+  "type": "object",
+  "required": ["protocol", "attribution", "data", "training", "algorithms", "multiobjective", "campaign", "success_gate"],
+  "properties": {
+    "protocol": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": {"const": "v6-ramp-pure-rl-preregistered-v1"},
+        "status": {"const": "preregistered-awaiting-v6-and-energy-v3-integration"}
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["random_initialization_only"],
+      "properties": {
+        "random_initialization_only": {"const": true},
+        "teacher": {"const": false},
+        "behavior_cloning": {"const": false},
+        "demonstrations": {"const": false},
+        "expert_replay": {"const": false},
+        "warm_start": {"const": false},
+        "analytic_economic_base": {"const": false},
+        "mpc_actions": {"const": false},
+        "offline_expert_labels": {"const": false},
+        "optimizer_actions": {"const": false},
+        "oracle_reward_shaping": {"const": false},
+        "curriculum_trajectories": {"const": false}
+      }
+    },
+    "training": {
+      "type": "object",
+      "properties": {
+        "stable_baselines3": {"const": "2.9.0"},
+        "gamma": {"const": 1.0},
+        "actual_terminals": {"const": true},
+        "bootstrap_across_terminal": {"const": false},
+        "history_hours": {"const": 3},
+        "terminal_tail_hours": {"const": 3},
+        "action_contract": {"const": "semantic-feasible-v6-action"},
+        "raw_redundant_projected_logits": {"const": false}
+      }
+    },
+    "algorithms": {
+      "type": "object",
+      "required": ["ppo", "sac"],
+      "properties": {
+        "ppo": {"type": "object", "properties": {"pure_rl": {"const": true}, "gamma": {"const": 1.0}}},
+        "sac": {"type": "object", "properties": {"pure_rl": {"const": true}, "gamma": {"const": 1.0}, "n_steps": {"minimum": 36}}}
+      }
+    }
+  }
+}
