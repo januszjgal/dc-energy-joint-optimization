@@ -59,7 +59,7 @@ class CandidateCoverageTests(unittest.TestCase):
             "canonical_file": {},
         }
 
-    def test_candidate_is_blocked_on_ercot_2026_physical_gap(self) -> None:
+    def test_candidate_is_blocked_until_ercot_public_path_is_staged(self) -> None:
         assessment = self.assess(
             self.evidence,
             key=False,
@@ -67,7 +67,7 @@ class CandidateCoverageTests(unittest.TestCase):
         )
         self.assertEqual(assessment["status"], "BLOCKED")
         self.assertIn("ERCOT_LZ_NORTH", assessment["blockers"])
-        self.assertIn("2026", assessment["blockers"]["ERCOT_LZ_NORTH"])
+        self.assertIn("243", assessment["blockers"]["ERCOT_LZ_NORTH"])
 
     def test_eia_key_without_explicit_activation_is_not_used(self) -> None:
         assessment = self.assess(
@@ -78,7 +78,7 @@ class CandidateCoverageTests(unittest.TestCase):
         self.assertIn("ERCOT_LZ_NORTH", assessment["blockers"])
         self.assertFalse(assessment["ercot_eia_fallback_activated"])
 
-    def test_explicit_keyed_same_ba_fallback_remains_blocked_until_staged(
+    def test_explicit_eia_sensitivity_cannot_clear_primary_gate(
         self,
     ) -> None:
         evidence = copy.deepcopy(self.evidence)
@@ -103,15 +103,15 @@ class CandidateCoverageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lacks product proof"):
             self.assess(evidence, key=False, activated=False)
 
-    def test_explicit_fallback_without_key_remains_blocked(self) -> None:
+    def test_eia_sensitivity_flag_without_key_keeps_primary_reason(self) -> None:
         assessment = self.assess(
             self.evidence,
             key=False,
             activated=True,
         )
-        self.assertIn("EIA_API_KEY", assessment["blockers"]["ERCOT_LZ_NORTH"])
+        self.assertIn("243", assessment["blockers"]["ERCOT_LZ_NORTH"])
 
-    def test_eia_proof_requires_activation_key_and_erco(self) -> None:
+    def test_eia_proof_is_never_a_trusted_primary_product(self) -> None:
         evidence = copy.deepcopy(self.evidence)
         for market, record in evidence["markets"].items():
             record["candidate_complete"] = False
@@ -137,14 +137,11 @@ class CandidateCoverageTests(unittest.TestCase):
                 self.placeholder_product("ercot_lz_north_dam"),
             ]
         }
-        with self.assertRaisesRegex(ValueError, "explicit activation"):
+        with self.assertRaisesRegex(ValueError, "not trusted"):
             self.assess(evidence, key=False, activated=False)
-        with self.assertRaisesRegex(ValueError, "requires EIA_API_KEY"):
+        with self.assertRaisesRegex(ValueError, "not trusted"):
             self.assess(evidence, key=False, activated=True)
-        ercot["coverage_proof"]["products"][0]["source_type"] = (
-            "authoritative_native"
-        )
-        with self.assertRaisesRegex(ValueError, "source type mismatch"):
+        with self.assertRaisesRegex(ValueError, "not trusted"):
             self.assess(evidence, key=True, activated=True)
 
     def test_truthy_fake_hash_manifest_is_rejected(self) -> None:

@@ -77,23 +77,18 @@ TRUSTED_PRODUCT_CONTRACTS: dict[str, dict[str, dict[str, Any]]] = {
             "location": "LZ_NORTH", "cadence_minutes": 60,
             "data_columns": ["da_lmp_usd_mwh"],
         },
-        "ercot_load_13101": {
+        "ercot_native_load_archive": {
             "source_type": "authoritative_native",
-            "source": "ERCOT MIS", "feed": "report 13101",
+            "source": "ERCOT", "feed": "Native_Load_YYYY.zip",
             "location": "ERCOT system", "cadence_minutes": 60,
             "data_columns": ["gross_demand_mw"],
         },
-        "ercot_renewables_13424": {
-            "source_type": "authoritative_native",
-            "source": "ERCOT MIS", "feed": "report 13424",
-            "location": "ERCOT system", "cadence_minutes": 60,
+        "ercot_sced_renewables_13052": {
+            "source_type": "authoritative_reconstructed",
+            "source": "ERCOT MIS", "feed": "report 13052 NP3-965-ER",
+            "location": "ERCOT system WGR/PVGR resources",
+            "cadence_minutes": 60,
             "data_columns": ["wind_mw", "solar_mw"],
-        },
-        "ercot_eia930_physical": {
-            "source_type": "EIA-930",
-            "source": "EIA-930", "feed": "ERCO balancing authority",
-            "location": "ERCO", "cadence_minutes": 60,
-            "data_columns": ["gross_demand_mw", "wind_mw", "solar_mw", "net_load_mw"],
         },
     },
     "MISO_MINN_HUB": {
@@ -173,12 +168,11 @@ def assess_candidate_coverage(
                 )
             contracts = TRUSTED_PRODUCT_CONTRACTS[market]
             expected_names = set(contracts)
-            if market == "ERCOT_LZ_NORTH" and "ercot_eia930_physical" in set(
-                required_products or []
-            ):
+            if market == "ERCOT_LZ_NORTH":
                 expected_names = {
                     "ercot_lz_north_dam",
-                    "ercot_eia930_physical",
+                    "ercot_native_load_archive",
+                    "ercot_sced_renewables_13052",
                 }
             if set(required_products or []) != expected_names:
                 raise ContractError(
@@ -196,25 +190,6 @@ def assess_candidate_coverage(
                     raise ContractError(
                         f"{market} {product['name']} source type mismatch"
                     )
-                if trusted["source_type"] == "EIA-930":
-                    fallback = record.get("eia_930_fallback", {})
-                    if market != "ERCOT_LZ_NORTH":
-                        raise ContractError("EIA-930 fallback is ERCOT-only")
-                    if not ercot_eia_fallback_activated:
-                        raise ContractError(
-                            "ERCOT EIA-930 proof requires explicit activation"
-                        )
-                    if not eia_api_key_available:
-                        raise ContractError(
-                            "ERCOT EIA-930 proof requires EIA_API_KEY"
-                        )
-                    if (
-                        not fallback.get("same_balancing_authority_only")
-                        or product.get("balancing_authority") != "ERCO"
-                    ):
-                        raise ContractError(
-                            "ERCOT EIA-930 proof must be same-BA ERCO"
-                        )
                 start = pd.Timestamp(product["start_utc"])
                 end = pd.Timestamp(product["end_utc"])
                 if pd.isna(start) or pd.isna(end):
@@ -257,27 +232,6 @@ def assess_candidate_coverage(
             }
             continue
         reason = str(record.get("reason", "candidate coverage not proven"))
-        if market == "ERCOT_LZ_NORTH" and ercot_eia_fallback_activated:
-            fallback = record.get("eia_930_fallback", {})
-            if not fallback.get("same_balancing_authority_only"):
-                raise ContractError("ERCOT EIA fallback is not same-BA constrained")
-            if not eia_api_key_available:
-                reason = (
-                    "ERCOT EIA-930 fallback explicitly activated but "
-                    "EIA_API_KEY is absent"
-                )
-            else:
-                results[market] = {
-                    "status": "FALLBACK_READY_TO_RETRIEVE",
-                    "reason": (
-                        "Explicit same-BA EIA-930 fallback is keyed; canonical "
-                        "inputs must still be retrieved and validated"
-                    ),
-                }
-                reason = (
-                    "ERCOT EIA-930 fallback is ready to retrieve but no exact "
-                    "ERCO candidate panel with source provenance is staged"
-                )
         blockers[market] = reason
         results[market] = {"status": "BLOCKED", "reason": reason}
     return {

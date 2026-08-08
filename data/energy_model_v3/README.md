@@ -114,6 +114,8 @@ python scripts\build_energy_model_v3.py describe-sources
 python scripts\build_energy_model_v3.py probe
 python scripts\build_energy_model_v3.py download-samples
 python scripts\build_energy_model_v3.py probe-parsers
+python scripts\build_energy_model_v3.py probe-ercot-physical
+python scripts\build_energy_model_v3.py download-ercot-physical
 python scripts\build_energy_model_v3.py preflight
 python scripts\build_energy_model_v3.py fixture-diagnostics
 python scripts\build_energy_model_v3.py build
@@ -133,17 +135,42 @@ coverage, and discards the raw bytes. PJM remains an explicit credential
 block. These are parser/schema probes, not a substitute for the complete
 all-six physical and price calendar.
 
+`probe-ercot-physical` performs a no-key live schema probe of the public
+`Native_Load_2025.zip` and `Native_Load_2026.zip` archives, discovery-selected
+report-13052 SCED disclosure, and report-13424 validation workbook. Raw bytes
+are hashed and discarded. The committed probe confirms that the two load
+archives form the exact 5,808-hour candidate index.
+
+`download-ercot-physical` is the resumable full-calendar path. It discovers
+each report-13052 document by operating date plus 60 days, persists the public
+ZIP and its DocID/filename/publication/hash metadata, reads `SCED Time Stamp`,
+`Repeated Hour Flag`, resource name/type, and telemetered net output, and
+normalizes the source `WIND` class to the requested WGR semantic class while
+retaining PVGR. It sums resources at each irregular SCED execution and
+duration-weights the resulting step values across UTC hour boundaries. Real
+warm history and terminal tail are mandatory; circular padding is forbidden.
+Execution gaps over 20 minutes and minimum contributing-resource counts are
+preserved as diagnostics.
+
+The downloader joins reconstructed wind/solar with public native load, derives
+net load exactly once, and writes `physical_hourly.csv`. September-December
+2025 is compared independently with annual report 13424. Bias, MAE, RMSE,
+quantiles, correlation, and missing-hour counts are diagnostic only and never
+calibrate or replace the SCED reconstruction. Reports 13028, 13483, 14787, and
+21809 are forbidden for retrospective use because their retention is only
+seven days. EIA bulk ERCO demand/wind/solar remains sensitivity-only because
+of the observed 24-hour December 5-6 renewable gap.
+
 The preflight also consumes
 `provenance/coverage_evidence.json`. Current probes show candidate-boundary
 availability for NYISO and CAISO and a covering retention span for SPP, but
 they do not clear the exact full-product calendar gate until every required
-interval and raw hash is staged. ERCOT remains blocked because report 13424 has
-no observed 2026 wind+solar annual file and report 13101 is a short-retention
-daily load listing. Annual DAM/RT price archives alone do not establish the
-required physical tuple. An ERCOT EIA-930 fallback is considered only when
-both `EIA_API_KEY` is present and
-`--enable-eia-ercot-fallback` is passed; it is constrained to the same
-balancing authority and still requires retrieval and canonical validation.
+interval and raw hash is staged. ERCOT's former 2026 physical-source blocker is
+resolved: public native-load archives cover all 5,808 hours and report 13052
+retention covers all 243 required operating dates. ERCOT remains fail-closed
+only because the full 243-document SCED reconstruction and complete price
+archives have not yet been staged and hash-bound. EIA-930 is not needed for
+the primary tuple and cannot silently replace it.
 
 ## Current live capability status
 

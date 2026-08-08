@@ -1,6 +1,6 @@
 {
   "schema_version": "energy-model-v3-coverage",
-  "observed_at_utc": "2026-08-08T22:15:42Z",
+  "observed_at_utc": "2026-08-08T23:15:22Z",
   "candidate_start_utc": "2025-09-01T00:00:00Z",
   "candidate_end_utc": "2026-05-01T00:00:00Z",
   "markets": {
@@ -28,7 +28,7 @@
     },
     "ERCOT_LZ_NORTH": {
       "candidate_complete": false,
-      "reason": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+      "reason": "The public primary physical path is now confirmed for the full candidate, including an exact 5808-hour native-load index and report-13052 retention covering every required operating date, but the 243 daily SCED disclosures and complete DAM archive have not yet been persisted, hash-bound, and exact-index validated together",
       "price_archives": {
         "DAM_2025_observed_doc_id": "1177667469",
         "DAM_2026_observed_doc_id": "1257494221",
@@ -37,17 +37,35 @@
         "selection_rule": "discover by report type and friendly name; never hard-code DocID"
       },
       "physical_archives": {
-        "wind_solar_report": 13424,
-        "wind_solar_2025_observed_doc_id": "1182433954",
-        "wind_solar_latest_annual_year": 2025,
-        "load_report": 13101,
-        "load_retention": "short-retention current daily"
+        "native_load_archives": [
+          "https://www.ercot.com/files/docs/2025/02/11/Native_Load_2025.zip",
+          "https://www.ercot.com/files/docs/2026/02/10/Native_Load_2026.zip"
+        ],
+        "native_load_candidate_rows": 5808,
+        "native_load_exact_index_confirmed": true,
+        "renewable_primary_report": 13052,
+        "renewable_product": "NP3-965-ER 60-Day SCED Disclosure",
+        "renewable_classification": "source WIND class normalized to WGR; PVGR retained",
+        "required_operating_dates": "2025-08-31 through 2026-04-30 inclusive",
+        "required_daily_disclosures": 243,
+        "discovered_operating_date_range": "2024-01-24 through 2026-06-09",
+        "sample_operating_date": "2025-09-01",
+        "sample_observed_doc_id": "1155772966",
+        "sample_raw_sha256": "3bfb5efd750e2da743f9558e07f2e22584c2a883fe8990c5974f1d5ad204fafe",
+        "validation_report": 13424,
+        "validation_2025_observed_doc_id": "1182433954",
+        "validation_only_not_primary_substitute": true,
+        "live_probe": "output/energy_model_v3/ercot-physical-probe.json"
       },
+      "forbidden_retrospective_reports": [13028, 13483, 14787, 21809],
       "eia_930_fallback": {
-        "credential": "EIA_API_KEY",
+        "bulk_url": "https://api.eia.gov/bulk/EBA.zip",
+        "credential": "not required for bulk sensitivity",
         "same_balancing_authority_only": true,
         "explicit_activation_required": true,
-        "silent_substitution": false
+        "silent_substitution": false,
+        "role": "sensitivity only",
+        "known_gap": "24-hour renewable gap around 2025-12-05/06"
       }
     },
     "MISO_MINN_HUB": {

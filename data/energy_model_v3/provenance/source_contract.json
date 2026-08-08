@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-08T21:35:22.150284+00:00",
+  "generated_at_utc": "2026-08-08T23:31:00.364769+00:00",
   "schema_version": "energy-model-v3",
   "sources": {
     "CAISO_NP15": [
@@ -87,20 +87,61 @@
         "authentication": "public MIS report discovery",
         "cadence": "hourly",
         "dst_rule": "parse delivery date/hour/interval/DSTFlag",
-        "feed": "reports 13101 and 13424",
+        "feed": "public Native_Load_YYYY.zip archives",
         "interval_semantics": "interval_ending",
         "licensing": "public reuse with ERCOT notices",
-        "location": "ERCOT total physical / LZ_NORTH price",
+        "location": "ERCOT system",
         "market": "ERCOT_LZ_NORTH",
-        "product": "total system load and wind+solar physical tuple",
+        "product": "total ERCOT hourly native load",
         "quality_flags": [
           "price_physical_boundary_mismatch_explicit"
         ],
         "query": {
-          "forbidden_substitute": 12300,
-          "load_report": 13101,
-          "renewable_report": 13424,
-          "rt_sensitivity_report": 13061
+          "2025_archive": "Native_Load_2025.zip",
+          "2026_archive": "Native_Load_2026.zip",
+          "archive_page": "https://www.ercot.com/gridinfo/load/load_hist"
+        },
+        "raw_sha256": null,
+        "redistribution": "public_with_notices",
+        "retrieval_time_utc": null,
+        "revision_policy": "retain all DocID filename hashes and revisions",
+        "source": "ERCOT",
+        "source_timezone": "CST6CDT",
+        "status_field": "DocID filename and publication metadata",
+        "units": "MW"
+      },
+      {
+        "authentication": "public MIS report discovery",
+        "cadence": "irregular SCED executions aggregated to hourly",
+        "dst_rule": "parse delivery date/hour/interval/DSTFlag",
+        "feed": "report 13052 NP3-965-ER",
+        "interval_semantics": "interval_beginning",
+        "licensing": "public reuse with ERCOT notices",
+        "location": "ERCOT system resources",
+        "market": "ERCOT_LZ_NORTH",
+        "product": "60-Day SCED Disclosure WGR/PVGR time-weighted renewable reconstruction",
+        "quality_flags": [
+          "duration_weight_irregular_executions",
+          "preserve_resource_classification_and_gap_diagnostics",
+          "report_13424_validation_only"
+        ],
+        "query": {
+          "discovery": "IceDocListJsonWS",
+          "download": "mirDownload?doclookupId=discovered_DocID",
+          "forbidden_price_substitute": 12300,
+          "forbidden_retrospective_reports": [
+            13028,
+            13483,
+            14787,
+            21809
+          ],
+          "reportTypeId": 13052,
+          "resource_types": [
+            "WIND source class normalized to WGR",
+            "PVGR"
+          ],
+          "rt_sensitivity_report": 13061,
+          "validation_report": 13424
         },
         "raw_sha256": null,
         "redistribution": "public_with_notices",
