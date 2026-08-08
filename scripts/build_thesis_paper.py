@@ -61,7 +61,16 @@ def P(text: str, *, bold=False, italic=False, size=9.5, align=None, space_after=
 
 
 def H1(text: str):
-    P(text, bold=True, size=10.5, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
+    paragraph = P(
+        text,
+        bold=True,
+        size=10.5,
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+        space_after=4,
+    )
+    if paragraph is not None:
+        paragraph.paragraph_format.keep_with_next = True
+    return paragraph
 
 
 def H2(text: str):
@@ -73,6 +82,8 @@ def H2(text: str):
     r.italic = True
     r.font.size = Pt(10)
     p.paragraph_format.space_after = Pt(2)
+    p.paragraph_format.keep_with_next = True
+    return p
 
 
 def EQ(text: str, num: int):
@@ -141,7 +152,15 @@ P("A Cell-Aggregate Study on Google ClusterData 2019", bold=True, size=13,
 P("Janusz Gal", size=11, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
 P("Master's Thesis Draft — frozen energy-model v2 campaign: 80 PPO models, "
   "two symmetric held-out workload folds, and 10 optimizer seeds/configuration. "
-  "The broad joint-shaping headline criterion failed; v1 remains historical.",
+  "The broad joint-shaping headline criterion failed; v1 remains historical. "
+  "A post-hoc exploratory v3 recovery study (Sec. VII) partially repairs a v2 "
+  "state-observability defect and re-screens PPO under a stricter safety-first gate; "
+  "it still fails, reinforcing rather than reversing the frozen v2 conclusion. A "
+  "completed v4 hard-safety study (Sec. VIII) then adds a non-MPC one-step "
+  "feasibility projector — 36 newly trained models plus an archived-policy "
+  "replay — that gives every evaluated seed exact completion with zero "
+  "infeasibility certificates, while honestly separating the deterministic "
+  "safety guarantee from the learned, projector-mediated economics.",
   italic=True, size=8, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
 
 P("Abstract — Hyperscale data centers are now grid-scale electrical loads whose "
@@ -171,7 +190,30 @@ P("Abstract — Hyperscale data centers are now grid-scale electrical loads whos
   "PPO lowers the secondary demand-charge reference, whereas joint PPO raises "
   "it and worsens rare maximum three-hour ramps. Thus the evidence supports a "
   "small optimistic Global spatial effect, not reliable joint spatio-temporal "
-  "optimization.", size=9)
+  "optimization. A post-hoc exploratory v3 study adds episode progress and "
+  "deadline buckets and re-screens PPO across a GAE/KL/learning-"
+  "rate/idle-subtraction/potential/normalization sweep and a three-point budget "
+  "curve (151,552–1,003,520 steps) under a stricter safety-first gate requiring "
+  "all ten seeds feasible and a positive optimizer-bootstrap interval. It still "
+  "fails: the safety-first-selected US configuration is 1/10 feasible with a "
+  "CI crossing zero, and the Global configuration is 1/10 feasible despite a "
+  "positive CI, so unconstrained PPO remains unsuitable as a trustworthy joint "
+  "controller under this model. A completed v4 hard-safety study (Sec. VIII) "
+  "then replaces the shaped, sigmoid-capped drain decoder with a non-MPC "
+  "one-step Euclidean feasibility projector — cumulative exact "
+  "earliest-deadline-first admission, exact transport conservation, and "
+  "exact 0–100% drain endpoints under a frozen, train-only-derived capacity "
+  "bound with a proven no-leakage property — and trains 36 new PPO+projector "
+  "models (plus a no-retraining replay of the archived v3 weights). Every "
+  "evaluated seed, across replay, the staged a–d gate, and descriptive e–h "
+  "transfer, reaches exact completion with zero expiry and zero "
+  "infeasibility certificates. US remains economically indistinguishable "
+  "from Status Quo (−0.246% a–d, −0.149% e–h) while the projector rarely "
+  "intervenes (≤0.6% of steps); Global is unambiguously positive (+3.262% "
+  "a–d, +3.611% e–h, every seed and CI positive) but the projector "
+  "materially alters roughly one step in five (18.8–20.2%), so that gain is "
+  "attributed to the composed PPO+projector system rather than to "
+  "unconstrained PPO alone.", size=9)
 P("Index Terms — data centers, demand response, reinforcement learning, workload "
   "scheduling, duck curve, Google cluster trace, load shaping.",
   italic=True, size=9, space_after=10)
@@ -222,7 +264,17 @@ P("Contributions. (C1) A reproducible Gymnasium environment for multi-data-cente
   "small Global spatial effect and a negative result for reliable joint batch "
   "control. (C6) A preserved audit trail of the retired mixed/synthetic model "
   "and the simulator corrections that prevented invalid results from being "
-  "promoted.")
+  "promoted. (C7) A post-hoc exploratory v3 state-repair and budget-scaling "
+  "study (Sec. VII) showing the v2 joint failure survives an augmented state "
+  "representation and a 2× larger training budget, so it is not merely an "
+  "observability artifact. (C8) A completed v4 hard-safety study (Sec. VIII): "
+  "a non-MPC one-step feasibility projector with a frozen, train-only, "
+  "no-leakage capacity envelope, exact transport and exact drain endpoints, "
+  "a ten-test smoke suite, and a staged replay/short/medium/full/e–h gate "
+  "protocol across 36 newly trained models that achieves zero completion "
+  "failures fleet-wide while making explicit that Global's positive economic "
+  "result — unlike US's null one — is jointly attributable to the "
+  "PPO+projector system rather than to the learned policy alone.")
 
 # ---------------- II. RELATED WORK ----------------
 H1("II. RELATED WORK AND METHODOLOGICAL LINEAGE")
@@ -893,6 +945,16 @@ P("All 80 policies complete 100% of service. Global joint e–h→a–d seed 103
   "terminal pool (7.690 units) and accumulates $2.289M of transient service-"
   "backlog cost, producing the −39.77% outlier. The QP proves temporal "
   "opportunity exists; PPO does not capture it reliably.")
+P("This negative joint result is itself conditional on an omitted state "
+  "variable and a frozen budget, not a clean statement that PPO cannot learn "
+  "joint control: the frozen reward charged joint policies a terminal-"
+  "completion liability without letting them observe episode position whenever "
+  "the (default-off) demand charge was disabled, so the same partial state "
+  "carried two different marginal completion costs late in the episode. "
+  "Sec. VII adds the missing episode position and deadline buckets, re-screens optimizer and reward-weight "
+  "hyperparameters, and trains at up to 2× this budget under a stricter "
+  "safety-first gate — and still fails to produce a trustworthy joint "
+  "controller, so the frozen conclusion above stands.")
 FIG(
     OOF_FIGS / "qp_capture.png",
     "Fig. 10. Clairvoyant opportunity versus learned held-out savings. Large QP "
@@ -923,10 +985,707 @@ P("The frozen campaign supports a narrow conclusion: one real CAISO archetype "
   "it identifies batch-safe constrained control and stronger spatial policy "
   "optimization as the next algorithmic problems.")
 
+# ---------------- VII. V3 RECOVERY STUDY ----------------
+H1("VII. EXPLORATORY V3 STATE-REPAIR AND JOINT PPO RECOVERY STUDY")
+P("Status — POST-HOC, EXPLORATORY, NON-HEADLINE. This section reports a "
+  "protocol-frozen but non-selection-gated follow-up (env/protocols/"
+  "v3_reward_sweep.yaml, parent protocol energy-model-v2-2025) that partially "
+  "repairs a diagnosed state-observability defect in the frozen v2 joint controller and "
+  "re-screens PPO under a stricter, pre-registered safety-first gate. It "
+  "explicitly excludes model-predictive control and spatial-only retraining, "
+  "and it does not overturn the frozen Sec. VI evidence, which remains the "
+  "thesis's primary held-out result.", bold=True)
+H2("A. Motivating defect and reframing of the v2 joint claim")
+P("Diagnosis of the Sec. VI-C failures found that the frozen v2 joint reward "
+  "charged terminal batch-completion liability (backlog and expiry weight) "
+  "without exposing episode position to the policy whenever the primary "
+  "demand-charge rate was zero — the default-off configuration used for every "
+  "frozen headline number. Two states that differ only in how much episode "
+  "remains therefore looked identical to the policy while carrying different "
+  "true marginal costs of leaving work unfinished near the horizon. The v2 "
+  "joint negative result is consequently conditional on this partially "
+  "observable state representation and on one frozen 501,760-step training "
+  "budget — not clean evidence that PPO cannot learn joint control in this "
+  "environment. This section tests that conditional claim directly by fixing "
+  "the state and enlarging the budget, while leaving every other frozen v2 "
+  "modeling choice (equal 100 MW proxies, unrestricted routing, Φ objective, "
+  "the same US/Global scenarios) untouched.")
+H2("B. V3 state additions, action, and objective changes")
+P("Two observation additions address the hidden episode horizon and coarse "
+  "deadline context, gated behind opt-in flags so "
+  "frozen v2 models are unaffected: pre-action episode progress and remaining-"
+  "horizon fractions t/(T−1) and (T−1−t)/(T−1) (observe_episode_progress), and "
+  "a per-site histogram of batch-pool mass across deadline buckets edged at "
+  "{1,3,6,12,24} steps plus the current arrival's own bucket "
+  "(deadline_bucket_edges) — six bins per site instead of one pooled backlog "
+  "scalar. Both are computed pre-action; Sec. VII-G documents a remaining "
+  "deadline-boundary observation defect found after the run. The action space, "
+  "decode (softmax/sigmoid, "
+  "±3 logit bound), and per-step objective (Eq. 10) are unchanged; only joint "
+  "temporal+spatial control is retrained (spatial-only retraining and MPC are "
+  "protocol-excluded, Sec. VII intro). Evaluation always scores the full-"
+  "dollar objective at fixed guard weights — service-backlog and batch-"
+  "completion weight 1000/1000, matched to the ≈$626/normalized-unit economic "
+  "floor computed from the largest one-step saving obtainable by dropping "
+  "served work — so the metric used to rank policies never changes across the "
+  "sweep. Only the TRAINING-only reward weights (service-backlog, batch-"
+  "completion, and an optional urgency potential) vary between candidates; "
+  "this separates a genuine hyperparameter/incentive sweep from a moving "
+  "scoreboard.")
+H2("C. Staged protocol: rollout-aligned budgets, seeds, and safety-first selection")
+TABLE(
+    ["Stage", "Budget (rollouts)", "Seeds", "Sweep axis", "Promotes"],
+    [
+        ["Round 1", "151,552 (74)", "201–203 (3)", "GAE λ∈{.95,.99,1.0}; KL "
+         "target∈{none,.02}; LR sched∈{fixed,linear}; reward mode∈{full,"
+         "idle-subtracted}; obs. normalization∈{off,on} — 6 candidates R0–R5",
+         "1 candidate/region"],
+        ["Round 2", "301,056 (147)", "201–205 (5)", "Training-only reward "
+         "weights on the Round-1 winner: service-backlog/batch-completion/"
+         "urgency-potential — 4 variants P0–P3", "1 variant/region"],
+        ["Full development", "501,760 (245)", "201–210 (10)", "Winning combo "
+         "only — reproduces the frozen v2 budget under the augmented state",
+         "gate check"],
+        ["Budget scaling", "151,552 / 501,760 / 1,003,520 (74/245/490)",
+         "compare 201–205 (5); replicate 201–210 (10)", "Winning combo only "
+         "— diagnoses whether 501,760 steps was compute-limited",
+         "1 budget/region"],
+    ],
+    "TABLE V. STAGED V3 PROTOCOL (a–d DEVELOPMENT CELLS)",
+    widths=[1.1, 1.55, 1.05, 2.2, 0.9],
+)
+P("Safety-first selection is lexicographic and identical in structure at "
+  "every stage, but step (1) is evaluated against the seed count run AT THAT "
+  "STAGE, not a fixed count of 10: (1) all seeds in the current stage safe — "
+  "3 seeds in Round 1, 5 seeds in Round 2 and in the budget-scaling comparison "
+  "sweep, 10 seeds in full development and in the final budget-scaling "
+  "replication — (2) most safe seeds, (3) lowest worst-seed total cost, "
+  "(4) lowest mean total cost, (5, budget stage only) lower training budget as "
+  "a final tie-break. A seed is SAFE only if it clears every one of: "
+  "service-completion floor ≥0.999999999, batch-completion floor ≥0.9999, "
+  "expired-work tolerance ≤1e-9, terminal-pool fraction tolerance ≤1e-4, and "
+  "maximum transient service backlog ≤0.25 normalized units. The pre-"
+  "registered final gate additionally requires ALL 10 seeds safe and a "
+  "positive 95% optimizer-bootstrap CI vs. Status Quo; failing either reports "
+  "the recovery as unsuccessful without activating any controller.")
+TABLE(
+    ["Region", "Cand.", "GAE λ", "KL", "LR", "Reward mode", "Norm.", "Mean sav.", "Worst sav."],
+    [
+        ["US", "R0", "0.95", "—", "fixed", "full", "off", "−0.101%", "−0.787%"],
+        ["US", "R1", "0.99", "—", "fixed", "full", "off", "−0.239%", "−0.770%"],
+        ["US", "R2", "1.00", "—", "fixed", "full", "off", "−0.131%", "−0.889%"],
+        ["US", "R3 ★", "0.99", "0.02", "linear", "full", "off", "+0.171%", "−0.072%"],
+        ["US", "R4", "0.99", "0.02", "linear", "idle-sub.", "off", "−0.367%", "−1.697%"],
+        ["US", "R5", "0.99", "0.02", "linear", "idle-sub.", "on", "+0.047%", "−0.638%"],
+        ["Global", "R0 ★", "0.95", "—", "fixed", "full", "off", "+1.893%", "+0.755%"],
+        ["Global", "R1", "0.99", "—", "fixed", "full", "off", "+0.950%", "−0.130%"],
+        ["Global", "R2", "1.00", "—", "fixed", "full", "off", "−1.185%", "−2.869%"],
+        ["Global", "R3", "0.99", "0.02", "linear", "full", "off", "+0.998%", "+0.322%"],
+        ["Global", "R4", "0.99", "0.02", "linear", "idle-sub.", "off", "+0.903%", "+0.537%"],
+        ["Global", "R5", "0.99", "0.02", "linear", "idle-sub.", "on", "−0.035%", "−0.599%"],
+    ],
+    "TABLE VI. ROUND-1 OPTIMIZER/STATE SCREEN, 3 SEEDS/CANDIDATE (★=PROMOTED; "
+    "ALL CANDIDATES 0/3 SAFE)",
+    widths=[0.65, 0.5, 0.45, 0.4, 0.45, 0.75, 0.4, 0.65, 0.65],
+)
+P("No Round-1 candidate is safe on any seed — the state augmentation alone does not "
+  "restore completion feasibility. R3 (GAE λ=0.99, KL target 0.02, linear LR "
+  "decay, full reward mode) is promoted for US on mean/worst savings; R0 "
+  "(GAE λ=0.95, fixed LR, no KL target) is promoted for Global on the same "
+  "criteria. Both promotions are ties broken by economics only, since no "
+  "candidate clears the safety floor.")
+TABLE(
+    ["Region", "Variant", "Backlog wt.", "Completion wt.", "Potential wt.", "Mean sav.", "Worst sav."],
+    [
+        ["US", "P0", "1000", "1000", "0", "+0.191%", "−1.952%"],
+        ["US", "P1 ★", "700", "1000", "0", "+0.547%", "+0.303%"],
+        ["US", "P2", "700", "2000", "0", "+0.401%", "−0.473%"],
+        ["US", "P3", "700", "1500", "250", "+0.452%", "−0.614%"],
+        ["Global", "P0", "1000", "1000", "0", "+1.654%", "−1.070%"],
+        ["Global", "P1", "700", "1000", "0", "+1.586%", "−0.525%"],
+        ["Global", "P2", "700", "2000", "0", "+2.014%", "+0.182%"],
+        ["Global", "P3 ★", "700", "1500", "250", "+1.167%", "+0.306%"],
+    ],
+    "TABLE VII. ROUND-2 REWARD-WEIGHT SCREEN ON THE ROUND-1 WINNER, 5 "
+    "SEEDS/VARIANT (★=PROMOTED; ALL VARIANTS 0/5 SAFE)",
+    widths=[0.65, 0.65, 0.85, 0.95, 0.85, 0.65, 0.65],
+)
+P("Combo R3_P1 (US) and R0_P3 (Global) carry forward to full development and "
+  "budget scaling. P3's urgency-potential term has the best worst-seed savings "
+  "for Global among safety-tied variants (all 0/5 safe) but is not "
+  "categorically safer; P1 wins US on worst-seed cost despite reducing the "
+  "backlog weight below the P0 baseline, illustrating that within this sweep "
+  "reward-weight choice trades off mean economics against tail cost rather "
+  "than buying completion safety outright.")
+H2("D. Three-point matched-config budget curve")
+TABLE(
+    ["Region", "Combo", "Budget", "Mean sav.", "Worst sav.", "Safe seeds", "Notes"],
+    [
+        ["US", "R3_P1", "151,552", "+0.205%", "−0.513%", "1/5", "—"],
+        ["US", "R3_P1", "501,760", "+0.350%", "−0.676%", "0/5", "backlog>0"],
+        ["US", "R3_P1", "1,003,520", "−0.241%", "−1.014%", "0/5", "16.7 units "
+         "expired; 2.16% action saturation"],
+        ["Global", "R0_P3", "151,552", "+0.889%", "−1.020%", "0/5", "—"],
+        ["Global", "R0_P3", "501,760", "+1.231%", "+0.138%", "0/5", "backlog "
+         "1.23 units"],
+        ["Global", "R0_P3", "1,003,520", "+1.764%", "+0.996%", "0/5", "—"],
+    ],
+    "TABLE VIII. MATCHED-CONFIG BUDGET CURVE, 5 SEEDS (201–205) PER POINT",
+    widths=[0.6, 0.65, 0.85, 0.65, 0.65, 0.65, 1.6],
+)
+P("More compute helps Global economics monotonically (+0.889% → +1.231% → "
+  "+1.764% as budget rises from 151,552 to 1,003,520 steps) but not safety: "
+  "0/5 seeds are safe at every Global budget on this matched-seed comparison. "
+  "US shows the opposite compute pathology: mean savings rise from +0.205% to "
+  "+0.350% and then reverse to −0.241% at 1,003,520 steps, where the policy "
+  "also begins expiring batch work (16.7 normalized units) and saturating "
+  "actions (2.16% of steps) — degradation, not diminishing returns. Extra "
+  "optimizer budget therefore helps Global's economics without helping its "
+  "safety, and actively hurts US at the largest budget tested; there is no "
+  "budget in this sweep at which unconstrained joint PPO becomes a safe "
+  "controller.")
+H2("E. Final safety-first-selected configuration and gate result (a–d)")
+TABLE(
+    ["Region", "Combo", "Budget", "Safe seeds", "Mean sav.", "Worst sav.", "Optimizer 95% CI (USD)", "All-seed +"],
+    [
+        ["US", "R3_P1", "151,552", "1/10", "+0.051%", "−1.057%",
+         "[−22,193.78, +28,226.55]", "No"],
+        ["Global", "R0_P3", "1,003,520", "1/10", "+2.032%", "+0.996%",
+         "[+103,383.64, +167,438.74]", "Yes"],
+    ],
+    "TABLE IX. FINAL SAFETY-FIRST GATE, 10 SEEDS (201–210), a–d DEVELOPMENT CELLS",
+    widths=[0.55, 0.55, 0.7, 0.65, 0.6, 0.6, 1.55, 0.6],
+)
+P("The lexicographic rule selects 151,552 steps for US (uniquely 1/5 safe "
+  "among the three matched budgets) and 1,003,520 steps for Global (all three "
+  "budgets tied at 0/5 safe on the comparison seeds, broken by lowest worst-"
+  "seed and mean cost). Re-validated at 10 seeds, US R3_P1 is 1/10 safe with "
+  "mean savings +0.051% and an optimizer-bootstrap CI that crosses zero "
+  "([−$22,193.78, +$28,226.55]) — economically indistinguishable from Status "
+  "Quo. Global R0_P3 is also only 1/10 safe despite +2.032% mean savings and a "
+  "CI strictly above zero ([+$103,383.64, +$167,438.74], all 10 seeds "
+  "individually positive): the pre-registered gate requires ALL seeds safe, "
+  "so Global fails on completion even though it would pass on economics alone. "
+  "Both regions therefore fail the final gate (protocol failure_outcome: "
+  "report the recovery as unsuccessful; do not activate a spatial-only, "
+  "temporal-only, or MPC controller).")
+H2("F. Descriptive e–h transfer — not confirmatory, not a headline")
+P("Cells e–h were already exposed during the frozen v2 campaign (Sec. V-E), so "
+  "evaluating the two safety-first-selected v3 combos there — US R3_P1 "
+  "trained at its selected budget of 151,552 steps and Global R0_P3 trained "
+  "at its selected budget of 1,003,520 steps (Sec. VII-E) — is a one-time "
+  "descriptive check, not fresh confirmatory data and not headline-eligible "
+  "(final_eh_transfer.json: headline_eligible=false). It is reported for "
+  "completeness only.")
+TABLE(
+    ["Region", "Combo", "Training budget", "Safe seeds", "Mean savings", "Worst savings"],
+    [
+        ["US", "R3_P1", "151,552", "7/10", "−0.155%", "−0.760%"],
+        ["Global", "R0_P3", "1,003,520", "5/10", "+2.826%", "+1.106%"],
+    ],
+    "TABLE X. DESCRIPTIVE e–h TRANSFER OF THE a–d-SELECTED-BUDGET MODELS, 10 "
+    "SEEDS (NON-CONFIRMATORY)",
+    widths=[0.65, 0.65, 0.95, 0.75, 0.95, 0.95],
+)
+P("Transfer is not consistently better than the a–d gate: US mean savings turn "
+  "negative on e–h even though more seeds individually clear the safety floor "
+  "(7/10 vs. 1/10), and Global remains only half-safe. This inconsistency is "
+  "additional descriptive evidence against treating either combo as a settled "
+  "joint controller, but because e–h is not fresh data it cannot itself "
+  "confirm or refute the a–d gate result.")
+H2("G. Documented limitations and claim boundary")
+P("V2 reward-scale confound (not resolved by v3). The frozen v2 protocol "
+  "trained spatial-only policies at reward_scale=1.0 and completion-guarded "
+  "joint (batch) policies at reward_scale=1e-4, with an identical learning "
+  "rate (3e-4) across both configurations (env/protocols/v2_2025.yaml). The "
+  "two controller classes were therefore optimized against training signals "
+  "of very different numerical magnitude even though both are scored on the "
+  "same dollar objective at evaluation time, so v2's spatial-vs-joint "
+  "comparison mixes a genuine policy-class difference with an unmatched "
+  "training scale. V3 does not resolve this confound: it trains joint "
+  "(temporal+spatial) policies only, at one fixed reward_scale throughout "
+  "Rounds 1–2 and budget scaling (Sec. VII-B), and never introduces or "
+  "repeats a spatial-only run at a matched scale for comparison. This section "
+  "therefore cannot and does not settle the historical v2 spatial-vs-joint "
+  "cross-control comparison; it only asks whether joint PPO, evaluated on its "
+  "own terms, can pass a stricter safety-first bar.")
+P("Equal-capacity limitation (unchanged from v2). Every site remains an equal "
+  "100 MW proxy. This isolates workload, market-phase, and calibrated power-"
+  "model effects, but it also removes real fleet-size heterogeneity and may "
+  "understate or overstate US spatial opportunity; it is an explicit "
+  "controlled-system limitation carried into v3 unchanged, not a v3-specific "
+  "artifact.")
+P("Negative-net-demand objective caveat (unchanged from v2). Φ is zero "
+  "whenever net demand is negative (Eq. 4), so nothing in the reward "
+  "discourages concentrating joint routing and drain during those intervals; "
+  "the v3 policies' behavior there is only observed and audited (Sec. VI-D "
+  "ramp KPIs), never separately regularized, and this caveat applies to every "
+  "v3 result in this section exactly as it applies to v2.")
+P("Deterministic negative-net-demand probe (a–d, ten deterministic seed "
+  "policies per region). To audit rather than merely flag the preceding "
+  "caveat, we reconstructed the a–d evaluation environment and reran all ten "
+  "selected-policy seeds per region with domain randomization disabled — US "
+  "R3_P1 at 151,552 steps and Global R0_P3 at 1,003,520 steps — contrasting "
+  "steps with at least one site at negative net demand against all other "
+  "steps (Table XI).")
+TABLE(
+    ["Region", "Neg.-step share", "Drain, ≥1 neg.", "Drain, else",
+     "Clear., ≥1 neg.", "Clear., else", "Route share, neg. (policy)",
+     "Route share, neg. (uniform)", "Neg. steps, drain>90%"],
+    [
+        ["US", "23.89%", "50.91%", "51.32%", "50.82%", "50.79%", "61.11%",
+         "61.18%", "0.0%"],
+        ["Global", "48.25%", "52.00%", "52.12%", "50.15%", "50.21%", "33.26%",
+         "30.05%", "0.0%"],
+    ],
+    "TABLE XI. DETERMINISTIC NEGATIVE-NET-DEMAND PROBE, ALL-10-SEED SELECTED "
+    "a–d POLICIES",
+    widths=[0.4, 0.6, 0.6, 0.55, 0.65, 0.6, 0.85, 0.85, 0.7],
+)
+P("The uniform benchmark is the mean fraction of destinations that are "
+  "themselves at negative net demand on the same any-negative steps, i.e. "
+  "the routed share a destination-blind policy would achieve by "
+  "construction. US policy route share to negative-demand destinations "
+    "(61.11%) is essentially indistinguishable from — if anything, marginally "
+  "below — that uniform benchmark (61.18%): US routing shows no systematic "
+  "preference for or against negative-demand destinations. Global policy "
+  "route share (33.26%) exceeds its uniform benchmark (30.05%) by 3.21 "
+  "percentage points, a modest but real tilt toward negative-demand "
+  "destinations. Neither region shows increased drainage on those steps: "
+  "mean drain is, if anything, slightly LOWER on negative-demand steps than "
+  "otherwise in both regions (US 50.91% vs. 51.32%; Global 52.00% vs. "
+  "52.12%), realized pool clearance is effectively unchanged between the two "
+  "conditions in both regions (US 50.82% vs. 50.79%; Global 50.15% vs. "
+  "50.21%), and the share of negative-demand steps with mean drain above 90% "
+  "is 0.0% for both US and Global — neither policy blasts through capacity. "
+  "This is a deterministic, descriptive audit of ten deterministic seed "
+  "policies per region on the fixed evaluation trace, not a causal or "
+  "confirmatory claim about why either policy routes as it does, and it does "
+  "not alter the Sec. VII-E gate result.")
+P("Demand-charge shorter-period guard and telescoping regression tests "
+  "(unchanged from v2, exercised by v3's own smoke tests). A demand-charge "
+  "period shorter than the episode raises a hard error unless "
+  "allow_multiple_demand_charge_periods=True is passed explicitly, preventing "
+  "an accidental per-sub-period tariff from silently multiplying the reference "
+  "charge. scripts/smoke_test_demand_charge.py numerically asserts two "
+  "already-published identities to machine precision: (i) incremental "
+  "per-step demand charges sum to c×max_t g_t over each complete billing "
+  "period, and (ii) summed arrivals minus completions equals expired work "
+  "plus the terminal batch pool — an accounting identity, not a reward "
+  "potential. scripts/smoke_test_ppo_v3.py separately and independently "
+  "regression-tests that the new v3 urgency-potential shaping term telescopes "
+  "under γ=1 to a policy-independent constant fixed only by the initial "
+  "batch-pool state, so potential-based shaping cannot alter the undiscounted "
+  "return regardless of which actions are taken; both suites pass for every "
+  "configuration used in this section.")
+P("Remaining deadline-boundary observation defect. At step t, the pre-action "
+  "observation can include carried pool entries with deadline_step ≤ t even "
+  "though the transition expires those entries before service. Selected US "
+  "training had expiry in 0/10 seeds (0.000 units total), while selected Global "
+  "training had expiry in 9/10 seeds (127.597 units across all randomized "
+  "episodes). Every selected a–d and descriptive e–h evaluation seed had zero "
+  "expiry, so the reported evaluation failures are terminal-pool failures rather "
+  "than direct boundary-expiry artifacts; nevertheless, v3 is not a fully repaired "
+  "state formulation. The next protocol must compute actionable pool size, "
+  "urgency, and deadline buckets only from entries with deadline_step > t, "
+  "optionally expose unavoidable due-now mass separately, and retrain before any "
+  "positive state-repair claim. Frozen v3 semantics and results remain unchanged.")
+P("Hard vs. soft constraints and the sigmoid reachability ceiling. Every "
+  "safety property enforced here — service completion, batch completion, "
+  "zero expiry, bounded backlog — remains a SOFT, reward-shaped penalty; none "
+  "is a hard constraint on the action, which is why 31/40 v2 seeds and, now, "
+  "9/10 or more v3 seeds per region can violate it despite heavy shaping. Only "
+  "the batch DRAIN head is sigmoid-decoded; service routing and batch spatial "
+  "placement are softmax-decoded shares that already sum to exactly 1 and "
+  "carry no endpoint-reachability problem. For the drain head, the ±3 "
+  "action-logit bound caps the reachable rate at sigmoid(3)=95.257% (and "
+  "floors it at sigmoid(−3)=4.743%, Sec. III-C): a policy can request "
+  "draining a site's entire batch pool in one step only up to 95.257% of it, "
+  "never exactly 100%, regardless of training. Raising the bound narrows but "
+  "never closes this gap — sigmoid(10)=99.995% already exceeds the 99.99% "
+  "batch-completion floor used for the safety gate — yet the sigmoid's open "
+  "range (0,1) means no finite logit bound reaches EXACT full drain. Because "
+  "exact 0–100% reachability, not merely a value above 99.99%, is what a "
+  "completion guarantee requires, merely widening the sigmoid bound is "
+  "insufficient on its own: the next step (Sec. VIII) is not a larger action "
+  "bound or an MPC comparator (both remain excluded by this protocol) but a "
+  "non-MPC joint feasibility/action-projection layer — a hard decoder or a "
+  "post-hoc override on the drain head with true 0/1 endpoints — that maps "
+  "any learned action onto the nearest feasible one with exact reachable "
+  "endpoints.")
+P("Everything else about the v2 protocol continues to apply unchanged: ramp "
+  "rate and the standardized demand charge remain independent, audited KPIs "
+  "rather than reward terms (Sec. III-A); unrestricted cross-site routing "
+  "remains an explicit optimistic assumption, not a deployment claim (Sec. "
+  "III-C); and this section makes no MPC claim of any kind — MPC is "
+  "structurally excluded from the v3 protocol, exactly as in v2.")
+H2("H. Conclusion of the recovery study")
+P("Repairing the diagnosed state-observability defect, re-screening six "
+  "optimizer/state variants and four reward-weight variants per region, and "
+  "training at up to 2× the frozen v2 budget does not produce a safety-first-"
+  "gate-passing joint controller: the best US configuration remains "
+  "economically indistinguishable from Status Quo (CI crossing zero) and the "
+  "best Global configuration, despite a real positive economic effect, fails "
+  "on completion safety with only 1/10 seeds safe. More compute measurably "
+  "helps Global's economics and measurably hurts US's at the largest budget "
+  "tested, but no amount tried buys joint safety. The evidence therefore "
+  "reframes, but does not reverse, Sec. VI's negative joint finding: "
+  "unconstrained PPO remains unsuitable as a trustworthy joint spatio-temporal "
+  "controller under this model, whether or not it can observe episode "
+  "position, and the appropriate next step is safety-constrained action "
+  "projection (Sec. VIII), not a larger sweep of the same unconstrained "
+  "policy class.")
+
+# ---------------- VIII. V4 HARD-SAFETY STUDY ----------------
+H1("VIII. COMPLETED V4 HARD-SAFETY STUDY: A NON-MPC ONE-STEP FEASIBILITY "
+   "PROJECTOR")
+P("Status — COMPLETED, PROTOCOL-FROZEN (env/protocols/v4_safety.yaml, parent "
+  "protocol ppo-reward-sweep-v3, parent commit a989465). This section answers "
+  "the Sec. VII-G/-H call for a hard, non-MPC joint feasibility/action-"
+  "projection layer by replacing the sigmoid-decoded, penalty-shaped drain "
+  "head with a deterministic one-step Euclidean projector that gives every "
+  "evaluated episode exact service/batch completion and zero expiry under the "
+  "frozen causal envelope; infeasible states fail closed with certificates "
+  "rather than degrading silently. These properties come from construction, "
+  "not reward learning. It reuses the frozen v3 selected configurations unchanged "
+  "(US R3_P1, Global R0_P3, Sec. VII-C/-E) and trains 36 new models across a "
+  "staged short/medium/full protocol, plus replays the archived (frozen) v3 "
+  "policy weights through the projector without any retraining as a separate "
+  "diagnostic. It explicitly excludes model-predictive control, spatial-only "
+  "training, and temporal-only training (identical exclusions to v2/v3), and "
+  "cells e–h remain descriptive-only because they were already exposed by "
+  "v2/v3 (fresh_confirmatory_data_available: false).")
+H2("A. From soft shaping to hard projection")
+P("Sec. VII-G showed every prior safety property — service completion, batch "
+  "completion, zero expiry, bounded backlog — was a SOFT, reward-shaped "
+  "penalty that even heavy shaping left 9/10 or more v3 seeds per region "
+  "capable of violating, and that the sigmoid drain head's ±3-logit bound "
+  "caps reachable drain at sigmoid(3)=95.257% with no finite bound reaching "
+  "exact full drain. V4 does not retrain that decoder or widen its bound; it "
+  "inserts a projector between the policy's raw decoded action and the "
+  "environment transition, so every applied action is the nearest feasible "
+  "point to what PPO requested, with EXACT 0–100% reachable endpoints and "
+  "hard, checkable completion guarantees that hold on every step, not merely "
+  "in expectation across seeds.")
+H2("B. Ten hard-constraint requirements")
+P("The projector and its surrounding protocol enforce ten requirements, each "
+  "with its own fail-closed certificate or measured invariant (Table XII). "
+  "None of the ten is a reward term; all ten are algebraic properties of the "
+  "one-step projection or of the frozen protocol around it, verified by the "
+  "smoke suite (Sec. VIII-H) and by every evaluation record.")
+TABLE(
+    ["#", "Requirement", "Enforcement / certificate"],
+    [
+        ["1", "Advertise only actionable pool work with deadline_step > t",
+         "actionable_* pool features; due-now carryover fails closed"],
+        ["2", "Cumulative deadline feasibility, including episode end, "
+         "under a frozen train-only 2.25/1.00/4.00 envelope",
+         "nested EDF prefixes; 0.75 guaranteed carried-work capacity"],
+        ["3", "Zero service backlog from a clean state whenever current "
+         "service is physically schedulable",
+         "service-first capped simplex; local pre-backlog certificate"],
+        ["4", "Every origin drain equals destination placement and execution",
+         "exact_transport row/column sums; no proportional serve_ratio"],
+        ["5", "Applied drain can reach exact 0% or 100%",
+         "post-decode physical-amount projection; endpoint counters"],
+        ["6", "Fail closed on envelope, capacity, deadline, grid, or ramp "
+         "infeasibility",
+         "structured SafetyInfeasibleError certificate"],
+        ["7", "Use the nearest safe action to preserve PPO preferences",
+         "Euclidean capped-simplex/box projection; L2 distance logged"],
+        ["8", "Train with the projector active and persist all safety telemetry",
+         "intervention, distance, binding horizon, slack, endpoints, certificates"],
+        ["9", "Keep negative-demand flushing optional and after mandatory work",
+         "replay-only ablation; disabled in primary training"],
+        ["10", "Implement optional grid/ramp caps but disable them primary",
+         "max_grid_mw/max_upward_ramp_mw tested; protocol values null"],
+    ],
+    "TABLE XII. THE TEN V4 HARD-CONSTRAINT REQUIREMENTS",
+    widths=[0.25, 2.55, 2.4],
+)
+H2("C. Non-MPC one-step projector: architecture and math")
+P("Let N=4 sites and let the policy's raw 3N-dimensional action decode, "
+  "exactly as in Sec. III-C, into a service-share preference s_pref = "
+  "softmax(a[0:N]), a per-origin drain preference d_raw = sigmoid(a[N:2N]), "
+  "and a destination-share preference b_pref = softmax(a[2N:3N]). Desired "
+  "(unconstrained) targets are s̃ = s_pref·S_t (S_t = total service demand, "
+  "an environment quantity, not a policy choice) and g̃_i = d_raw_i·Q_i,t "
+  "(Q_i,t = origin i's pool total). The projector then applies four "
+  "closed-form Euclidean projections, once per step, using only the CURRENT "
+  "step's state:")
+EQ("s_t = argmin_s ‖s−s̃‖² s.t. Σs_i=S_t, 0≤s_i≤c_i,t", 11)
+P("solved by bisection on a shared water-filling shift (capped-simplex "
+  "projection, project_capped_simplex), giving residual site capacity "
+  "r_t = c_t − s_t for batch.")
+EQ("m = cumulative-EDF floor: ∀ deadline δ, D_δ ≤ (δ−t−1)·ĝ + protected_δ",
+   12)
+P("where D_δ is pool mass due by δ (aggregated per origin) and ĝ=0.75 is the "
+  "frozen guaranteed future per-step drain capacity (requirement 2). Any "
+  "positive deficit at a given δ is admitted NOW as the minimal-ℓ²-distance "
+  "reallocation of the policy's own drain preference among only the origins "
+  "carrying that deadline's mass — never an arbitrary or origin-blind top-"
+  "up — yielding a per-origin mandatory floor m with Σm_i equal to the "
+  "unavoidable batch that must move this step.")
+EQ("g_t = argmin_g ‖g−g̃‖² s.t. Σg_i=g*, m_i≤g_i≤Q_i,t", 13)
+P("where g* is itself the total-batch amount clipped into [Σm, "
+  "min(ΣQ,Σr_t)] (never below the EDF floor, never above residual capacity "
+  "or remaining pool) — a box-constrained projection with a permitted sum "
+  "interval (project_box_sum_range), built from the same capped-simplex "
+  "primitive after subtracting the floor.")
+EQ("b_t = argmin_b ‖b−b_pref·g_t‖² s.t. Σb_j=g_t, 0≤b_j≤r_t,j", 14)
+P("gives the destination allocation, and a deterministic greedy northwest-"
+  "corner-style match (exact_transport) builds a bipartite flow F∈ℝ^{N×N}_"
+  "{≥0} with ΣⱼF_ij=g_{t,i} and ΣᵢF_ij=b_{t,j} exactly (≤1e-8, requirement "
+  "4) — an EXACT transport, not an approximate one. Steps 11–14 are a single "
+  "deterministic, closed-form map from (raw PPO action, current state) to a "
+  "feasible action, evaluated once per step with no lookahead, no rollout, "
+  "and no model of future dynamics beyond the frozen scalar ĝ. That is "
+  "precisely why this is NOT model-predictive control: MPC re-solves a "
+  "multi-step optimization over a receding horizon using a forward dynamics "
+  "model; the v4 projector performs one non-anticipative projection per "
+  "step using only the current state and a pre-registered constant, and MPC "
+  "remains structurally excluded from this protocol exactly as in v2/v3.")
+H2("D. Train-only envelopes and no future-trace leakage")
+P("The three envelope constants (service 2.25, batch arrival 1.00, future "
+  "fleet capacity 4.00) are rounded upward from the maximum total service "
+  "(2.130388) and batch arrival (0.831723) observed ONLY across development "
+  "cells a–d (envelope_id ad-rounded-envelope-v1, envelope_scope a-d-"
+  "development-only) and are frozen into the protocol snapshot before any "
+  "replay or training job runs (Table VII protocol.json, Sec. VIII-G "
+  "preflight). They never use a realized future step's value: the "
+  "preflight envelope_scan re-derives and hard-asserts these maxima against "
+  "the live a–d scenarios before every campaign, and a dedicated smoke test "
+  "(test_no_future_trace_leakage) reconstructs an identical current state "
+  "with a different future trace and asserts the projection is bit-"
+  "identical — the projector is a pure function of the current step, never "
+  "of anything downstream of it.")
+H2("E. Clean-state guarantee and the local-backlog caveat")
+P("The zero-service-backlog guarantee is a CLEAN-STATE guarantee: it holds "
+  "from a reset with no pre-existing local backlog, and the environment "
+  "fails closed — raising a preexisting_local_service_backlog certificate, "
+  "not silently absorbing the work — if any site carries nonzero local "
+  "backlog when a step is attempted (test_preexisting_backlog_fails_closed). "
+  "This is a documented scope boundary, not a claim that backlog can never "
+  "physically arise: it says the hard guarantee applies once the controller "
+  "is engaged from a clean state, and any accumulated local backlog must be "
+  "surfaced as an explicit certificate rather than pooled into the "
+  "projector's accounting.")
+H2("F. Exact flows, endpoints, and optional extensions")
+P("Every applied transport is an EXACT flow (requirement 4) and every drain "
+  "decision reaches an EXACT 0% or 100% endpoint when the cumulative-EDF "
+  "floor or the residual-capacity ceiling binds (requirement 5), closing the "
+  "sigmoid-reachability gap of Sec. VII-G. Two extensions are wired into the "
+  "SafetyConfig but are OPTIONAL and off by default in every trained v4 "
+  "model: a negative-net-demand flush (negative_demand_flush) that widens "
+  "the minimum drain floor toward destinations currently at negative net "
+  "demand, and per-site power/ramp caps (max_grid_mw, max_upward_ramp_mw) "
+  "that would further clip the residual-capacity feasible set. Neither is "
+  "used in the primary training or evaluation mode (primary_negative_"
+  "demand_flush: false, primary_power_caps/primary_ramp_caps: null); the "
+  "flush is exercised only as a replay-time ablation on the already-frozen "
+  "v3 policy weights (Sec. VIII-I), never during any of the 36 newly "
+  "trained v4 models, and the power/ramp caps are exercised only by the "
+  "smoke suite (test_optional_grid_and_ramp_caps).")
+H2("G. Staged protocol, gates, and thirty-six trained models")
+TABLE(
+    ["Phase", "What it does", "Jobs / models"],
+    [
+        ["preflight", "Validates config, hashes sources/data, re-derives "
+         "and asserts the a–d envelope bound, runs all smoke tests", "0"],
+        ["replay", "Replays the FROZEN archived v3 policy weights (10 "
+         "seeds/region, R3_P1 US / R0_P3 Global) through the v4 projector "
+         "at eval time only, in both safety_only and safety_plus_negative_"
+         "demand_flush modes — no retraining", "0 (20 archived models "
+         "reused × 2 modes)"],
+        ["short", "Trains fresh PPO+projector models at the short budget "
+         "(151,552 steps), 3 seeds/region", "6"],
+        ["medium", "Gated on the short promotion gate; trains at 301,056 "
+         "steps, 5 seeds/region", "10"],
+        ["full", "Gated on the medium gate; trains at each region's "
+         "selected final budget (US 151,552 / Global 1,003,520), 10 "
+         "seeds/region", "20"],
+        ["final", "Gated on the full gate; re-evaluates the 20 full-stage "
+         "models on cells e–h (descriptive transfer, no retraining)", "0"],
+    ],
+    "TABLE XIII. STAGED V4 PROTOCOL (36 NEWLY TRAINED MODELS: 6+10+20)",
+    widths=[0.6, 3.4, 1.2],
+)
+P("Each of short/medium/full enforces the SAME promotion gate (Table XIV) "
+  "on ALL seeds run at that stage before the next stage may start "
+  "(ensure_gate_passed): service completion exactly 1 (within 1e-9), batch "
+  "completion exactly 1 (within 1e-9), zero total expired, terminal batch "
+  "pool and terminal service backlog ≤1e-8, zero safety-infeasibility "
+  "certificates, and maximum transport-conservation error ≤1e-8 — the same "
+  "seven checks spanning requirements 2–6 above, now asserted per seed "
+  "rather than only in aggregate. A region's stage only passes if EVERY "
+  "seed clears every check; because these are hard, constructed guarantees "
+  "rather than shaped penalties, every one of the 36 trained-and-evaluated "
+  "short/medium/full seed×region combinations passes on the first attempt.")
+H2("H. Ten-test smoke suite")
+P("scripts/smoke_test_safety_v4.py numerically exercises exactly the ten "
+  "requirements of Table XII before any training job is allowed to start "
+  "(preflight, Table XIII): projection primitives conserve sum/box bounds; "
+  "deadline semantics and actionable-state truncation are exact; a "
+  "deliberately wrong policy origin is overridden to the mandatory EDF "
+  "origin with exact 0/100% endpoints; service-capacity and pre-action-"
+  "deadline-miss certificates fail closed; pre-existing local backlog fails "
+  "closed; reconstructing an identical current state with a different "
+  "future trace gives a bit-identical projection (no leakage); the "
+  "negative-demand flush is confirmed optional (behavior differs only when "
+  "explicitly enabled); 250 randomized adversarial projections all satisfy "
+  "every conservation, bound, and cumulative-slack invariant on ≥200/250 "
+  "feasible draws; optional power/ramp caps are respected and reject an "
+  "infeasible cap below unavoidable idle draw; and a full-episode all-hold "
+  "(-3 logit) policy still reaches exact completion with zero expiry and "
+  "sub-1e-8 transport error on both US and Global scenarios. All ten pass "
+  "for every configuration used in this section.")
+H2("I. Replay of the archived v3 policies under the v4 projector")
+P("Before training anything new, the FROZEN v3-selected policy weights (US "
+  "R3_P1, Global R0_P3, Sec. VII-C/-E) are replayed — unmodified, no "
+  "additional training — through the v4 projector on the same 10 selected "
+  "v3 seeds (201–210), in both the primary safety_only mode and the "
+  "negative-demand-flush ablation mode, purely as a diagnostic of what the "
+  "projector alone contributes to an already-trained policy.")
+TABLE(
+    ["Region", "Mode", "Mean sav.", "Worst sav.", "Optimizer 95% CI (USD)",
+     "Mean interv. rate"],
+    [
+        ["US", "safety_only", "+0.057%", "−1.049%",
+         "[−21,771.99, +28,697.55]", "0.011%"],
+        ["US", "+flush (ablation)", "+0.002%", "−1.067%",
+         "[−25,141.42, +25,021.96]", "23.902%"],
+        ["Global", "safety_only", "+2.041%", "+1.016%",
+         "[+103,992.80, +167,976.56]", "0.473%"],
+        ["Global", "+flush (ablation)", "+1.257%", "+0.146%",
+         "[+50,314.19, +111,332.53]", "48.516%"],
+    ],
+    "TABLE XV. REPLAY OF ARCHIVED (FROZEN) v3 POLICIES UNDER THE V4 "
+    "PROJECTOR, 10 SEEDS (201–210), a–d CELLS (DIAGNOSTIC, NOT A GATE)",
+    widths=[0.55, 1.15, 0.65, 0.65, 1.55, 0.85],
+)
+P("Every replayed seed in both modes reaches exact service/batch completion "
+  "with zero expiry and zero infeasibility certificates — the ten "
+  "requirements hold even for a policy that never saw the projector during "
+  "training, because they are constructed, not learned. Turning on the "
+  "optional negative-demand-flush ablation lowers absolute mean cost (US "
+  "$6.564M→$6.552M; Global $6.464M→$6.302M), but the flush-enabled Status Quo "
+  "also benefits, so PPO's relative savings against its mode-matched baseline "
+  "fall (US +0.057%→+0.002%; Global +2.041%→+1.257%). Intervention rises from "
+  "0.011%→23.902% (US) and 0.473%→48.516% (Global), making flush a dominant "
+  "economic heuristic rather than a minimal safety shield. It is retained only "
+  "as a diagnostic and never used for a primary number.")
+H2("J. Staged and final a–d results for the 36 freshly trained models")
+TABLE(
+    ["Stage", "Region", "Seeds", "Safe", "Mean sav.", "Worst sav.",
+     "Interv. rate"],
+    [
+        ["Short", "US", "3", "3/3", "−0.024%", "−1.182%", "0.011%"],
+        ["Short", "Global", "3", "3/3", "+2.209%", "+1.234%", "5.376%"],
+        ["Medium", "US", "5", "5/5", "−0.105%", "−0.477%", "2.052%"],
+        ["Medium", "Global", "5", "5/5", "+1.557%", "−1.408%", "1.270%"],
+        ["Full", "US", "10", "10/10", "−0.246%", "−1.413%", "0.021%"],
+        ["Full", "Global", "10", "10/10", "+3.262%", "+0.857%", "18.786%"],
+    ],
+    "TABLE XVI. STAGED a–d PROMOTION GATE, ALL SEEDS SAFE AT EVERY STAGE",
+    widths=[0.6, 0.65, 0.5, 0.5, 0.7, 0.7, 0.75],
+)
+P("All 36 short/medium/full seed×region combinations are safe (Sec. "
+  "VIII-G): service and batch completion are exactly 1, expiry is exactly "
+  "0, and zero infeasibility certificates are raised, on every single seed "
+  "— not merely on a lexicographically selected subset as in Sec. VII. At "
+  "the final full-budget a–d evaluation (10 seeds, 301–310), US is "
+  "economically indistinguishable from Status Quo (mean −0.246%, "
+  "optimizer-bootstrap 95% CI [−$44,444.54, +$11,040.73], crossing zero) at "
+  "a mean safety-intervention rate of only 0.021% of steps — the projector "
+  "is a rare backstop that almost never overrides US's own preferences. "
+  "Global is unambiguously positive: mean +3.262% with EVERY one of the 10 "
+  "seed-level improvements positive and a 95% CI strictly above zero "
+  "([+$160,775.24, +$267,540.82]) — diagnostically also above the archived-"
+  "v3-replay comparator ([+$18,047.17, +$142,269.02], Sec. VIII-I) — but at "
+  "a mean intervention rate of 18.786%, i.e., roughly one step in five has "
+  "its action materially altered by the projector (Sec. VIII-L).")
+H2("K. Descriptive e–h transfer (non-confirmatory)")
+P("Cells e–h were already exposed during the frozen v2/v3 campaigns (Sec. "
+  "V-E, Sec. VII-F), so evaluating the same 20 full-stage v4 models there — "
+  "no retraining — is a one-time descriptive check, not fresh confirmatory "
+  "data and not headline-eligible (final_results.json: headline_eligible= "
+  "false), exactly as for v3's Table X.")
+TABLE(
+    ["Region", "Seeds", "Safe", "Mean sav.", "Worst sav.", "Interv. rate"],
+    [
+        ["US", "10", "10/10", "−0.149%", "−1.763%", "0.580%"],
+        ["Global", "10", "10/10", "+3.611%", "+0.510%", "20.170%"],
+    ],
+    "TABLE XVII. DESCRIPTIVE e–h TRANSFER OF THE 20 a–d FULL-STAGE MODELS, "
+    "10 SEEDS (NON-CONFIRMATORY)",
+    widths=[0.55, 0.5, 0.5, 0.75, 0.75, 0.75],
+)
+P("All 20 evaluated seeds remain safe on e–h — service/batch completion "
+  "exactly 1, zero expiry, zero infeasibility certificates on every seed in "
+  "both regions — because the ten requirements of Table XII are properties "
+  "of the projector and the frozen envelope, not of the scenario being "
+  "evaluated, so they transfer unconditionally. The economic numbers "
+  "(US −0.149%, Global +3.611%) move only modestly from their a–d full-"
+  "stage counterparts (−0.246%, +3.262%) and Global's intervention rate "
+  "rises slightly (18.786%→20.170%); because e–h is not fresh data, this "
+  "is reported for completeness only and cannot itself confirm or extend "
+  "the a–d result.")
+H2("L. Interpretation: the Global result belongs to PPO+projector jointly")
+P("Safety is deterministic; economics is learned — and how much of the "
+  "economics is attributable to the learned policy alone depends on how "
+  "often the projector must overrule it. US's mean intervention rate is "
+  "0.021% (full a–d) / 0.580% (e–h) — on the order of 1 in 5,000 to 1 in "
+  "170 steps — so the US result is, to a close approximation, still a "
+  "statement about the frozen PPO R3_P1 policy's own preferences, with the "
+  "projector acting as a rare backstop. Global's mean intervention rate is "
+  "18.786% (full a–d) / 20.170% (e–h) — roughly one step in five — so a "
+  "material fraction of Global's applied actions are NOT what the PPO "
+  "network proposed; they are the projector's nearest-feasible correction "
+  "to it. The reported Global economic gain (+3.262% / +3.611%, both CIs "
+  "or all ten seeds strictly positive) is therefore a property of the "
+  "COMPOSED system — the trained PPO R0_P3 network together with the "
+  "one-step projector — and cannot be attributed to either part alone: it "
+  "is not evidence that unconstrained PPO would itself achieve these "
+  "savings (Sec. VI/VII showed it does not, safely), nor is it evidence "
+  "that the projector alone, driving a policy-agnostic desired action, "
+  "would recover this gain (the projector has no preference of its own; "
+  "requirement 5's minimal-ℓ²-distance reallocation and every other "
+  "projection step start from the policy's OWN preference and move it the "
+  "minimum necessary distance). What IS attributable to the projector "
+  "alone, on any policy whatsoever, is the safety guarantee itself: Table "
+  "XV shows the same ten requirements hold identically on the untouched "
+  "archived v3 weights that never saw a projector during training, and "
+  "Sec. VIII-H's randomized/adversarial and all-hold-policy smoke tests "
+  "show they hold for policy-agnostic and even pathological actions. No "
+  "part of this section makes an MPC claim of any kind; MPC remains "
+  "structurally excluded from the v4 protocol exactly as from v2/v3.")
+H2("M. Conclusion of the hard-safety study")
+P("A non-MPC, one-step Euclidean feasibility projector — cumulative exact "
+  "EDF admission, exact transport conservation, exact 0–100% drain "
+  "endpoints, and a frozen a–d-only future-capacity bound with a proven "
+  "no-leakage property — replaces the Sec. VII-G sigmoid-reachability gap "
+  "with a hard, constructed guarantee that holds on every one of the 36 "
+  "newly trained short/medium/full seed×region combinations, on all 20 "
+  "descriptively transferred e–h seeds, and on the untouched archived v3 "
+  "policy weights under replay: zero completion failures, zero expiry, and "
+  "zero infeasibility certificates throughout. This finally answers Sec. "
+  "VII-H's call for safety-constrained action projection rather than a "
+  "larger sweep of the same unconstrained policy class. Economically, US "
+  "remains statistically indistinguishable from Status Quo while rarely "
+  "invoking the projector (0.021%–0.580% of steps); Global is unambiguously "
+  "positive (+3.262% a–d, +3.611% e–h, every seed and CI positive) but with "
+  "the projector materially co-authoring roughly one step in five "
+  "(18.786%–20.170%), so that gain is correctly attributed to the composed "
+  "PPO+projector system, not to PPO in isolation. The defensible new "
+  "contribution is therefore a hard safety guarantee obtained without "
+  "retraining away the underlying joint-control difficulty, plus honest "
+  "attribution of which economic results are — and are not — evidence "
+  "about the learned policy on its own.")
+
 # ---------------- V. EXPERIMENTAL SETUP ----------------
 EMIT_CONTENT = False
-H1("V. ARCHIVED ENERGY-MODEL V1 EXPERIMENTAL SETUP")
-P("This section and Sec. VI preserve the retired mixed/synthetic energy-model "
+H1("APPENDIX A. ARCHIVED ENERGY-MODEL V1 EXPERIMENTAL SETUP")
+P("This section and Appendix B preserve the retired mixed/synthetic energy-model "
   "v1 campaign for auditability. They are not final v2 evidence and must be "
   "replaced after the frozen v2 campaign.", bold=True)
 H2("A. Agents and baselines")
@@ -935,7 +1694,7 @@ P("PPO (Stable-Baselines3, MLP 128×128, lr 3e-4, 500k steps) acts in the "
   "state (demand, price, net demand, pool/backlog) AND static site context "
   "(per-DC idle power, slope, capacity, deferrable fraction) — the latter "
   "added so that per-site heterogeneity is exploitable as a function of "
-  "observed parameters rather than memorized by slot (Sec. VI-H). Two DQN "
+  "observed parameters rather than memorized by slot (Appendix B-H). Two DQN "
   "variants share hyperparameters (MLP 256×256, replay 100k, target update "
   "1k): a 759-action routing grid, and a 48-action compact flattened index "
   "inspired by CFWS's encoding philosophy, decoding to (source DC, destination "
@@ -956,10 +1715,10 @@ P("By construction service + batch = measured demand, so a serve-everything-"
   "dollar: Status Quo scores $9,847,536 in both US modes with zero expiry — the "
   "batch machinery is demand-neutral, and any batch-mode difference between "
   "policies is scheduling, not artifact. This invariant caught two of the three "
-  "modeling errors of Sec. VII.")
+  "modeling errors of Sec. VIII.")
 
 # ---------------- VI. RESULTS ----------------
-H1("VI. ARCHIVED ENERGY-MODEL V1 RESULTS")
+H1("APPENDIX B. ARCHIVED ENERGY-MODEL V1 RESULTS")
 TABLE(["Config", "SQ", "Trough", "DQN", "PPO (±sd)", "ΔSQ", "QP", "gap"],
       [["US spatial", "9.85", "11.23", "9.81", "9.57±.03", "2.8%", "9.46", "1.6%"],
        ["US batch", "9.85", "10.09", "9.89", "9.59±.08", "2.7%", "9.44", "1.3%"],
@@ -979,11 +1738,11 @@ P("Across five seeds per configuration, PPO is the best policy — learned or "
   "the best DQN variant. PPO beats the best DQN in 19 of 20 seed-paired "
   "comparisons (sign/Wilcoxon p = 0.031 in three of four configs; the "
   "exception is Global spatial-only, 4/5, p = 0.19). Crucially, PPO lands "
-  "within 1.3–5.7% of a clairvoyant convex-QP lower bound (Sec. VI-F) — so "
+  "within 1.3–5.7% of a clairvoyant convex-QP lower bound (Appendix B-F) — so "
   "little headroom remains to ANY policy, causal or not. Savings scale with "
   "exploitable structure: modest under US-only diversity, large under global "
   "price/timezone spread. PPO also serves 100% of service demand with zero "
-  "deadline violations (Sec. VI-E) and the flattest, lowest fleet draw "
+  "deadline violations (Appendix B-E) and the flattest, lowest fleet draw "
   "(Fig. 4).")
 FIG(FIGS / "fig4_profile.png",
     "Fig. 4. Fleet power profile, US batch (first 4 days): PPO serves the same "
@@ -1010,7 +1769,7 @@ P("At the measured deferrable fractions (16–26% of usage), batch deferral adds
   "(+2.8% → +2.7%), where there is little price or timezone diversity for "
   "temporal shifting to exploit. The temporal lever is real but secondary to "
   "spatial routing, and it is scenario-dependent. (Earlier drafts' inflated "
-  "+6% estimates were artifacts L1–L3, Sec. VII.)")
+  "+6% estimates were artifacts L1–L3, Sec. VIII.)")
 H2("E. Deadline and backlog audit")
 P("Because every policy is scored on the shaped objective (Eq. 10), we audit "
   "that PPO's savings are genuine scheduling, not penalty-dodging. Across all "
@@ -1037,14 +1796,14 @@ P("The environment is convex in the serving decisions (linear power and energy "
   "constraints — so the true gap to the best ACHIEVABLE causal policy is "
   "smaller still. A useful by-product: the QP's spatial-only and batch optima "
   "differ by only ~0.2–0.5%, confirming the intrinsic value of temporal "
-  "flexibility at these deferrable fractions is small (Sec. VI-D).")
+  "flexibility at these deferrable fractions is small (Appendix B-D).")
 H2("G. The demand charge: post-hoc audit and trained extension")
 P("Φ is a grid-stress shadow price, not the operator's tariff (Sec. III-A). "
   "Because a demand charge is the single largest line item that our objective "
   "omits, we quantify it for every policy from the grid-draw traces, at a "
   "reference c = $15/kW for the complete 8,917-step study billing cycle, "
   "WITHOUT putting it in the reward — so the policies compared are exactly "
-  "those of Sec. VI-A. Billing is per meter, so the billed quantity is "
+  "those of Appendix B-A. Billing is per meter, so the billed quantity is "
   "Σᵢ maxₜ gᵢ,ₜ, not the fleet coincident peak.")
 P("The charge is large: $4.69M per study cycle under the status quo, equal to "
   "39% of that scenario's $12.06M energy charge, 28% of the combined energy-"
@@ -1136,8 +1895,8 @@ FIG(FIGS / "fig7_movement_cost.png",
     "Fig. 7. PPO savings vs. per-unit inter-site movement cost (symlog x). "
     "Global routing keeps paying well past realistic egress prices.")
 
-# ---------------- VII. LESSONS ----------------
-H1("VII. LESSONS LEARNED AND THREATS TO VALIDITY")
+# ---------------- APPENDIX C. ARCHIVED LESSONS ----------------
+H1("APPENDIX C. ARCHIVED LESSONS LEARNED AND THREATS TO VALIDITY")
 P("Three modeling errors each inverted the experimental ranking while present; "
   "we report them as first-class results because any deferral-with-deadlines "
   "simulator can reproduce them.")
@@ -1177,30 +1936,42 @@ P("Threats to validity. (i) The active v2 experiment is a controlled CAISO "
   "deterministic and cannot test workload seasonality. (viii) Cooling and PUE "
   "are excluded by scope. (ix) The linear power model is calibrated on "
   "u ≈ 0.1–0.7 and omits memory/IO effects. (x) The learned-policy evidence in "
-  "Secs. V–VI belongs to archived v1 and is not a v2 result.")
+  "Appendices A–B belongs to archived v1 and is not a v2 result.")
 
-# ---------------- VIII. FUTURE WORK ----------------
+# ---------------- IX. FUTURE WORK ----------------
 EMIT_CONTENT = True
 body_after_results = doc.add_section(WD_SECTION.CONTINUOUS)
 set_cols(body_after_results, 2)
-H1("VII. FURTHER TOPICS OF CONSIDERATION")
-P("(1) Batch-safe constrained control is first priority: enforce terminal "
-  "completion/deadline feasibility during policy optimization rather than "
-  "accepting a penalty-mediated 31/40 seed failure rate. (2) Improve spatial "
-  "policy optimization, especially for Global where PPO captures only 5.47–"
-  "7.55% of QP savings, and diagnose the asymmetric US transfer. (3) Add "
-  "ramp-aware training or constraints because joint PPO worsens rare maximum "
-  "three-hour ramps, while preserving the observed p95 improvement. (4) Add "
-  "the secondary demand charge to a true multi-objective/Pareto study because "
-  "joint PPO raises the reference bill 5.3–8.1%. (5) Bound Global routing with "
-  "latency, residency, network capacity, and movement costs. (6) Add a causal "
-  "receding-horizon MPC comparator. (7) Test CAISO five-minute RTM, other "
-  "energy months/years, and other workload traces. (8) Add carbon intensity, "
-  "storage, and demand-response participation only after the core control "
-  "problem is stable.")
+H1("IX. FURTHER TOPICS OF CONSIDERATION")
+P("(1) Sec. VIII delivers batch-safe constrained control — a non-MPC "
+  "one-step feasibility projector with exact 0–100% drain reachability and "
+  "zero completion failures across all 36 newly trained and 20 replayed "
+  "models — so that specific prior priority is now closed; the open "
+  "question it leaves behind is reducing Global's 18.786–20.170% mean "
+  "safety-intervention rate, i.e., training the policy itself to need the "
+  "projector's correction less often rather than only guaranteeing safety "
+  "when it does intervene. (2) Collect FRESH e–h (or a genuinely new "
+  "region/month) confirmatory data for the projected controller, since the "
+  "current e–h numbers (Sec. VIII-K) remain descriptive only because those "
+  "cells were already exposed by v2/v3. (3) Improve spatial policy "
+  "optimization, especially for Global where unconstrained PPO captures "
+  "only 5.47–7.55% of QP savings, and diagnose the asymmetric US transfer. "
+  "(4) Add ramp-aware training or constraints because joint PPO worsens "
+  "rare maximum three-hour ramps, while preserving the observed p95 "
+  "improvement; the v4 projector's optional max_upward_ramp_mw cap "
+  "(Sec. VIII-F, Table XII item 10) is validated by smoke test but not yet "
+  "exercised in a trained model. (5) Add the secondary demand charge to a "
+  "true multi-objective/Pareto study because joint PPO raises the "
+  "reference bill 5.3–8.1%. (6) Bound Global routing with latency, "
+  "residency, network capacity, and movement costs. (7) Add a causal "
+  "receding-horizon MPC comparator — excluded from the v2, v3, AND v4 "
+  "protocols to date and not claimed anywhere in this thesis. (8) Test "
+  "CAISO five-minute RTM, other energy months/years, and other workload "
+  "traces. (9) Add carbon intensity, storage, and demand-response "
+  "participation only after the core control problem is stable.")
 
-# ---------------- IX. CONCLUSION ----------------
-H1("VIII. CONCLUSION")
+# ---------------- X. CONCLUSION ----------------
+H1("X. CONCLUSION")
 P("This thesis builds a reproducible chain from measured Google service/batch "
   "usage and PowerData2019 calibration to one real May-2025 CAISO energy "
   "archetype, equal 100 MW proxy DCs, a joint PPO controller, and a frozen "
@@ -1211,12 +1982,42 @@ P("This thesis builds a reproducible chain from measured Google service/batch "
   "complete service, but captures only 5.47–7.55% of QP savings. US spatial "
   "does not establish savings. Joint batch PPO fails the frozen headline: only "
   "9/40 seeds meet the completion floor, gains are fold-dependent, and rare "
-  "maximum ramps and the secondary demand-charge reference worsen. The "
-  "defensible contribution is therefore the real, audited experimental system; "
-  "the modest optimistic Global spatial result; and the negative evidence that "
-  "unconstrained PPO does not yet solve reliable joint spatio-temporal shaping. "
-  "The next step is not a stronger claim but safer batch control and better "
-  "capture of demonstrable spatial opportunity.")
+  "maximum ramps and the secondary demand-charge reference worsen. A post-hoc "
+  "exploratory v3 study (Sec. VII) adds the missing episode/deadline context, "
+  "but a post-run boundary audit shows the state repair remains incomplete; it "
+  "re-screens optimizer and reward-weight hyperparameters and trains "
+  "at up to 2× the frozen budget under a stricter pre-registered safety-first "
+  "gate; it still fails — the recovered US configuration is economically "
+  "indistinguishable from Status Quo and the recovered Global configuration is "
+  "only 1/10-seed safe despite a real positive economic effect — so the joint "
+  "failure is not an artifact of the omitted state or of training budget. A "
+  "completed v4 hard-safety study (Sec. VIII) then replaces the shaped, "
+  "sigmoid-capped drain decoder with a non-MPC one-step feasibility "
+  "projector — cumulative exact EDF admission, exact transport conservation, "
+  "exact 0–100% drain endpoints, and a frozen, no-leakage a–d-only capacity "
+  "bound — and trains 36 new PPO+projector models plus replays the archived "
+  "v3 weights under it: every one of the 36 newly trained, 20 replayed, and "
+  "20 descriptively transferred e–h seeds reaches exact service/batch "
+  "completion with zero expiry and zero infeasibility certificates. US "
+  "remains economically indistinguishable from Status Quo (−0.246% a–d, "
+  "−0.149% e–h, CIs crossing zero) while rarely invoking the projector "
+  "(0.021–0.580% of steps); Global is unambiguously positive (+3.262% a–d, "
+  "+3.611% e–h, every seed and CI positive) but with the projector "
+  "materially co-authoring roughly one step in five (18.786–20.170%), so "
+  "that gain is honestly attributed to the composed PPO+projector system "
+  "rather than to unconstrained PPO, which Sec. VI/VII already showed "
+  "cannot achieve it safely on its own. The defensible contribution is "
+  "therefore the real, audited experimental system; the modest optimistic "
+  "Global spatial result; the negative evidence, twice obtained under two "
+  "different state representations and training budgets, that unconstrained "
+  "PPO does not solve reliable joint spatio-temporal shaping; and a hard, "
+  "constructed safety guarantee — obtained without an MPC comparator and "
+  "without retraining away the underlying difficulty — that finally closes "
+  "the reachability and completion gaps documented in Sec. VII while making "
+  "explicit which of its economic gains are, and are not, evidence about "
+  "the learned policy in isolation. The next step is not a stronger claim "
+  "but fresh confirmatory transfer data and a policy that needs the "
+  "projector's correction less often.")
 
 # ---------------- REFERENCES ----------------
 H1("REFERENCES")

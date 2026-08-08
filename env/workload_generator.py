@@ -7,6 +7,7 @@ Can be used standalone for analysis or integrated into MultiDCEnv.
 from __future__ import annotations
 
 import json
+from bisect import bisect_left
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,6 +38,16 @@ class BatchPool:
         """Total CPU demand in the pool."""
         return sum(e.cpu_demand for e in self.entries)
 
+    def actionable_total_demand(self, current_step: int) -> float:
+        """Demand that remains serviceable at ``current_step``."""
+        return float(
+            sum(
+                entry.cpu_demand
+                for entry in self.entries
+                if entry.deadline_step > current_step
+            )
+        )
+
     def urgency(self, current_step: int, horizon_steps: int) -> float:
         """Fraction of pool demand within *horizon_steps* of its deadline."""
         total = 0.0
@@ -46,6 +57,85 @@ class BatchPool:
             if e.deadline_step - current_step <= horizon_steps:
                 urgent += e.cpu_demand
         return urgent / total if total > 0 else 0.0
+
+    def actionable_urgency(
+        self,
+        current_step: int,
+        horizon_steps: int,
+    ) -> float:
+        """Urgent fraction among entries that the current action can serve."""
+        total = 0.0
+        urgent = 0.0
+        for entry in self.entries:
+            remaining = entry.deadline_step - current_step
+            if remaining <= 0:
+                continue
+            total += entry.cpu_demand
+            if remaining <= horizon_steps:
+                urgent += entry.cpu_demand
+        return urgent / total if total > 0.0 else 0.0
+
+    def deadline_histogram(
+        self,
+        current_step: int,
+        bucket_edges: tuple[int, ...],
+    ) -> tuple[float, ...]:
+        """Return pool demand grouped by remaining-deadline steps.
+
+        ``bucket_edges=(1, 3, 6)`` produces ``<=1``, ``2..3``, ``4..6``,
+        and ``>6`` buckets.  Values are absolute normalized CPU demand, so the
+        result sums exactly to ``total_demand``.
+        """
+        if any(edge <= 0 for edge in bucket_edges):
+            raise ValueError("deadline bucket edges must be positive")
+        if any(
+            left >= right
+            for left, right in zip(bucket_edges, bucket_edges[1:])
+        ):
+            raise ValueError(
+                "deadline bucket edges must be strictly increasing"
+            )
+
+        buckets = [0.0] * (len(bucket_edges) + 1)
+        for entry in self.entries:
+            remaining = max(entry.deadline_step - current_step, 0)
+            buckets[bisect_left(bucket_edges, remaining)] += entry.cpu_demand
+        return tuple(buckets)
+
+    def actionable_deadline_histogram(
+        self,
+        current_step: int,
+        bucket_edges: tuple[int, ...],
+    ) -> tuple[float, ...]:
+        """Deadline histogram excluding already-unsalvageable carryover."""
+        if any(edge <= 0 for edge in bucket_edges):
+            raise ValueError("deadline bucket edges must be positive")
+        if any(
+            left >= right
+            for left, right in zip(bucket_edges, bucket_edges[1:])
+        ):
+            raise ValueError(
+                "deadline bucket edges must be strictly increasing"
+            )
+        buckets = [0.0] * (len(bucket_edges) + 1)
+        for entry in self.entries:
+            remaining = entry.deadline_step - current_step
+            if remaining <= 0:
+                continue
+            buckets[bisect_left(bucket_edges, remaining)] += entry.cpu_demand
+        return tuple(buckets)
+
+    def demand_due_by(self, current_step: int, horizon_steps: int) -> float:
+        """Return absolute pool demand due within ``horizon_steps``."""
+        if horizon_steps < 0:
+            raise ValueError("horizon_steps must be non-negative")
+        return float(
+            sum(
+                entry.cpu_demand
+                for entry in self.entries
+                if entry.deadline_step - current_step <= horizon_steps
+            )
+        )
 
     def add(self, cpu_demand: float, deadline_step: int) -> None:
         """Add a batch work chunk to the pool."""
@@ -60,8 +150,13 @@ class BatchPool:
         """
         if not self.entries or fraction <= 0:
             return 0.0
+        return self.drain_amount(self.total_demand * min(fraction, 1.0))
 
-        target = self.total_demand * min(fraction, 1.0)
+    def drain_amount(self, amount: float) -> float:
+        """Remove an exact CPU amount, earliest deadline first."""
+        if not self.entries or amount <= 0.0:
+            return 0.0
+        target = min(float(amount), self.total_demand)
         drained = 0.0
 
         # Sort indices by deadline (most urgent first)

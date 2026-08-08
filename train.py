@@ -32,6 +32,7 @@ def make_env(
     peak_penalty_weight: float = 0.0,
     demand_charge_rate: float = 0.0,
     demand_charge_period_steps: int | None = None,
+    allow_multiple_demand_charge_periods: bool = False,
     enforce_batch_completion: bool = False,
     completion_penalty_weight: float | None = None,
     burst_aware: bool = False,
@@ -69,6 +70,9 @@ def make_env(
         peak_penalty_weight=peak_penalty_weight,
         demand_charge_rate=demand_charge_rate,
         demand_charge_period_steps=demand_charge_period_steps,
+        allow_multiple_demand_charge_periods=(
+            allow_multiple_demand_charge_periods
+        ),
         enforce_batch_completion=enforce_batch_completion,
         completion_penalty_weight=completion_penalty_weight,
         burst_aware=burst_aware,
@@ -200,6 +204,12 @@ def main(argv: list[str] | None = None) -> None:
              "a rate quoted for that period; it must divide max_steps exactly.",
     )
     parser.add_argument(
+        "--allow-multiple-demand-charge-periods",
+        action="store_true",
+        help="Acknowledge that a shorter billing period charges the full rate "
+             "once per period. Required to prevent stale monthly-rate configs.",
+    )
+    parser.add_argument(
         "--enforce-batch-completion",
         action="store_true",
         help="Use gamma=1 dense completion shaping, terminal-pool value, and "
@@ -275,6 +285,9 @@ def main(argv: list[str] | None = None) -> None:
         peak_penalty_weight=args.peak_penalty_weight,
         demand_charge_rate=args.demand_charge_rate,
         demand_charge_period_steps=args.demand_charge_period_steps,
+        allow_multiple_demand_charge_periods=(
+            args.allow_multiple_demand_charge_periods
+        ),
         enforce_batch_completion=args.enforce_batch_completion,
         completion_penalty_weight=args.completion_penalty,
         burst_aware=args.burst_aware,

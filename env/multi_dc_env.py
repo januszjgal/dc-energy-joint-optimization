@@ -30,6 +30,7 @@ cost Markov within a per-step reward.
 from __future__ import annotations
 
 import math
+from bisect import bisect_left
 from typing import Any
 
 import gymnasium as gym
@@ -38,6 +39,7 @@ from gymnasium import spaces
 
 from env.dc_site import DataCenterSite
 from env.power_model import PowerModel
+from env.reward import RewardConfig
 
 
 INTERVAL_HOURS = 5.0 / 60.0  # 5-minute intervals
@@ -124,6 +126,10 @@ class MultiDCEnv(gym.Env):
         # periods represent a genuinely different tariff and therefore require
         # a rate quoted for that shorter period; they are not a monthly proxy.
         demand_charge_period_steps: int | None = None,
+        # A shorter period charges the full configured rate once per period.
+        # Require an explicit acknowledgement so stale legacy values cannot
+        # silently multiply a nominal monthly rate.
+        allow_multiple_demand_charge_periods: bool = False,
         # Demand charges make the value of dropping or delaying one normalized
         # CPU unit hundreds of thousands of dollars. When enabled, raise the
         # backlog/expiry weights above a conservative marginal-cost bound so
@@ -176,6 +182,11 @@ class MultiDCEnv(gym.Env):
         # spanned by the CURRENT training scenario. Test-fold cells never set
         # training support bounds.
         domain_randomization: bool = False,
+        # V3 recovery controls are opt-in so frozen v2 models retain their
+        # original observation and reward semantics.
+        reward_config: RewardConfig | None = None,
+        observe_episode_progress: bool = False,
+        deadline_bucket_edges: tuple[int, ...] | None = None,
     ):
         super().__init__()
 
@@ -225,11 +236,38 @@ class MultiDCEnv(gym.Env):
                     f"got {demand_charge_period_steps}"
                 )
         self.demand_charge_enabled = self.demand_charge_rate > 0.0
+        self.allow_multiple_demand_charge_periods = bool(
+            allow_multiple_demand_charge_periods
+        )
         self.enforce_batch_completion = bool(enforce_batch_completion)
         if self.enforce_batch_completion and not batch_enabled:
             raise ValueError(
                 "enforce_batch_completion requires batch_enabled=True"
             )
+        self.reward_config = reward_config
+        if self.reward_config is not None:
+            if not self.enforce_batch_completion:
+                raise ValueError(
+                    "RewardConfig requires enforce_batch_completion=True"
+                )
+            if completion_penalty_weight is not None:
+                raise ValueError(
+                    "RewardConfig cannot be combined with the legacy "
+                    "completion_penalty_weight"
+                )
+            if reward_scale is not None:
+                raise ValueError(
+                    "RewardConfig owns reward_scale; do not also pass "
+                    "reward_scale"
+                )
+            if (
+                self.reward_config.subtract_idle_cost
+                and self.demand_charge_enabled
+            ):
+                raise ValueError(
+                    "idle-cost subtraction is not defined for a "
+                    "history-dependent demand charge"
+                )
         self.demand_charge_penalty_guard = bool(
             demand_charge_penalty_guard and self.demand_charge_enabled
         )
@@ -242,7 +280,16 @@ class MultiDCEnv(gym.Env):
         if self.economic_penalty_guard_enabled:
             computed_floor = self._economic_penalty_floor()
             self.computed_economic_penalty_floor = computed_floor
-            if completion_penalty_weight is not None:
+            if self.reward_config is not None:
+                self.reward_config.validate(computed_floor)
+                self.economic_penalty_floor = computed_floor
+                self.backlog_weight = (
+                    self.reward_config.evaluation_service_backlog_weight
+                )
+                deadline_penalty_weight = (
+                    self.reward_config.evaluation_batch_completion_weight
+                )
+            elif completion_penalty_weight is not None:
                 explicit_floor = float(completion_penalty_weight)
                 if (
                     not math.isfinite(explicit_floor)
@@ -254,17 +301,20 @@ class MultiDCEnv(gym.Env):
                         f"got {completion_penalty_weight}"
                     )
                 self.economic_penalty_floor = explicit_floor
-            else:
+            elif self.reward_config is None:
                 self.economic_penalty_floor = computed_floor
-            self.backlog_weight = max(
-                self.configured_backlog_weight,
-                self.economic_penalty_floor,
-            )
-            deadline_penalty_weight = max(
-                self.configured_deadline_penalty_weight,
-                self.economic_penalty_floor,
-            )
-        if reward_scale is None:
+            if self.reward_config is None:
+                self.backlog_weight = max(
+                    self.configured_backlog_weight,
+                    self.economic_penalty_floor,
+                )
+                deadline_penalty_weight = max(
+                    self.configured_deadline_penalty_weight,
+                    self.economic_penalty_floor,
+                )
+        if self.reward_config is not None:
+            self.reward_scale = self.reward_config.reward_scale
+        elif reward_scale is None:
             self.reward_scale = (
                 DEMAND_CHARGE_REWARD_SCALE
                 if (
@@ -296,6 +346,17 @@ class MultiDCEnv(gym.Env):
                 f"demand_charge_period_steps={self.demand_charge_period_steps}"
             )
         if (
+            self.demand_charge_enabled
+            and self.demand_charge_period_steps != self.max_steps
+            and not self.allow_multiple_demand_charge_periods
+        ):
+            raise ValueError(
+                "demand_charge_period_steps shorter than the episode charges "
+                "the full demand_charge_rate once per period; pass "
+                "allow_multiple_demand_charge_periods=True only when that "
+                "per-period tariff is intentional"
+            )
+        if (
             batch_enabled
             and self.demand_charge_enabled
             and self.demand_charge_period_steps != self.max_steps
@@ -318,11 +379,49 @@ class MultiDCEnv(gym.Env):
         self.batch_enabled = batch_enabled
         self.flexibility_factor = flexibility_factor
         self.deadline_penalty_weight = float(deadline_penalty_weight)
+        self.batch_completion_weight = float(deadline_penalty_weight)
+        self.reward_service_backlog_weight = float(
+            self.reward_config.service_backlog_weight
+            if self.reward_config is not None
+            else self.backlog_weight
+        )
+        self.reward_batch_completion_weight = float(
+            self.reward_config.batch_completion_weight
+            if self.reward_config is not None
+            else self.batch_completion_weight
+        )
         self.urgency_horizon_steps = urgency_horizon_steps
         self.interval_seconds = interval_seconds
         self.batch_spatial_routing = batch_spatial_routing and batch_enabled
+        self.observe_episode_progress = bool(observe_episode_progress)
+        raw_bucket_edges = (
+            tuple(deadline_bucket_edges)
+            if deadline_bucket_edges is not None
+            else ()
+        )
+        if any(
+            isinstance(edge, bool) or int(edge) != edge or int(edge) <= 0
+            for edge in raw_bucket_edges
+        ):
+            raise ValueError(
+                "deadline_bucket_edges must contain positive integers"
+            )
+        self.deadline_bucket_edges = tuple(int(edge) for edge in raw_bucket_edges)
+        if any(
+            left >= right
+            for left, right in zip(
+                self.deadline_bucket_edges,
+                self.deadline_bucket_edges[1:],
+            )
+        ):
+            raise ValueError(
+                "deadline_bucket_edges must be strictly increasing"
+            )
+        if self.deadline_bucket_edges and not self.batch_enabled:
+            raise ValueError(
+                "deadline_bucket_edges require batch_enabled=True"
+            )
 
-        self.memory_enabled = memory_enabled
         self.burst_aware = burst_aware and batch_enabled  # only meaningful in batch mode
         self.site_context = site_context
         # Original compute bundles for permutation (captured once at init)
@@ -369,19 +468,36 @@ class MultiDCEnv(gym.Env):
         if self.batch_enabled:
             mem_dims = 2 if memory_enabled else 0
             burst_dims = 1 if self.burst_aware else 0
+            deadline_dims = (
+                len(self.deadline_bucket_edges) + 1
+                if self.deadline_bucket_edges
+                else 0
+            )
+            episode_dims = 2 if self.observe_episode_progress else 0
             obs_dim = (
-                (9 + mem_dims + burst_dims + ctx_dims + dc_dims) * self.n_dc
+                (
+                    9
+                    + mem_dims
+                    + burst_dims
+                    + ctx_dims
+                    + dc_dims
+                    + deadline_dims
+                )
+                * self.n_dc
                 + 3
                 + billing_dims
+                + episode_dims
             )
             # service routing (N) + drain (N) [+ batch routing (N) if enabled]
             action_dim = (3 if self.batch_spatial_routing else 2) * self.n_dc
         else:
             mem_dims = 1 if memory_enabled else 0
+            episode_dims = 2 if self.observe_episode_progress else 0
             obs_dim = (
                 (6 + mem_dims + ctx_dims + dc_dims) * self.n_dc
                 + 2
                 + billing_dims
+                + episode_dims
             )
             action_dim = self.n_dc
 
@@ -496,6 +612,89 @@ class MultiDCEnv(gym.Env):
             max_saving = max(max_saving, energy + peak + demand)
         return PENALTY_SAFETY_MARGIN * max_saving
 
+    def _episode_context(self, t: int) -> tuple[float, float]:
+        """Return pre-action month progress and remaining-horizon fractions."""
+        denominator = max(self.max_steps - 1, 1)
+        progress = min(max(t / denominator, 0.0), 1.0)
+        remaining = min(max((self.max_steps - 1 - t) / denominator, 0.0), 1.0)
+        return float(progress), float(remaining)
+
+    def _action_independent_idle_cost(self, t: int) -> float:
+        """Return the energy/stress cost paid even at zero utilization."""
+        if (
+            self.reward_config is None
+            or not self.reward_config.subtract_idle_cost
+        ):
+            return 0.0
+        total = 0.0
+        for site in self.sites:
+            pm = (
+                site.power_model
+                if site.power_model is not None
+                else self.power_model
+            )
+            idle_mw = pm.compute(0.0) * site.rated_power_mw
+            total += (
+                site.get_price(t)
+                * idle_mw
+                * 1000.0
+                * INTERVAL_HOURS
+            )
+            total += (
+                self.peak_penalty_weight
+                * idle_mw
+                * idle_mw
+                * max(site.get_net_demand(t), 0.0)
+            )
+        return float(total)
+
+    def _batch_urgency_potential(self, t: int) -> float:
+        """Potential over observable pending/current batch work.
+
+        The negative sign means reducing deadline-weighted pending demand raises
+        the potential and therefore provides a positive shaping reward.
+        """
+        if (
+            self.reward_config is None
+            or self.reward_config.urgency_potential_weight <= 0.0
+            or t >= self.max_steps
+        ):
+            return 0.0
+        score = 0.0
+        for i, site in enumerate(self.sites):
+            for entry in site.batch_pool.entries:
+                remaining = max(entry.deadline_step - t, 1)
+                score += entry.cpu_demand / remaining
+            arrival = site.get_batch_demand(t)
+            if arrival > 0.0:
+                score += arrival / max(self._deadline_offsets[i], 1)
+        return float(-self.reward_config.urgency_potential_weight * score)
+
+    def _training_reward(
+        self,
+        total_cost: float,
+        t: int,
+        potential_before: float = 0.0,
+        potential_after: float = 0.0,
+        penalty_adjustment: float = 0.0,
+    ) -> tuple[float, float, float, float]:
+        """Return scaled reward plus its training-only decomposition."""
+        idle_cost = self._action_independent_idle_cost(t)
+        potential_delta = potential_after - potential_before
+        training_cost = (
+            total_cost
+            + penalty_adjustment
+            - idle_cost
+            - potential_delta
+        )
+        reward = -training_cost * self.reward_scale
+        return (
+            float(reward),
+            float(training_cost),
+            float(idle_cost),
+            float(potential_delta),
+        )
+
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[np.ndarray, dict]:
@@ -540,9 +739,17 @@ class MultiDCEnv(gym.Env):
     def step(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
+        action_array = np.asarray(action)
+        if action_array.shape != self.action_space.shape:
+            raise ValueError(
+                "action shape must exactly match the configured controller: "
+                f"expected {self.action_space.shape}, got {action_array.shape}"
+            )
+        if not np.isfinite(action_array).all():
+            raise ValueError("action must contain only finite values")
         if self.batch_enabled:
-            return self._step_batch(action)
-        return self._step_spatial(action)
+            return self._step_batch(action_array)
+        return self._step_spatial(action_array)
 
     # ------------------------------------------------------------------
     # Per-DC cost (shared)
@@ -616,13 +823,16 @@ class MultiDCEnv(gym.Env):
             "demand_charge_period_rate": float(self._period_rate),
             "demand_charge_period_progress": progress,
             "demand_charge_period_rate_fraction": rate_fraction,
+            "allow_multiple_demand_charge_periods": (
+                self.allow_multiple_demand_charge_periods
+            ),
             "demand_charge_penalty_guard": self.demand_charge_penalty_guard,
             "economic_penalty_guard_enabled": (
                 self.economic_penalty_guard_enabled
             ),
             "enforce_batch_completion": self.enforce_batch_completion,
             "completion_penalty_weight": (
-                float(self.economic_penalty_floor)
+                float(self.batch_completion_weight)
                 if self.enforce_batch_completion
                 else None
             ),
@@ -640,7 +850,27 @@ class MultiDCEnv(gym.Env):
             "effective_deadline_penalty_weight": float(
                 self.deadline_penalty_weight
             ),
+            "batch_completion_weight": float(
+                self.batch_completion_weight
+            ),
+            "reward_service_backlog_weight": float(
+                self.reward_service_backlog_weight
+            ),
+            "reward_batch_completion_weight": float(
+                self.reward_batch_completion_weight
+            ),
             "reward_scale": float(self.reward_scale),
+            "reward_idle_cost_subtraction": bool(
+                self.reward_config is not None
+                and self.reward_config.subtract_idle_cost
+            ),
+            "reward_urgency_potential_weight": float(
+                self.reward_config.urgency_potential_weight
+                if self.reward_config is not None
+                else 0.0
+            ),
+            "observe_episode_progress": self.observe_episode_progress,
+            "deadline_bucket_edges": list(self.deadline_bucket_edges),
             "batch_completion_shaping_enabled": (
                 self.batch_completion_shaping_enabled
             ),
@@ -753,7 +983,12 @@ class MultiDCEnv(gym.Env):
             )
 
         billing_info = self._billing_info(t)
-        reward = -total_cost * self.reward_scale
+        (
+            reward,
+            reward_training_cost,
+            reward_idle_cost,
+            reward_potential_delta,
+        ) = self._training_reward(total_cost, t)
 
         self.step_index += 1
         terminated = self.step_index >= self.max_steps
@@ -769,6 +1004,9 @@ class MultiDCEnv(gym.Env):
             "total_peak_penalty": float(total_peak),
             "total_demand_charge": float(total_demand_charge),
             "total_grid_mw": float(total_grid_mw),
+            "reward_training_cost": reward_training_cost,
+            "reward_idle_cost": reward_idle_cost,
+            "reward_potential_delta": reward_potential_delta,
             "per_dc": info_per_dc,
             **billing_info,
         }
@@ -789,6 +1027,7 @@ class MultiDCEnv(gym.Env):
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         t = self.step_index
+        potential_before = self._batch_urgency_potential(t)
         N = self.n_dc
         action = np.asarray(action, dtype=np.float64)
 
@@ -939,26 +1178,53 @@ class MultiDCEnv(gym.Env):
             info_per_dc[i]["batch_pool_size"] = float(site.batch_pool.total_demand)
 
         total_batch_accounting_cost = 0.0
+        batch_balance = float(sum(batch_arrivals)) - total_served_sum
         if self.batch_completion_shaping_enabled:
             # With gamma=1 this telescopes exactly:
             # Σ λ(arrivals_t - completed_t) = λ(expired + terminal_pool).
             # It preserves the finite-horizon objective while crediting
             # completion immediately instead of only at the terminal step.
             total_batch_accounting_cost = self.deadline_penalty_weight * (
-                float(sum(batch_arrivals)) - total_served_sum
+                batch_balance
             )
             total_cost += total_batch_accounting_cost
 
-        total_terminal_batch_cost = 0.0
-        for i, site in enumerate(self.sites):
-            info_per_dc[i]["terminal_batch_cost"] = 0.0
-
         billing_info = self._billing_info(t)
-        reward = -total_cost * self.reward_scale
-
         self.step_index += 1
         terminated = self.step_index >= self.max_steps
         truncated = False
+        potential_after = (
+            0.0
+            if terminated
+            else self._batch_urgency_potential(self.step_index)
+        )
+        total_backlog_units = float(
+            sum(dc["backlog"] for dc in info_per_dc)
+        )
+        penalty_adjustment = (
+            (
+                self.reward_service_backlog_weight
+                - self.backlog_weight
+            )
+            * total_backlog_units
+            + (
+                self.reward_batch_completion_weight
+                - self.batch_completion_weight
+            )
+            * batch_balance
+        )
+        (
+            reward,
+            reward_training_cost,
+            reward_idle_cost,
+            reward_potential_delta,
+        ) = self._training_reward(
+            total_cost,
+            t,
+            potential_before,
+            potential_after,
+            penalty_adjustment,
+        )
         if not terminated:
             self._start_billing_period(self.step_index)
 
@@ -968,7 +1234,6 @@ class MultiDCEnv(gym.Env):
             "total_batch_pool": float(
                 sum(s.batch_pool.total_demand for s in self.sites)
             ),
-            "total_terminal_batch_cost": float(total_terminal_batch_cost),
             "total_batch_accounting_cost": float(
                 total_batch_accounting_cost
             ),
@@ -980,6 +1245,10 @@ class MultiDCEnv(gym.Env):
             "total_peak_penalty": float(total_peak),
             "total_demand_charge": float(total_demand_charge),
             "total_grid_mw": float(total_grid_mw),
+            "reward_training_cost": reward_training_cost,
+            "reward_idle_cost": reward_idle_cost,
+            "reward_potential_delta": reward_potential_delta,
+            "reward_penalty_adjustment": float(penalty_adjustment),
             "per_dc": info_per_dc,
             **billing_info,
         }
@@ -1018,9 +1287,24 @@ class MultiDCEnv(gym.Env):
                 svc = site.get_service_demand(t)
                 batch_arrival = site.get_batch_demand(t)
                 total_service += svc
-                pool_size = site.batch_pool.total_demand
+                actionable_state = bool(
+                    getattr(self, "actionable_deadline_state", False)
+                )
+                pool_size = (
+                    site.batch_pool.actionable_total_demand(t)
+                    if actionable_state
+                    else site.batch_pool.total_demand
+                )
                 total_batch_pool += pool_size
-                urgency = site.batch_pool.urgency(t, self.urgency_horizon_steps)
+                urgency = (
+                    site.batch_pool.actionable_urgency(
+                        t, self.urgency_horizon_steps
+                    )
+                    if actionable_state
+                    else site.batch_pool.urgency(
+                        t, self.urgency_horizon_steps
+                    )
+                )
                 per_dc = [
                     svc,
                     # This arrival is injected later in the same step and can
@@ -1043,6 +1327,26 @@ class MultiDCEnv(gym.Env):
                     per_dc.extend(self._site_ctx(site))
                 if self.demand_charge_enabled:
                     per_dc.append(self._billed_peak_mw[i] / site.rated_power_mw)
+                if self.deadline_bucket_edges:
+                    deadline_buckets = list(
+                        (
+                            site.batch_pool.actionable_deadline_histogram(
+                                t,
+                                self.deadline_bucket_edges,
+                            )
+                            if actionable_state
+                            else site.batch_pool.deadline_histogram(
+                                t,
+                                self.deadline_bucket_edges,
+                            )
+                        )
+                    )
+                    arrival_bucket = bisect_left(
+                        self.deadline_bucket_edges,
+                        self._deadline_offsets[i],
+                    )
+                    deadline_buckets[arrival_bucket] += batch_arrival
+                    per_dc.extend(deadline_buckets)
                 obs_parts.extend(per_dc)
             hour_of_day = (t % self.steps_per_day) / self.steps_per_day
             obs_parts.extend([total_service, total_batch_pool, hour_of_day])
@@ -1071,5 +1375,7 @@ class MultiDCEnv(gym.Env):
 
         if self.demand_charge_enabled:
             obs_parts.extend(self._billing_context(t))
+        if self.observe_episode_progress:
+            obs_parts.extend(self._episode_context(t))
 
         return np.array(obs_parts, dtype=np.float32)
