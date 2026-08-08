@@ -370,12 +370,37 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
 
     if bool(first_step.get("safety_enabled", False)):
         intervention_values = [
-            bool(row.get("safety_intervened", False))
+            bool(
+                row.get(
+                    "safety_emergency_intervened",
+                    row.get("safety_intervened", False),
+                )
+            )
             for row in history
         ]
         projection_values = np.asarray(
             [
                 row.get("safety_projection_l2", 0.0)
+                for row in history
+            ],
+            dtype=np.float64,
+        )
+        decoder_adjusted_values = [
+            bool(row.get("safety_decoder_adjusted", False)) for row in history
+        ]
+        decoder_adjustment_values = np.asarray(
+            [
+                row.get("safety_decoder_adjustment_l2", 0.0)
+                for row in history
+            ],
+            dtype=np.float64,
+        )
+        emergency_adjustment_values = np.asarray(
+            [
+                row.get(
+                    "safety_emergency_adjustment_l2",
+                    row.get("safety_projection_l2", 0.0),
+                )
                 for row in history
             ],
             dtype=np.float64,
@@ -412,8 +437,24 @@ def compute_summary(history: list[dict], batch_enabled: bool = False) -> dict:
             "infeasibility_certificates": 0,
             "intervention_count": int(sum(intervention_values)),
             "intervention_rate": float(np.mean(intervention_values)),
+            "emergency_intervention_count": int(sum(intervention_values)),
+            "emergency_intervention_rate": float(np.mean(intervention_values)),
             "mean_projection_l2": float(projection_values.mean()),
             "max_projection_l2": float(projection_values.max()),
+            "decoder_adjustment_count": int(sum(decoder_adjusted_values)),
+            "decoder_adjustment_rate": float(np.mean(decoder_adjusted_values)),
+            "mean_decoder_adjustment_l2": float(
+                decoder_adjustment_values.mean()
+            ),
+            "max_decoder_adjustment_l2": float(
+                decoder_adjustment_values.max()
+            ),
+            "mean_emergency_adjustment_l2": float(
+                emergency_adjustment_values.mean()
+            ),
+            "max_emergency_adjustment_l2": float(
+                emergency_adjustment_values.max()
+            ),
             "mandatory_step_count": int(
                 np.count_nonzero(mandatory_values > 1e-12)
             ),
