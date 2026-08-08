@@ -133,6 +133,18 @@ coverage, and discards the raw bytes. PJM remains an explicit credential
 block. These are parser/schema probes, not a substitute for the complete
 all-six physical and price calendar.
 
+The preflight also consumes
+`provenance/coverage_evidence.json`. Current probes show candidate-boundary
+availability for NYISO and CAISO and a covering retention span for SPP, but
+they do not clear the exact full-product calendar gate until every required
+interval and raw hash is staged. ERCOT remains blocked because report 13424 has
+no observed 2026 wind+solar annual file and report 13101 is a short-retention
+daily load listing. Annual DAM/RT price archives alone do not establish the
+required physical tuple. An ERCOT EIA-930 fallback is considered only when
+both `EIA_API_KEY` is present and
+`--enable-eia-ercot-fallback` is passed; it is constrained to the same
+balancing authority and still requires retrieval and canonical validation.
+
 ## Current live capability status
 
 The committed report under `output/energy_model_v3/` is the source-of-truth for

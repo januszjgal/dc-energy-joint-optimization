@@ -104,35 +104,90 @@
     "MISO_MINN_HUB": "required credential MISO_API_KEY is not set",
     "PJM_DOM": "required credential PJM_API_KEY is not set"
   },
-  "generated_at_utc": "2026-08-08T21:50:38.650709+00:00",
+  "coverage_assessment": {
+    "assessed_at_utc": "2026-08-08T23:00:25.582919+00:00",
+    "blockers": {
+      "CAISO_NP15": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
+      "ERCOT_LZ_NORTH": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+      "MISO_MINN_HUB": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified",
+      "NYISO_NYC_J": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
+      "PJM_DOM": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified",
+      "SPP_NORTH_HUB": "GenMix365 spans 2025-08-08T10:10:00Z through 2026-08-08T09:30:00Z with 104748 rows, but the candidate subset has not been exact-index validated with all DAM products"
+    },
+    "candidate_end_utc": "2026-05-01T00:00:00Z",
+    "candidate_start_utc": "2025-09-01T00:00:00Z",
+    "eia_api_key_available": false,
+    "ercot_eia_fallback_activated": false,
+    "evidence_sha256": "eace0b1598a87d6488b52a4645ad141a09b814c70dcf185af39a757e81ed39f5",
+    "markets": {
+      "CAISO_NP15": {
+        "reason": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
+        "status": "BLOCKED"
+      },
+      "ERCOT_LZ_NORTH": {
+        "reason": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+        "status": "BLOCKED"
+      },
+      "MISO_MINN_HUB": {
+        "reason": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified",
+        "status": "BLOCKED"
+      },
+      "NYISO_NYC_J": {
+        "reason": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
+        "status": "BLOCKED"
+      },
+      "PJM_DOM": {
+        "reason": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified",
+        "status": "BLOCKED"
+      },
+      "SPP_NORTH_HUB": {
+        "reason": "GenMix365 spans 2025-08-08T10:10:00Z through 2026-08-08T09:30:00Z with 104748 rows, but the candidate subset has not been exact-index validated with all DAM products",
+        "status": "BLOCKED"
+      }
+    },
+    "schema_version": "energy-model-v3-coverage-assessment",
+    "status": "BLOCKED",
+    "validated_files": {}
+  },
+  "coverage_failures": {
+    "CAISO_NP15": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
+    "ERCOT_LZ_NORTH": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+    "MISO_MINN_HUB": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified",
+    "NYISO_NYC_J": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
+    "PJM_DOM": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified",
+    "SPP_NORTH_HUB": "GenMix365 spans 2025-08-08T10:10:00Z through 2026-08-08T09:30:00Z with 104748 rows, but the candidate subset has not been exact-index validated with all DAM products",
+    "coverage_assessment": "coverage assessment is not fully verified"
+  },
+  "generated_at_utc": "2026-08-08T23:00:25.582952+00:00",
   "invalid_primary_inputs": {},
   "missing_primary_inputs": {
     "CAISO_NP15": [
-      "data\\energy_model_v3\\native\\CAISO_NP15\\physical_hourly.csv",
-      "data\\energy_model_v3\\native\\CAISO_NP15\\price_hourly.csv"
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\CAISO_NP15\\physical_hourly.csv",
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\CAISO_NP15\\price_hourly.csv"
     ],
     "ERCOT_LZ_NORTH": [
-      "data\\energy_model_v3\\native\\ERCOT_LZ_NORTH\\physical_hourly.csv",
-      "data\\energy_model_v3\\native\\ERCOT_LZ_NORTH\\price_hourly.csv"
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\ERCOT_LZ_NORTH\\physical_hourly.csv",
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\ERCOT_LZ_NORTH\\price_hourly.csv"
     ],
     "MISO_MINN_HUB": [
-      "data\\energy_model_v3\\native\\MISO_MINN_HUB\\physical_hourly.csv",
-      "data\\energy_model_v3\\native\\MISO_MINN_HUB\\price_hourly.csv"
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\MISO_MINN_HUB\\physical_hourly.csv",
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\MISO_MINN_HUB\\price_hourly.csv"
     ],
     "NYISO_NYC_J": [
-      "data\\energy_model_v3\\native\\NYISO_NYC_J\\physical_hourly.csv",
-      "data\\energy_model_v3\\native\\NYISO_NYC_J\\price_hourly.csv"
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\NYISO_NYC_J\\physical_hourly.csv",
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\NYISO_NYC_J\\price_hourly.csv"
     ],
     "PJM_DOM": [
-      "data\\energy_model_v3\\native\\PJM_DOM\\physical_hourly.csv",
-      "data\\energy_model_v3\\native\\PJM_DOM\\price_hourly.csv"
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\PJM_DOM\\physical_hourly.csv",
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\PJM_DOM\\price_hourly.csv"
     ],
     "SPP_NORTH_HUB": [
-      "data\\energy_model_v3\\native\\SPP_NORTH_HUB\\physical_hourly.csv",
-      "data\\energy_model_v3\\native\\SPP_NORTH_HUB\\price_hourly.csv"
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\SPP_NORTH_HUB\\physical_hourly.csv",
+      "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-super-pancake\\data\\energy_model_v3\\native\\SPP_NORTH_HUB\\price_hourly.csv"
     ]
   },
   "schema_version": "energy-model-v3",
   "shortening_dropping_interpolation_forbidden": true,
-  "status": "BLOCKED"
+  "status": "BLOCKED",
+  "validated_primary_files": {}
 }

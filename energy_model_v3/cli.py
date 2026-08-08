@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -26,6 +27,7 @@ from .adapters import (
     parse_nyiso_da,
     parse_spp_da,
     read_ercot_xlsx_sheet,
+    select_ercot_document,
 )
 from .adapters.base import download_raw
 from .builder import (
@@ -37,6 +39,7 @@ from .builder import (
 )
 from .calendar import make_calendar
 from .contract import ContractError
+from .coverage import assess_candidate_coverage
 from .derivations import (
     add_grid_features,
     calibrate_scale,
@@ -213,10 +216,9 @@ def _collect_live_parser_records(
     )
     ercot_discovery.raise_for_status()
     documents = ercot_discovery.json()["ListDocsByRptTypeRes"]["DocumentList"]
-    annual = next(
-        item["Document"]
-        for item in documents
-        if item["Document"]["FriendlyName"] == "DAMLZHBSPP_2025"
+    annual = select_ercot_document(
+        documents,
+        friendly_name="DAMLZHBSPP_2025",
     )
     ercot_response = requests.get(
         "https://www.ercot.com/misdownload/servlets/mirDownload",
@@ -349,7 +351,17 @@ def command_preflight(args: argparse.Namespace) -> int:
             get_adapter(market).capability().to_dict() for market in MARKETS
         ]
     )
-    report = blocked_preflight(Path(args.data_root), capabilities)
+    coverage_path = Path(args.coverage_evidence)
+    if not coverage_path.exists():
+        raise ContractError(f"coverage evidence is missing: {coverage_path}")
+    report = blocked_preflight(
+        Path(args.data_root),
+        capabilities,
+        coverage_evidence_path=coverage_path,
+        repository_root=ROOT,
+        eia_api_key_available=bool(os.environ.get("EIA_API_KEY")),
+        ercot_eia_fallback_activated=args.enable_eia_ercot_fallback,
+    )
     write_json(Path(args.output), report)
     return 2 if report["status"] == "BLOCKED" else 0
 
@@ -394,6 +406,7 @@ def command_manifest(args: argparse.Namespace) -> int:
         DEFAULT_DATA / "scale-config.yaml",
         DEFAULT_DATA / "provenance" / "source_contract.json",
         DEFAULT_DATA / "provenance" / "forecast_capabilities.json",
+        DEFAULT_DATA / "provenance" / "coverage_evidence.json",
         DEFAULT_OUTPUT / "capabilities.json",
         DEFAULT_OUTPUT / "sample-download-manifest.json",
         DEFAULT_OUTPUT / "live-parser-probes.json",
@@ -409,6 +422,82 @@ def command_manifest(args: argparse.Namespace) -> int:
             encoding="utf-8"
         )
     )
+    coverage_path = DEFAULT_DATA / "provenance" / "coverage_evidence.json"
+    assessed_coverage_hash = (
+        blocked_report.get("coverage_assessment", {}).get("evidence_sha256")
+    )
+    current_coverage_hash = sha256(coverage_path)
+    if assessed_coverage_hash != current_coverage_hash:
+        raise ContractError(
+            "blocked report is stale relative to coverage evidence"
+        )
+    current_coverage_evidence = json.loads(
+        coverage_path.read_text(encoding="utf-8")
+    )
+    current_coverage_assessment = assess_candidate_coverage(
+        current_coverage_evidence,
+        evidence_sha256=current_coverage_hash,
+        repository_root=ROOT,
+        eia_api_key_available=bool(os.environ.get("EIA_API_KEY")),
+        ercot_eia_fallback_activated=bool(
+            blocked_report.get("coverage_assessment", {}).get(
+                "ercot_eia_fallback_activated"
+            )
+        ),
+    )
+    previous_assessment = blocked_report.get("coverage_assessment", {})
+    for field in ("status", "blockers", "markets", "evidence_sha256"):
+        if previous_assessment.get(field) != current_coverage_assessment.get(field):
+            raise ContractError(
+                "blocked report coverage assessment is stale or inconsistent"
+            )
+    capabilities_path = DEFAULT_OUTPUT / "capabilities.json"
+    current_capabilities = json.loads(
+        capabilities_path.read_text(encoding="utf-8")
+    )
+    if blocked_report.get("capabilities") != current_capabilities:
+        raise ContractError(
+            "blocked report is stale relative to capability artifact"
+        )
+    current_preflight = blocked_preflight(
+        DEFAULT_DATA,
+        current_capabilities,
+        coverage_evidence_path=coverage_path,
+        repository_root=ROOT,
+        eia_api_key_available=bool(os.environ.get("EIA_API_KEY")),
+        ercot_eia_fallback_activated=bool(
+            current_coverage_assessment.get(
+                "ercot_eia_fallback_activated"
+            )
+        ),
+    )
+    for field in (
+        "status",
+        "missing_primary_inputs",
+        "invalid_primary_inputs",
+        "capability_failures",
+        "coverage_failures",
+        "validated_primary_files",
+    ):
+        if blocked_report.get(field) != current_preflight.get(field):
+            raise ContractError(
+                "blocked report is stale relative to current preflight"
+            )
+    for relative, expected_hash in current_coverage_assessment.get(
+        "validated_files", {}
+    ).items():
+        proof_path = ROOT / relative
+        if not proof_path.is_file() or sha256(proof_path) != expected_hash:
+            raise ContractError(f"coverage proof changed: {relative}")
+        paths.append(proof_path)
+    for relative, expected_hash in current_preflight.get(
+        "validated_primary_files", {}
+    ).items():
+        input_path = ROOT / relative
+        if not input_path.is_file() or sha256(input_path) != expected_hash:
+            raise ContractError(f"primary input changed: {relative}")
+        paths.append(input_path)
+    blocked_report = current_preflight
     live_panel_manifest = DEFAULT_OUTPUT / "panel" / "manifest.json"
     ready = blocked_report["status"] == "READY"
     panel_error: str | None = None
@@ -424,6 +513,12 @@ def command_manifest(args: argparse.Namespace) -> int:
                 raise ContractError("panel market order is invalid")
             if panel.get("exact_common_index") is not True:
                 raise ContractError("panel common-index claim is absent")
+            if panel.get("inputs") != current_preflight.get(
+                "validated_primary_files"
+            ):
+                raise ContractError(
+                    "panel inputs do not match current preflight inputs"
+                )
             primary_scenario = (
                 ROOT / "env" / "scenarios" / "us_six_market_v3_primary.yaml"
             )
@@ -458,11 +553,32 @@ def command_manifest(args: argparse.Namespace) -> int:
         reason = f"Preflight is ready, but live panel validation failed: {panel_error}"
     else:
         failures = blocked_report.get("capability_failures", {})
+        coverage_failures = blocked_report.get("coverage_failures", {})
+        missing_inputs = blocked_report.get("missing_primary_inputs", {})
+        invalid_inputs = blocked_report.get("invalid_primary_inputs", {})
+        combined = {
+            **{
+                f"capability:{market}": message
+                for market, message in failures.items()
+            },
+            **{
+                f"coverage:{market}": message
+                for market, message in coverage_failures.items()
+            },
+            **{
+                f"missing:{market}": f"{len(paths)} primary files absent"
+                for market, paths in missing_inputs.items()
+            },
+            **{
+                f"invalid:{market}": message
+                for market, message in invalid_inputs.items()
+            },
+        }
         reason = (
             "All-six primary calendar is blocked: "
             + "; ".join(
                 f"{market}: {message}"
-                for market, message in sorted(failures.items())
+                for market, message in sorted(combined.items())
             )
         )
     write_json(
@@ -560,6 +676,20 @@ def parser() -> argparse.ArgumentParser:
     preflight.add_argument(
         "--output",
         default=str(DEFAULT_OUTPUT / "blocked-capability-report.json"),
+    )
+    preflight.add_argument(
+        "--coverage-evidence",
+        default=str(
+            DEFAULT_DATA / "provenance" / "coverage_evidence.json"
+        ),
+    )
+    preflight.add_argument(
+        "--enable-eia-ercot-fallback",
+        action="store_true",
+        help=(
+            "Explicitly enable same-BA EIA-930 retrieval for the ERCOT "
+            "physical gap; also requires EIA_API_KEY"
+        ),
     )
     preflight.set_defaults(func=command_preflight)
     fixture = commands.add_parser("fixture-diagnostics")

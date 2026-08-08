@@ -11,6 +11,7 @@ from energy_model_v3.adapters.parsers import (
     parse_nyiso_da,
     parse_pjm_da,
     parse_spp_da,
+    select_ercot_document,
 )
 
 
@@ -135,6 +136,30 @@ class LockedSourceParserTests(unittest.TestCase):
             fall.iloc[1] - fall.iloc[0],
             pd.Timedelta(hours=1),
         )
+
+    def test_ercot_document_selection_uses_discovery_revision(self) -> None:
+        documents = [
+            {
+                "Document": {
+                    "FriendlyName": "DAMLZHBSPP_2025",
+                    "SecurityStatus": "P",
+                    "PublishDate": "2026-01-01T08:00:00-06:00",
+                    "DocID": "old",
+                }
+            },
+            {
+                "Document": {
+                    "FriendlyName": "DAMLZHBSPP_2025",
+                    "SecurityStatus": "P",
+                    "PublishDate": "2026-02-01T08:00:00-06:00",
+                    "DocID": "new",
+                }
+            },
+        ]
+        selected = select_ercot_document(
+            documents, friendly_name="DAMLZHBSPP_2025"
+        )
+        self.assertEqual(selected["DocID"], "new")
 
     def test_miso_fixed_est_hour_ending_parser(self) -> None:
         rows = []

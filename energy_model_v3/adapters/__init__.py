@@ -9,6 +9,7 @@ from .parsers import (
     parse_pjm_da,
     parse_spp_da,
     read_ercot_xlsx_sheet,
+    select_ercot_document,
 )
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "parse_pjm_da",
     "parse_spp_da",
     "read_ercot_xlsx_sheet",
+    "select_ercot_document",
 ]

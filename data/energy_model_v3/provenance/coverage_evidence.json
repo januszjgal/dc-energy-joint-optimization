@@ -1,0 +1,66 @@
+{
+  "schema_version": "energy-model-v3-coverage",
+  "observed_at_utc": "2026-08-08T22:15:42Z",
+  "candidate_start_utc": "2025-09-01T00:00:00Z",
+  "candidate_end_utc": "2026-05-01T00:00:00Z",
+  "markets": {
+    "PJM_DOM": {
+      "candidate_complete": false,
+      "reason": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified"
+    },
+    "NYISO_NYC_J": {
+      "candidate_complete": false,
+      "reason": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
+      "products": [
+        "damlbmp monthly ZIP",
+        "pal monthly ZIP",
+        "rtfuelmix monthly ZIP"
+      ]
+    },
+    "CAISO_NP15": {
+      "candidate_complete": false,
+      "reason": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
+      "products": [
+        "OASIS PRC_LMP v12 DAM",
+        "Outlook netdemand.csv",
+        "Outlook fuelsource.csv"
+      ]
+    },
+    "ERCOT_LZ_NORTH": {
+      "candidate_complete": false,
+      "reason": "Report 13424 has annual wind+solar files only through 2025 and report 13101 is short-retention current daily load; 2026-01 through 2026-04 physical coverage is not proven",
+      "price_archives": {
+        "DAM_2025_observed_doc_id": "1177667469",
+        "DAM_2026_observed_doc_id": "1257494221",
+        "RTM_2025_observed_doc_id": "1177737535",
+        "RTM_2026_observed_doc_id": "1257501090",
+        "selection_rule": "discover by report type and friendly name; never hard-code DocID"
+      },
+      "physical_archives": {
+        "wind_solar_report": 13424,
+        "wind_solar_2025_observed_doc_id": "1182433954",
+        "wind_solar_latest_annual_year": 2025,
+        "load_report": 13101,
+        "load_retention": "short-retention current daily"
+      },
+      "eia_930_fallback": {
+        "credential": "EIA_API_KEY",
+        "same_balancing_authority_only": true,
+        "explicit_activation_required": true,
+        "silent_substitution": false
+      }
+    },
+    "MISO_MINN_HUB": {
+      "candidate_complete": false,
+      "reason": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified"
+    },
+    "SPP_NORTH_HUB": {
+      "candidate_complete": false,
+      "reason": "GenMix365 spans 2025-08-08T10:10:00Z through 2026-08-08T09:30:00Z with 104748 rows, but the candidate subset has not been exact-index validated with all DAM products",
+      "products": [
+        "DAM settlement-location LMP",
+        "GenMix365_SPP.csv"
+      ]
+    }
+  }
+}

@@ -7,6 +7,7 @@ import re
 import xml.etree.ElementTree as ET
 import zipfile
 from datetime import timedelta, timezone
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -300,6 +301,28 @@ def read_ercot_xlsx_sheet(
             {headers[index]: row.get(index, "") for index in headers}
             for row in rows[1:]
         ]
+    )
+
+
+def select_ercot_document(
+    documents: list[dict[str, Any]],
+    *,
+    friendly_name: str,
+) -> dict[str, Any]:
+    """Select the newest discovered public ERCOT revision by metadata."""
+    matches = [
+        item["Document"]
+        for item in documents
+        if item.get("Document", {}).get("FriendlyName") == friendly_name
+        and item.get("Document", {}).get("SecurityStatus") == "P"
+    ]
+    if not matches:
+        raise ContractError(
+            f"ERCOT discovery has no public {friendly_name} document"
+        )
+    return max(
+        matches,
+        key=lambda document: pd.Timestamp(document["PublishDate"]),
     )
 
 

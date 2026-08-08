@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 from dataclasses import asdict
@@ -252,11 +253,23 @@ def build_panel(
     scales: dict[str, Any] = {}
     diagnostics: dict[str, Any] = {}
     outputs: dict[str, str] = {}
+    inputs: dict[str, str] = {}
     derived_markets: dict[str, pd.DataFrame] = {}
     expected_index: pd.DatetimeIndex | None = None
     for site in scenario["sites"]:
         market = site["market"]
         frame = _load_market(data_root, market, calendar)
+        for table in ("physical_hourly", "price_hourly"):
+            source_path = _market_input(data_root, market, table)
+            try:
+                source_key = str(
+                    source_path.resolve().relative_to(
+                        scenario_path.resolve().parents[2]
+                    )
+                ).replace("\\", "/")
+            except ValueError:
+                source_key = str(source_path.resolve())
+            inputs[source_key] = sha256(source_path)
         synthetic = _contains_synthetic(frame)
         if synthetic and not fixture_mode:
             raise ContractError(
@@ -318,6 +331,7 @@ def build_panel(
         "exact_common_index": True,
         "training_only_calibration": True,
         "outputs": outputs,
+        "inputs": inputs,
         "scales": scales,
         "diagnostics": diagnostics,
     }
@@ -406,10 +420,16 @@ def blocked_preflight(
     data_root: Path,
     capabilities: list[dict[str, Any]],
     calendar: StudyCalendar | None = None,
+    *,
+    coverage_evidence_path: Path | None = None,
+    repository_root: Path | None = None,
+    eia_api_key_available: bool = False,
+    ercot_eia_fallback_activated: bool = False,
 ) -> dict[str, Any]:
     calendar = calendar or make_calendar()
     missing: dict[str, list[str]] = {}
     invalid: dict[str, str] = {}
+    validated_primary_files: dict[str, str] = {}
     for market in MARKETS:
         paths = [
             _market_input(data_root, market, "physical_hourly"),
@@ -425,6 +445,14 @@ def blocked_preflight(
                 raise ContractError(
                     f"{market} synthetic fixture data is forbidden in preflight"
                 )
+            for path in paths:
+                if repository_root is not None:
+                    key = str(
+                        path.resolve().relative_to(repository_root.resolve())
+                    ).replace("\\", "/")
+                else:
+                    key = str(path.resolve())
+                validated_primary_files[key] = sha256(path)
         except (ContractError, OSError, pd.errors.ParserError) as exc:
             invalid[market] = str(exc)
     accepted_capability_statuses = {"AVAILABLE", "READY", "STAGED"}
@@ -437,9 +465,88 @@ def blocked_preflight(
     for market in MARKETS:
         if market not in represented:
             capability_failures[market] = "capability record missing"
+    coverage_blockers: dict[str, str]
+    coverage_assessment: dict[str, Any] | None = None
+    expected_start = pd.Timestamp(calendar.start_utc)
+    expected_end = pd.Timestamp(calendar.end_utc)
+    if coverage_evidence_path is None or repository_root is None:
+        coverage_blockers = {
+            "coverage_assessment": "coverage evidence path is required"
+        }
+    else:
+        try:
+            from .coverage import assess_candidate_coverage
+
+            evidence = json.loads(
+                coverage_evidence_path.read_text(encoding="utf-8")
+            )
+            coverage_assessment = assess_candidate_coverage(
+                evidence,
+                evidence_sha256=sha256(coverage_evidence_path),
+                repository_root=repository_root,
+                eia_api_key_available=eia_api_key_available,
+                ercot_eia_fallback_activated=(
+                    ercot_eia_fallback_activated
+                ),
+            )
+            coverage_blockers = dict(
+                coverage_assessment.get("blockers", {})
+            )
+            coverage_markets = coverage_assessment.get("markets")
+            verified_market_shape = (
+                isinstance(coverage_markets, dict)
+                and set(coverage_markets) == set(MARKETS)
+                and all(
+                    isinstance(record, dict)
+                    and isinstance(record.get("status"), str)
+                    for record in coverage_markets.values()
+                )
+            )
+            if not verified_market_shape:
+                coverage_blockers.setdefault(
+                    "coverage_assessment",
+                    "coverage assessment market records are invalid",
+                )
+            elif coverage_assessment.get("status") == "COVERAGE_VERIFIED":
+                if coverage_blockers or any(
+                    record["status"] != "CANDIDATE_COVERAGE_VERIFIED"
+                    for record in coverage_markets.values()
+                ):
+                    coverage_blockers.setdefault(
+                        "coverage_assessment",
+                        "verified coverage conflicts with market records",
+                    )
+            else:
+                coverage_blockers.setdefault(
+                    "coverage_assessment",
+                    "coverage assessment is not fully verified",
+                )
+        except (
+            ContractError,
+            OSError,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+        ) as exc:
+            coverage_blockers = {
+                "coverage_assessment": f"coverage validation failed: {exc}"
+            }
+        if (
+            coverage_assessment is not None
+            and (
+                pd.Timestamp(coverage_assessment["candidate_start_utc"])
+                != expected_start
+                or pd.Timestamp(coverage_assessment["candidate_end_utc"])
+                != expected_end
+            )
+        ):
+            coverage_blockers.setdefault(
+                "coverage_assessment",
+                "coverage assessment calendar is invalid",
+            )
     status = (
         "BLOCKED"
-        if missing or invalid or capability_failures
+        if missing or invalid or capability_failures or coverage_blockers
         else "READY"
     )
     return {
@@ -453,4 +560,7 @@ def blocked_preflight(
         "invalid_primary_inputs": invalid,
         "capability_failures": capability_failures,
         "capabilities": capabilities,
+        "coverage_assessment": coverage_assessment,
+        "coverage_failures": coverage_blockers,
+        "validated_primary_files": validated_primary_files,
     }
