@@ -68,6 +68,7 @@ def _tiny_env(rate: float, period: int, n: int = 4) -> MultiDCEnv:
         max_steps=n,
         demand_charge_rate=rate,
         demand_charge_period_steps=period,
+        allow_multiple_demand_charge_periods=(period != n),
         steps_per_day=period,
         site_context=False,
     )
@@ -157,6 +158,27 @@ def main() -> int:
           f"closed form ${expected:,.2f} (err ${err:.6f})")
     if err >= 1e-6:
         failures.append(f"multi-period telescoping not exact (err {err})")
+    stale_site = DataCenterSite(
+        name="stale-rate",
+        workload=np.full(4, 0.5),
+        solar=np.zeros(4),
+        price=np.zeros(4),
+        net_demand=np.zeros(4),
+    )
+    try:
+        MultiDCEnv(
+            [stale_site],
+            PowerModel(0.0, 1.0, 1.0),
+            max_steps=4,
+            demand_charge_rate=1.0,
+            demand_charge_period_steps=2,
+            site_context=False,
+        )
+    except ValueError as exc:
+        if "allow_multiple_demand_charge_periods" not in str(exc):
+            failures.append("short-period guard raised the wrong error")
+    else:
+        failures.append("stale short-period tariff was silently accepted")
     try:
         _tiny_env(rate=1.0, period=2, n=5)
     except ValueError:

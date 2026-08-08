@@ -1,0 +1,874 @@
+{
+  "status": "ok",
+  "stage": "final",
+  "region": "global",
+  "combo": "R0_P3",
+  "seed": 305,
+  "mode": "safety_only",
+  "evaluation_cells": "e-h",
+  "scenario": "env/scenarios/global_model_eh_v2_2025.yaml",
+  "protocol_sha256": "42a39388adf3a1ed7597c255fa5352f690783b9e10cd49de60eae72e576ded6b",
+  "evaluation_fingerprint": "0ecc0e7463b78b3ebcb767526e188a671e26659364fda1b42ce3e4e9cdd0b789",
+  "model_hashes": {
+    "model_path": "models/ppo_v4_safety/full/global/R0_P3/s305/model.zip",
+    "model_sha256": "8b8409d91dd5d3efbb18d3c333bd37b1ef9baf257c8133274db8fe7fdda77ea9",
+    "completion_record_path": "models/ppo_v4_safety/full/global/R0_P3/s305/model.complete.json",
+    "job_fingerprint": "e791258ba19e6d7f6a6d90dcb186cf5c31327e02e6913d65a4e04286ed03a582",
+    "diagnostics_path": "models/ppo_v4_safety/full/global/R0_P3/s305/training.json",
+    "diagnostics_sha256": "15d34c830f155777f92fad32fbf2806f6715cbc6d277a2231942f26bf52a8f92"
+  },
+  "baselines": {
+    "Status Quo (local, no deferral)": {
+      "total_cost": 6275896.089897444,
+      "peak_grid_mw": 297.9665709577143,
+      "mean_grid_mw": 276.82108586809454,
+      "load_factor": 0.9290340355240032,
+      "total_energy_cost": 5337098.127656847,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 1.0665087424310826e-09,
+      "max_backlog": 0.0,
+      "service_demand_total": 15460.759427323937,
+      "service_served_total": 15460.759427323937,
+      "total_peak_penalty": 938797.9622395298,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 635.1400483129461,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 1000.0,
+      "configured_deadline_penalty_weight": 250.0,
+      "effective_deadline_penalty_weight": 1000.0,
+      "reward_scale": 0.0001,
+      "reward_training_cost": 6275892.458976946,
+      "reward_idle_cost_subtracted": 0.0,
+      "reward_potential_delta": 3.6309210306225728,
+      "reward_penalty_adjustment": 5.332504299238039e-07,
+      "reward_idle_cost_subtraction": false,
+      "reward_urgency_potential_weight": 250.0,
+      "batch_completion_weight": 1000.0,
+      "reward_service_backlog_weight": 700.0,
+      "reward_batch_completion_weight": 1500.0,
+      "observe_episode_progress": true,
+      "deadline_bucket_edges": [
+        1,
+        3,
+        6,
+        12,
+        24
+      ],
+      "batch_completion_shaping_enabled": true,
+      "billed_peak_sum_mw": 308.413336998233,
+      "demand_charge_ref": 4626200.054973495,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2471458.654630348,
+      "nd_weighted_load": 879729.3563001065,
+      "per_dc_energy_cost": {
+        "Global-Pacific": 1364403.2870863767,
+        "Global-Central": 1294897.1225485893,
+        "Global-Amsterdam": 1465388.085493295,
+        "Global-Singapore": 1212409.6325285858
+      },
+      "per_dc_peak_penalty": {
+        "Global-Pacific": 241621.6106791181,
+        "Global-Central": 220901.86764809923,
+        "Global-Amsterdam": 280305.22966429294,
+        "Global-Singapore": 195969.25424801963
+      },
+      "per_dc_billed_peak_mw": {
+        "Global-Pacific": 82.37419609869423,
+        "Global-Central": 74.80259430128379,
+        "Global-Amsterdam": 82.52909771237049,
+        "Global-Singapore": 68.70744888588449
+      },
+      "per_dc_avg_backlog": {
+        "Global-Pacific": 0.0,
+        "Global-Central": 0.0,
+        "Global-Amsterdam": 0.0,
+        "Global-Singapore": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11464.56817615305,
+          "max_up_delta_mw": -0.43182384694955545,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6826.937897344132,
+          "p95_up_delta_mw": -3.0121026558581434,
+          "per_dc": {
+            "Global-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11462.958885131346,
+              "max_up_delta_mw": -2.041114868654404,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6820.102086019003,
+              "p95_up_delta_mw": -5.647913980997146
+            },
+            "Global-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.56817615305,
+              "max_up_delta_mw": -0.43182384694955545,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.749352760158,
+              "p95_up_delta_mw": -0.0006472398417827208
+            },
+            "Global-Amsterdam": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.357467803893,
+              "max_up_delta_mw": -0.642532196106913,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.477183942212,
+              "p95_up_delta_mw": 0.7271839422119228
+            },
+            "Global-Singapore": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.32258235485,
+              "max_up_delta_mw": -0.6774176451508538,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.551088127538,
+              "p95_up_delta_mw": -0.19891187246230402
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22270.77993928328,
+          "max_up_delta_mw": 1.7799392832785088,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17469.657899226106,
+          "p95_up_delta_mw": -1.3421007738943445,
+          "per_dc": {
+            "Global-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22270.77993928328,
+              "max_up_delta_mw": 1.7799392832785088,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17460.790407327087,
+              "p95_up_delta_mw": -3.0595926728965424
+            },
+            "Global-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22268.560118392477,
+              "max_up_delta_mw": -0.43988160752269323,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17466.162903837365,
+              "p95_up_delta_mw": 2.3129038373808726
+            },
+            "Global-Amsterdam": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22268.677196684395,
+              "max_up_delta_mw": -0.32280331560468767,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.327215765366,
+              "p95_up_delta_mw": -0.5227842346175748
+            },
+            "Global-Singapore": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22269.848469483797,
+              "max_up_delta_mw": 0.8484694837970892,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17466.99499479436,
+              "p95_up_delta_mw": 3.1449947943765437
+            }
+          }
+        }
+      },
+      "safety": {
+        "enabled": true,
+        "infeasibility_certificates": 0,
+        "intervention_count": 0,
+        "intervention_rate": 0.0,
+        "mean_projection_l2": 1.0048896979130972e-15,
+        "max_projection_l2": 8.250431545760611e-12,
+        "mandatory_step_count": 1,
+        "mandatory_step_rate": 0.00011200716845878136,
+        "mean_mandatory_batch": 5.843404156412916e-05,
+        "max_mandatory_batch": 0.5216991230845451,
+        "binding_deadline_histogram": {
+          "1": 1
+        },
+        "minimum_deadline_slack": null,
+        "exact_zero_drain_count": 0,
+        "exact_full_drain_count": 0,
+        "negative_flush_step_count": 0,
+        "negative_flush_activation_rate": 0.0,
+        "max_transport_conservation_error": 2.5034178341432067e-09,
+        "service_envelope_total": 2.25,
+        "batch_arrival_envelope_total": 1.0,
+        "guaranteed_carried_batch_capacity": 0.75,
+        "envelope_id": "ad-rounded-envelope-v1",
+        "envelope_scope": "a-d-development-only"
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "total_terminal_batch_cost": 0.0,
+      "total_batch_accounting_cost": 1.0665008598476078e-06,
+      "total_unfinished_batch_cost": 1.0665008598476078e-06,
+      "batch_arrival_total": 5205.3921425733715,
+      "batch_completed_total": 5205.392142572305,
+      "batch_completion_fraction": 0.999999999999795,
+      "work_demand_total": 20666.15156989731,
+      "work_completed_total": 20666.151569896243,
+      "work_completed_fraction": 0.9999999999999484,
+      "avg_batch_pool_size": 1.2017366112667545e-09,
+      "avg_drain_rates": {
+        "Global-Pacific": 0.9999999979388462,
+        "Global-Central": 0.9999999979388462,
+        "Global-Amsterdam": 0.9999999979388466,
+        "Global-Singapore": 0.999999997938856
+      },
+      "service_completion": 1.0,
+      "batch_completion": 0.999999999999795,
+      "terminal_service_backlog": 0.0,
+      "action_saturation_fraction": 0.3333333333333333
+    },
+    "Round Robin": {
+      "total_cost": 6279741.95597219,
+      "peak_grid_mw": 299.74780510737014,
+      "mean_grid_mw": 277.0439533204564,
+      "load_factor": 0.924256820566939,
+      "total_energy_cost": 5340164.756909289,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 0.0,
+      "max_backlog": 0.0,
+      "service_demand_total": 15460.759427323937,
+      "service_served_total": 15460.759427323937,
+      "total_peak_penalty": 939577.1990629011,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 635.1400483129461,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 1000.0,
+      "configured_deadline_penalty_weight": 250.0,
+      "effective_deadline_penalty_weight": 1000.0,
+      "reward_scale": 0.0001,
+      "reward_training_cost": 6279738.32505116,
+      "reward_idle_cost_subtracted": 0.0,
+      "reward_potential_delta": 3.6309210306225728,
+      "reward_penalty_adjustment": -9.103828801926284e-15,
+      "reward_idle_cost_subtraction": false,
+      "reward_urgency_potential_weight": 250.0,
+      "batch_completion_weight": 1000.0,
+      "reward_service_backlog_weight": 700.0,
+      "reward_batch_completion_weight": 1500.0,
+      "observe_episode_progress": true,
+      "deadline_bucket_edges": [
+        1,
+        3,
+        6,
+        12,
+        24
+      ],
+      "batch_completion_shaping_enabled": true,
+      "billed_peak_sum_mw": 299.74780510737014,
+      "demand_charge_ref": 4496217.076610552,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2473448.4152450343,
+      "nd_weighted_load": 880665.80546335,
+      "per_dc_energy_cost": {
+        "Global-Pacific": 1406188.7573872828,
+        "Global-Central": 1303029.7220510715,
+        "Global-Amsterdam": 1433988.281894852,
+        "Global-Singapore": 1196957.995576083
+      },
+      "per_dc_peak_penalty": {
+        "Global-Pacific": 258023.50140388112,
+        "Global-Central": 221454.18439752227,
+        "Global-Amsterdam": 271060.89205574204,
+        "Global-Singapore": 189038.62120575563
+      },
+      "per_dc_billed_peak_mw": {
+        "Global-Pacific": 80.67287446208879,
+        "Global-Central": 73.4209714555528,
+        "Global-Amsterdam": 79.91081881555964,
+        "Global-Singapore": 65.7431403741689
+      },
+      "per_dc_avg_backlog": {
+        "Global-Pacific": 0.0,
+        "Global-Central": 0.0,
+        "Global-Amsterdam": 0.0,
+        "Global-Singapore": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11466.55156237609,
+          "max_up_delta_mw": 1.5515623760893504,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6829.168207417809,
+          "p95_up_delta_mw": -0.7817925821809695,
+          "per_dc": {
+            "Global-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.611954239119,
+              "max_up_delta_mw": -1.3880457608811412,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.633029477638,
+              "p95_up_delta_mw": -0.11697052236195304
+            },
+            "Global-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.324727859712,
+              "max_up_delta_mw": -0.6752721402881434,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.657207956423,
+              "p95_up_delta_mw": -1.092792043576992
+            },
+            "Global-Amsterdam": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.328345311507,
+              "max_up_delta_mw": 0.3283453115072916,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.124031852402,
+              "p95_up_delta_mw": 0.3740318524023678
+            },
+            "Global-Singapore": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11466.55156237609,
+              "max_up_delta_mw": 1.5515623760893504,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.3241038270335,
+              "p95_up_delta_mw": -0.4258961729665316
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22270.28508654832,
+          "max_up_delta_mw": 1.2850865483196685,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17469.323266712654,
+          "p95_up_delta_mw": -1.6767332873459964,
+          "per_dc": {
+            "Global-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.16283752238,
+              "max_up_delta_mw": -1.837162477619131,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.393892790642,
+              "p95_up_delta_mw": -1.456107209342008
+            },
+            "Global-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.37593168516,
+              "max_up_delta_mw": -3.6240683148389508,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.161303960456,
+              "p95_up_delta_mw": -0.6886960395277129
+            },
+            "Global-Amsterdam": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22270.02037465993,
+              "max_up_delta_mw": 1.0203746599290753,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17464.52393334204,
+              "p95_up_delta_mw": 0.673933342055534
+            },
+            "Global-Singapore": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22270.28508654832,
+              "max_up_delta_mw": 1.2850865483196685,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17465.15320498239,
+              "p95_up_delta_mw": 1.3032049824068963
+            }
+          }
+        }
+      },
+      "safety": {
+        "enabled": true,
+        "infeasibility_certificates": 0,
+        "intervention_count": 1,
+        "intervention_rate": 0.00011200716845878136,
+        "mean_projection_l2": 3.0379016847626957e-05,
+        "max_projection_l2": 0.27122386241561347,
+        "mandatory_step_count": 2,
+        "mandatory_step_rate": 0.00022401433691756272,
+        "mean_mandatory_batch": 0.00014588056639513184,
+        "max_mandatory_batch": 1.0319399809816092,
+        "binding_deadline_histogram": {
+          "1": 1,
+          "2": 1
+        },
+        "minimum_deadline_slack": 0.23975914210293603,
+        "exact_zero_drain_count": 0,
+        "exact_full_drain_count": 4,
+        "negative_flush_step_count": 0,
+        "negative_flush_activation_rate": 0.0,
+        "max_transport_conservation_error": 1.1102230246251565e-16,
+        "service_envelope_total": 2.25,
+        "batch_arrival_envelope_total": 1.0,
+        "guaranteed_carried_batch_capacity": 0.75,
+        "envelope_id": "ad-rounded-envelope-v1",
+        "envelope_scope": "a-d-development-only"
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "total_terminal_batch_cost": 0.0,
+      "total_batch_accounting_cost": -1.8207657603852567e-14,
+      "total_unfinished_batch_cost": -1.8207657603852567e-14,
+      "batch_arrival_total": 5205.3921425733715,
+      "batch_completed_total": 5205.3921425733715,
+      "batch_completion_fraction": 1.0,
+      "work_demand_total": 20666.15156989731,
+      "work_completed_total": 20666.15156989731,
+      "work_completed_fraction": 1.0,
+      "avg_batch_pool_size": 0.5829256499319433,
+      "avg_drain_rates": {
+        "Global-Pacific": 0.5000560035842294,
+        "Global-Central": 0.5000560035842294,
+        "Global-Amsterdam": 0.5000560035842294,
+        "Global-Singapore": 0.5000560035842294
+      },
+      "service_completion": 1.0,
+      "batch_completion": 1.0,
+      "terminal_service_backlog": 0.0,
+      "action_saturation_fraction": 0.0
+    },
+    "Drain Immediately": {
+      "total_cost": 6279527.566457819,
+      "peak_grid_mw": 298.30397214635263,
+      "mean_grid_mw": 277.0439533204506,
+      "load_factor": 0.9287303528916084,
+      "total_energy_cost": 5340005.020644914,
+      "total_backlog_cost": 0.0,
+      "total_capacity_cost": 0.0,
+      "terminal_backlog": 0.0,
+      "terminal_batch_pool": 1.0665087424310826e-09,
+      "max_backlog": 0.0,
+      "service_demand_total": 15460.759427323937,
+      "service_served_total": 15460.759427323937,
+      "total_peak_penalty": 939522.5458118381,
+      "total_demand_charge": 0.0,
+      "demand_charge_enabled": false,
+      "demand_charge_rate": 0.0,
+      "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+      "demand_charge_period_steps": 8928,
+      "demand_charge_period_count": 1,
+      "demand_charge_penalty_guard": false,
+      "economic_penalty_floor": 635.1400483129461,
+      "configured_backlog_weight": 25.0,
+      "effective_backlog_weight": 1000.0,
+      "configured_deadline_penalty_weight": 250.0,
+      "effective_deadline_penalty_weight": 1000.0,
+      "reward_scale": 0.0001,
+      "reward_training_cost": 6279523.935537322,
+      "reward_idle_cost_subtracted": 0.0,
+      "reward_potential_delta": 3.6309210306225728,
+      "reward_penalty_adjustment": 5.332504299238039e-07,
+      "reward_idle_cost_subtraction": false,
+      "reward_urgency_potential_weight": 250.0,
+      "batch_completion_weight": 1000.0,
+      "reward_service_backlog_weight": 700.0,
+      "reward_batch_completion_weight": 1500.0,
+      "observe_episode_progress": true,
+      "deadline_bucket_edges": [
+        1,
+        3,
+        6,
+        12,
+        24
+      ],
+      "batch_completion_shaping_enabled": true,
+      "billed_peak_sum_mw": 298.30397214635263,
+      "demand_charge_ref": 4474559.582195289,
+      "demand_charge_ref_rate": 15.0,
+      "demand_charge_ref_period_steps": 8928,
+      "total_grid_mw_steps": 2473448.415244983,
+      "nd_weighted_load": 880634.4706175824,
+      "per_dc_energy_cost": {
+        "Global-Pacific": 1406146.8970357794,
+        "Global-Central": 1302896.1818398617,
+        "Global-Amsterdam": 1433938.652006069,
+        "Global-Singapore": 1197023.2897632048
+      },
+      "per_dc_peak_penalty": {
+        "Global-Pacific": 258008.56320150438,
+        "Global-Central": 221400.15440058216,
+        "Global-Amsterdam": 271037.7939561336,
+        "Global-Singapore": 189076.03425361804
+      },
+      "per_dc_billed_peak_mw": {
+        "Global-Pacific": 80.22247312806566,
+        "Global-Central": 73.09073648441957,
+        "Global-Amsterdam": 79.54195319090853,
+        "Global-Singapore": 65.4488093429589
+      },
+      "per_dc_avg_backlog": {
+        "Global-Pacific": 0.0,
+        "Global-Central": 0.0,
+        "Global-Amsterdam": 0.0,
+        "Global-Singapore": 0.0
+      },
+      "physical_ramp_metrics": {
+        "1h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 11465.0,
+          "with_dc_max_up_mw": 11466.726290112842,
+          "max_up_delta_mw": 1.7262901128415251,
+          "base_p95_up_mw": 6829.94999999999,
+          "with_dc_p95_up_mw": 6829.194921008947,
+          "p95_up_delta_mw": -0.7550789910428648,
+          "per_dc": {
+            "Global-Pacific": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11463.804024645222,
+              "max_up_delta_mw": -1.1959753547780565,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.521813440228,
+              "p95_up_delta_mw": -0.22818655977243907
+            },
+            "Global-Central": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11464.058919882315,
+              "max_up_delta_mw": -0.9410801176854875,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6824.473886708792,
+              "p95_up_delta_mw": -1.2761132912082758
+            },
+            "Global-Amsterdam": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11465.24839593107,
+              "max_up_delta_mw": 0.24839593107026303,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6826.065628407246,
+              "p95_up_delta_mw": 0.3156284072456401
+            },
+            "Global-Singapore": {
+              "base_max_up_mw": 11465.0,
+              "with_dc_max_up_mw": 11466.726290112842,
+              "max_up_delta_mw": 1.7262901128415251,
+              "base_p95_up_mw": 6825.75,
+              "with_dc_p95_up_mw": 6825.311469243703,
+              "p95_up_delta_mw": -0.4385307562970411
+            }
+          }
+        },
+        "3h": {
+          "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+          "base_max_up_mw": 22269.0,
+          "with_dc_max_up_mw": 22270.86937705608,
+          "max_up_delta_mw": 1.8693770560785197,
+          "base_p95_up_mw": 17471.0,
+          "with_dc_p95_up_mw": 17469.133456091437,
+          "p95_up_delta_mw": -1.8665439085634716,
+          "per_dc": {
+            "Global-Pacific": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22267.006686171146,
+              "max_up_delta_mw": -1.9933138288542978,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17462.09199431351,
+              "p95_up_delta_mw": -1.7580056864753715
+            },
+            "Global-Central": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22265.390208613215,
+              "max_up_delta_mw": -3.6097913867852185,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17463.26676028655,
+              "p95_up_delta_mw": -0.5832397134327039
+            },
+            "Global-Amsterdam": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22270.205708417652,
+              "max_up_delta_mw": 1.205708417652204,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17464.260304008345,
+              "p95_up_delta_mw": 0.41030400836098124
+            },
+            "Global-Singapore": {
+              "base_max_up_mw": 22269.0,
+              "with_dc_max_up_mw": 22270.86937705608,
+              "max_up_delta_mw": 1.8693770560785197,
+              "base_p95_up_mw": 17463.849999999984,
+              "with_dc_p95_up_mw": 17465.295358629537,
+              "p95_up_delta_mw": 1.445358629553084
+            }
+          }
+        }
+      },
+      "safety": {
+        "enabled": true,
+        "infeasibility_certificates": 0,
+        "intervention_count": 0,
+        "intervention_rate": 0.0,
+        "mean_projection_l2": 9.241074759409018e-16,
+        "max_projection_l2": 8.250431545200371e-12,
+        "mandatory_step_count": 1,
+        "mandatory_step_rate": 0.00011200716845878136,
+        "mean_mandatory_batch": 5.843404156412916e-05,
+        "max_mandatory_batch": 0.5216991230845451,
+        "binding_deadline_histogram": {
+          "1": 1
+        },
+        "minimum_deadline_slack": null,
+        "exact_zero_drain_count": 0,
+        "exact_full_drain_count": 0,
+        "negative_flush_step_count": 0,
+        "negative_flush_activation_rate": 0.0,
+        "max_transport_conservation_error": 1.6653345369377348e-16,
+        "service_envelope_total": 2.25,
+        "batch_arrival_envelope_total": 1.0,
+        "guaranteed_carried_batch_capacity": 0.75,
+        "envelope_id": "ad-rounded-envelope-v1",
+        "envelope_scope": "a-d-development-only"
+      },
+      "total_batch_expired": 0.0,
+      "total_deadline_cost": 0.0,
+      "total_terminal_batch_cost": 0.0,
+      "total_batch_accounting_cost": 1.0665008598476078e-06,
+      "total_unfinished_batch_cost": 1.0665008598476078e-06,
+      "batch_arrival_total": 5205.3921425733715,
+      "batch_completed_total": 5205.392142572305,
+      "batch_completion_fraction": 0.999999999999795,
+      "work_demand_total": 20666.15156989731,
+      "work_completed_total": 20666.151569896243,
+      "work_completed_fraction": 0.9999999999999484,
+      "avg_batch_pool_size": 1.2017366112667545e-09,
+      "avg_drain_rates": {
+        "Global-Pacific": 0.9999999979388462,
+        "Global-Central": 0.9999999979388462,
+        "Global-Amsterdam": 0.9999999979388466,
+        "Global-Singapore": 0.999999997938856
+      },
+      "service_completion": 1.0,
+      "batch_completion": 0.999999999999795,
+      "terminal_service_backlog": 0.0,
+      "action_saturation_fraction": 0.3333333333333333
+    }
+  },
+  "summary": {
+    "total_cost": 6217235.194021897,
+    "peak_grid_mw": 310.426179874442,
+    "mean_grid_mw": 275.8608976086563,
+    "load_factor": 0.8886521675466729,
+    "total_energy_cost": 5281641.779073661,
+    "total_backlog_cost": 0.0,
+    "total_capacity_cost": 0.0,
+    "terminal_backlog": 0.0,
+    "terminal_batch_pool": 0.0,
+    "max_backlog": 0.0,
+    "service_demand_total": 15460.759427323937,
+    "service_served_total": 15460.759427323937,
+    "total_peak_penalty": 935593.4149482358,
+    "total_demand_charge": 0.0,
+    "demand_charge_enabled": false,
+    "demand_charge_rate": 0.0,
+    "demand_charge_rate_unit": "USD_per_kW_per_billing_period",
+    "demand_charge_period_steps": 8928,
+    "demand_charge_period_count": 1,
+    "demand_charge_penalty_guard": false,
+    "economic_penalty_floor": 635.1400483129461,
+    "configured_backlog_weight": 25.0,
+    "effective_backlog_weight": 1000.0,
+    "configured_deadline_penalty_weight": 250.0,
+    "effective_deadline_penalty_weight": 1000.0,
+    "reward_scale": 0.0001,
+    "reward_training_cost": 6217231.563100867,
+    "reward_idle_cost_subtracted": 0.0,
+    "reward_potential_delta": 3.6309210306225728,
+    "reward_penalty_adjustment": -3.1175062531474396e-13,
+    "reward_idle_cost_subtraction": false,
+    "reward_urgency_potential_weight": 250.0,
+    "batch_completion_weight": 1000.0,
+    "reward_service_backlog_weight": 700.0,
+    "reward_batch_completion_weight": 1500.0,
+    "observe_episode_progress": true,
+    "deadline_bucket_edges": [
+      1,
+      3,
+      6,
+      12,
+      24
+    ],
+    "batch_completion_shaping_enabled": true,
+    "billed_peak_sum_mw": 328.3795737926022,
+    "demand_charge_ref": 4925693.606889033,
+    "demand_charge_ref_rate": 15.0,
+    "demand_charge_ref_period_steps": 8928,
+    "total_grid_mw_steps": 2462886.093850083,
+    "nd_weighted_load": 869916.7967771388,
+    "per_dc_energy_cost": {
+      "Global-Pacific": 1229026.0237864999,
+      "Global-Central": 1541628.5413833978,
+      "Global-Amsterdam": 1431991.5812891594,
+      "Global-Singapore": 1078995.6326146042
+    },
+    "per_dc_peak_penalty": {
+      "Global-Pacific": 193905.8416901891,
+      "Global-Central": 316047.4333413282,
+      "Global-Amsterdam": 270625.6239689593,
+      "Global-Singapore": 155014.5159477593
+    },
+    "per_dc_billed_peak_mw": {
+      "Global-Pacific": 82.5397376568747,
+      "Global-Central": 86.79693395505264,
+      "Global-Amsterdam": 94.06735040222476,
+      "Global-Singapore": 64.97555177845007
+    },
+    "per_dc_avg_backlog": {
+      "Global-Pacific": 0.0,
+      "Global-Central": 0.0,
+      "Global-Amsterdam": 0.0,
+      "Global-Singapore": 0.0
+    },
+    "physical_ramp_metrics": {
+      "1h": {
+        "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+        "base_max_up_mw": 11465.0,
+        "with_dc_max_up_mw": 11464.817450127535,
+        "max_up_delta_mw": -0.1825498724647332,
+        "base_p95_up_mw": 6829.94999999999,
+        "with_dc_p95_up_mw": 6825.218301484724,
+        "p95_up_delta_mw": -4.731698515265634,
+        "per_dc": {
+          "Global-Pacific": {
+            "base_max_up_mw": 11465.0,
+            "with_dc_max_up_mw": 11454.58280424619,
+            "max_up_delta_mw": -10.41719575380921,
+            "base_p95_up_mw": 6825.75,
+            "with_dc_p95_up_mw": 6824.669238011724,
+            "p95_up_delta_mw": -1.0807619882762083
+          },
+          "Global-Central": {
+            "base_max_up_mw": 11465.0,
+            "with_dc_max_up_mw": 11459.363623932179,
+            "max_up_delta_mw": -5.636376067821402,
+            "base_p95_up_mw": 6825.75,
+            "with_dc_p95_up_mw": 6820.46803671393,
+            "p95_up_delta_mw": -5.281963286070095
+          },
+          "Global-Amsterdam": {
+            "base_max_up_mw": 11465.0,
+            "with_dc_max_up_mw": 11463.858417625324,
+            "max_up_delta_mw": -1.141582374675636,
+            "base_p95_up_mw": 6825.75,
+            "with_dc_p95_up_mw": 6824.521337368917,
+            "p95_up_delta_mw": -1.2286626310833526
+          },
+          "Global-Singapore": {
+            "base_max_up_mw": 11465.0,
+            "with_dc_max_up_mw": 11464.817450127535,
+            "max_up_delta_mw": -0.1825498724647332,
+            "base_p95_up_mw": 6825.75,
+            "with_dc_p95_up_mw": 6825.377531780336,
+            "p95_up_delta_mw": -0.3724682196643698
+          }
+        }
+      },
+      "3h": {
+        "interpretation": "Distribution across separate physical sites; regional net demand is not summed into a fictitious global grid.",
+        "base_max_up_mw": 22269.0,
+        "with_dc_max_up_mw": 22269.601788874228,
+        "max_up_delta_mw": 0.6017888742280775,
+        "base_p95_up_mw": 17471.0,
+        "with_dc_p95_up_mw": 17463.104300347077,
+        "p95_up_delta_mw": -7.895699652923213,
+        "per_dc": {
+          "Global-Pacific": {
+            "base_max_up_mw": 22269.0,
+            "with_dc_max_up_mw": 22263.905127721944,
+            "max_up_delta_mw": -5.0948722780558455,
+            "base_p95_up_mw": 17463.849999999984,
+            "with_dc_p95_up_mw": 17456.0681798383,
+            "p95_up_delta_mw": -7.781820161682845
+          },
+          "Global-Central": {
+            "base_max_up_mw": 22269.0,
+            "with_dc_max_up_mw": 22266.201968033452,
+            "max_up_delta_mw": -2.798031966547569,
+            "base_p95_up_mw": 17463.849999999984,
+            "with_dc_p95_up_mw": 17460.67777337178,
+            "p95_up_delta_mw": -3.172226628204953
+          },
+          "Global-Amsterdam": {
+            "base_max_up_mw": 22269.0,
+            "with_dc_max_up_mw": 22265.449249836165,
+            "max_up_delta_mw": -3.5507501638348913,
+            "base_p95_up_mw": 17463.849999999984,
+            "with_dc_p95_up_mw": 17464.44732656626,
+            "p95_up_delta_mw": 0.5973265662760241
+          },
+          "Global-Singapore": {
+            "base_max_up_mw": 22269.0,
+            "with_dc_max_up_mw": 22269.601788874228,
+            "max_up_delta_mw": 0.6017888742280775,
+            "base_p95_up_mw": 17463.849999999984,
+            "with_dc_p95_up_mw": 17465.849571497703,
+            "p95_up_delta_mw": 1.9995714977194439
+          }
+        }
+      }
+    },
+    "safety": {
+      "enabled": true,
+      "infeasibility_certificates": 0,
+      "intervention_count": 2985,
+      "intervention_rate": 0.3343413978494624,
+      "mean_projection_l2": 0.023638933718542327,
+      "max_projection_l2": 0.4902204553003818,
+      "mandatory_step_count": 2,
+      "mandatory_step_rate": 0.00022401433691756272,
+      "mean_mandatory_batch": 0.0002010484087625981,
+      "max_mandatory_batch": 1.2716991230845451,
+      "binding_deadline_histogram": {
+        "1": 1,
+        "2": 1
+      },
+      "minimum_deadline_slack": 0.0,
+      "exact_zero_drain_count": 0,
+      "exact_full_drain_count": 4,
+      "negative_flush_step_count": 0,
+      "negative_flush_activation_rate": 0.0,
+      "max_transport_conservation_error": 2.220446049250313e-16,
+      "service_envelope_total": 2.25,
+      "batch_arrival_envelope_total": 1.0,
+      "guaranteed_carried_batch_capacity": 0.75,
+      "envelope_id": "ad-rounded-envelope-v1",
+      "envelope_scope": "a-d-development-only"
+    },
+    "total_batch_expired": 0.0,
+    "total_deadline_cost": 0.0,
+    "total_terminal_batch_cost": 0.0,
+    "total_batch_accounting_cost": -6.235012506294879e-13,
+    "total_unfinished_batch_cost": -6.235012506294879e-13,
+    "batch_arrival_total": 5205.3921425733715,
+    "batch_completed_total": 5205.3921425733715,
+    "batch_completion_fraction": 1.0,
+    "work_demand_total": 20666.15156989731,
+    "work_completed_total": 20666.15156989731,
+    "work_completed_fraction": 1.0,
+    "avg_batch_pool_size": 0.5426210935185494,
+    "avg_drain_rates": {
+      "Global-Pacific": 0.5647589612485165,
+      "Global-Central": 0.42956690554602484,
+      "Global-Amsterdam": 0.5457689557549135,
+      "Global-Singapore": 0.5295271438381256
+    },
+    "service_completion": 1.0,
+    "batch_completion": 1.0,
+    "terminal_service_backlog": 0.0,
+    "action_saturation_fraction": 0.0
+  },
+  "savings_vs_status_quo_pct": 0.9347015156923152,
+  "generated_at_utc": "2026-08-06T23:40:15.039548+00:00"
+}
