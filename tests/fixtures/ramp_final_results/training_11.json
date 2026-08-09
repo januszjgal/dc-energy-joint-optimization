@@ -1,0 +1,67 @@
+{
+  "algorithm": "ppo",
+  "artifacts": {
+    "model": {
+      "path": "sealed-policy-11.zip",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  "data_split": {
+    "test": {"months": ["2025-03"], "sealed": true},
+    "train": {"months": ["2025-01"]},
+    "validation": {"months": ["2025-02"]}
+  },
+  "environment_contract": {
+    "interval_minutes": 60,
+    "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"
+  },
+  "final_critic_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "final_policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "initial_critic_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "initial_policy_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "interaction_count": 100,
+  "normalization": {
+    "fit_split": "train"
+  },
+  "protocol_id": "synthetic-ramp-v6-v2",
+  "protocol_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pure_rl_assertions": {
+    "analytic_economic_base": false,
+    "behavior_cloning": false,
+    "curriculum_trajectories": false,
+    "demonstrations": false,
+    "expert_replay": false,
+    "mpc_actions": false,
+    "offline_expert_labels": false,
+    "optimizer_actions": false,
+    "oracle_reward_shaping": false,
+    "random_initialization_only": true,
+    "teacher": false,
+    "warm_start": false
+  },
+  "raw_redundant_projected_logits": false,
+  "replay_provenance": {
+    "demonstration_rows": 0,
+    "external_rows": 0,
+    "optimizer_rows": 0,
+    "sources": ["randomly_initialized_policy"],
+    "teacher_rows": 0
+  },
+  "seed": 11,
+  "semantic_feasible_action": true,
+  "source_bundle_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "training_data_provenance": {
+    "episodes": [
+      {
+        "forecast_model": "synthetic-causal-forecast-v1",
+        "forecast_vintage": "train-v1",
+        "future_realized_features_exposed": false,
+        "source_hashes": {
+          "panel": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "split": "train"
+      }
+    ]
+  },
+  "update_count": 10
+}
