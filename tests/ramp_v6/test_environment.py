@@ -11,7 +11,6 @@ from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.fixture import load_fixture
 from env.ramp_v6.models import FrozenRampStats, SiteConfig, WorkloadTrace
 from env.ramp_v6.panel import CanonicalMarketPanel
-from env.ramp_v6.protocol import load_ramp_protocol
 from tests.ramp_v6.common import FIXTURE_ROOT, make_env
 
 
@@ -114,35 +113,6 @@ class EnvironmentTests(unittest.TestCase):
         )
         self.assertTrue(
             all(item["deadline_missed_work"] == 0.0 for item in history)
-        )
-
-    def test_v2_potential_telescopes_and_retains_raw_reward(self) -> None:
-        panel, sites, workload, stats, _ = load_fixture(FIXTURE_ROOT)
-        protocol = load_ramp_protocol(
-            FIXTURE_ROOT.parents[2]
-            / "env"
-            / "protocols"
-            / "v6_ramp_pure_rl_v2.yaml"
-        )
-        env = RampAwareEnv(panel, sites, workload, stats, protocol)
-        env.reset()
-        shaping = []
-        first_potential = None
-        while True:
-            _, _, terminated, _, info = env.step(
-                np.zeros(env.action_space.shape)
-            )
-            if first_potential is None:
-                first_potential = info["potential_before"]
-            shaping.append(info["potential_shaping_reward"])
-            self.assertIn("raw_unshaped_ramp_reward", info)
-            self.assertIn("robust_harm_penalty", info)
-            if terminated:
-                self.assertEqual(info["potential_after"], 0.0)
-                break
-        self.assertAlmostEqual(
-            sum(shaping),
-            -protocol.anticipatory_potential_scale * first_potential,
         )
 
     def test_physical_scale_multiplies_work_and_power_consistently(self) -> None:

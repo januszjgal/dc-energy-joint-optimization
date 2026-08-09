@@ -14,16 +14,13 @@ import numpy as np
 
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.fixture import load_fixture, load_six_market_fixture
-from env.ramp_v6.protocol import load_ramp_protocol
 from ramp_rl.contract import EnvRequest
-from ramp_rl.schema import DEFAULT_PROTOCOL_PATH, load_protocol
+from ramp_rl.schema import load_protocol
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "ramp_v6"
 ENERGY_MODEL_V3_PANEL_ROOT = ROOT / "output" / "energy_model_v3" / "ramp_v6"
 ENERGY_MODEL_V3_HANDOFF = ENERGY_MODEL_V3_PANEL_ROOT / "factory_manifest.json"
-CAMPAIGN_V2_PATH = ROOT / "env" / "protocols" / "v6_pure_ramp_rl_v2.yaml"
-RAMP_PROTOCOL_V2_PATH = ROOT / "env" / "protocols" / "v6_ramp_pure_rl_v2.yaml"
 SPLIT_MONTH = {"train": 1, "validation": 7, "test": 9}
 
 
@@ -112,29 +109,10 @@ def make_fixture_env(request: EnvRequest) -> RampAwareEnv:
     )
 
 
-def make_fixture_env_v2(request: EnvRequest) -> RampAwareEnv:
-    """Create a v2 robust-causal six-market smoke environment."""
-    if request.split not in SPLIT_MONTH:
-        raise ValueError("split must be train, validation, or test")
-    panel, sites, workload, stats, _ = load_six_market_fixture(FIXTURE_ROOT)
-    return RampAwareEnv(
-        panel,
-        sites,
-        workload,
-        stats,
-        load_ramp_protocol(RAMP_PROTOCOL_V2_PATH),
-        episode_context=_fixture_context(request),
-        epsilon_pct=request.epsilon_pct,
-        lagrangian_multiplier=request.lagrangian_multiplier,
-    )
-
-
 def _build_energy_model_v3_window(
     payload: dict[str, Any],
     request: EnvRequest,
     window_id: str,
-    campaign_path: Path = DEFAULT_PROTOCOL_PATH,
-    ramp_protocol_path: Path | None = None,
 ) -> RampAwareEnv:
     split_windows = payload["windows"][request.split]
     window = split_windows[window_id]
@@ -155,11 +133,9 @@ def _build_energy_model_v3_window(
         declared_hashes["canonical_panel"],
         declared_hashes["fixture"],
     )
-    if ramp_protocol_path is not None:
-        protocol = load_ramp_protocol(ramp_protocol_path)
     if len(panel.markets) != 6 or len(sites) != 6:
         raise ValueError("energy-model-v3 primary handoff must contain six markets/sites")
-    campaign = load_protocol(campaign_path)
+    campaign = load_protocol()
     allowed_periods = {
         str(value) for value in campaign["data"]["split"][request.split]["months"]
     }
@@ -227,19 +203,10 @@ class EnergyModelV3WindowEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(
-        self,
-        payload: dict[str, Any],
-        request: EnvRequest,
-        *,
-        campaign_path: Path = DEFAULT_PROTOCOL_PATH,
-        ramp_protocol_path: Path | None = None,
-    ):
+    def __init__(self, payload: dict[str, Any], request: EnvRequest):
         super().__init__()
         self.payload = payload
         self.request = request
-        self.campaign_path = campaign_path
-        self.ramp_protocol_path = ramp_protocol_path
         self._multiplier = float(request.lagrangian_multiplier)
         split_windows = payload["windows"][request.split]
         self._window_ids = tuple(sorted(split_windows))
@@ -278,11 +245,7 @@ class EnergyModelV3WindowEnv(gym.Env):
 
     def _new_window(self, window_id: str) -> RampAwareEnv:
         current = _build_energy_model_v3_window(
-            self.payload,
-            self.request,
-            window_id,
-            self.campaign_path,
-            self.ramp_protocol_path,
+            self.payload, self.request, window_id
         )
         current.set_lagrangian_multiplier(self._multiplier)
         return current
@@ -328,7 +291,8 @@ class EnergyModelV3WindowEnv(gym.Env):
         self._current.close()
 
 
-def _load_energy_model_v3_handoff(request: EnvRequest) -> dict[str, Any]:
+def make_energy_model_v3_env(request: EnvRequest) -> EnergyModelV3WindowEnv:
+    """Load a resampling real-panel environment from the frozen handoff."""
     if not ENERGY_MODEL_V3_HANDOFF.is_file():
         raise MissingEnergyModelV3PanelError(
             "missing energy-model-v3 ramp panel handoff: "
@@ -362,19 +326,4 @@ def _load_energy_model_v3_handoff(request: EnvRequest) -> dict[str, Any]:
         raise ValueError(
             f"energy-model-v3 handoff has no {request.split} windows"
         )
-    return payload
-
-
-def make_energy_model_v3_env(request: EnvRequest) -> EnergyModelV3WindowEnv:
-    """Load the immutable v1 real-panel environment."""
-    return EnergyModelV3WindowEnv(_load_energy_model_v3_handoff(request), request)
-
-
-def make_energy_model_v3_env_v2(request: EnvRequest) -> EnergyModelV3WindowEnv:
-    """Load the immutable robust-causal v2 real-panel environment."""
-    return EnergyModelV3WindowEnv(
-        _load_energy_model_v3_handoff(request),
-        request,
-        campaign_path=CAMPAIGN_V2_PATH,
-        ramp_protocol_path=RAMP_PROTOCOL_V2_PATH,
-    )
+    return EnergyModelV3WindowEnv(payload, request)

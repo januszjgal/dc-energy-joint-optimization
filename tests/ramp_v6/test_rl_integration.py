@@ -12,11 +12,9 @@ import numpy as np
 from env.ramp_v6.factory import (
     MissingEnergyModelV3PanelError,
     make_energy_model_v3_env,
-    make_energy_model_v3_env_v2,
     make_fixture_env,
-    make_fixture_env_v2,
 )
-from ramp_rl.campaign import assert_long_campaign_ready, plan_stage
+from ramp_rl.campaign import assert_long_campaign_ready
 from ramp_rl.contract import (
     SEMANTIC_ACTION_ID,
     EnvRequest,
@@ -25,7 +23,7 @@ from ramp_rl.contract import (
 )
 from ramp_rl.evaluation import _episode
 from ramp_rl.fixture_env import make_fixture_env as make_bundled_tail_fixture
-from ramp_rl.runner import EvidenceCallback, run_training
+from ramp_rl.runner import EvidenceCallback
 from ramp_rl.schema import load_protocol
 
 
@@ -105,64 +103,6 @@ class RampRLIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "energy_model_v3_ramp_panel"):
             assert_long_campaign_ready({})
         assert_long_campaign_ready({"energy_model_v3_ramp_panel": True})
-
-    def test_v2_protocol_is_separate_and_stops_at_100k(self) -> None:
-        path = Path("env/protocols/v6_pure_ramp_rl_v2.yaml")
-        protocol = load_protocol(path)
-        self.assertEqual(
-            protocol["protocol"]["id"],
-            "v6-ramp-pure-rl-preregistered-v2",
-        )
-        self.assertEqual(protocol["algorithms"]["ppo"]["learning_rate"], 1e-4)
-        self.assertEqual(protocol["algorithms"]["ppo"]["n_epochs"], 5)
-        self.assertEqual(protocol["algorithms"]["ppo"]["target_kl"], 0.02)
-        self.assertFalse(protocol["training"]["normalization"]["reward"])
-        self.assertEqual(
-            protocol["training"]["effective_boundary_timesteps"], 110592
-        )
-        self.assertEqual(
-            [job.seed for job in plan_stage(protocol, "screen")],
-            [2701, 2702, 2703],
-        )
-        self.assertEqual(plan_stage(protocol, "extension"), [])
-
-        request = EnvRequest(
-            split="validation",
-            seed=2701,
-            window_id="2026-02-01-daily",
-            training=False,
-        )
-        env = make_energy_model_v3_env_v2(request)
-        _, reset_info = env.reset(seed=2701)
-        self.assertEqual(
-            reset_info["protocol_id"], "ramp-v6-pure-rl-frozen-v2"
-        )
-        env.close()
-
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(RuntimeError, "environment protocol"):
-                run_training(
-                    factory=make_fixture_env,
-                    protocol=protocol,
-                    algorithm="ppo",
-                    seed=2701,
-                    target_timesteps=288,
-                    output_dir=Path(directory),
-                    fixture_profile=True,
-                    resume=False,
-                )
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(ValueError, "seed"):
-                run_training(
-                    factory=make_fixture_env_v2,
-                    protocol=protocol,
-                    algorithm="ppo",
-                    seed=2601,
-                    target_timesteps=288,
-                    output_dir=Path(directory),
-                    fixture_profile=True,
-                    resume=False,
-                )
 
     def test_bundled_tail_cost_is_included_once(self) -> None:
         window = "m-07-sealed-0000"
