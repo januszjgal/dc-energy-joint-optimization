@@ -23,6 +23,7 @@ from scripts.build_final_thesis import validate_source
 from scripts.materialize_ramp_thesis import (
     DEFAULT_SOURCE,
     EXPECTED_TEMPLATE_SHA256,
+    materialize_text,
     render_tokens,
 )
 from scripts.validate_ramp_thesis import REQUIRED_PLACEHOLDERS, validate_text
@@ -196,11 +197,33 @@ class RampThesisContractTests(unittest.TestCase):
     def test_materialized_source_resolves_repo_relative_images(self) -> None:
         with TemporaryDirectory() as temporary:
             source = Path(temporary) / "materialized.md"
+            source.write_text(materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence), encoding="utf-8")
+            validate_source(source)
+
+    def test_docx_build_rejects_tampering_outside_contract(self) -> None:
+        text = materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence)
+        tampered = text.replace(
+            "incremental normalized squared-ramp impact -1.4086907198e-05",
+            "incremental normalized squared-ramp impact 0.5",
+            1,
+        )
+        self.assertNotEqual(tampered, text)
+        with TemporaryDirectory() as temporary:
+            source = Path(temporary) / "tampered.md"
+            source.write_text(tampered, encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "does not exactly match"):
+                validate_source(source)
+
+    def test_docx_build_rejects_missing_contract_marker(self) -> None:
+        text = materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence)
+        with TemporaryDirectory() as temporary:
+            source = Path(temporary) / "tampered.md"
             source.write_text(
-                "![Committed figure](docs/figures/ramp_v6/six_market_study_design.png)\n",
+                text.replace("<!-- data-result-contract-begin -->", "", 1),
                 encoding="utf-8",
             )
-            validate_source(source)
+            with self.assertRaisesRegex(RuntimeError, "does not exactly match"):
+                validate_source(source)
 
 
 if __name__ == "__main__":

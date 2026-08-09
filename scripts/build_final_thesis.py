@@ -56,6 +56,19 @@ def validate_source(source: Path) -> None:
         raise FileNotFoundError(f"Thesis source does not exist: {source}")
 
     text = source.read_text(encoding="utf-8")
+    from ramp_rl.v4r_thesis import EXPECTED_CANONICAL_SHA256, load_verified_evidence
+    from scripts.materialize_ramp_thesis import DEFAULT_SOURCE as V4R_TEMPLATE
+    from scripts.materialize_ramp_thesis import materialize_text
+
+    expected = materialize_text(
+        V4R_TEMPLATE.read_text(encoding="utf-8"),
+        load_verified_evidence(),
+    )
+    if text != expected:
+        raise RuntimeError(
+            "Thesis source does not exactly match deterministic canonical V4R "
+            "materialization"
+        )
     unresolved = sorted(set(UNRESOLVED_RESULT_PATTERN.findall(text)))
     if unresolved:
         rendered = "\n".join(f"  - {token}" for token in unresolved)
@@ -65,7 +78,6 @@ def validate_source(source: Path) -> None:
             f"{rendered}"
         )
     if "data-result-contract-begin" in text or UNRESOLVED_RESULT_PATTERN.search(text):
-        from ramp_rl.v4r_thesis import load_verified_evidence
         from scripts.validate_ramp_thesis import validate_text
 
         errors = validate_text(
@@ -80,7 +92,6 @@ def validate_source(source: Path) -> None:
         if not V4R_FIGURE_MANIFEST.is_file():
             raise FileNotFoundError(f"Missing V4R figure manifest: {V4R_FIGURE_MANIFEST}")
         figure_manifest = json.loads(V4R_FIGURE_MANIFEST.read_text(encoding="utf-8"))
-        from ramp_rl.v4r_thesis import EXPECTED_CANONICAL_SHA256
 
         if figure_manifest.get("canonical_evidence_sha256") != EXPECTED_CANONICAL_SHA256:
             raise RuntimeError("V4R figure manifest is bound to the wrong canonical evidence")
