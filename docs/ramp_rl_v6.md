@@ -104,3 +104,24 @@ The canonical live campaign result is
 not qualify a protocol for sealed-test access, and its validation curve did not
 authorize extension toward 2M. The March-April test split therefore remains
 sealed.
+
+## Immutable v2 retry
+
+The v1 confirmation failure remains frozen at commit `3391440`. Protocol v2 is
+defined separately in `env/protocols/v6_pure_ramp_rl_v2.yaml` and binds
+`env/protocols/v6_ramp_pure_rl_v2.yaml`. It retains the same data split,
+semantic action, conservation decoder, and strict raw-evidence gates while
+freezing:
+
+- PPO learning rate `1e-4`, five epochs, and `target_kl=0.02`;
+- nominal 100k early stopping at the complete-trajectory boundary of 110,592
+  interactions;
+- a smooth worst-market positive-harm training penalty with no post-hoc
+  tolerance;
+- causal finite-horizon potential shaping whose undiscounted episode sum
+  telescopes to an action-independent constant; reward normalization is
+  disabled so that identity is preserved.
+
+V2 uses fresh random-init seeds 2701-2705 and the separate
+`env.ramp_v6.factory:make_energy_model_v3_env_v2` factory. Raw unshaped ramp,
+cost, safety, and behavior evidence remains the sole selection surface.

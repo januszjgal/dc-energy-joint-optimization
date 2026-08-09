@@ -21,7 +21,11 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
 from ramp_rl.evidence import FrozenLagrangian, sha256_file, sha256_json, verify_pure_rl_manifest
-from ramp_rl.schema import EXPECTED_SB3_VERSION, FORBIDDEN_TRAINING_INPUTS
+from ramp_rl.schema import (
+    EXPECTED_SB3_VERSION,
+    FORBIDDEN_TRAINING_INPUTS,
+    load_protocol,
+)
 
 
 def load_factory(specification: str) -> RampEnvironmentFactory:
@@ -199,12 +203,13 @@ def _normalization_summary(vec: VecNormalize) -> dict[str, Any]:
         "observation_mean": np.asarray(vec.obs_rms.mean).tolist(),
         "observation_variance": np.asarray(vec.obs_rms.var).tolist(),
         "sample_count": float(vec.obs_rms.count),
-        "reward_normalization_training_only": True,
+        "reward_normalization_training_only": bool(vec.norm_reward),
     }
 
 
-def source_bundle_hash() -> str:
+def source_bundle_hash(protocol: dict[str, Any] | None = None) -> str:
     root = Path(__file__).resolve().parent.parent
+    protocol = protocol or load_protocol()
     paths = [
         root / relative
         for relative in (
@@ -222,12 +227,16 @@ def source_bundle_hash() -> str:
             "env/ramp_v6/projection.py",
             "env/ramp_v6/protocol.py",
             "env/ramp_v6/reward.py",
-            "env/protocols/v6_ramp_pure_rl.yaml",
-            "env/protocols/v6_pure_ramp_rl.yaml",
             "env/protocols/v6_pure_ramp_rl.schema.json",
-            "env/protocols/v6_ramp_panel.schema.json",
         )
     ]
+    paths.extend(
+        [
+            Path(protocol["_path"]).resolve(),
+            Path(protocol["_environment_protocol_path"]).resolve(),
+            Path(protocol["_panel_schema_path"]).resolve(),
+        ]
+    )
     digest = hashlib.sha256()
     for path in paths:
         digest.update(str(path.relative_to(root)).encode("utf-8"))
@@ -283,6 +292,11 @@ def _make_model(
             n_epochs=int(config["n_epochs"]),
             gae_lambda=float(config["gae_lambda"]),
             learning_rate=float(config["learning_rate"]),
+            target_kl=(
+                float(config["target_kl"])
+                if config.get("target_kl") is not None
+                else None
+            ),
         )
     if algorithm == "sac":
         return SAC(
@@ -317,6 +331,18 @@ def run_training(
         raise ValueError("algorithm must be ppo or sac")
     if target_timesteps <= 0:
         raise ValueError("target timesteps must be positive")
+    allowed_seeds = protocol["training"].get("allowed_seeds")
+    if allowed_seeds is not None and int(seed) not in {
+        int(value) for value in allowed_seeds
+    }:
+        raise ValueError("seed is outside the frozen protocol seed set")
+    early_stop = protocol["training"].get("early_stopping_timesteps")
+    if (
+        early_stop is not None
+        and not fixture_profile
+        and int(target_timesteps) != int(early_stop)
+    ):
+        raise ValueError("integrated v2 jobs must stop at the frozen 100k target")
     protocol_n_envs = int(protocol["training"]["vectorized_environments"])
     if n_envs is None:
         n_envs = 2 if fixture_profile else protocol_n_envs
@@ -389,7 +415,13 @@ def run_training(
         raise RuntimeError("all vector environments must use the same decision_steps")
     factory_identity = _factory_identity(factory)
     environment_contract = dict(base_vec.envs[0].contract)
-    integrated_source_sha256 = source_bundle_hash()
+    expected_environment_protocol = protocol["environment_protocol"]["id"]
+    if environment_contract.get("protocol_id") != expected_environment_protocol:
+        base_vec.close()
+        raise RuntimeError(
+            "environment protocol does not match the campaign protocol"
+        )
+    integrated_source_sha256 = source_bundle_hash(protocol)
     job_identity = {
         "protocol_sha256": protocol["_sha256"],
         "algorithm": algorithm,
@@ -400,6 +432,7 @@ def run_training(
         "factory": factory_identity,
         "source_bundle_sha256": integrated_source_sha256,
         "decision_steps": decision_steps,
+        "environment_protocol_id": environment_contract["protocol_id"],
         "semantic_action_id": environment_contract["semantic_action_id"],
         "action_shape": environment_contract["action_shape"],
         "action_low": environment_contract["action_low"],
@@ -428,7 +461,14 @@ def run_training(
         if algorithm == "sac":
             model.load_replay_buffer(replay_path)
     else:
-        vec_env = VecNormalize(base_vec, norm_obs=True, norm_reward=True, gamma=1.0)
+        vec_env = VecNormalize(
+            base_vec,
+            norm_obs=True,
+            norm_reward=bool(
+                protocol["training"]["normalization"].get("reward", True)
+            ),
+            gamma=1.0,
+        )
         model = _make_model(algorithm, vec_env, seed, config)
     initial_hashes = model_hashes(model)
     if resumed and prior_manifest:
@@ -450,6 +490,18 @@ def run_training(
     effective_target = int(
         math.ceil(int(target_timesteps) / boundary_quantum) * boundary_quantum
     )
+    declared_effective = protocol["training"].get(
+        "effective_boundary_timesteps"
+    )
+    if (
+        declared_effective is not None
+        and not fixture_profile
+        and effective_target != int(declared_effective)
+    ):
+        vec_env.close()
+        raise RuntimeError(
+            "effective target does not match the frozen boundary target"
+        )
     remaining = max(effective_target - start_timesteps, 0)
     callback = EvidenceCallback(
         n_envs=int(n_envs),

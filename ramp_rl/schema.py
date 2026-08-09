@@ -39,9 +39,24 @@ def _require(condition: bool, message: str) -> None:
 
 
 def validate_protocol(protocol: dict[str, Any]) -> None:
+    protocol_id = str(protocol["protocol"]["id"])
+    is_v2 = protocol_id == "v6-ramp-pure-rl-preregistered-v2"
+    _require(
+        protocol_id
+        in {
+            "v6-ramp-pure-rl-preregistered-v1",
+            "v6-ramp-pure-rl-preregistered-v2",
+        },
+        "unsupported ramp pure-RL campaign protocol",
+    )
     environment = protocol["environment_protocol"]
     _require(
-        environment["id"] == "ramp-v6-pure-rl-frozen-v1",
+        environment["id"]
+        == (
+            "ramp-v6-pure-rl-frozen-v2"
+            if is_v2
+            else "ramp-v6-pure-rl-frozen-v1"
+        ),
         "trainer must bind the frozen ramp-core protocol",
     )
     _require(
@@ -90,6 +105,20 @@ def validate_protocol(protocol: dict[str, Any]) -> None:
     _require(0.0 < float(algorithms["ppo"]["gae_lambda"]) <= 1.0, "PPO GAE lambda is invalid")
     _require(float(algorithms["sac"]["gamma"]) == 1.0, "SAC gamma must be 1")
     _require(int(algorithms["sac"]["n_steps"]) >= 36, "SAC must cover the 3h delayed-credit horizon")
+    if is_v2:
+        _require(
+            float(algorithms["ppo"]["learning_rate"]) == 1e-4
+            and int(algorithms["ppo"]["n_epochs"]) == 5
+            and float(algorithms["ppo"]["target_kl"]) == 0.02,
+            "v2 PPO stabilization parameters are not frozen",
+        )
+        _require(
+            training["allowed_seeds"] == [2701, 2702, 2703, 2704, 2705]
+            and int(training["early_stopping_timesteps"]) == 100_000
+            and int(training["effective_boundary_timesteps"]) == 110_592
+            and training["normalization"]["reward"] is False,
+            "v2 seed, stopping, or reward-normalization contract is not frozen",
+        )
 
     split = protocol["data"]["split"]
     month_sets = [set(split[name]["months"]) for name in ("train", "validation", "test")]
@@ -108,12 +137,32 @@ def validate_protocol(protocol: dict[str, Any]) -> None:
 
     stages = protocol["campaign"]["stages"]
     _require(stages["screen"]["seeds"] == 3 and stages["screen"]["timesteps"] == 100_000, "screen stage must be 3x100k")
-    _require(stages["confirmation"]["seeds"] == 5 and stages["confirmation"]["timesteps"] == 500_000, "confirmation must be 5x500k")
+    confirmation_timesteps = 100_000 if is_v2 else 500_000
+    _require(
+        stages["confirmation"]["seeds"] == 5
+        and stages["confirmation"]["timesteps"] == confirmation_timesteps,
+        f"confirmation must be 5x{confirmation_timesteps}",
+    )
     _require(len(stages["screen"]["seed_values"]) == 3, "screen seed list must contain three seeds")
     _require(len(stages["confirmation"]["seed_values"]) == 5, "confirmation seed list must contain five seeds")
     _require(len(stages["extension"]["seed_values"]) == 5, "extension seed list must retain five seeds")
-    _require(stages["extension"]["max_timesteps"] == 2_000_000, "extension cap must be 2M")
-    _require(stages["extension"]["validation_curve_materiality_required"] is True, "2M extension needs validation materiality")
+    if is_v2:
+        _require(
+            stages["extension"]["enabled"] is False
+            and stages["extension"]["max_timesteps"] == 100_000
+            and stages["extension"]["validation_curve_materiality_required"]
+            is False,
+            "v2 must freeze 100k early stopping and disable extension",
+        )
+        _require(
+            stages["screen"]["seed_values"] == [2701, 2702, 2703]
+            and stages["confirmation"]["seed_values"]
+            == [2701, 2702, 2703, 2704, 2705],
+            "v2 seed sets are not frozen",
+        )
+    else:
+        _require(stages["extension"]["max_timesteps"] == 2_000_000, "extension cap must be 2M")
+        _require(stages["extension"]["validation_curve_materiality_required"] is True, "2M extension needs validation materiality")
     _require(
         protocol["campaign"]["final_campaign_blocked_until"]
         == ["energy-model-v3-ramp-panel"],
@@ -122,6 +171,7 @@ def validate_protocol(protocol: dict[str, Any]) -> None:
 
 
 def load_protocol(path: Path = DEFAULT_PROTOCOL_PATH) -> dict[str, Any]:
+    path = path.resolve()
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"invalid protocol document: {path}")

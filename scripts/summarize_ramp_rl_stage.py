@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from ramp_rl.campaign import extension_allowed, promotion_decision  # noqa: E402
 from ramp_rl.evidence import sha256_file  # noqa: E402
-from ramp_rl.schema import load_protocol  # noqa: E402
+from ramp_rl.schema import DEFAULT_PROTOCOL_PATH, load_protocol  # noqa: E402
 
 
 def main() -> None:
@@ -22,9 +22,11 @@ def main() -> None:
     parser.add_argument("--validation-root", type=Path, required=True)
     parser.add_argument("--expected-seeds", type=int, required=True)
     parser.add_argument("--stage", required=True)
+    parser.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL_PATH)
     parser.add_argument("--previous-summary", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    protocol = load_protocol(args.protocol)
     rows = []
     for path in sorted(args.validation_root.glob("*_validation.json")):
         match = re.fullmatch(r"(ppo|sac)_(\d+)_validation\.json", path.name)
@@ -61,6 +63,23 @@ def main() -> None:
                 "validation_sha256": sha256_file(path),
             }
         )
+    stage_config = protocol["campaign"]["stages"].get(args.stage)
+    if stage_config is not None:
+        expected_seed_values = {
+            int(value) for value in stage_config["seed_values"]
+        }
+        actual_seed_values = {int(row["seed"]) for row in rows}
+        if actual_seed_values != expected_seed_values:
+            raise ValueError(
+                "validation evidence does not match the frozen stage seed set"
+            )
+        expected_algorithms = stage_config.get("algorithms")
+        if expected_algorithms is not None and {
+            str(row["algorithm"]) for row in rows
+        } != {str(value) for value in expected_algorithms}:
+            raise ValueError(
+                "validation evidence does not match the frozen stage algorithms"
+            )
     decision = promotion_decision(
         rows, expected_seed_count=args.expected_seeds
     )
@@ -118,7 +137,7 @@ def main() -> None:
         ]
         evidence["validation_curve"] = validation_curve
         evidence["extension_decision"] = extension_allowed(
-            load_protocol(), validation_curve
+            protocol, validation_curve
         )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

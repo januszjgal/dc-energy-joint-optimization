@@ -28,6 +28,8 @@ def plan_stage(
     if stage not in {"screen", "confirmation", "extension"}:
         raise ValueError("stage must be screen, confirmation, or extension")
     config = protocol["campaign"]["stages"][stage]
+    if config.get("enabled") is False:
+        return []
     selected_algorithms = list(algorithms or config.get("algorithms", ("ppo", "sac")))
     if not selected_algorithms or set(selected_algorithms) - {"ppo", "sac"}:
         raise ValueError("campaign algorithms must be pure PPO and/or pure SAC")
