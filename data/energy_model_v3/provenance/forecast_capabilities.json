@@ -1,32 +1,30 @@
 {
   "schema_version": "energy-model-v3",
-  "minimum_horizon_hours": 3,
+  "horizons_hours": [1, 3],
   "causal_only": true,
   "realized_future_values_forbidden": true,
   "markets": {
-    "PJM_DOM": {
-      "status": "BLOCKED_UNSTAGED",
-      "reason": "PJM_API_KEY absent and no causal forecast product has been staged"
-    },
-    "NYISO_NYC_J": {
-      "status": "BLOCKED_UNSTAGED",
-      "reason": "No causal issue/vintage-qualified forecast product has been staged"
-    },
     "CAISO_NP15": {
-      "status": "BLOCKED_UNSTAGED",
-      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+      "status": "RECONSTRUCTED_CAUSAL"
     },
     "ERCOT_LZ_NORTH": {
-      "status": "BLOCKED_UNSTAGED",
-      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+      "status": "RECONSTRUCTED_CAUSAL"
+    },
+    "NYISO_NYC_J": {
+      "status": "RECONSTRUCTED_CAUSAL"
     },
     "MISO_MINN_HUB": {
-      "status": "BLOCKED_UNSTAGED",
-      "reason": "MISO_API_KEY absent and no causal forecast product has been staged"
+      "status": "RECONSTRUCTED_CAUSAL"
     },
     "SPP_NORTH_HUB": {
-      "status": "BLOCKED_UNSTAGED",
-      "reason": "No causal issue/vintage-qualified forecast product has been staged"
+      "status": "RECONSTRUCTED_CAUSAL"
+    },
+    "ISONE_NEMA": {
+      "status": "RECONSTRUCTED_CAUSAL"
+    },
+    "PJM_DOM": {
+      "status": "BLOCKED_EXCLUDED",
+      "reason": "PJM_API_KEY absent; Northern Virginia was not evaluated"
     }
   },
   "required_fields_when_available": [

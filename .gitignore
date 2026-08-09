@@ -37,3 +37,10 @@ Thumbs.db
 # Secrets (API keys etc.)
 .env
 *.secret
+
+# Energy model v3 restricted/large live evidence (regenerable)
+data/energy_model_v3/raw/
+data/energy_model_v3/native/
+data/energy_model_v3/forecasts/*.csv
+data/energy_model_v3/modeled_dc_power/
+output/energy_model_v3/live-panel/

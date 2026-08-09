@@ -1,88 +1,38 @@
 [
   {
     "capability": "historical_primary_tuple",
-    "checked_at_utc": "2026-08-08T21:25:14.769726+00:00",
-    "credential": "PJM_API_KEY",
-    "details": {
-      "fail_closed": true
-    },
-    "market": "PJM_DOM",
-    "reason": "required credential PJM_API_KEY is not set",
-    "status": "BLOCKED"
-  },
-  {
-    "capability": "network_probe",
-    "checked_at_utc": "2026-08-08T21:25:15.588401+00:00",
-    "credential": null,
-    "details": {
-      "content_length": "113255",
-      "content_type": "application/zip",
-      "elapsed_seconds": 0.819,
-      "http_status": 200,
-      "probe_only": true,
-      "url": "https://mis.nyiso.com/public/csv/damlbmp/20250901damlbmp_zone_csv.zip"
-    },
-    "market": "NYISO_NYC_J",
-    "reason": "official endpoint returned HTTP 200",
-    "status": "AVAILABLE"
-  },
-  {
-    "capability": "network_probe",
-    "checked_at_utc": "2026-08-08T21:25:16.773935+00:00",
-    "credential": null,
-    "details": {
-      "content_length": null,
-      "content_type": "application/x-zip-compressed",
-      "elapsed_seconds": 1.185,
-      "http_status": 200,
-      "probe_only": true,
-      "url": "https://oasis.caiso.com/oasisapi/SingleZip"
-    },
     "market": "CAISO_NP15",
-    "reason": "official endpoint returned HTTP 200",
-    "status": "AVAILABLE"
-  },
-  {
-    "capability": "network_probe",
-    "checked_at_utc": "2026-08-08T21:25:17.426246+00:00",
-    "credential": null,
-    "details": {
-      "content_length": null,
-      "content_type": null,
-      "elapsed_seconds": 0.652,
-      "http_status": 200,
-      "probe_only": true,
-      "url": "https://www.ercot.com/misapp/servlets/IceDocListJsonWS"
-    },
-    "market": "ERCOT_LZ_NORTH",
-    "reason": "official endpoint returned HTTP 200",
+    "reason": "authoritative no-key price and physical inputs staged",
     "status": "AVAILABLE"
   },
   {
     "capability": "historical_primary_tuple",
-    "checked_at_utc": "2026-08-08T21:25:17.426339+00:00",
-    "credential": "MISO_API_KEY",
-    "details": {
-      "fail_closed": true
-    },
-    "market": "MISO_MINN_HUB",
-    "reason": "required credential MISO_API_KEY is not set",
-    "status": "BLOCKED"
+    "market": "ERCOT_LZ_NORTH",
+    "reason": "authoritative no-key price and physical inputs staged",
+    "status": "AVAILABLE"
   },
   {
-    "capability": "network_probe",
-    "checked_at_utc": "2026-08-08T21:25:19.242378+00:00",
-    "credential": null,
-    "details": {
-      "content_length": "3087998",
-      "content_type": "text/csv",
-      "elapsed_seconds": 1.816,
-      "http_status": 200,
-      "probe_only": true,
-      "url": "https://portal.spp.org/file-browser-api/download/da-lmp-by-settlement-location"
-    },
+    "capability": "historical_primary_tuple",
+    "market": "NYISO_NYC_J",
+    "reason": "authoritative no-key price and physical inputs staged",
+    "status": "AVAILABLE"
+  },
+  {
+    "capability": "historical_primary_tuple",
+    "market": "MISO_MINN_HUB",
+    "reason": "authoritative no-key price and physical inputs staged",
+    "status": "AVAILABLE"
+  },
+  {
+    "capability": "historical_primary_tuple",
     "market": "SPP_NORTH_HUB",
-    "reason": "official endpoint returned HTTP 200",
+    "reason": "authoritative no-key price and physical inputs staged",
+    "status": "AVAILABLE"
+  },
+  {
+    "capability": "historical_primary_tuple",
+    "market": "ISONE_NEMA",
+    "reason": "authoritative no-key price and physical inputs staged",
     "status": "AVAILABLE"
   }
 ]

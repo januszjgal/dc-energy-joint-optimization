@@ -11,12 +11,12 @@ index:
 
 | Site | Price location | Physical stress geography | Borg cell |
 |---|---|---|---|
-| Northern Virginia | PJM DOM pnode 34964545 | PJM RTO | a |
-| New York City | NYISO Zone J PTID 61761 | Zone J load; NYCA renewable context | b |
-| Northern California | CAISO NP15 | CAISO system | c |
-| North Texas | ERCOT LZ_NORTH | ERCOT system | d |
-| Minnesota | MISO MINN.HUB | MISO system | e |
-| SPP North | SPPNORTH_HUB | SPP balancing authority | f |
+| Northern California | CAISO NP15 | CAISO system | a |
+| North Texas | ERCOT LZ_NORTH | ERCOT system | b |
+| New York City | NYISO Zone J PTID 61761 | Zone J load; NYCA renewable context | c |
+| Minnesota | MISO MINN.HUB | MISO system | d |
+| SPP North | SPPNORTH_HUB | SPP balancing authority | e |
+| Boston/NEMA | ISO-NE location 4008 | ISO New England balancing authority | f |
 
 The primary capacity is 100 MW per site and 600 MW total. The primary
 sensitivity is 1 GW total, equally allocated (166.6667 MW per site). The
@@ -26,6 +26,14 @@ stress scenario declares `penetration_override: true`.
 
 The robustness mapping is cells c-h. It overlaps the primary mapping and is
 therefore labeled **overlapping/non-OOF**. It is not an out-of-fold claim.
+
+Live primary panels use the measured Google ClusterData2019 Borg cell a-f
+profiles. The 8,928 complete five-minute intervals are averaged to a 744-hour
+profile, converted with the committed per-cell power model, and tiled from the
+candidate UTC start to cover the eight-month market calendar. The terminal
+boundary sample is not treated as a five-minute interval. Exact source,
+power-model, artifact hashes, and repetition counts are recorded in
+`provenance/workload-power-manifest.json`.
 
 ## Calendar and leakage boundary
 
@@ -69,7 +77,10 @@ evidence.
 Forecasts require target, value, issue time, vintage, horizon, capability, and
 quality flags. Issue time cannot follow the target. Realized future RT price or
 load is rejected as a forecast. A blocked or reconstructed causal capability
-must be explicit.
+must be explicit. Training-period forecasts use daily expanding-window model
+vintages whose training observations strictly precede the vintage; the final
+first-five-month model is frozen at the February boundary for validation and
+sealed test forecasts.
 
 ## Physical and economic derivations
 
@@ -100,10 +111,16 @@ substitution exists. Synthetic fixtures are marked
 `SYNTHETIC_FIXTURE_ONLY_NOT_MARKET_EVIDENCE` and are used only to test schemas,
 derivations, diagnostics, and plots.
 
-PJM requires `PJM_API_KEY`; MISO historical physical data requires
-`MISO_API_KEY` and a subscription. Optional EIA-930 use requires `EIA_API_KEY`,
-must match the same balancing authority, and must be activated explicitly. It
-is never a silent substitute.
+**PJM DOM / Northern Virginia is BLOCKED and excluded from the live roster,
+results, and claims until `PJM_API_KEY` is provided. It was not evaluated.**
+MISO's public daily price reports require no credential. Where a complete
+operator historical physical product is unavailable, the pipeline may use only
+the same-balancing-authority UTC series from the no-key EIA `EBA.zip` bulk
+archive. Every fallback records its source role and reason; it is never silent.
+Negative renewable-generation adjustments in EIA bulk series are explicitly
+clipped to zero before net-load derivation, with raw minima and affected-hour
+counts retained in the live acquisition manifest. This is a documented
+non-negativity normalization, not interpolation.
 
 ## Commands
 
@@ -119,6 +136,7 @@ python scripts\build_energy_model_v3.py download-ercot-physical
 python scripts\build_energy_model_v3.py preflight
 python scripts\build_energy_model_v3.py fixture-diagnostics
 python scripts\build_energy_model_v3.py build
+python scripts\build_energy_model_v3.py acquire-live
 python -m unittest discover -s tests\energy_model_v3 -v
 ```
 
@@ -172,11 +190,19 @@ only because the full 243-document SCED reconstruction and complete price
 archives have not yet been staged and hash-bound. EIA-930 is not needed for
 the primary tuple and cannot silently replace it.
 
+`acquire-live` downloads and hashes the actual source files, stages restricted
+raw/native/panel evidence only in ignored local paths, creates train-only
+scales and causal reconstructed 1h/3h forecasts, and writes permissible
+manifests and diagnostics. No fixture or synthetic market data can satisfy live
+preflight.
+
+The live preflight also requires product-specific canonical coverage files and
+raw hash manifests for every trusted product in
+`provenance/coverage_evidence.json`. Acquisition alone cannot bypass this gate.
+
 ## Current live capability status
 
-The committed report under `output/energy_model_v3/` is the source-of-truth for
-the retrieval timestamp. Public NYISO, CAISO, ERCOT, and SPP probe endpoints
-were reachable. PJM and MISO are blocked because their required credentials
-were absent. Consequently the six-market panel, live scale configuration,
-live effective-rank/ramp diagnostics, and market-evidence plots remain
-correctly blocked rather than being fabricated.
+The preserved live acquisition provides the complete six-market candidate
+calendar and validated local panel. PJM DOM / Northern Virginia remains
+credential-blocked, was not evaluated, and is excluded from every result and
+claim.

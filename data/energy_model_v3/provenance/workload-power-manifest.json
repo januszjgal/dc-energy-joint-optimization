@@ -1,0 +1,129 @@
+{
+  "mapping": "primary_independent",
+  "markets": {
+    "CAISO_NP15": {
+      "aggregation_5min_rows": 8928,
+      "artifact": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\energy_model_v3\\modeled_dc_power\\CAISO_NP15.csv",
+      "artifact_bytes": 847157,
+      "artifact_sha256": "40df34c9a8c94ad69762c0a693e774d17c8c6aa890236ef68e74eeb0ed7453b6",
+      "borg_cell": "a",
+      "candidate_rows": 5808,
+      "hourly_profile_rows": 744,
+      "power_model": {
+        "idle_power": 0.5280156091206172,
+        "peak_power": 0.8677433937245866,
+        "slope": 0.3397277846039694
+      },
+      "rated_power_mw": 100.0,
+      "source": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\cells\\cell_a.csv",
+      "source_5min_rows": 8929,
+      "source_sha256": "4ad3697e0239112dbc2c1b1cbc87689686adfe0d377f1c47e9aa371e04f65ae6",
+      "terminal_boundary_row_excluded": true,
+      "trace_repetitions": 8
+    },
+    "ERCOT_LZ_NORTH": {
+      "aggregation_5min_rows": 8928,
+      "artifact": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\energy_model_v3\\modeled_dc_power\\ERCOT_LZ_NORTH.csv",
+      "artifact_bytes": 870268,
+      "artifact_sha256": "e5a4e0eb19b8b0371f44068d2fb8bcb6f88b7f4e5f8351baaeb80a8e49b987ad",
+      "borg_cell": "b",
+      "candidate_rows": 5808,
+      "hourly_profile_rows": 744,
+      "power_model": {
+        "idle_power": 0.5481899557638172,
+        "peak_power": 0.9239512696018546,
+        "slope": 0.3757613138380374
+      },
+      "rated_power_mw": 100.0,
+      "source": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\cells\\cell_b.csv",
+      "source_5min_rows": 8929,
+      "source_sha256": "6893d301298faf8bbbf0d337885c296bb837321c757745221edd154851bf943e",
+      "terminal_boundary_row_excluded": true,
+      "trace_repetitions": 8
+    },
+    "ISONE_NEMA": {
+      "aggregation_5min_rows": 8928,
+      "artifact": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\energy_model_v3\\modeled_dc_power\\ISONE_NEMA.csv",
+      "artifact_bytes": 847220,
+      "artifact_sha256": "a94a1f8e6c5218d2d29911870e739816c58bef171a3cf7a322f0fefcf29663ed",
+      "borg_cell": "f",
+      "candidate_rows": 5808,
+      "hourly_profile_rows": 744,
+      "power_model": {
+        "idle_power": 0.4272302334568904,
+        "peak_power": 0.8679693395505264,
+        "slope": 0.44073910609363603
+      },
+      "rated_power_mw": 100.0,
+      "source": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\cells\\cell_f.csv",
+      "source_5min_rows": 8929,
+      "source_sha256": "fb19f6441cb9a8a73fdf93390dc1915ad1b36d6f3e5b8873be956d273facd507",
+      "terminal_boundary_row_excluded": true,
+      "trace_repetitions": 8
+    },
+    "MISO_MINN_HUB": {
+      "aggregation_5min_rows": 8928,
+      "artifact": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\energy_model_v3\\modeled_dc_power\\MISO_MINN_HUB.csv",
+      "artifact_bytes": 864717,
+      "artifact_sha256": "5d726ffd96c1ef4d7a8afbce01972dd50ee3574285a2de6596c0e985d21ec7c7",
+      "borg_cell": "d",
+      "candidate_rows": 5808,
+      "hourly_profile_rows": 744,
+      "power_model": {
+        "idle_power": 0.3820385383043128,
+        "peak_power": 0.9524089851951459,
+        "slope": 0.5703704468908332
+      },
+      "rated_power_mw": 100.0,
+      "source": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\cells\\cell_d.csv",
+      "source_5min_rows": 8929,
+      "source_sha256": "fdf45fe0742872313266a7ef9d4daa80caa5115fa34ae4c84797975713bfaedc",
+      "terminal_boundary_row_excluded": true,
+      "trace_repetitions": 8
+    },
+    "NYISO_NYC_J": {
+      "aggregation_5min_rows": 8928,
+      "artifact": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\energy_model_v3\\modeled_dc_power\\NYISO_NYC_J.csv",
+      "artifact_bytes": 853025,
+      "artifact_sha256": "7fe4478626ebfcf8f089bba9af5ab4a5fe4e79245c0ad434f3fbb11029a0222d",
+      "borg_cell": "c",
+      "candidate_rows": 5808,
+      "hourly_profile_rows": 744,
+      "power_model": {
+        "idle_power": 0.4396038457059293,
+        "peak_power": 0.9653436845860686,
+        "slope": 0.5257398388801392
+      },
+      "rated_power_mw": 100.0,
+      "source": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\cells\\cell_c.csv",
+      "source_5min_rows": 8929,
+      "source_sha256": "757cba809342d378d176d11b26aad13281703eeadedd869251de37bf8402305b",
+      "terminal_boundary_row_excluded": true,
+      "trace_repetitions": 8
+    },
+    "SPP_NORTH_HUB": {
+      "aggregation_5min_rows": 8928,
+      "artifact": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\energy_model_v3\\modeled_dc_power\\SPP_NORTH_HUB.csv",
+      "artifact_bytes": 864761,
+      "artifact_sha256": "a0f7bde6f55c20081149692011cd273e6b338cd3041316876701aaa98923b8f8",
+      "borg_cell": "e",
+      "candidate_rows": 5808,
+      "hourly_profile_rows": 744,
+      "power_model": {
+        "idle_power": 0.38804514085204467,
+        "peak_power": 0.9891610089248342,
+        "slope": 0.6011158680727895
+      },
+      "rated_power_mw": 100.0,
+      "source": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\cells\\cell_e.csv",
+      "source_5min_rows": 8929,
+      "source_sha256": "1c2322386c5adc4a12d841e74cda704dd8e7bfb35925198aa5a8a75ab4d44aa4",
+      "terminal_boundary_row_excluded": true,
+      "trace_repetitions": 8
+    }
+  },
+  "power_model_path": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-cuddly-chainsaw\\data\\power_model_params.json",
+  "power_model_sha256": "1b956ee2b369aa4f61a5e65c10ba86c1be5cfa01ffeea201defad4b7067dbd94",
+  "source_role": "measured_workload_power_model",
+  "temporal_mapping": "5-minute measured month aggregated to hourly means, tiled from candidate UTC start without market-data substitution"
+}

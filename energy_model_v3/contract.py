@@ -236,8 +236,8 @@ def validate_forecasts(frame: pd.DataFrame) -> pd.DataFrame:
     horizon = pd.to_numeric(
         result["forecast_horizon_hours"], errors="raise"
     )
-    if (horizon < 3).any():
-        raise ContractError("forecast horizon must be at least three hours")
+    if not horizon.isin({1, 3}).all():
+        raise ContractError("forecast horizon must be one or three hours")
     actual_horizon = (
         result["interval_start_utc"] - result["forecast_issue_utc"]
     ).dt.total_seconds() / 3600.0
