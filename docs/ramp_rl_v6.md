@@ -42,7 +42,7 @@ python scripts\run_ramp_rl_v6.py evaluate --algorithm ppo --output models\ramp_r
 
 The default factory is `env.ramp_v6.factory:make_fixture_env`, which creates the actual deterministic six-market, 1 GW ramp-core fixture with a 13-dimensional action. Each algorithm/seed/stage/epsilon uses an isolated output directory. Re-running with a larger target resumes the checkpoint. All writes are rounded to complete vector-episode boundaries; SAC verifies and restores replay. Its frozen 36-step return horizon exceeds the real hourly 3h delayed-ramp horizon. Non-fixture campaign jobs enforce four vector environments.
 
-The preregistered campaign is 3 seeds x 100k for PPO/SAC screening, validation-only promotion, 5 seeds x 500k confirmation, and extension toward 2M only while the frozen validation learning-curve rule remains material. The v6 environment interface is integrated. The final campaign is blocked only until the real energy-model v3 ramp panel handoff below exists.
+The preregistered campaign is 3 seeds x 100k for PPO/SAC screening, validation-only promotion, 5 seeds x 500k confirmation, and extension toward 2M only while the frozen validation learning-curve rule remains material. The v6 environment interface and real energy-model v3 ramp panel handoff are integrated.
 
 ## Energy-model v3 handoff
 
@@ -80,9 +80,8 @@ sites plus aligned hourly workload and train-only frozen statistics. The panel
 must include causal h1/h2/h3 gross/net forecast endpoints, issue time, vintage,
 quality, physical tuple, market scale, and day-ahead LMP. All three split maps
 must contain complete chronological windows. File hashes and the manifest-level frozen-statistics hash are verified before
-an environment is created. The current independent energy-model v3 builder
-does not yet publish this ramp handoff, so the absence of this manifest is the
-sole long-campaign blocker.
+an environment is created. The live factory publishes and hash-verifies this handoff for every train,
+validation, and sealed-test window.
 
 The real factory verifies declared year-month periods and active-day timestamps against
 the frozen split and verifies that ramp statistics were fit only on training
@@ -96,3 +95,12 @@ reward, runner, or evidence implementations.
 Every training manifest records protocol/source/artifact hashes, random initialization, initial/final policy and critic hashes, interactions and updates, replay provenance, split and normalization statistics, forecast identity, semantic adjustments, emergency feasibility, and explicit false assertions for all prohibited teacher/expert/optimizer inputs. Validation/test normalization is loaded frozen. Status quo and future analytic/QP oracle bounds are reachable only through the evaluation adapter.
 
 The evidence helpers enforce validation-only selection and Lagrangian updates, epsilon sensitivities of 0/2/5%, day/month bootstrap intervals, optimizer-seed ranges, behavior audits, and named success-gate failures. A failed gate is retained as a valid scientific result and cannot authorize sealed-test tuning.
+
+## Live campaign closeout
+
+The canonical live campaign result is
+`output/ramp_rl_v6/live/final_results.json`, with a human-readable report at
+`output/ramp_rl_v6/live/final_report.md`. The five-seed PPO confirmation did
+not qualify a protocol for sealed-test access, and its validation curve did not
+authorize extension toward 2M. The March-April test split therefore remains
+sealed.
