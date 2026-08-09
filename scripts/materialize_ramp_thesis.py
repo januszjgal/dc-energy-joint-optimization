@@ -189,6 +189,30 @@ def render_tokens(evidence: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def materialize_text(source: str, evidence: dict[str, Any]) -> str:
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    if digest != EXPECTED_TEMPLATE_SHA256:
+        raise ValueError(
+            "source does not match the frozen V4R thesis template; "
+            f"expected {EXPECTED_TEMPLATE_SHA256}, got {digest}"
+        )
+    begin = source.index("<!-- data-result-contract-begin -->")
+    end = source.index("<!-- data-result-contract-end -->")
+    replacements = render_tokens(evidence)
+    for name in replacements:
+        token = f"{{{{CANONICAL_V4R:{name}}}}}"
+        if token not in source:
+            raise ValueError(f"source does not contain required token {token}")
+        if not begin < source.index(token) < end:
+            raise ValueError(f"canonical result token is outside contract block: {token}")
+    for name, rendered in replacements.items():
+        source = source.replace(f"{{{{CANONICAL_V4R:{name}}}}}", rendered)
+    errors = validate_text(source, allow_placeholders=False, evidence=evidence)
+    if errors:
+        raise ValueError("; ".join(errors))
+    return source
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
@@ -200,28 +224,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     evidence = load_verified_evidence(args.results)
-    text = args.source.read_text(encoding="utf-8")
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    if digest != EXPECTED_TEMPLATE_SHA256:
-        raise ValueError(
-            "source does not match the frozen V4R thesis template; "
-            f"expected {EXPECTED_TEMPLATE_SHA256}, got {digest}"
-        )
-    begin = text.index("<!-- data-result-contract-begin -->")
-    end = text.index("<!-- data-result-contract-end -->")
-    replacements = render_tokens(evidence)
-    for name in replacements:
-        token = f"{{{{CANONICAL_V4R:{name}}}}}"
-        if token not in text:
-            raise ValueError(f"source does not contain required token {token}")
-        if not begin < text.index(token) < end:
-            raise ValueError(f"canonical result token is outside contract block: {token}")
-    for name, rendered in replacements.items():
-        token = f"{{{{CANONICAL_V4R:{name}}}}}"
-        text = text.replace(token, rendered)
-    errors = validate_text(text, allow_placeholders=False, evidence=evidence)
-    if errors:
-        raise ValueError("; ".join(errors))
+    text = materialize_text(args.source.read_text(encoding="utf-8"), evidence)
     args.output.write_text(text, encoding="utf-8")
     print(f"Wrote {args.output}")
     return 0
