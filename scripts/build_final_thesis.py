@@ -17,6 +17,9 @@ DEFAULT_SOURCE = ROOT / "thesis_paper.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.docx"
 NODE_BUILDER = ROOT / "scripts" / "build_final_thesis_docx.js"
 IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+UNRESOLVED_RESULT_PATTERN = re.compile(
+    r"\{\{CANONICAL_V2:[A-Z0-9_]+\}\}"
+)
 HYPERLINK_RELATIONSHIP_TYPE = (
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
 )
@@ -50,13 +53,22 @@ def validate_source(source: Path) -> None:
         raise FileNotFoundError(f"Thesis source does not exist: {source}")
 
     text = source.read_text(encoding="utf-8")
+    unresolved = sorted(set(UNRESOLVED_RESULT_PATTERN.findall(text)))
+    if unresolved:
+        rendered = "\n".join(f"  - {token}" for token in unresolved)
+        raise RuntimeError(
+            "Thesis source contains unresolved canonical-result placeholders. "
+            "Materialize the source from schema-valid evidence before building:\n"
+            f"{rendered}"
+        )
     missing: list[Path] = []
     for raw_path in IMAGE_PATTERN.findall(text):
         if re.match(r"^[a-z]+://", raw_path, flags=re.IGNORECASE):
             continue
-        image_path = (source.parent / raw_path).resolve()
-        if not image_path.is_file():
-            missing.append(image_path)
+        source_relative = (source.parent / raw_path).resolve()
+        root_relative = (ROOT / raw_path).resolve()
+        if not source_relative.is_file() and not root_relative.is_file():
+            missing.append(source_relative)
     if missing:
         rendered = "\n".join(f"  - {path}" for path in missing)
         raise FileNotFoundError(f"Missing thesis image(s):\n{rendered}")
@@ -120,7 +132,11 @@ def _replace_indexed_id(
     )
 
 
-def normalize_docx_package(output: Path) -> None:
+def normalize_docx_package(
+    output: Path,
+    *,
+    frozen_v5_hyperlinks: bool,
+) -> None:
     """Normalize IDs, metadata, and ZIP timestamps for Word and reproducibility."""
     relationships_path = "word/_rels/document.xml.rels"
     document_path = "word/document.xml"
@@ -137,16 +153,23 @@ def normalize_docx_package(output: Path) -> None:
         rf'<Relationship Id="([^"]+)" Type="{re.escape(HYPERLINK_RELATIONSHIP_TYPE)}"',
         relationships,
     )
-    if len(current_ids) != len(WORD_SAFE_HYPERLINK_IDS):
-        raise RuntimeError(
-            "The frozen thesis expects exactly "
-            f"{len(WORD_SAFE_HYPERLINK_IDS)} external hyperlinks, found "
-            f"{len(current_ids)}. Update the compatibility ID pool and revalidate "
-            "with Microsoft Word before accepting a changed bibliography."
+    if frozen_v5_hyperlinks:
+        if len(current_ids) != len(WORD_SAFE_HYPERLINK_IDS):
+            raise RuntimeError(
+                "The frozen thesis expects exactly "
+                f"{len(WORD_SAFE_HYPERLINK_IDS)} external hyperlinks, found "
+                f"{len(current_ids)}. Update the compatibility ID pool and revalidate "
+                "with Microsoft Word before accepting a changed bibliography."
+            )
+        replacement_ids = WORD_SAFE_HYPERLINK_IDS
+    else:
+        replacement_ids = tuple(
+            f"rIdrampthesis{index:04d}"
+            for index in range(1, len(current_ids) + 1)
         )
     for current_id, safe_id in zip(
         current_ids,
-        WORD_SAFE_HYPERLINK_IDS,
+        replacement_ids,
         strict=True,
     ):
         relationships = relationships.replace(
@@ -226,7 +249,10 @@ def main() -> int:
         cwd=ROOT,
         check=True,
     )
-    normalize_docx_package(output)
+    normalize_docx_package(
+        output,
+        frozen_v5_hyperlinks=source == DEFAULT_SOURCE.resolve(),
+    )
     validate_docx(output)
 
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
