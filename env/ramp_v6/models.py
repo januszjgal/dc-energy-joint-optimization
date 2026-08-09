@@ -119,6 +119,9 @@ class RampProtocol:
     )
     tail_weight: float = 0.15
     ramp_reward_scale: float = 1.0
+    worst_market_harm_weight: float = 0.0
+    worst_market_temperature: float = 1e-6
+    anticipatory_potential_scale: float = 0.0
     cost_budget_fraction: float = 0.05
     guaranteed_batch_capacity_fraction: float = 0.25
     service_envelope_fraction_of_fleet: float = 0.75
@@ -136,6 +139,12 @@ class RampProtocol:
             raise ValueError("ramp weights must sum to one")
         if self.tail_weight < 0.0 or self.ramp_reward_scale <= 0.0:
             raise ValueError("reward weights must be non-negative with positive scale")
+        if (
+            self.worst_market_harm_weight < 0.0
+            or self.worst_market_temperature <= 0.0
+            or self.anticipatory_potential_scale < 0.0
+        ):
+            raise ValueError("robust reward and shaping parameters are invalid")
         if self.cost_budget_fraction < 0.0 or self.tolerance <= 0.0:
             raise ValueError("cost budget must be non-negative and tolerance positive")
         if not 0.0 <= self.guaranteed_batch_capacity_fraction <= 1.0:

@@ -22,7 +22,9 @@ def _artifact_path(value: str) -> Path:
     return path if path.is_absolute() else ROOT / path
 
 
-def verify_saved_artifacts(record: dict[str, object]) -> list[str]:
+def verify_saved_artifacts(
+    record: dict[str, object], protocol: dict[str, object]
+) -> list[str]:
     errors: list[str] = []
     artifacts = record.get("artifacts", {})
     for name in ("model", "normalization", "replay"):
@@ -46,7 +48,7 @@ def verify_saved_artifacts(record: dict[str, object]) -> list[str]:
                 errors.append("saved policy tensor hash mismatch")
             if hashes["critic"] != record["final_critic_sha256"]:
                 errors.append("saved critic tensor hash mismatch")
-    if record.get("source_bundle_sha256") != source_bundle_hash():
+    if record.get("source_bundle_sha256") != source_bundle_hash(protocol):
         errors.append("training source bundle hash mismatch")
     factory = record.get("job_identity", {}).get("factory", {})
     source_path = ROOT / str(factory.get("source_path", ""))
@@ -68,9 +70,26 @@ def main() -> None:
         path = job / "training_manifest.json"
         record = json.loads(path.read_text(encoding="utf-8"))
         record_errors = verify_pure_rl_manifest(record)
-        record_errors.extend(verify_saved_artifacts(record))
+        record_errors.extend(verify_saved_artifacts(record, protocol))
         if record["protocol_sha256"] != protocol["_sha256"]:
             record_errors.append("protocol hash mismatch")
+        if (
+            record.get("environment_contract", {}).get("protocol_id")
+            != protocol["environment_protocol"]["id"]
+        ):
+            record_errors.append("environment protocol mismatch")
+        expected_reward_normalization = bool(
+            protocol["training"]["normalization"].get("reward", True)
+        )
+        if (
+            bool(
+                record.get("normalization", {}).get(
+                    "reward_normalization_training_only"
+                )
+            )
+            != expected_reward_normalization
+        ):
+            record_errors.append("reward normalization mismatch")
         rows.append(
             {
                 "job": str(job),

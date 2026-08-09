@@ -77,6 +77,8 @@ class RampEnvAdapter(gym.Wrapper):
     def _validate_static_contract(self) -> None:
         if self.contract.get("version") != CONTRACT_VERSION:
             raise RampContractError("unsupported ramp environment contract version")
+        if not str(self.contract.get("protocol_id", "")).strip():
+            raise RampContractError("environment protocol identity is required")
         if self.contract.get("semantic_feasible_action") is not True:
             raise RampContractError("trainer requires the environment's semantic feasible action")
         if self.contract.get("semantic_action_id") != SEMANTIC_ACTION_ID:
