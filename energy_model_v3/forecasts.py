@@ -186,7 +186,8 @@ def reconstruct_forecasts(
             if int(history.sum()) < 24 * 30:
                 continue
             selection = (
-                training_targets
+                usable
+                & (issues < train_end)
                 & (issues >= vintage)
                 & (issues < vintage + pd.Timedelta(days=1))
             )

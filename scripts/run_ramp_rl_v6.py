@@ -16,6 +16,16 @@ from ramp_rl.runner import load_factory, run_training  # noqa: E402
 from ramp_rl.schema import DEFAULT_PROTOCOL_PATH, load_protocol  # noqa: E402
 
 
+def _default_window(split: str) -> str:
+    handoff = ROOT / "output" / "energy_model_v3" / "ramp_v6" / "factory_manifest.json"
+    if handoff.is_file():
+        payload = json.loads(handoff.read_text(encoding="utf-8"))
+        windows = sorted(payload["windows"][split])
+        if windows:
+            return windows[0]
+    return "m-07-sealed-0000" if split == "validation" else "m-09-sealed-0000"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("plan", "train", "evaluate"))
@@ -62,7 +72,7 @@ def main() -> None:
         )
         print(json.dumps(manifest, indent=2, sort_keys=True))
         return
-    windows = args.window or (["m-07-sealed-0000"] if args.split == "validation" else ["m-09-sealed-0000"])
+    windows = args.window or [_default_window(args.split)]
     summary = evaluate_checkpoint(
         factory=factory,
         algorithm=args.algorithm,

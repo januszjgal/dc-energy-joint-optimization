@@ -136,6 +136,14 @@ def assess_candidate_coverage(
     markets = evidence.get("markets")
     if not isinstance(markets, dict) or set(markets) != set(MARKETS):
         raise ContractError("coverage evidence must describe exactly six markets")
+    if evidence.get("verified_live_handoff") is not None:
+        return _assess_verified_live_handoff(
+            evidence,
+            evidence_sha256=evidence_sha256,
+            repository_root=repository_root,
+            eia_api_key_available=eia_api_key_available,
+            ercot_eia_fallback_activated=ercot_eia_fallback_activated,
+        )
     results: dict[str, dict[str, Any]] = {}
     blockers: dict[str, str] = {}
     validated_files: dict[str, str] = {}
@@ -246,6 +254,116 @@ def assess_candidate_coverage(
         "blockers": blockers,
         "validated_files": validated_files,
         "status": "BLOCKED" if blockers else "COVERAGE_VERIFIED",
+    }
+
+
+def _assess_verified_live_handoff(
+    evidence: dict[str, Any],
+    *,
+    evidence_sha256: str,
+    repository_root: Path,
+    eia_api_key_available: bool,
+    ercot_eia_fallback_activated: bool,
+) -> dict[str, Any]:
+    handoff = evidence["verified_live_handoff"]
+    if not isinstance(handoff, dict):
+        raise ContractError("verified live handoff reference is invalid")
+    expected = {
+        "acquisition_manifest": (
+            "data/energy_model_v3/provenance/live-acquisition-manifest.json"
+        ),
+        "panel_manifest": "output/energy_model_v3/live-panel/manifest.json",
+    }
+    loaded: dict[str, dict[str, Any]] = {}
+    validated_files: dict[str, str] = {}
+    for name, relative in expected.items():
+        reference = handoff.get(name)
+        if (
+            not isinstance(reference, dict)
+            or reference.get("path") != relative
+            or not re.fullmatch(r"[0-9a-f]{64}", str(reference.get("sha256")))
+        ):
+            raise ContractError(f"verified live {name} reference is invalid")
+        path = repository_root / relative
+        digest = _sha256(path)
+        if digest != reference["sha256"]:
+            raise ContractError(f"verified live {name} is missing or stale")
+        loaded[name] = json.loads(path.read_text(encoding="utf-8"))
+        validated_files[relative] = digest
+    acquisition = loaded["acquisition_manifest"]
+    panel = loaded["panel_manifest"]
+    if acquisition.get("schema_version") != "energy-model-v3":
+        raise ContractError("verified live acquisition schema is invalid")
+    if acquisition.get("synthetic_market_data") is not False:
+        raise ContractError("verified live acquisition contains synthetic market data")
+    if acquisition.get("interpolation") is not False:
+        raise ContractError("verified live acquisition contains interpolation")
+    if set(acquisition.get("live_roster", ())) != set(MARKETS):
+        raise ContractError("verified live acquisition market roster is invalid")
+    if panel.get("schema_version") != "energy-model-v3":
+        raise ContractError("verified live panel schema is invalid")
+    if panel.get("fixture_mode") is not False:
+        raise ContractError("verified live panel is a fixture")
+    if panel.get("exact_common_index") is not True:
+        raise ContractError("verified live panel does not have an exact common index")
+    if set(panel.get("market_order", ())) != set(MARKETS):
+        raise ContractError("verified live panel market roster is invalid")
+    embedded_panel = acquisition.get("panel_manifest")
+    if not isinstance(embedded_panel, dict) or embedded_panel != panel:
+        raise ContractError("verified live panel does not match acquisition provenance")
+    candidate_start = pd.Timestamp(evidence["candidate_start_utc"])
+    candidate_end = pd.Timestamp(evidence["candidate_end_utc"])
+    panel_calendar = panel.get("calendar", {})
+    if (
+        pd.Timestamp(panel_calendar.get("start_utc")) != candidate_start
+        or pd.Timestamp(panel_calendar.get("end_utc")) != candidate_end
+    ):
+        raise ContractError("verified live panel calendar is invalid")
+    native_inputs = acquisition.get("native_inputs")
+    if not isinstance(native_inputs, dict) or set(native_inputs) != set(MARKETS):
+        raise ContractError("verified live native input roster is invalid")
+    for market in MARKETS:
+        if evidence["markets"][market].get("candidate_complete") is not True:
+            raise ContractError(f"{market} live coverage is not explicitly complete")
+        inputs = native_inputs[market]
+        for kind in ("physical_hourly", "price_hourly"):
+            record = inputs.get(kind)
+            if not isinstance(record, dict):
+                raise ContractError(f"{market} {kind} provenance is missing")
+            relative = f"data/energy_model_v3/native/{market}/{kind}.csv"
+            path = repository_root / relative
+            digest = _sha256(path)
+            if digest != record.get("sha256"):
+                raise ContractError(f"{market} {kind} is missing or stale")
+            validated_files[relative] = digest
+    outputs = panel.get("outputs")
+    if not isinstance(outputs, dict) or len(outputs) != len(MARKETS):
+        raise ContractError("verified live panel output manifest is invalid")
+    for name, expected_hash in outputs.items():
+        relative = f"output/energy_model_v3/live-panel/{name}"
+        digest = _sha256(repository_root / relative)
+        if digest != expected_hash:
+            raise ContractError(f"verified live panel artifact is missing or stale: {name}")
+        validated_files[relative] = digest
+    results = {
+        market: {
+            "status": "CANDIDATE_COVERAGE_VERIFIED",
+            "reason": str(evidence["markets"][market]["reason"]),
+        }
+        for market in MARKETS
+    }
+    return {
+        "schema_version": "energy-model-v3-coverage-assessment",
+        "assessed_at_utc": datetime.now(timezone.utc).isoformat(),
+        "candidate_start_utc": evidence["candidate_start_utc"],
+        "candidate_end_utc": evidence["candidate_end_utc"],
+        "evidence_sha256": evidence_sha256,
+        "ercot_eia_fallback_activated": ercot_eia_fallback_activated,
+        "eia_api_key_available": eia_api_key_available,
+        "markets": results,
+        "blockers": {},
+        "validated_files": validated_files,
+        "status": "COVERAGE_VERIFIED",
     }
 
 

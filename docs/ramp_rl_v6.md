@@ -58,7 +58,8 @@ The preregistered campaign is 3 seeds x 100k for PPO/SAC screening, validation-o
     "train": {
       "window-id": {
         "artifact_root": "output/energy_model_v3/ramp_v6/windows/window-id",
-        "month": 1,
+        "month": 10,
+        "period": "2025-10",
         "day": "YYYY-MM-DD",
         "forecast_vintage": "stable vintage identifier",
         "source_hashes": {
@@ -83,7 +84,7 @@ an environment is created. The current independent energy-model v3 builder
 does not yet publish this ramp handoff, so the absence of this manifest is the
 sole long-campaign blocker.
 
-The real factory verifies declared months and actual panel timestamps against
+The real factory verifies declared year-month periods and active-day timestamps against
 the frozen split and verifies that ramp statistics were fit only on training
 months. Seeded train environments resample windows on reset; validation and
 test remain fixed. Resume identity includes the complete integrated source

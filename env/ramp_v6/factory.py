@@ -115,25 +115,32 @@ def _build_energy_model_v3_window(
     if len(panel.markets) != 6 or len(sites) != 6:
         raise ValueError("energy-model-v3 primary handoff must contain six markets/sites")
     campaign = load_protocol()
-    allowed_months = {
-        int(value)
-        for value in campaign["data"]["split"][request.split]["months"]
+    allowed_periods = {
+        str(value) for value in campaign["data"]["split"][request.split]["months"]
     }
     declared_month = int(window["month"])
-    if declared_month not in allowed_months:
+    declared_period = str(window["period"])
+    if declared_period not in allowed_periods:
         raise ValueError(
-            f"energy-model-v3 window month {declared_month} is outside "
+            f"energy-model-v3 window period {declared_period} is outside "
             f"the frozen {request.split} split"
         )
-    panel_months = set(panel.timestamps.month.astype(int))
-    if panel_months != {declared_month}:
+    day = str(window["day"])
+    active = panel.timestamps[
+        protocol.history_hours : -protocol.terminal_tail_hours
+    ]
+    if (
+        set(active.strftime("%Y-%m")) != {declared_period}
+        or set(active.strftime("%Y-%m-%d")) != {day}
+        or declared_month != int(declared_period[-2:])
+    ):
         raise ValueError(
-            "energy-model-v3 panel timestamps do not match the declared split month"
+            "energy-model-v3 active timestamps do not match the declared day/period"
         )
     training_months = {
-        int(value) for value in campaign["data"]["split"]["train"]["months"]
+        str(value) for value in campaign["data"]["split"]["train"]["months"]
     }
-    fit_months = {int(str(value)[-2:]) for value in stats.fit_months}
+    fit_months = {str(value) for value in stats.fit_months}
     if not fit_months or not fit_months.issubset(training_months):
         raise ValueError(
             "frozen ramp statistics were not fit exclusively on training months"

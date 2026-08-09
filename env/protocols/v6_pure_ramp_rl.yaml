@@ -33,13 +33,13 @@ data:
   interval_minutes: 60
   split:
     train:
-      months: [1, 2, 3, 4, 5, 6]
+      months: [2025-09, 2025-10, 2025-11, 2025-12, 2026-01]
       randomized_chronological_windows: true
     validation:
-      months: [7, 8]
+      months: [2026-02]
       sealed_from_normalization: true
     test:
-      months: [9, 10]
+      months: [2026-03, 2026-04]
       sealed: true
       tune_or_select: false
   forecast:
