@@ -1,73 +1,63 @@
-# Ramp-v6 selected-result handoff
+# Ramp-v6 V4R thesis-result handoff
 
-Run:
+The final result builder has two modes. Its legacy manifest mode remains
+available for V1-style evidence packages. The final V4R publication uses:
 
 ```powershell
-python scripts\build_ramp_rl_thesis_results.py <manifest.json> --artifact-root <repo-root> --output <output-dir>
+python scripts\build_ramp_rl_thesis_results.py --v4r `
+  output\ramp_rl_v6\recovered_v4r\canonical_evidence.json `
+  --output output\ramp_rl_v6\recovered_v4r\thesis
 ```
 
-The manifest schema is `ramp-v6-thesis-evidence-manifest-v1`. Paths must be
-relative to `--artifact-root`, and every referenced artifact must carry its
-exact SHA-256. The audit rejects path traversal and does not open model policy
-archives.
+The canonical input SHA-256 must be
+`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`.
+Its protocol ID is
+`v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r`, with protocol SHA-256
+`57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd`.
 
-## Required bindings
+## Fail-closed bindings
 
-- Frozen protocol artifact, protocol ID, file hash, and protocol bundle hash.
-- Factory manifest plus source-panel, acquisition, frozen-stat/data, forecast,
-  and source-bundle identities.
-- Exact train, validation, and sealed-test month identities.
-- Exact selected algorithm, optimizer seed set, six-market set, validation
-  split, promotion state, and safety/cost/ramp gate assertions.
-- One pure-RL training manifest and one validation result per selected seed.
-  Each validation reference must bind the seed, algorithm, training-manifest
-  hash, model archive hash, and final-policy hash. A selected result must also
-  embed the same `model_identity` values inside each validation artifact. The
-  audit compares hashes but never opens policy archives.
-- Explicit sealed-test state. An unopened test requires a reason and null
-  opening/result references. An opened test requires a hash-bound opening
-  record proving authorization after validation and one test result marked
-  `used_for_selection: false`.
-- The canonical failed v1 result as `negative_protocol`; it is reported only as
-  validation evidence and is never pooled with test evidence. The reference is
-  pinned to confirmation commit `3391440d168ade7127899a8a2c2d84e3a47a9ad3`
-  and canonical result SHA-256
-  `ffe94a7c00d8d721940060d06d4aff0880b63ec70a7028b9464a8b188cf6e656`.
+The V4R builder verifies:
 
-Selected results must provide an `analysis_artifact` containing complete
-`market_ramps`, `forecast_error_strata`, `dc_ramp_behavior`, `learning_curves`,
-and `sensitivities` arrays. Per-seed safety/decoder telemetry is taken directly
-from the hash-bound validation results. `market_ramps` must contain every
-market x `{1h, 3h}` x `{native, status_quo, policy}` combination. Sensitivities
-must include both `base_100mw` and `post_selection` phases.
+- semantic equality to the canonical evidence committed at `7ebd9b2`;
+- exact source freeze, source commit, source bundle, recovery binding, and
+  single-opening hashes;
+- a new recovered-container identity without reusing the blocked V4 identity
+  or original V3 containers;
+- seeds 2801-2805 and their exact recovered-model hashes;
+- exact policy/critic/normalizer/training provenance in the recovery binding;
+- all five deterministic actions invoked once per decision at fixed weights
+  0.2, with no selection, learned weighting, trainable combiner, teacher,
+  behavior cloning, analytic policy, MPC, or optimizer;
+- exactly six evaluated markets, with no PJM/Virginia substitution;
+- one 28-episode validation evaluation and one 60-episode sealed-test
+  evaluation;
+- exactly one sealed-test opening after validation, with test selection and
+  tuning prohibited;
+- every strict ramp, cost, safety, behavior, and leakage gate;
+- post-selection-only status for 1 GW-total and c-h robustness; and
+- the c-h variant's overlapping/non-independent identity.
 
-The selected protocol is restricted to the repository's frozen v2 protocol,
-environment, and panel-schema bundle. Its algorithm, five seeds, and split
-months must exactly match that bundle. The analysis artifact must include an
-`identity` block binding the canonical-result hash, protocol/source bundle
-hashes, algorithm, seed set, and every validation/model/policy hash.
+Any mismatch blocks the claim ledger, tables, figures, Markdown, and DOCX.
+Model archives themselves may remain local; their committed hashes and recovery
+equivalence are the publication boundary.
 
-Failed validation packages may omit analysis sections only when every omission
-has an explicit reason in `figure_omissions`; generated figures then display
-the evidence limitation rather than inventing values.
+## Generated artifacts
 
-## Sealed-test opening record
+The builder writes a hash-bound `claim_ledger.json`, CSV tables for split
+summary, per-market test results, physical ramp extrema, behavior, and
+robustness, plus `package_manifest.json`. Figures are then generated from the
+same verified canonical evidence:
 
-An opening record is a JSON object with:
-
-```json
-{
-  "opened": true,
-  "opened_at_utc": "2026-08-09T20:00:00Z",
-  "validation_finalized_at_utc": "2026-08-09T19:00:00Z",
-  "authorized_after_validation": true,
-  "selected_protocol_id": "v6-ramp-pure-rl-preregistered-v2",
-  "validation_result_sha256": "<canonical-result-sha256>",
-  "test_result_sha256": "<single-test-result-sha256>"
-}
+```powershell
+python scripts\build_ramp_thesis_figures.py
+python scripts\materialize_ramp_thesis.py --output thesis_paper.md
+python scripts\validate_ramp_thesis.py --source thesis_paper.md `
+  --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json
+python scripts\build_final_thesis.py --source thesis_paper.md `
+  --output thesis_paper.docx
 ```
 
-The result builder verifies both hashes and refuses any test evidence before a
-strict validation promotion. The single test result must repeat the protocol,
-source, algorithm, seed, market, and per-model bindings from validation and
-must remain marked `used_for_selection: false`.
+Validation and test are rendered separately and never pooled. The 1 GW-total
+and c-h views are post-selection robustness, not additional independent
+confirmatory tests.

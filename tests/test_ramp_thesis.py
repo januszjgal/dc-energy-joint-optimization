@@ -1,24 +1,45 @@
 from __future__ import annotations
 
+import copy
 import hashlib
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
-from scripts.build_final_thesis import validate_source
-from scripts.materialize_ramp_thesis import EXPECTED_TEMPLATE_SHA256, render_tokens
-from scripts.validate_ramp_thesis import (
-    DEFAULT_SOURCE,
-    REQUIRED_PLACEHOLDERS,
-    validate_text,
+from ramp_rl.v4r_thesis import (
+    DEFAULT_CANONICAL,
+    EXPECTED_CANONICAL_SHA256,
+    EXPECTED_MEMBER_SEEDS,
+    EXPECTED_RECOVERY_BINDING_SHA256,
+    _verify_controller,
+    _verify_result,
+    build_claim_ledger,
+    load_verified_evidence,
+    write_publication_package,
 )
-
-PROTOCOL_COMMIT = "4d47a9a"
-SOURCE_COMMIT = "b1bb302"
+from scripts.build_final_thesis import validate_source
+from scripts.materialize_ramp_thesis import (
+    DEFAULT_SOURCE,
+    EXPECTED_TEMPLATE_SHA256,
+    render_tokens,
+)
+from scripts.validate_ramp_thesis import REQUIRED_PLACEHOLDERS, validate_text
 
 
 class RampThesisContractTests(unittest.TestCase):
-    def test_draft_has_required_placeholders_and_scope_guards(self) -> None:
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.evidence = load_verified_evidence()
+
+    def test_canonical_evidence_has_expected_hash_and_identity(self) -> None:
+        digest = hashlib.sha256(DEFAULT_CANONICAL.read_bytes()).hexdigest()
+        self.assertEqual(digest, EXPECTED_CANONICAL_SHA256)
+        self.assertEqual(self.evidence["sealed_test_open_count"], 1)
+        self.assertFalse(self.evidence["blocked_original_v4_evaluated"])
+
+    def test_template_has_required_v4r_placeholders_and_scope_guards(self) -> None:
         text = DEFAULT_SOURCE.read_text(encoding="utf-8")
         self.assertEqual(validate_text(text, allow_placeholders=True), [])
         self.assertEqual(
@@ -26,278 +47,157 @@ class RampThesisContractTests(unittest.TestCase):
             EXPECTED_TEMPLATE_SHA256,
         )
         for token in REQUIRED_PLACEHOLDERS:
-            self.assertIn(f"{{{{CANONICAL_V2:{token}}}}}", text)
+            self.assertIn(f"{{{{CANONICAL_V4R:{token}}}}}", text)
 
-    def test_release_validation_rejects_unresolved_results(self) -> None:
+    def test_materialized_contract_has_no_unresolved_results(self) -> None:
         text = DEFAULT_SOURCE.read_text(encoding="utf-8")
-        errors = validate_text(text, allow_placeholders=False)
-        self.assertTrue(any("unresolved canonical placeholders" in item for item in errors))
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "unresolved canonical-result placeholders",
-        ):
-            validate_source(DEFAULT_SOURCE)
-
-    def test_materializer_rejects_noncanonical_payload(self) -> None:
-        with self.assertRaisesRegex(ValueError, "canonical must be true"):
-            render_tokens(
-                {
-                    "schema_version": "ramp-v6-thesis-results-v1",
-                    "canonical": False,
-                    "generated": True,
-                    "protocol_commit": PROTOCOL_COMMIT,
-                    "source_commit": SOURCE_COMMIT,
-                    "campaign_status": "validation_blocker_no_selected_protocol",
-                    "selection_split": "validation",
-                    "validation_rows": [
-                        {
-                            "candidate_id": "ppo-v2",
-                            "seed_count": 5,
-                            "mean_incremental_ramp_impact": -0.00001,
-                            "mean_da_cost_ratio": 0.99,
-                            "exact_safety_all_seeds": True,
-                            "all_strict_gates_pass": False,
-                        }
-                    ],
-                    "selection": {
-                        "selected": False,
-                        "candidate_id": "",
-                        "failed_gates": [],
-                    },
-                    "sealed_test": {
-                        "opened": False,
-                        "selection_or_tuning_used": False,
-                    },
-                    "test_rows": [],
-                    "statistics": {
-                        "optimizer_seed_count": 5,
-                        "day_units": 28,
-                        "month_units": 0,
-                        "interval_method": "day block bootstrap",
-                    },
-                    "verdict_code": "pending",
-                }
+        begin = text.index("<!-- data-result-contract-begin -->")
+        end = text.index("<!-- data-result-contract-end -->")
+        replacements = render_tokens(self.evidence)
+        for name in replacements:
+            token = f"{{{{CANONICAL_V4R:{name}}}}}"
+            self.assertTrue(begin < text.index(token) < end)
+        for name, rendered in replacements.items():
+            token = f"{{{{CANONICAL_V4R:{name}}}}}"
+            text = text.replace(token, rendered)
+        self.assertEqual(
+            validate_text(text, allow_placeholders=False, evidence=self.evidence),
+            [],
+        )
+        tampered = text.replace("-1.42587105143e-05", "0.5", 1)
+        self.assertTrue(
+            any(
+                "contract differs" in error
+                for error in validate_text(
+                    tampered,
+                    allow_placeholders=False,
+                    evidence=self.evidence,
+                )
             )
+        )
 
-    def test_materializer_rejects_test_without_selection(self) -> None:
-        payload = {
-            "schema_version": "ramp-v6-thesis-results-v1",
-            "canonical": True,
-            "generated": True,
-            "protocol_commit": PROTOCOL_COMMIT,
-            "source_commit": SOURCE_COMMIT,
-            "campaign_status": "campaign_complete",
-            "selection_split": "validation",
-            "validation_rows": [
-                {
-                    "candidate_id": "ppo-v2",
-                    "seed_count": 5,
-                    "mean_incremental_ramp_impact": -0.00001,
-                    "mean_da_cost_ratio": 0.99,
-                    "exact_safety_all_seeds": True,
-                    "all_strict_gates_pass": False,
-                }
-            ],
-            "selection": {
-                "selected": False,
-                "candidate_id": "",
-                "failed_gates": ["validation_success_gate"],
-            },
-            "sealed_test": {"opened": True, "selection_or_tuning_used": False},
-            "test_rows": [],
-            "statistics": {
-                "optimizer_seed_count": 5,
-                "day_units": 28,
-                "month_units": 1,
-                "interval_method": "percentile bootstrap",
-            },
-            "verdict_code": "invalid",
-        }
-        with self.assertRaisesRegex(ValueError, "cannot be opened"):
-            render_tokens(payload)
+    def test_wrong_canonical_hash_fails_closed(self) -> None:
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "canonical_evidence.json"
+            path.write_bytes(DEFAULT_CANONICAL.read_bytes() + b"\n")
+            with self.assertRaisesRegex(ValueError, "wrong canonical evidence SHA-256"):
+                load_verified_evidence(path)
 
-    def test_validation_blocker_payload_materializes_without_test_claim(self) -> None:
-        payload = {
-            "schema_version": "ramp-v6-thesis-results-v1",
-            "canonical": True,
-            "generated": True,
-            "protocol_commit": PROTOCOL_COMMIT,
-            "source_commit": SOURCE_COMMIT,
-            "campaign_status": "validation_blocker_no_selected_protocol",
-            "selection_split": "validation",
-            "validation_rows": [
-                {
-                    "candidate_id": "ppo-v2",
-                    "seed_count": 5,
-                    "mean_incremental_ramp_impact": -0.00001,
-                    "mean_da_cost_ratio": 0.99,
-                    "exact_safety_all_seeds": True,
-                    "all_strict_gates_pass": False,
-                }
-            ],
-            "selection": {
-                "selected": False,
-                "candidate_id": "",
-                "failed_gates": ["every_market_ramp_improves"],
-            },
-            "sealed_test": {
-                "opened": False,
-                "selection_or_tuning_used": False,
-            },
-            "test_rows": [],
-            "statistics": {
-                "optimizer_seed_count": 5,
-                "day_units": 28,
-                "month_units": 0,
-                "interval_method": "day block bootstrap",
-            },
-            "verdict_code": "validation_blocker_no_selected_protocol",
-        }
-        rendered = render_tokens(payload)
-        self.assertIn("unopened", rendered["SEALED_TEST_STATUS"])
-        self.assertIn("No sealed test result rows", rendered["TEST_RESULTS_TABLE"])
+    def test_more_than_one_test_opening_fails_closed(self) -> None:
+        payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
+        payload["sealed_test_open_count"] = 2
+        with TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            path = base / "canonical_evidence.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            for name in ("source_freeze.json", "recovery_binding.json", "sealed_test_opening.json"):
+                (base / name).write_bytes((DEFAULT_CANONICAL.parent / name).read_bytes())
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            with (
+                patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
+                patch("ramp_rl.v4r_thesis._verify_git_identity"),
+                self.assertRaisesRegex(ValueError, "open exactly once"),
+            ):
+                load_verified_evidence(path)
 
-    def test_selected_candidate_must_pass_validation(self) -> None:
-        payload = {
-            "schema_version": "ramp-v6-thesis-results-v1",
-            "canonical": True,
-            "generated": True,
-            "protocol_commit": PROTOCOL_COMMIT,
-            "source_commit": SOURCE_COMMIT,
-            "campaign_status": "validation_selected_test_pending",
-            "selection_split": "validation",
-            "validation_rows": [
-                {
-                    "candidate_id": "ppo-v2",
-                    "seed_count": 5,
-                    "mean_incremental_ramp_impact": -0.00001,
-                    "mean_da_cost_ratio": 0.99,
-                    "exact_safety_all_seeds": True,
-                    "all_strict_gates_pass": False,
-                }
-            ],
-            "selection": {
-                "selected": True,
-                "candidate_id": "ppo-v2",
-                "failed_gates": [],
-            },
-            "sealed_test": {
-                "opened": False,
-                "selection_or_tuning_used": False,
-            },
-            "test_rows": [],
-            "statistics": {
-                "optimizer_seed_count": 5,
-                "day_units": 28,
-                "month_units": 0,
-                "interval_method": "day block bootstrap",
-            },
-            "verdict_code": "test_pending",
-        }
-        with self.assertRaisesRegex(ValueError, "must pass all strict"):
-            render_tokens(payload)
+    def test_member_selection_and_wrong_model_hash_fail_closed(self) -> None:
+        result = copy.deepcopy(self.evidence["test"]["result"])
+        binding = json.loads(
+            (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
+        )
+        result["controller_audit"]["member_selection_or_exclusion"] = True
+        with self.assertRaisesRegex(ValueError, "member selection"):
+            _verify_controller(result, binding)
+        result = copy.deepcopy(self.evidence["test"]["result"])
+        result["controller_audit"]["members"][0]["model_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "wrong recovered model hash"):
+            _verify_controller(result, binding)
 
-    def test_pending_campaign_rejects_test_verdict(self) -> None:
-        payload = {
-            "schema_version": "ramp-v6-thesis-results-v1",
-            "canonical": True,
-            "generated": True,
-            "protocol_commit": PROTOCOL_COMMIT,
-            "source_commit": SOURCE_COMMIT,
-            "campaign_status": "validation_selected_test_pending",
-            "selection_split": "validation",
-            "validation_rows": [
-                {
-                    "candidate_id": "ppo-v2",
-                    "seed_count": 5,
-                    "mean_incremental_ramp_impact": -0.00001,
-                    "mean_da_cost_ratio": 0.99,
-                    "exact_safety_all_seeds": True,
-                    "all_strict_gates_pass": True,
-                }
-            ],
-            "selection": {
-                "selected": True,
-                "candidate_id": "ppo-v2",
-                "failed_gates": [],
-            },
-            "sealed_test": {
-                "opened": False,
-                "selection_or_tuning_used": False,
-            },
-            "test_rows": [],
-            "statistics": {
-                "optimizer_seed_count": 5,
-                "day_units": 28,
-                "month_units": 0,
-                "interval_method": "day block bootstrap",
-            },
-            "verdict_code": "sealed_test_success",
-        }
-        with self.assertRaisesRegex(ValueError, "invalid for campaign_status"):
-            render_tokens(payload)
+    def test_missing_market_and_seed_fail_closed(self) -> None:
+        binding = json.loads(
+            (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
+        )
+        result = copy.deepcopy(self.evidence["test"]["result"])
+        result["per_market_macro"].pop("MISO_MINN_HUB")
+        with self.assertRaisesRegex(ValueError, "missing or unsupported market"):
+            _verify_result(result, split="test", episode_count=60, binding=binding)
+        result = copy.deepcopy(self.evidence["test"]["result"])
+        result["controller_audit"]["member_seeds"] = list(EXPECTED_MEMBER_SEEDS[:-1])
+        with self.assertRaisesRegex(ValueError, "wrong member seeds"):
+            _verify_result(result, split="test", episode_count=60, binding=binding)
 
-    def test_sealed_test_rows_must_match_selected_candidate(self) -> None:
-        payload = {
-            "schema_version": "ramp-v6-thesis-results-v1",
-            "canonical": True,
-            "generated": True,
-            "protocol_commit": PROTOCOL_COMMIT,
-            "source_commit": SOURCE_COMMIT,
-            "campaign_status": "campaign_complete",
-            "selection_split": "validation",
-            "validation_rows": [
-                {
-                    "candidate_id": "ppo-v2",
-                    "seed_count": 5,
-                    "mean_incremental_ramp_impact": -0.00001,
-                    "mean_da_cost_ratio": 0.99,
-                    "exact_safety_all_seeds": True,
-                    "all_strict_gates_pass": True,
-                }
-            ],
-            "selection": {
-                "selected": True,
-                "candidate_id": "ppo-v2",
-                "failed_gates": [],
-            },
-            "sealed_test": {
-                "opened": True,
-                "selection_or_tuning_used": False,
-            },
-            "test_rows": [
-                {
-                    "candidate_id": "other-candidate",
-                    "seed_count": 5,
-                    "mean_incremental_ramp_impact": -0.00001,
-                    "mean_da_cost_ratio": 0.99,
-                    "exact_safety_all_seeds": True,
-                    "all_strict_gates_pass": True,
-                }
-            ],
-            "statistics": {
-                "optimizer_seed_count": 5,
-                "day_units": 61,
-                "month_units": 2,
-                "interval_method": "day and month block bootstrap",
-            },
-            "verdict_code": "sealed_test_success",
-        }
-        with self.assertRaisesRegex(ValueError, "selected candidate"):
-            render_tokens(payload)
+    def test_test_selection_and_recovery_binding_fail_closed(self) -> None:
+        result = copy.deepcopy(self.evidence["robustness"]["one_gw_total"]["result"])
+        binding = json.loads(
+            (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
+        )
+        result["selection_or_tuning"] = True
+        with self.assertRaisesRegex(ValueError, "selection or tuning"):
+            _verify_result(
+                result,
+                split="test",
+                episode_count=60,
+                binding=binding,
+                post_selection=True,
+            )
+        result = copy.deepcopy(self.evidence["test"]["result"])
+        result["recovery_binding_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "wrong recovery binding"):
+            _verify_result(result, split="test", episode_count=60, binding=binding)
 
-    def test_wrapped_v2_claim_is_rejected(self) -> None:
+    def test_decision_sidecars_are_hash_verified(self) -> None:
+        payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
+        payload["test"]["decision_sha256"] = "0" * 64
+        with TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            path = base / "canonical_evidence.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            for name in ("source_freeze.json", "recovery_binding.json", "sealed_test_opening.json"):
+                (base / name).write_bytes((DEFAULT_CANONICAL.parent / name).read_bytes())
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            with (
+                patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
+                patch("ramp_rl.v4r_thesis._verify_git_identity"),
+                self.assertRaisesRegex(ValueError, "wrong test decision hash"),
+            ):
+                load_verified_evidence(path)
+
+    def test_claim_ledger_is_hash_bound_and_labels_overlap(self) -> None:
+        ledger = build_claim_ledger(self.evidence)
+        self.assertEqual(
+            ledger["canonical_evidence_sha256"],
+            EXPECTED_CANONICAL_SHA256,
+        )
+        self.assertEqual(
+            ledger["recovery_binding_sha256"],
+            EXPECTED_RECOVERY_BINDING_SHA256,
+        )
+        overlap = next(
+            claim
+            for claim in ledger["claims"]
+            if claim["claim_id"] == "c-h-overlapping-robustness"
+        )
+        self.assertIn("overlapping/non-independent", overlap["scope"])
+
+    def test_publication_package_writes_claim_ledger_and_tables(self) -> None:
+        with TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            manifest = write_publication_package(self.evidence, output)
+            self.assertTrue((output / "claim_ledger.json").is_file())
+            self.assertTrue((output / "per_market_test.csv").is_file())
+            self.assertIn("claim_ledger_sha256", manifest)
+
+    def test_unsupported_scope_claim_is_rejected(self) -> None:
         text = DEFAULT_SOURCE.read_text(encoding="utf-8")
-        text += "\nThe v2\nachieved an improvement.\n"
+        text += "\nThe c-h result is an independent holdout.\n"
         errors = validate_text(text, allow_placeholders=True)
-        self.assertTrue(any("unbound v2 result claim" in item for item in errors))
+        self.assertTrue(any("unsupported claim" in item for item in errors))
 
-    def test_materialized_source_can_resolve_repo_relative_images(self) -> None:
+    def test_materialized_source_resolves_repo_relative_images(self) -> None:
         with TemporaryDirectory() as temporary:
             source = Path(temporary) / "materialized.md"
             source.write_text(
-                "![Committed figure](docs/figures/ramp_v6/"
-                "six_market_study_design.png)\n",
+                "![Committed figure](docs/figures/ramp_v6/six_market_study_design.png)\n",
                 encoding="utf-8",
             )
             validate_source(source)
