@@ -1,0 +1,153 @@
+{
+  "chronology": {
+    "authorization_opened_at_utc": "2026-08-09T22:58:30.260534+00:00",
+    "decided_at_utc": "2026-08-09T23:00:05.440946+00:00",
+    "evaluation_opened_at_utc": "2026-08-09T22:58:59.838649+00:00",
+    "open_count": 1,
+    "run_count": 1,
+    "tuning_or_selection_permitted": false
+  },
+  "decision": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r/test_decision.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "0a35b0f6f33be30151c1f99c3914cc3222ac7af1d43249d484a97fcc541a24d1"
+  },
+  "evaluation_opening": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r/sealed_test_evaluation_opening.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "7ea3b1d4f77d49b34ae4aab550333754a9e486367941bb3380e6a03af55162fb"
+  },
+  "evaluation_rerun": false,
+  "numeric_summary": {
+    "batch_expired": 0.0,
+    "batch_unfinished": 0.0,
+    "behavior_audit": {
+      "deferrable_pre_service": 692.5858193600047,
+      "policy_ramp_power": 303077.9035596151,
+      "status_quo_ramp_power": 313167.22669593635
+    },
+    "bootstrap_by_day": {
+      "draws": 500,
+      "lower_95": -1.4922706380880133e-05,
+      "mean": -1.4258710514255097e-05,
+      "unit": "day_or_month",
+      "upper_95": -1.3524515742754826e-05
+    },
+    "bootstrap_by_month": {
+      "draws": 500,
+      "lower_95": -1.5155776265911473e-05,
+      "mean": -1.4258710514255097e-05,
+      "unit": "day_or_month",
+      "upper_95": -1.3299778159036212e-05
+    },
+    "certificate_violations": 0,
+    "emergency_feasibility_rate": 0.0,
+    "energy_cost_ratio": 0.9775584402489343,
+    "episode_count": 60,
+    "evaluation_seed_interval": {
+      "maximum": -1.4258710514255097e-05,
+      "mean": -1.4258710514255097e-05,
+      "minimum": -1.4258710514255097e-05,
+      "seed_count": 1
+    },
+    "future_leakage_detected": false,
+    "mean_incremental_ramp_impact": -1.4258710514255097e-05,
+    "per_market_macro": {
+      "CAISO_NP15": -2.106596962375112e-05,
+      "ERCOT_LZ_NORTH": -2.3454355897116744e-06,
+      "ISONE_NEMA": -2.7491577052292107e-05,
+      "MISO_MINN_HUB": -5.652448501033376e-07,
+      "NYISO_NYC_J": -3.297854729324165e-05,
+      "SPP_NORTH_HUB": -1.1054886764306852e-06
+    },
+    "ramp_h1_adjusted_max": 0.06717695575375773,
+    "ramp_h1_adjusted_p95": 0.037686970112269486,
+    "ramp_h3_adjusted_max": 0.05437410673485319,
+    "ramp_h3_adjusted_p95": 0.03420304456244664,
+    "semantic_adjustment_l2": 0.0,
+    "service_unserved": 0.0,
+    "split": "test",
+    "success_gate": {
+      "checks": {
+        "behavior_lower_ramp_power": true,
+        "behavior_pre_service": true,
+        "emergency_path_below_one_percent": true,
+        "every_market_ramp_improves": true,
+        "exact_batch_completion": true,
+        "exact_service": true,
+        "mean_ramp_improves": true,
+        "no_future_leakage": true,
+        "primary_energy_budget": true,
+        "zero_certificate_violations": true,
+        "zero_expiry": true,
+        "zero_terminal_work": true
+      },
+      "failed_gates": [],
+      "failure_is_publishable": true,
+      "iterations_may_use": [
+        "train",
+        "validation"
+      ],
+      "passed": true,
+      "split": "test",
+      "test_tuning_prohibited": true
+    },
+    "terminal_work": 0.0
+  },
+  "protocol_id": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r",
+  "result": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r/test/ensemble_test.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "e2d7a99e7bf2b9571c06c02cb5d028cc769577ef224d5a44536e3ea1d04e57c7"
+  },
+  "results_changed": false,
+  "schema_version": "ramp-pure-rl-recovered-v4r-sealed-test-chain-v2",
+  "sealed_test_opening": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r/sealed_test_opening.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "7004f089de61d3fdd7260fc793e4859f8e0b3fa253b64550048e5ad1562b5a13"
+  },
+  "sealed_test_passed": true,
+  "source_freeze": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r_resealed_v2/source_freeze.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "04d358ff4b7629e49eec92fd2ca10bc25ca38fa3f1116d7fd66c3763b8a08973"
+  },
+  "status": "corrected-provenance-superseding-v1",
+  "strict_gate": {
+    "checks": {
+      "behavior_lower_ramp_power": true,
+      "behavior_pre_service": true,
+      "emergency_path_below_one_percent": true,
+      "every_market_ramp_improves": true,
+      "exact_batch_completion": true,
+      "exact_service": true,
+      "mean_ramp_improves": true,
+      "no_future_leakage": true,
+      "primary_energy_budget": true,
+      "zero_certificate_violations": true,
+      "zero_expiry": true,
+      "zero_terminal_work": true
+    },
+    "failed_gates": [],
+    "failure_is_publishable": true,
+    "iterations_may_use": [
+      "train",
+      "validation"
+    ],
+    "passed": true,
+    "split": "test",
+    "test_tuning_prohibited": true
+  },
+  "validation_chain": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r_resealed_v2/validation_chain.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "30e987b704d7af6aee3a9b7a4b630ed2ccfb6c3b33439fb608be278582fd3849"
+  }
+}
