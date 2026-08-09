@@ -12,8 +12,9 @@ from statistics import mean
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from ramp_rl.campaign import promotion_decision  # noqa: E402
+from ramp_rl.campaign import extension_allowed, promotion_decision  # noqa: E402
 from ramp_rl.evidence import sha256_file  # noqa: E402
+from ramp_rl.schema import load_protocol  # noqa: E402
 
 
 def main() -> None:
@@ -21,6 +22,7 @@ def main() -> None:
     parser.add_argument("--validation-root", type=Path, required=True)
     parser.add_argument("--expected-seeds", type=int, required=True)
     parser.add_argument("--stage", required=True)
+    parser.add_argument("--previous-summary", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     rows = []
@@ -95,6 +97,29 @@ def main() -> None:
         "aggregates": aggregates,
         "promotion_decision": decision,
     }
+    if args.previous_summary is not None:
+        previous = json.loads(args.previous_summary.read_text(encoding="utf-8"))
+        algorithm = next(iter(aggregates))
+        validation_curve = [
+            {
+                "stage": previous["stage"],
+                "split": "validation",
+                "mean_incremental_ramp_impact": previous["aggregates"][algorithm][
+                    "mean_incremental_ramp_impact"
+                ],
+            },
+            {
+                "stage": args.stage,
+                "split": "validation",
+                "mean_incremental_ramp_impact": aggregates[algorithm][
+                    "mean_incremental_ramp_impact"
+                ],
+            },
+        ]
+        evidence["validation_curve"] = validation_curve
+        evidence["extension_decision"] = extension_allowed(
+            load_protocol(), validation_curve
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(evidence, indent=2, sort_keys=True) + "\n",
