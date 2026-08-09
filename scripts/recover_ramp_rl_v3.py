@@ -194,11 +194,13 @@ def _verify_identity(
 
 def _verify_seed(
     seed: int,
+    recovery_root: Path,
+    allow_model_container_difference: bool,
     checks: dict[str, dict[str, Any]],
     errors: list[str],
 ) -> dict[str, Any]:
     original_manifest_path = ORIGINAL_ROOT / str(seed) / "training_manifest.json"
-    recovered_manifest_path = RECOVERY_ROOT / str(seed) / "training_manifest.json"
+    recovered_manifest_path = recovery_root / str(seed) / "training_manifest.json"
     original = _load(original_manifest_path)
     recovered = _load(recovered_manifest_path)
     seed_prefix = f"seed.{seed}"
@@ -239,17 +241,26 @@ def _verify_seed(
         ("model.zip", "model"),
         ("vecnormalize.pkl", "normalization"),
     ):
-        recovered_path = RECOVERY_ROOT / str(seed) / artifact_name
+        recovered_path = recovery_root / str(seed) / artifact_name
         actual_hash = sha256_file(recovered_path)
         original_hash = original["artifacts"][manifest_key]["sha256"]
         recovered_declared_hash = recovered["artifacts"][manifest_key]["sha256"]
-        _check(
-            checks,
-            errors,
-            f"{seed_prefix}.artifact.{artifact_name}.original",
-            actual_hash,
-            original_hash,
-        )
+        if artifact_name != "model.zip" or not allow_model_container_difference:
+            _check(
+                checks,
+                errors,
+                f"{seed_prefix}.artifact.{artifact_name}.original",
+                actual_hash,
+                original_hash,
+            )
+        else:
+            checks[f"{seed_prefix}.artifact.{artifact_name}.original"] = {
+                "matched": actual_hash == original_hash,
+                "actual": actual_hash,
+                "expected": original_hash,
+                "required": False,
+                "reason": "SB3 runtime and ZIP timestamps are container metadata",
+            }
         _check(
             checks,
             errors,
@@ -266,7 +277,7 @@ def _verify_seed(
         }
 
     loaded_hashes = model_hashes(
-        PPO.load(RECOVERY_ROOT / str(seed) / "model.zip", device="cpu")
+        PPO.load(recovery_root / str(seed) / "model.zip", device="cpu")
     )
     _check(
         checks,
@@ -292,22 +303,22 @@ def _verify_seed(
             "$env:OMP_NUM_THREADS='1'; $env:MKL_NUM_THREADS='1'; "
             "$env:OPENBLAS_NUM_THREADS='1'; $env:NUMEXPR_NUM_THREADS='1'; "
             f"python scripts\\run_ramp_rl_v3.py train --seed {seed} "
-            f"--output {RECOVERY_ROOT / str(seed)}"
+            f"--output {recovery_root / str(seed)}"
         ),
         "artifacts": artifact_rows,
         "model_container_diagnostics": _model_container_diagnostics(
-            RECOVERY_ROOT / str(seed) / "model.zip"
+            recovery_root / str(seed) / "model.zip"
         ),
         "published": {},
     }
 
 
-def _publish(seed_rows: list[dict[str, Any]]) -> None:
+def _publish(seed_rows: list[dict[str, Any]], recovery_root: Path) -> None:
     destinations: list[tuple[Path, Path, dict[str, Any], str]] = []
     for row in seed_rows:
         seed = int(row["seed"])
         for artifact_name in ARTIFACT_NAMES:
-            source = RECOVERY_ROOT / str(seed) / artifact_name
+            source = recovery_root / str(seed) / artifact_name
             destination = ORIGINAL_ROOT / str(seed) / artifact_name
             expected = row["artifacts"][artifact_name]["original_sha256"]
             if destination.exists() and sha256_file(destination) != expected:
@@ -339,7 +350,13 @@ def _publish(seed_rows: list[dict[str, Any]]) -> None:
         raise
 
 
-def recover(*, publish: bool, manifest_path: Path) -> dict[str, Any]:
+def recover(
+    *,
+    publish: bool,
+    manifest_path: Path,
+    recovery_root: Path,
+    allow_model_container_difference: bool,
+) -> dict[str, Any]:
     freeze = _load(FREEZE_PATH)
     factory = _load(FACTORY_MANIFEST_PATH)
     checks: dict[str, dict[str, Any]] = {}
@@ -349,12 +366,21 @@ def recover(*, publish: bool, manifest_path: Path) -> dict[str, Any]:
         for seed in EXPECTED_SEEDS
     }
     _verify_identity(freeze, factory, checks, errors)
-    seed_rows = [_verify_seed(seed, checks, errors) for seed in EXPECTED_SEEDS]
+    seed_rows = [
+        _verify_seed(
+            seed,
+            recovery_root,
+            allow_model_container_difference,
+            checks,
+            errors,
+        )
+        for seed in EXPECTED_SEEDS
+    ]
     exact_match = not errors
     published = False
     if publish and exact_match:
         try:
-            _publish(seed_rows)
+            _publish(seed_rows, recovery_root)
             published = True
         except Exception as error:
             errors.append(f"publication: {error}")
@@ -369,7 +395,11 @@ def recover(*, publish: bool, manifest_path: Path) -> dict[str, Any]:
         )
     exact_match = not errors
     recovery_manifest = {
-        "schema_version": "ramp-pure-rl-v3-recovery-v1",
+        "schema_version": (
+            "ramp-pure-rl-v3-recovery-transfer-v1"
+            if allow_model_container_difference
+            else "ramp-pure-rl-v3-recovery-v1"
+        ),
         "status": (
             "exact_match_published"
             if exact_match and published
@@ -390,9 +420,20 @@ def recover(*, publish: bool, manifest_path: Path) -> dict[str, Any]:
             "source_freeze_sha256": sha256_file(FREEZE_PATH),
             "test_opened": False,
         },
-        "recovery_root": _relative(RECOVERY_ROOT),
+        "recovery_root": _relative(recovery_root),
         "expected_root": _relative(ORIGINAL_ROOT),
         "parallel_training": True,
+        "equivalence_contract": {
+            "model_container_sha256_required": not allow_model_container_difference,
+            "vecnormalize_sha256_required": True,
+            "initial_policy_sha256_required": True,
+            "initial_critic_sha256_required": True,
+            "final_policy_sha256_required": True,
+            "final_critic_sha256_required": True,
+            "loaded_policy_sha256_required": True,
+            "loaded_critic_sha256_required": True,
+            "training_manifest_fields_required": list(COMPARISON_FIELDS),
+        },
         "all_exact": exact_match,
         "published": published,
         "errors": errors,
@@ -420,12 +461,31 @@ def parse_args() -> argparse.Namespace:
         default=RECOVERY_MANIFEST_PATH,
         help="recovery evidence output",
     )
+    parser.add_argument(
+        "--recovery-root",
+        type=Path,
+        default=RECOVERY_ROOT,
+        help="root containing one recovered checkpoint directory per frozen seed",
+    )
+    parser.add_argument(
+        "--allow-model-container-difference",
+        action="store_true",
+        help=(
+            "allow model.zip container hash variance while still requiring exact "
+            "policy, critic, normalization, training, and provenance identity"
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    result = recover(publish=args.publish, manifest_path=args.manifest.resolve())
+    result = recover(
+        publish=args.publish,
+        manifest_path=args.manifest.resolve(),
+        recovery_root=args.recovery_root.resolve(),
+        allow_model_container_difference=args.allow_model_container_difference,
+    )
     print(json.dumps({key: result[key] for key in ("status", "all_exact", "published", "errors")}, indent=2))
     if not result["all_exact"]:
         raise SystemExit(1)
