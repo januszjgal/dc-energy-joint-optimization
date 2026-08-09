@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +66,32 @@ def _fixture_context(request: EnvRequest) -> dict[str, Any]:
     }
 
 
+@lru_cache(maxsize=None)
+def _load_verified_energy_window(
+    artifact_root: Path,
+    canonical_panel_sha256: str,
+    fixture_sha256: str,
+) -> tuple[Any, ...]:
+    panel_path = artifact_root / "canonical_panel.csv"
+    fixture_path = artifact_root / "fixture.json"
+    required = {"canonical_panel": panel_path, "fixture": fixture_path}
+    missing = [str(path) for path in required.values() if not path.is_file()]
+    if missing:
+        raise MissingEnergyModelV3PanelError(
+            "missing energy-model-v3 ramp panel artifacts: " + ", ".join(missing)
+        )
+    expected = {
+        "canonical_panel": canonical_panel_sha256,
+        "fixture": fixture_sha256,
+    }
+    for name, path in required.items():
+        if _sha256(path) != expected[name]:
+            raise ValueError(
+                f"energy-model-v3 {name} SHA-256 does not match the handoff"
+            )
+    return load_fixture(artifact_root)
+
+
 def make_fixture_env(request: EnvRequest) -> RampAwareEnv:
     """Create the actual ramp-core six-market environment for smoke evidence."""
     if request.split not in SPLIT_MONTH:
@@ -94,24 +121,18 @@ def _build_energy_model_v3_window(
         artifact_root = ROOT / artifact_root
     panel_path = artifact_root / "canonical_panel.csv"
     fixture_path = artifact_root / "fixture.json"
-    required = {"canonical_panel": panel_path, "fixture": fixture_path}
-    missing = [str(path) for path in required.values() if not path.is_file()]
-    if missing:
-        raise MissingEnergyModelV3PanelError(
-            "missing energy-model-v3 ramp panel artifacts: " + ", ".join(missing)
-        )
     declared_hashes = window.get("source_hashes")
     if not isinstance(declared_hashes, dict):
         raise ValueError("energy-model-v3 window requires source_hashes")
-    actual_hashes = {
-        name: _sha256(path) for name, path in required.items()
-    }
-    for name, actual in actual_hashes.items():
-        if declared_hashes.get(name) != actual:
-            raise ValueError(
-                f"energy-model-v3 {name} SHA-256 does not match the handoff"
-            )
-    panel, sites, workload, stats, protocol = load_fixture(artifact_root)
+    for name in ("canonical_panel", "fixture"):
+        value = declared_hashes.get(name)
+        if not isinstance(value, str):
+            raise ValueError(f"energy-model-v3 window requires {name} SHA-256")
+    panel, sites, workload, stats, protocol = _load_verified_energy_window(
+        artifact_root.resolve(),
+        declared_hashes["canonical_panel"],
+        declared_hashes["fixture"],
+    )
     if len(panel.markets) != 6 or len(sites) != 6:
         raise ValueError("energy-model-v3 primary handoff must contain six markets/sites")
     campaign = load_protocol()
