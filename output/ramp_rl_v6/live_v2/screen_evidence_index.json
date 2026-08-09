@@ -1,0 +1,49 @@
+{
+  "errors": [],
+  "final_long_campaign_launched": false,
+  "integration_blockers": [
+    "energy-model-v3-ramp-panel"
+  ],
+  "jobs": [
+    {
+      "algorithm": "ppo",
+      "errors": [],
+      "final_policy_sha256": "705c49d1d87242ef461c7fbb1ed56ca5330f1f9d11509008672ff2cd05a65c61",
+      "initial_policy_sha256": "200ee9d006e1dac952a871e92a937177e2218da037ee86d2ba83942c614102a3",
+      "interactions": 110592,
+      "job": "models\\ramp_rl_v6\\live_v2\\screen\\ppo\\2701",
+      "manifest_sha256": "f0f7c545bc2d989bcd64935429f9d2f2e0020ee7fbb73453fd77a0876996fd35",
+      "pure_rl_pass": true,
+      "seed": 2701,
+      "updates": 270
+    },
+    {
+      "algorithm": "ppo",
+      "errors": [],
+      "final_policy_sha256": "668782f95923032d0aebec9a3430ada47968d6b4f8f744df8a11e3b1d420aadc",
+      "initial_policy_sha256": "5801b0fce058322127562e3d623928979208dd58b5480704ef45bf01442cf224",
+      "interactions": 110592,
+      "job": "models\\ramp_rl_v6\\live_v2\\screen\\ppo\\2702",
+      "manifest_sha256": "d6b7e33f61235dbe8543da104cd8bae63e2c81742a4a6fe3341aa0d34dda8530",
+      "pure_rl_pass": true,
+      "seed": 2702,
+      "updates": 270
+    },
+    {
+      "algorithm": "ppo",
+      "errors": [],
+      "final_policy_sha256": "41a7d811d445362f13712939b0e168e96e62ef970d429b1512ade09498639d18",
+      "initial_policy_sha256": "d7a49253a4be4f42dbde601f7af58d9f23b8370488b6a8a36098846d024da0e5",
+      "interactions": 110592,
+      "job": "models\\ramp_rl_v6\\live_v2\\screen\\ppo\\2703",
+      "manifest_sha256": "0aaaed8930ef7d683018c2bc858bcd8968cf67a5597e9c925dd5379186a01596",
+      "pure_rl_pass": true,
+      "seed": 2703,
+      "updates": 270
+    }
+  ],
+  "passed": true,
+  "protocol_id": "v6-ramp-pure-rl-preregistered-v2",
+  "protocol_sha256": "d7dab14572eb3c2465f7cba3a863d532c4cca97bbc81b8768529b69056acda5d",
+  "schema_version": "ramp-pure-rl-evidence-index-v1"
+}

@@ -1,0 +1,168 @@
+{
+  "aggregate": {
+    "all_safety_pass": true,
+    "all_success_gates_pass": false,
+    "mean_energy_cost_ratio": 1.0091997163325592,
+    "mean_incremental_ramp_impact": -4.983717818021212e-07,
+    "seed_count": 3
+  },
+  "artifacts": {
+    "evidence_index": {
+      "path": "output\\ramp_rl_v6\\live_v2\\screen_evidence_index.json",
+      "sha256": "d4cc93245f8c6894137c4e2c28fee342e71734d204fa742dd742babff84daf7c"
+    },
+    "summary": {
+      "path": "output\\ramp_rl_v6\\live_v2\\screen_summary.json",
+      "sha256": "716dacd0a7551962fef811e79de0c0a2176d8dab90c16aa028e8284578ac8c48"
+    }
+  },
+  "baseline_v1_screen": {
+    "all_safety_pass": true,
+    "all_success_gates_pass": true,
+    "mean_energy_cost_ratio": 0.9801356986033037,
+    "mean_incremental_ramp_impact": -1.3349297807182322e-05,
+    "seed_count": 3
+  },
+  "candidate": "v2-A",
+  "confirmation_launched": false,
+  "effect_vs_v1_screen": {
+    "mean_energy_cost_ratio_delta": 0.029064017729255487,
+    "mean_incremental_ramp_impact_delta": 1.28509260253802e-05,
+    "ramp_improvement_magnitude_change_pct": -96.26668167119637
+  },
+  "per_market_mean_incremental_ramp_impact": {
+    "CAISO_NP15": 9.883209122399397e-08,
+    "ERCOT_LZ_NORTH": -1.7705620059385237e-06,
+    "ISONE_NEMA": -2.7246973951557074e-06,
+    "MISO_MINN_HUB": -1.159058811449604e-06,
+    "NYISO_NYC_J": 3.6497830944073628e-06,
+    "SPP_NORTH_HUB": -1.0845276639002482e-06
+  },
+  "promotion_decision": {
+    "failed_gates": {
+      "ppo": [
+        "primary_energy_budget"
+      ]
+    },
+    "failure_is_publishable": true,
+    "mean_validation_incremental_ramp_impact": {
+      "ppo": -4.983717818021212e-07
+    },
+    "promoted_algorithms": [],
+    "sealed_test_used": false,
+    "selection_split": "validation"
+  },
+  "protocol_id": "v6-ramp-pure-rl-preregistered-v2",
+  "protocol_sha256": "d7dab14572eb3c2465f7cba3a863d532c4cca97bbc81b8768529b69056acda5d",
+  "rows": [
+    {
+      "algorithm": "ppo",
+      "behavior_audit": {
+        "deferrable_pre_service": 319.42709673687744,
+        "policy_ramp_power": 137117.48379715267,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_budget_pass": false,
+      "energy_cost_ratio": 1.0371496846063883,
+      "episode_count": 28,
+      "failed_gates": [
+        "mean_ramp_improves",
+        "every_market_ramp_improves",
+        "primary_energy_budget",
+        "behavior_lower_ramp_power"
+      ],
+      "mean_incremental_ramp_impact": 5.388792855511481e-07,
+      "per_market_macro": {
+        "CAISO_NP15": -7.733475697697105e-07,
+        "ERCOT_LZ_NORTH": -1.7577750866364415e-06,
+        "ISONE_NEMA": -5.838505250410144e-07,
+        "MISO_MINN_HUB": -1.1948506296131688e-06,
+        "NYISO_NYC_J": 8.584259831188716e-06,
+        "SPP_NORTH_HUB": -1.0411603068214916e-06
+      },
+      "safety_pass": true,
+      "seed": 2701,
+      "split": "validation",
+      "success_gate_pass": false,
+      "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2701_validation.json",
+      "validation_sha256": "b01e915f665d173eca54b1300ac4909965f215ade69d409d445a0f66a1c66c86"
+    },
+    {
+      "algorithm": "ppo",
+      "behavior_audit": {
+        "deferrable_pre_service": 315.67109736336766,
+        "policy_ramp_power": 137023.2151020696,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_budget_pass": true,
+      "energy_cost_ratio": 0.9944911461948356,
+      "episode_count": 28,
+      "failed_gates": [
+        "every_market_ramp_improves",
+        "behavior_lower_ramp_power"
+      ],
+      "mean_incremental_ramp_impact": -2.395489836664237e-07,
+      "per_market_macro": {
+        "CAISO_NP15": 1.121027942890683e-06,
+        "ERCOT_LZ_NORTH": -2.2851734321726706e-06,
+        "ISONE_NEMA": -2.1690651088503975e-06,
+        "MISO_MINN_HUB": -1.0646700276727154e-06,
+        "NYISO_NYC_J": 4.179252346981944e-06,
+        "SPP_NORTH_HUB": -1.2186656231753847e-06
+      },
+      "safety_pass": true,
+      "seed": 2702,
+      "split": "validation",
+      "success_gate_pass": false,
+      "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2702_validation.json",
+      "validation_sha256": "f458f6fbef7ff154134e72ab49756bca8419893331d434389f9092f75659877d"
+    },
+    {
+      "algorithm": "ppo",
+      "behavior_audit": {
+        "deferrable_pre_service": 319.81265868828524,
+        "policy_ramp_power": 136590.4606717745,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_budget_pass": true,
+      "energy_cost_ratio": 0.9959583181964541,
+      "episode_count": 28,
+      "failed_gates": [
+        "behavior_lower_ramp_power"
+      ],
+      "mean_incremental_ramp_impact": -1.7944456472910882e-06,
+      "per_market_macro": {
+        "CAISO_NP15": -5.1184099448990525e-08,
+        "ERCOT_LZ_NORTH": -1.2687374990064588e-06,
+        "ISONE_NEMA": -5.4211765515757105e-06,
+        "MISO_MINN_HUB": -1.2176557770629282e-06,
+        "NYISO_NYC_J": -1.8141628949485723e-06,
+        "SPP_NORTH_HUB": -9.937570617038682e-07
+      },
+      "safety_pass": true,
+      "seed": 2703,
+      "split": "validation",
+      "success_gate_pass": false,
+      "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2703_validation.json",
+      "validation_sha256": "a20d2a50843f118bcd690e14cfe446808d214840b3fbf43da6807c5620e57a91"
+    }
+  ],
+  "schema_version": "ramp-pure-rl-v2-candidate-result-v1",
+  "sealed_test_opened": false,
+  "selection_split": "validation",
+  "source_commit": "4d47a9a",
+  "training": {
+    "effective_boundary_timesteps": 110592,
+    "random_initialization_only": true,
+    "requested_timesteps": 100000,
+    "reward_normalization": false,
+    "seeds": [
+      2701,
+      2702,
+      2703
+    ]
+  }
+}
