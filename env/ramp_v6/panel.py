@@ -42,6 +42,11 @@ class CanonicalMarketPanel:
         self.timestamps = pd.DatetimeIndex(
             self.frame["timestamp_utc"].drop_duplicates().sort_values()
         )
+        indexed = self.frame.set_index(["timestamp_utc", "market_id"])
+        self._observation_cache = tuple(
+            indexed.loc[timestamp].loc[list(self.markets)]
+            for timestamp in self.timestamps
+        )
 
     @classmethod
     def from_csv(cls, path: Path) -> CanonicalMarketPanel:
@@ -113,7 +118,7 @@ class CanonicalMarketPanel:
         """Return only controller-time data; future realized rows are inaccessible."""
         if index < 0 or index >= len(self.timestamps):
             raise IndexError(index)
-        return self.at(self.timestamps[index])
+        return self._observation_cache[index]
 
     def fit_stats(self, train_months: Iterable[str]) -> FrozenRampStats:
         months = tuple(train_months)
