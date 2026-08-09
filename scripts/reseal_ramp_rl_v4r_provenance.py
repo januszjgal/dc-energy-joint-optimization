@@ -151,6 +151,18 @@ def _json_blob_reference(commit: str, path: str) -> dict[str, str]:
     }
 
 
+def _raw_git_blob_reference(commit: str, path: str) -> dict[str, str]:
+    content = git_blob_bytes(ROOT, commit, path)
+    return {
+        "algorithm": "sha256",
+        "commit": resolve_commit(ROOT, commit),
+        "git_blob_oid": git_blob_oid(ROOT, commit, path),
+        "path": path,
+        "representation": RAW_BYTES_REPRESENTATION,
+        "sha256": sha256_bytes(content),
+    }
+
+
 def _payload_reference(name: str, payload: Any) -> dict[str, str]:
     return {
         "algorithm": "sha256",
@@ -302,12 +314,12 @@ def _source_freeze_payload(
     ].items():
         if key.startswith("cell_"):
             cell = key.split("_")[1]
-            path = ROOT / "data" / "cells" / f"cell_{cell}_tiers.csv"
-            reference = raw_file_reference(ROOT, path)
+            relative = f"data/cells/cell_{cell}_tiers.csv"
+            reference = _raw_git_blob_reference(SOURCE_COMMIT, relative)
         else:
             cell = key.rsplit("_", 1)[1]
-            path = ROOT / "data" / "jobs" / f"batch_distributions_{cell}.json"
-            reference = json_file_reference(ROOT, path)
+            relative = f"data/jobs/batch_distributions_{cell}.json"
+            reference = _json_blob_reference(SOURCE_COMMIT, relative)
         robustness_inputs[key] = {
             **reference,
             "legacy_declared_sha256": legacy_hash,
@@ -663,6 +675,116 @@ def _migration_map(
                 "new_hash": reference,
             }
         )
+    inherited_migrations = [
+        {
+            "artifact": _relative(PROTOCOL_PATH),
+            "legacy_fields": ["*.protocol_sha256"],
+            "legacy_sha256": originals["source_freeze"]["protocol_sha256"],
+            "legacy_matching_representations": _classify_legacy_hash(
+                SOURCE_COMMIT,
+                _relative(PROTOCOL_PATH),
+                originals["source_freeze"]["protocol_sha256"],
+            ),
+            "new_hash": git_blob_reference(
+                ROOT, SOURCE_COMMIT, _relative(PROTOCOL_PATH)
+            ),
+        },
+        {
+            "artifact": protocol["frozen_bindings"]["v3_protocol"]["path"],
+            "legacy_fields": ["protocol.frozen_bindings.v3_protocol.file_sha256"],
+            "legacy_sha256": protocol["frozen_bindings"]["v3_protocol"][
+                "file_sha256"
+            ],
+            "legacy_matching_representations": _classify_legacy_hash(
+                SOURCE_COMMIT,
+                protocol["frozen_bindings"]["v3_protocol"]["path"],
+                protocol["frozen_bindings"]["v3_protocol"]["file_sha256"],
+            ),
+            "new_hash": git_blob_reference(
+                ROOT,
+                SOURCE_COMMIT,
+                protocol["frozen_bindings"]["v3_protocol"]["path"],
+            ),
+        },
+        {
+            "artifact": protocol["frozen_bindings"]["v3_source_freeze"]["path"],
+            "legacy_fields": ["protocol.frozen_bindings.v3_source_freeze.sha256"],
+            "legacy_sha256": protocol["frozen_bindings"]["v3_source_freeze"][
+                "sha256"
+            ],
+            "legacy_matching_representations": _classify_legacy_hash(
+                SOURCE_COMMIT,
+                protocol["frozen_bindings"]["v3_source_freeze"]["path"],
+                protocol["frozen_bindings"]["v3_source_freeze"]["sha256"],
+            ),
+            "new_hash": _json_blob_reference(
+                SOURCE_COMMIT,
+                protocol["frozen_bindings"]["v3_source_freeze"]["path"],
+            ),
+        },
+        {
+            "artifact": protocol["frozen_bindings"]["factory"]["manifest_path"],
+            "legacy_fields": [
+                "protocol.frozen_bindings.factory.manifest_sha256",
+                "*.factory_manifest_sha256",
+            ],
+            "legacy_sha256": protocol["frozen_bindings"]["factory"][
+                "manifest_sha256"
+            ],
+            "legacy_matching_representations": _classify_legacy_hash(
+                SOURCE_COMMIT,
+                protocol["frozen_bindings"]["factory"]["manifest_path"],
+                protocol["frozen_bindings"]["factory"]["manifest_sha256"],
+            ),
+            "new_hash": _json_blob_reference(
+                SOURCE_COMMIT,
+                protocol["frozen_bindings"]["factory"]["manifest_path"],
+            ),
+        },
+    ]
+    for member in protocol["frozen_bindings"]["members"]:
+        path = member["original_training_manifest_path"]
+        digest = member["original_training_manifest_sha256"]
+        inherited_migrations.append(
+            {
+                "artifact": path,
+                "legacy_fields": [
+                    (
+                        "protocol.frozen_bindings.members."
+                        f"{member['seed']}.original_training_manifest_sha256"
+                    )
+                ],
+                "legacy_sha256": digest,
+                "legacy_matching_representations": _classify_legacy_hash(
+                    SOURCE_COMMIT, path, digest
+                ),
+                "new_hash": _json_blob_reference(SOURCE_COMMIT, path),
+            }
+        )
+    for key, legacy_hash in protocol["post_selection"]["c_h_overlapping"][
+        "input_bindings"
+    ].items():
+        if key.startswith("cell_"):
+            cell = key.split("_")[1]
+            path = f"data/cells/cell_{cell}_tiers.csv"
+            new_hash = _raw_git_blob_reference(SOURCE_COMMIT, path)
+        else:
+            cell = key.rsplit("_", 1)[1]
+            path = f"data/jobs/batch_distributions_{cell}.json"
+            new_hash = _json_blob_reference(SOURCE_COMMIT, path)
+        inherited_migrations.append(
+            {
+                "artifact": path,
+                "legacy_fields": [
+                    f"protocol.post_selection.c_h_overlapping.input_bindings.{key}"
+                ],
+                "legacy_sha256": legacy_hash,
+                "legacy_matching_representations": _classify_legacy_hash(
+                    SOURCE_COMMIT, path, legacy_hash
+                ),
+                "new_hash": new_hash,
+            }
+        )
     binary_identities = []
     for member in protocol["frozen_bindings"]["members"]:
         binary_identities.extend(
@@ -704,6 +826,24 @@ def _migration_map(
         ),
         "json_artifacts": migrations,
         "source_files": source_migrations,
+        "inherited_protocol_data_and_factory_bindings": inherited_migrations,
+        "legacy_source_bundle": {
+            "legacy_fields": ["*.source_bundle_sha256"],
+            "legacy_sha256": originals["source_freeze"]["source_bundle_sha256"],
+            "new_hash": payloads["source_freeze"]["source_bundle"],
+        },
+        "legacy_terminal_evidence": {
+            "artifact": _relative(ORIGINAL_PATHS["canonical"]),
+            "legacy_git_blob_sha256": git_blob_sha256(
+                ROOT, BASE_COMMIT, _relative(ORIGINAL_PATHS["canonical"])
+            ),
+            "legacy_windows_checkout_sha256": sha256_bytes(
+                git_blob_bytes(
+                    ROOT, BASE_COMMIT, _relative(ORIGINAL_PATHS["canonical"])
+                ).replace(b"\n", b"\r\n")
+            ),
+            "new_target": _relative(OUTPUT_FILES["canonical"]),
+        },
         "unchanged_binary_and_internal_identities": binary_identities,
         "new_chain": {
             name: _payload_reference(name, payloads[name])
@@ -801,6 +941,8 @@ def build_payloads() -> tuple[dict[str, Any], str]:
             f"- Sealed test strict pass: **{originals['test_decision']['sealed_test_passed']}**",
             f"- Test mean incremental ramp impact: `{test['mean_incremental_ramp_impact']!r}`",
             f"- Test energy cost ratio: `{test['energy_cost_ratio']!r}`",
+            f"- One-GW robustness mean incremental ramp impact: `{originals['one_gw_total']['mean_incremental_ramp_impact']!r}`",
+            f"- C-H robustness mean incremental ramp impact: `{originals['c_h_overlapping']['mean_incremental_ramp_impact']!r}`",
             "- Training, retraining, retuning, validation evaluation, and sealed-test evaluation performed by this reseal: **false**",
             "",
             "Verify with:",
