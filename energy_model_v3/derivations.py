@@ -163,5 +163,24 @@ def diagnostic_summary(panel: pd.DataFrame) -> dict[str, object]:
         "numeric_columns": len(numeric.columns),
         "matrix_rank": rank,
         "effective_rank": effective_rank,
+        "price_usd_mwh": {
+            "min": float(panel["da_lmp_usd_mwh"].min()),
+            "q05": float(panel["da_lmp_usd_mwh"].quantile(0.05)),
+            "q50": float(panel["da_lmp_usd_mwh"].quantile(0.50)),
+            "q95": float(panel["da_lmp_usd_mwh"].quantile(0.95)),
+            "max": float(panel["da_lmp_usd_mwh"].max()),
+        },
+        "gross_demand_mw": {
+            "min": float(panel["gross_demand_mw"].min()),
+            "q50": float(panel["gross_demand_mw"].quantile(0.50)),
+            "q95": float(panel["gross_demand_mw"].quantile(0.95)),
+            "max": float(panel["gross_demand_mw"].max()),
+        },
+        "net_load_mw": {
+            "min": float(panel["net_load_mw"].min()),
+            "q50": float(panel["net_load_mw"].quantile(0.50)),
+            "q95": float(panel["net_load_mw"].quantile(0.95)),
+            "max": float(panel["net_load_mw"].max()),
+        },
         "ramp_distributions": ramps,
     }

@@ -37,11 +37,19 @@ from .adapters import (
     time_weight_ercot_sced_hourly,
 )
 from .adapters.base import download_raw
+from .acquisition import (
+    acquire_physical,
+    acquire_prices,
+    sha256 as acquisition_sha256,
+    write_native_inputs,
+)
 from .builder import (
+    BLOCKED_MARKETS,
     MARKETS,
     blocked_preflight,
     build_panel,
     fixture_market_frame,
+    load_scenario,
     sha256,
 )
 from .calendar import make_calendar
@@ -54,6 +62,7 @@ from .derivations import (
     diagnostic_summary,
 )
 from .diagnostics import plot_market_diagnostics
+from .forecasts import write_forecasts
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA = ROOT / "data" / "energy_model_v3"
@@ -61,6 +70,117 @@ DEFAULT_OUTPUT = ROOT / "output" / "energy_model_v3"
 DEFAULT_SCENARIO = (
     ROOT / "env" / "scenarios" / "us_six_market_v3_primary.yaml"
 )
+
+
+def build_measured_dc_power(
+    data_root: Path,
+    scenario_path: Path,
+    *,
+    calendar: object,
+) -> tuple[dict[str, pd.Series], dict[str, object]]:
+    scenario = load_scenario(scenario_path)
+    power_model_path = ROOT / "data" / "power_model_params.json"
+    power_models = json.loads(
+        power_model_path.read_text(encoding="utf-8")
+    )["per_cell_cpu_model"]
+    index = pd.date_range(
+        calendar.start_utc, calendar.end_utc, freq="1h", inclusive="left"
+    )
+    output_root = data_root / "modeled_dc_power"
+    output_root.mkdir(parents=True, exist_ok=True)
+    power_by_market: dict[str, pd.Series] = {}
+    records: dict[str, object] = {}
+    for site in scenario["sites"]:
+        market = site["market"]
+        cell = site["borg_cell"]
+        cell_path = ROOT / "data" / "cells" / f"cell_{cell}.csv"
+        source = pd.read_csv(cell_path)
+        if list(source.columns) != ["timestep", "cpu_demand_norm"]:
+            raise ContractError(f"{cell_path} has an unexpected workload schema")
+        expected_steps = np.arange(len(source))
+        if not np.array_equal(source["timestep"].to_numpy(), expected_steps):
+            raise ContractError(f"{cell_path} workload timesteps are not contiguous")
+        utilization = pd.to_numeric(
+            source["cpu_demand_norm"], errors="raise"
+        )
+        if utilization.isna().any() or not utilization.between(0.0, 1.0).all():
+            raise ContractError(f"{cell_path} workload values are invalid")
+        if len(utilization) % 12 == 1:
+            aggregation_values = utilization.iloc[:-1]
+        elif len(utilization) % 12 == 0:
+            aggregation_values = utilization
+        else:
+            raise ContractError(
+                f"{cell_path} cannot be aggregated into complete hours"
+            )
+        hourly_utilization = (
+            aggregation_values.groupby(
+                np.arange(len(aggregation_values)) // 12
+            ).mean().to_numpy()
+        )
+        repetitions = int(np.ceil(len(index) / len(hourly_utilization)))
+        candidate_utilization = np.tile(
+            hourly_utilization, repetitions
+        )[: len(index)]
+        model = power_models[cell]
+        rating = float(site["rated_power_mw"])
+        power = pd.Series(
+            (
+                float(model["idle_power"])
+                + float(model["slope"]) * candidate_utilization
+            )
+            * rating,
+            dtype=float,
+        )
+        artifact = output_root / f"{market}.csv"
+        pd.DataFrame(
+            {
+                "interval_start_utc": index,
+                "market": market,
+                "borg_cell": cell,
+                "dc_power_mw": power,
+                "source_quality_flags": (
+                    "measured_Borg_ClusterData2019_cell_5min_to_hourly_mean_"
+                    "trace_tiled_from_candidate_start"
+                ),
+            }
+        ).to_csv(artifact, index=False)
+        power_by_market[market] = power
+        records[market] = {
+            "borg_cell": cell,
+            "rated_power_mw": rating,
+            "source": str(cell_path),
+            "source_sha256": sha256(cell_path),
+            "source_5min_rows": len(utilization),
+            "aggregation_5min_rows": len(aggregation_values),
+            "terminal_boundary_row_excluded": (
+                len(aggregation_values) != len(utilization)
+            ),
+            "hourly_profile_rows": len(hourly_utilization),
+            "candidate_rows": len(index),
+            "trace_repetitions": repetitions,
+            "power_model": {
+                "idle_power": float(model["idle_power"]),
+                "slope": float(model["slope"]),
+                "peak_power": float(model["peak_power"]),
+            },
+            "artifact": str(artifact.resolve()),
+            "artifact_bytes": artifact.stat().st_size,
+            "artifact_sha256": sha256(artifact),
+        }
+    manifest = {
+        "source_role": "measured_workload_power_model",
+        "mapping": scenario["mapping"],
+        "temporal_mapping": (
+            "5-minute measured month aggregated to hourly means, tiled from "
+            "candidate UTC start without market-data substitution"
+        ),
+        "power_model_path": str(power_model_path),
+        "power_model_sha256": sha256(power_model_path),
+        "markets": records,
+    }
+    write_json(data_root / "provenance" / "workload-power-manifest.json", manifest)
+    return power_by_market, manifest
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -1027,14 +1147,22 @@ def command_manifest(args: argparse.Namespace) -> int:
         DEFAULT_DATA / "provenance" / "source_contract.json",
         DEFAULT_DATA / "provenance" / "forecast_capabilities.json",
         DEFAULT_DATA / "provenance" / "coverage_evidence.json",
+        DEFAULT_DATA / "provenance" / "workload-power-manifest.json",
+        DEFAULT_DATA / "provenance" / "live-acquisition-manifest.json",
         DEFAULT_OUTPUT / "capabilities.json",
         DEFAULT_OUTPUT / "sample-download-manifest.json",
         DEFAULT_OUTPUT / "live-parser-probes.json",
         DEFAULT_OUTPUT / "ercot-physical-probe.json",
         DEFAULT_OUTPUT / "blocked-capability-report.json",
+        DEFAULT_OUTPUT / "pjm-blocked-report.json",
+        DEFAULT_OUTPUT / "live-campaign-summary.json",
         DEFAULT_OUTPUT / "fixture-only" / "fixture_diagnostics.json",
         DEFAULT_OUTPUT / "fixture-only" / "fixture_quality_diagnostics.png",
     ]
+    paths.extend(
+        DEFAULT_OUTPUT / "live-diagnostics" / f"{market}.png"
+        for market in MARKETS
+    )
     missing = [str(path.relative_to(ROOT)) for path in paths if not path.exists()]
     if missing:
         raise ContractError(f"manifest inputs missing: {', '.join(missing)}")
@@ -1119,7 +1247,7 @@ def command_manifest(args: argparse.Namespace) -> int:
             raise ContractError(f"primary input changed: {relative}")
         paths.append(input_path)
     blocked_report = current_preflight
-    live_panel_manifest = DEFAULT_OUTPUT / "panel" / "manifest.json"
+    live_panel_manifest = DEFAULT_OUTPUT / "live-panel" / "manifest.json"
     ready = blocked_report["status"] == "READY"
     panel_error: str | None = None
     panel_paths: list[Path] = []
@@ -1256,6 +1384,150 @@ def command_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_acquire_live(args: argparse.Namespace) -> int:
+    calendar = make_calendar()
+    data_root = Path(args.data_root)
+    raw_root = data_root / "raw"
+    output_root = Path(args.output_root)
+    eia_path = raw_root / "EBA.zip"
+    eia_metadata = download_raw(
+        "https://api.eia.gov/bulk/EBA.zip",
+        eia_path,
+        timeout=args.timeout,
+        retries=6,
+    ) if not eia_path.exists() else {
+        "url": "https://api.eia.gov/bulk/EBA.zip",
+        "bytes": eia_path.stat().st_size,
+        "sha256": acquisition_sha256(eia_path),
+        "cache_hit": True,
+    }
+    physical, physical_metadata = acquire_physical(
+        raw_root, calendar=calendar
+    )
+    prices, price_metadata = acquire_prices(raw_root, calendar=calendar)
+    native_hashes = write_native_inputs(data_root, physical, prices)
+    forecast_manifest = write_forecasts(
+        data_root / "forecasts", physical, calendar=calendar
+    )
+    capabilities = [
+        {
+            "market": market,
+            "status": "AVAILABLE",
+            "capability": "historical_primary_tuple",
+            "reason": "authoritative no-key price and physical inputs staged",
+        }
+        for market in MARKETS
+    ]
+    write_json(DEFAULT_OUTPUT / "capabilities.json", capabilities)
+    blocked = [
+        get_adapter(market).capability().to_dict()
+        for market in BLOCKED_MARKETS
+    ]
+    write_json(DEFAULT_OUTPUT / "pjm-blocked-report.json", {
+        "status": "BLOCKED_EXCLUDED_FROM_LIVE_ROSTER",
+        "prominent_notice": (
+            "PJM DOM / Northern Virginia was not evaluated and is excluded "
+            "from all live results and claims until PJM_API_KEY is supplied."
+        ),
+        "capabilities": blocked,
+    })
+    preflight = blocked_preflight(data_root, capabilities, calendar)
+    write_json(DEFAULT_OUTPUT / "blocked-capability-report.json", preflight)
+    if preflight["status"] != "READY":
+        raise ContractError(
+            "live acquisition staged inputs but preflight is blocked: "
+            f"{preflight}"
+        )
+    dc_power, workload_power_manifest = build_measured_dc_power(
+        data_root, DEFAULT_SCENARIO, calendar=calendar
+    )
+    panel_manifest = build_panel(
+        data_root=data_root,
+        output_root=output_root / "live-panel",
+        scenario_path=DEFAULT_SCENARIO,
+        dc_power=dc_power,
+        calendar=calendar,
+        fixture_mode=False,
+    )
+    for market in MARKETS:
+        panel = pd.read_csv(output_root / "live-panel" / f"{market}.csv")
+        plot_market_diagnostics(
+            panel, output_root / "live-diagnostics" / f"{market}.png"
+        )
+    acquisition_manifest = {
+        "schema_version": "energy-model-v3",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "calendar": calendar.to_dict(),
+        "live_roster": list(MARKETS),
+        "PJM": {
+            "status": "BLOCKED_EXCLUDED",
+            "evaluated": False,
+            "required_credential": "PJM_API_KEY",
+        },
+        "eia_bulk": eia_metadata,
+        "physical_sources": physical_metadata,
+        "price_sources": price_metadata,
+        "native_inputs": native_hashes,
+        "forecast_manifest": forecast_manifest,
+        "workload_power_manifest": workload_power_manifest,
+        "panel_manifest": panel_manifest,
+        "raw_redistribution": "local_ignored",
+        "interpolation": False,
+        "synthetic_market_data": False,
+    }
+    write_json(
+        data_root / "provenance" / "live-acquisition-manifest.json",
+        acquisition_manifest,
+    )
+    acquisition_manifest_path = (
+        data_root / "provenance" / "live-acquisition-manifest.json"
+    )
+    raw_files = [path for path in raw_root.rglob("*") if path.is_file()]
+    panel_files = [
+        output_root / "live-panel" / filename
+        for filename in panel_manifest["outputs"]
+    ]
+    panel_files.append(output_root / "live-panel" / "manifest.json")
+    summary = {
+        "schema_version": "energy-model-v3",
+        "status": "READY",
+        "prominent_notice": (
+            "PJM DOM / Northern Virginia was not evaluated. PJM remains "
+            "BLOCKED and excluded until PJM_API_KEY is provided."
+        ),
+        "calendar": calendar.to_dict(),
+        "markets": list(MARKETS),
+        "rows_per_market": calendar.rows,
+        "total_market_rows": calendar.rows * len(MARKETS),
+        "native_inputs": native_hashes,
+        "scales": panel_manifest["scales"],
+        "diagnostics": panel_manifest["diagnostics"],
+        "forecasts": {
+            market: forecast_manifest["markets"][market]["errors"]
+            for market in MARKETS
+        },
+        "workload_power": workload_power_manifest,
+        "raw_evidence": {
+            "path": str(raw_root.resolve()),
+            "files": len(raw_files),
+            "total_bytes": sum(path.stat().st_size for path in raw_files),
+            "acquisition_manifest_sha256": acquisition_sha256(
+                acquisition_manifest_path
+            ),
+        },
+        "local_panel": {
+            "path": str((output_root / "live-panel").resolve()),
+            "files": panel_manifest["outputs"],
+            "total_bytes": sum(path.stat().st_size for path in panel_files),
+            "manifest_sha256": acquisition_sha256(
+                output_root / "live-panel" / "manifest.json"
+            ),
+        },
+    }
+    write_json(output_root / "live-campaign-summary.json", summary)
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(
         description="Independent six-market US energy model v3"
@@ -1356,6 +1628,11 @@ def parser() -> argparse.ArgumentParser:
     build.add_argument("--output-root", default=str(DEFAULT_OUTPUT / "panel"))
     build.add_argument("--scenario", default=str(DEFAULT_SCENARIO))
     build.set_defaults(func=command_build)
+    acquire = commands.add_parser("acquire-live")
+    acquire.add_argument("--data-root", default=str(DEFAULT_DATA))
+    acquire.add_argument("--output-root", default=str(DEFAULT_OUTPUT))
+    acquire.add_argument("--timeout", type=int, default=600)
+    acquire.set_defaults(func=command_acquire_live)
     return result
 
 

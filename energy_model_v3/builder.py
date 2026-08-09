@@ -32,13 +32,15 @@ from .derivations import (
 )
 
 MARKETS = (
-    "PJM_DOM",
-    "NYISO_NYC_J",
     "CAISO_NP15",
     "ERCOT_LZ_NORTH",
+    "NYISO_NYC_J",
     "MISO_MINN_HUB",
     "SPP_NORTH_HUB",
+    "ISONE_NEMA",
 )
+
+BLOCKED_MARKETS = ("PJM_DOM",)
 
 
 def sha256(path: Path) -> str:

@@ -326,7 +326,6 @@ class ERCOTAdapter(MarketAdapter):
 
 class MISOAdapter(MarketAdapter):
     market = "MISO_MINN_HUB"
-    credential = "MISO_API_KEY"
     redistribution = "code_query_metadata_hashes_and_derived_metrics_only"
 
     def descriptors(self) -> list[SourceDescriptor]:
@@ -338,7 +337,7 @@ class MISOAdapter(MarketAdapter):
                 feed="YYYYMMDD_da_expost_lmp.csv",
                 product="DA ex-post Hub LMP",
                 location="MINN.HUB / Hub / LMP",
-                authentication="public price report; physical tuple requires MISO_API_KEY",
+                authentication="public price report",
                 licensing="MISO restrictive redistribution terms apply",
                 cadence="hourly",
                 units="USD/MWh",
@@ -352,33 +351,42 @@ class MISOAdapter(MarketAdapter):
             ),
             _descriptor(
                 market=self.market,
-                source="MISO Data Exchange",
-                feed="historical load/fuel/wind/solar subscription",
-                product="historical physical stress tuple",
+                source="U.S. EIA Hourly Electric Grid Monitor bulk archive",
+                feed="EBA.zip series MISO-ALL D/NG.WND/NG.SUN",
+                product="same-balancing-authority physical fallback",
                 location="MISO system",
-                authentication="MISO_API_KEY and subscription required",
-                licensing="MISO restrictive redistribution terms apply",
+                authentication="public unauthenticated bulk endpoint",
+                licensing="U.S. government data; EIA attribution requested",
                 cadence="hourly",
                 units="MW",
-                interval_semantics="interval_ending",
-                source_timezone="fixed EST",
-                dst_rule="fixed EST hour-ending",
-                status_field="Data Exchange version metadata",
-                revision_policy="retain query version and response hash",
+                interval_semantics="interval_beginning",
+                source_timezone="UTC",
+                dst_rule="EIA UTC timestamp authoritative",
+                status_field="EBA last_updated and archive hash",
+                revision_policy="cache EBA.zip hash and selected series metadata",
                 query={
+                    "series": [
+                        "EBA.MISO-ALL.D.H",
+                        "EBA.MISO-ALL.NG.WND.H",
+                        "EBA.MISO-ALL.NG.SUN.H",
+                    ],
+                    "source_role": "same_BA_fallback_not_operator_settlement",
                     "current_display_api_acceptable": False,
                     "rt_sensitivity": "YYYYMMDD_rt_lmp_final.csv",
                 },
-                redistribution=restricted,
+                redistribution="public_with_EIA_attribution",
+                quality_flags=(
+                    "same_balancing_authority_EIA_fallback",
+                    "physical_not_MISO_settlement_product",
+                ),
             ),
         ]
 
     def probe_url(self) -> tuple[str, dict[str, Any]]:
-        key = os.environ.get(self.credential or "", "")
         return (
-            "https://api.misoenergy.org/MISORTWDDataBroker/"
-            "DataBrokerServices.asmx",
-            {"headers": {"Ocp-Apim-Subscription-Key": key}},
+            "https://docs.misoenergy.org/marketreports/"
+            "20250901_da_expost_lmp.csv",
+            {},
         )
 
 
@@ -441,6 +449,69 @@ class SPPAdapter(MarketAdapter):
         )
 
 
+class ISONEAdapter(MarketAdapter):
+    market = "ISONE_NEMA"
+    redistribution = "metadata_hashes_and_derived_metrics_only"
+
+    def descriptors(self) -> list[SourceDescriptor]:
+        return [
+            _descriptor(
+                market=self.market,
+                source="ISO New England",
+                feed="static-transform histRpts/da-lmp",
+                product="final day-ahead hourly LMP",
+                location=".Z.NEMASSBOST location 4008",
+                authentication="public unauthenticated static report",
+                licensing="ISO-NE data-use terms apply",
+                cadence="hourly",
+                units="USD/MWh",
+                interval_semantics="interval_ending",
+                source_timezone="America/New_York",
+                dst_rule="hour-ending duplicate hour resolved with report order",
+                status_field="final report filename and retrieval hash",
+                revision_policy="cache immutable final daily report hashes",
+                query={
+                    "path": "WW_DALMP_ISO_YYYYMMDD.csv",
+                    "location_id": 4008,
+                },
+                redistribution="metadata_hashes_and_derived_metrics_only",
+            ),
+            _descriptor(
+                market=self.market,
+                source="U.S. EIA Hourly Electric Grid Monitor bulk archive",
+                feed="EBA.zip series ISNE-ALL D/NG.WND/NG.SUN",
+                product="same-balancing-authority physical fallback",
+                location="ISO New England balancing authority",
+                authentication="public unauthenticated bulk endpoint",
+                licensing="U.S. government data; EIA attribution requested",
+                cadence="hourly",
+                units="MW",
+                interval_semantics="interval_beginning",
+                source_timezone="UTC",
+                dst_rule="EIA UTC timestamp authoritative",
+                status_field="EBA last_updated and archive hash",
+                revision_policy="cache EBA.zip hash and selected series metadata",
+                query={
+                    "series": [
+                        "EBA.ISNE-ALL.D.H",
+                        "EBA.ISNE-ALL.NG.WND.H",
+                        "EBA.ISNE-ALL.NG.SUN.H",
+                    ],
+                    "source_role": "same_BA_fallback",
+                },
+                redistribution="public_with_EIA_attribution",
+                quality_flags=("same_balancing_authority_EIA_fallback",),
+            ),
+        ]
+
+    def probe_url(self) -> tuple[str, dict[str, Any]]:
+        return (
+            "https://www.iso-ne.com/static-transform/csv/histRpts/da-lmp/"
+            "WW_DALMP_ISO_20250901.csv",
+            {},
+        )
+
+
 ADAPTERS = {
     cls.market: cls
     for cls in (
@@ -450,6 +521,7 @@ ADAPTERS = {
         ERCOTAdapter,
         MISOAdapter,
         SPPAdapter,
+        ISONEAdapter,
     )
 }
 

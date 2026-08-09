@@ -17,12 +17,15 @@ from energy_model_v3.builder import (
     load_scenario,
 )
 from energy_model_v3.calendar import make_calendar
+from energy_model_v3.cli import build_measured_dc_power
+from energy_model_v3.acquisition import _price_frame
 from energy_model_v3.canonical import (
     aggregate_native_hourly,
     derive_net_load,
 )
 from energy_model_v3.contract import ContractError, validate_forecasts
 from energy_model_v3.derivations import add_grid_features, calibrate_scale
+from energy_model_v3.forecasts import reconstruct_forecasts
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -87,6 +90,34 @@ class CalendarAndScenarioTests(unittest.TestCase):
             with self.assertRaisesRegex(ContractError, "must be finite"):
                 load_scenario(path)
 
+    def test_measured_workload_power_matches_primary_scenario(self) -> None:
+        calendar = make_calendar()
+        scenario = ROOT / "env" / "scenarios" / "us_six_market_v3_primary.yaml"
+        with tempfile.TemporaryDirectory() as temporary:
+            power, manifest = build_measured_dc_power(
+                Path(temporary), scenario, calendar=calendar
+            )
+            self.assertEqual(tuple(power), MARKETS)
+            self.assertEqual(manifest["mapping"], "primary_independent")
+            for market, values in power.items():
+                self.assertEqual(len(values), calendar.rows)
+                self.assertGreater(float(values.min()), 0.0)
+                self.assertLessEqual(float(values.max()), 100.0)
+                self.assertGreater(float(values.std()), 0.0)
+                record = manifest["markets"][market]
+                self.assertEqual(record["source_5min_rows"], 8_929)
+                self.assertEqual(record["aggregation_5min_rows"], 8_928)
+
+    def test_price_frame_rejects_duplicate_utc_hours(self) -> None:
+        timestamp = pd.Timestamp("2025-09-01T00:00:00Z")
+        with self.assertRaisesRegex(ContractError, "duplicate UTC hours"):
+            _price_frame(
+                "CAISO_NP15",
+                pd.Series([timestamp, timestamp]),
+                pd.Series([10.0, 11.0]),
+                source_flag="test",
+            )
+
 
 class CanonicalTests(unittest.TestCase):
     def test_incomplete_subhourly_hour_fails_without_fill(self) -> None:
@@ -131,7 +162,7 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "realized future"):
             validate_forecasts(frame)
 
-    def test_short_or_inconsistent_forecast_horizon_is_rejected(self) -> None:
+    def test_one_hour_forecast_is_allowed_when_issue_matches(self) -> None:
         frame = pd.DataFrame(
             {
                 "interval_start_utc": ["2025-09-01T01:00:00Z"],
@@ -145,7 +176,10 @@ class CanonicalTests(unittest.TestCase):
                 "source_quality_flags": ["ok"],
             }
         )
-        with self.assertRaisesRegex(ContractError, "at least three"):
+        validated = validate_forecasts(frame)
+        self.assertEqual(validated.loc[0, "forecast_horizon_hours"], 1)
+        frame["forecast_horizon_hours"] = 2
+        with self.assertRaisesRegex(ContractError, "one or three"):
             validate_forecasts(frame)
 
     def test_nonfinite_and_case_variant_forbidden_forecasts_fail(self) -> None:
@@ -181,6 +215,32 @@ class CanonicalTests(unittest.TestCase):
             aggregate_native_hourly(
                 frame, value_columns=["value"], native_minutes=5
             )
+
+    def test_reconstructed_forecast_models_predate_every_issue(self) -> None:
+        calendar = make_calendar()
+        source = fixture_market_frame(
+            "CAISO_NP15", calendar=calendar, seed=909
+        )
+        forecast, metadata = reconstruct_forecasts(
+            source, market="CAISO_NP15", calendar=calendar
+        )
+        model_records = {
+            model["model_id"]: model
+            for horizon in metadata["models"].values()
+            for model in horizon["models"]
+        }
+        self.assertEqual(set(forecast["forecast_model_id"]), set(model_records))
+        for model in model_records.values():
+            self.assertLess(
+                pd.Timestamp(model["latest_training_target_utc"]),
+                pd.Timestamp(model["vintage_utc"]),
+            )
+        self.assertTrue(
+            (
+                forecast["forecast_vintage_utc"]
+                <= forecast["forecast_issue_utc"]
+            ).all()
+        )
 
 
 class DerivationTests(unittest.TestCase):
@@ -337,8 +397,8 @@ class EndToEndFixtureTests(unittest.TestCase):
         calendar = make_calendar()
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            frame = fixture_market_frame("PJM_DOM", calendar=calendar)
-            market_root = root / "native" / "PJM_DOM"
+            frame = fixture_market_frame("CAISO_NP15", calendar=calendar)
+            market_root = root / "native" / "CAISO_NP15"
             market_root.mkdir(parents=True)
             physical = [
                 "interval_start_utc", "interval_end_utc", "market",
@@ -414,6 +474,8 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             "output/energy_model_v3/",
         )
         allowed_files = {
+            ".gitignore",
+            "requirements.txt",
             "scripts/build_energy_model_v3.py",
             "env/protocols/independent_us_v3.yaml",
             "env/scenarios/us_six_market_v3_primary.yaml",

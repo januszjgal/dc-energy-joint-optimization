@@ -1,5 +1,5 @@
 schema_version: energy-model-v3
-status: blocked_until_complete_all_six_hourly_panel
+status: generated_by_acquire_live
 calendar:
   candidate_start_utc: '2025-09-01T00:00:00Z'
   candidate_end_utc: '2026-05-01T00:00:00Z'
@@ -23,5 +23,4 @@ outputs:
 penetration:
   non_stress_max_p_over_s: 0.05
   persist: [p_over_s, p_over_d]
-live_values: null
-live_values_reason: complete all-six panel unavailable
+live_values: output/energy_model_v3/live-campaign-summary.json

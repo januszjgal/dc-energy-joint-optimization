@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-08T23:31:00.364769+00:00",
+  "generated_at_utc": "2026-08-09T00:41:17.508204+00:00",
   "schema_version": "energy-model-v3",
   "sources": {
     "CAISO_NP15": [
@@ -153,9 +153,65 @@
         "units": "MW"
       }
     ],
+    "ISONE_NEMA": [
+      {
+        "authentication": "public unauthenticated static report",
+        "cadence": "hourly",
+        "dst_rule": "hour-ending duplicate hour resolved with report order",
+        "feed": "static-transform histRpts/da-lmp",
+        "interval_semantics": "interval_ending",
+        "licensing": "ISO-NE data-use terms apply",
+        "location": ".Z.NEMASSBOST location 4008",
+        "market": "ISONE_NEMA",
+        "product": "final day-ahead hourly LMP",
+        "quality_flags": [],
+        "query": {
+          "location_id": 4008,
+          "path": "WW_DALMP_ISO_YYYYMMDD.csv"
+        },
+        "raw_sha256": null,
+        "redistribution": "metadata_hashes_and_derived_metrics_only",
+        "retrieval_time_utc": null,
+        "revision_policy": "cache immutable final daily report hashes",
+        "source": "ISO New England",
+        "source_timezone": "America/New_York",
+        "status_field": "final report filename and retrieval hash",
+        "units": "USD/MWh"
+      },
+      {
+        "authentication": "public unauthenticated bulk endpoint",
+        "cadence": "hourly",
+        "dst_rule": "EIA UTC timestamp authoritative",
+        "feed": "EBA.zip series ISNE-ALL D/NG.WND/NG.SUN",
+        "interval_semantics": "interval_beginning",
+        "licensing": "U.S. government data; EIA attribution requested",
+        "location": "ISO New England balancing authority",
+        "market": "ISONE_NEMA",
+        "product": "same-balancing-authority physical fallback",
+        "quality_flags": [
+          "same_balancing_authority_EIA_fallback"
+        ],
+        "query": {
+          "series": [
+            "EBA.ISNE-ALL.D.H",
+            "EBA.ISNE-ALL.NG.WND.H",
+            "EBA.ISNE-ALL.NG.SUN.H"
+          ],
+          "source_role": "same_BA_fallback"
+        },
+        "raw_sha256": null,
+        "redistribution": "public_with_EIA_attribution",
+        "retrieval_time_utc": null,
+        "revision_policy": "cache EBA.zip hash and selected series metadata",
+        "source": "U.S. EIA Hourly Electric Grid Monitor bulk archive",
+        "source_timezone": "UTC",
+        "status_field": "EBA last_updated and archive hash",
+        "units": "MW"
+      }
+    ],
     "MISO_MINN_HUB": [
       {
-        "authentication": "public price report; physical tuple requires MISO_API_KEY",
+        "authentication": "public price report",
         "cadence": "hourly",
         "dst_rule": "fixed EST hour-ending, never civil-time inference",
         "feed": "YYYYMMDD_da_expost_lmp.csv",
@@ -182,27 +238,36 @@
         "units": "USD/MWh"
       },
       {
-        "authentication": "MISO_API_KEY and subscription required",
+        "authentication": "public unauthenticated bulk endpoint",
         "cadence": "hourly",
-        "dst_rule": "fixed EST hour-ending",
-        "feed": "historical load/fuel/wind/solar subscription",
-        "interval_semantics": "interval_ending",
-        "licensing": "MISO restrictive redistribution terms apply",
+        "dst_rule": "EIA UTC timestamp authoritative",
+        "feed": "EBA.zip series MISO-ALL D/NG.WND/NG.SUN",
+        "interval_semantics": "interval_beginning",
+        "licensing": "U.S. government data; EIA attribution requested",
         "location": "MISO system",
         "market": "MISO_MINN_HUB",
-        "product": "historical physical stress tuple",
-        "quality_flags": [],
+        "product": "same-balancing-authority physical fallback",
+        "quality_flags": [
+          "same_balancing_authority_EIA_fallback",
+          "physical_not_MISO_settlement_product"
+        ],
         "query": {
           "current_display_api_acceptable": false,
-          "rt_sensitivity": "YYYYMMDD_rt_lmp_final.csv"
+          "rt_sensitivity": "YYYYMMDD_rt_lmp_final.csv",
+          "series": [
+            "EBA.MISO-ALL.D.H",
+            "EBA.MISO-ALL.NG.WND.H",
+            "EBA.MISO-ALL.NG.SUN.H"
+          ],
+          "source_role": "same_BA_fallback_not_operator_settlement"
         },
         "raw_sha256": null,
-        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
+        "redistribution": "public_with_EIA_attribution",
         "retrieval_time_utc": null,
-        "revision_policy": "retain query version and response hash",
-        "source": "MISO Data Exchange",
-        "source_timezone": "fixed EST",
-        "status_field": "Data Exchange version metadata",
+        "revision_policy": "cache EBA.zip hash and selected series metadata",
+        "source": "U.S. EIA Hourly Electric Grid Monitor bulk archive",
+        "source_timezone": "UTC",
+        "status_field": "EBA last_updated and archive hash",
         "units": "MW"
       }
     ],
@@ -257,65 +322,6 @@
         "source": "NYISO MIS",
         "source_timezone": "America/New_York",
         "status_field": "archive correction/retrieval hash",
-        "units": "MW"
-      }
-    ],
-    "PJM_DOM": [
-      {
-        "authentication": "PJM_API_KEY subscription key",
-        "cadence": "hourly",
-        "dst_rule": "PJM EPT with explicit UTC conversion",
-        "feed": "rt_da_monthly_lmps",
-        "interval_semantics": "interval_beginning",
-        "licensing": "PJM data-use and redistribution restrictions apply",
-        "location": "DOM zone pnode 34964545",
-        "market": "PJM_DOM",
-        "product": "settlement-final total_lmp_da",
-        "quality_flags": [],
-        "query": {
-          "fields": [
-            "total_lmp_da",
-            "total_lmp_rt"
-          ],
-          "pnode_id": 34964545
-        },
-        "raw_sha256": null,
-        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
-        "retrieval_time_utc": null,
-        "revision_policy": "preserve versions and refresh trailing 90 days",
-        "source": "PJM Data Miner 2",
-        "source_timezone": "EPT",
-        "status_field": "is_verified/current/version",
-        "units": "USD/MWh"
-      },
-      {
-        "authentication": "PJM_API_KEY subscription key",
-        "cadence": "hourly",
-        "dst_rule": "PJM EPT with explicit UTC conversion",
-        "feed": "hrl_load_metered plus RTO wind/solar",
-        "interval_semantics": "interval_ending",
-        "licensing": "PJM data-use and redistribution restrictions apply",
-        "location": "PJM RTO physical / DOM price",
-        "market": "PJM_DOM",
-        "product": "PJM RTO physical stress tuple; DOM load diagnostic",
-        "quality_flags": [
-          "price_physical_geography_mismatch_explicit"
-        ],
-        "query": {
-          "diagnostic": "DOM hrl_load_metered",
-          "gross": "PJM RTO gross load",
-          "renewables": [
-            "PJM RTO wind",
-            "PJM RTO solar"
-          ]
-        },
-        "raw_sha256": null,
-        "redistribution": "code_query_metadata_hashes_and_derived_metrics_only",
-        "retrieval_time_utc": null,
-        "revision_policy": "preserve versions and refresh trailing 90 days",
-        "source": "PJM Data Miner 2",
-        "source_timezone": "EPT",
-        "status_field": "is_verified/current/version",
         "units": "MW"
       }
     ],
