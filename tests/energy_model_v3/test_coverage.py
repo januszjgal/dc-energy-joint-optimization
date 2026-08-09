@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class CandidateCoverageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.evidence = json.loads(
+        cls.live_evidence = json.loads(
             (
                 ROOT
                 / "data"
@@ -24,11 +24,36 @@ class CandidateCoverageTests(unittest.TestCase):
                 / "coverage_evidence.json"
             ).read_text(encoding="utf-8")
         )
+        cls.live_evidence_sha256 = hashlib.sha256(
+            json.dumps(
+                cls.live_evidence, sort_keys=True, separators=(",", ":")
+            ).encode()
+        ).hexdigest()
+        cls.evidence = copy.deepcopy(cls.live_evidence)
+        cls.evidence.pop("verified_live_handoff")
+        for record in cls.evidence["markets"].values():
+            record["candidate_complete"] = False
+            record["reason"] = "candidate product proof is not staged"
+        cls.evidence["markets"]["ERCOT_LZ_NORTH"]["reason"] = (
+            "the 243 daily SCED disclosures are not staged"
+        )
         cls.evidence_sha256 = hashlib.sha256(
             json.dumps(
                 cls.evidence, sort_keys=True, separators=(",", ":")
             ).encode()
         ).hexdigest()
+
+    def test_verified_live_handoff_clears_all_six_markets(self) -> None:
+        assessment = assess_candidate_coverage(
+            self.live_evidence,
+            evidence_sha256=self.live_evidence_sha256,
+            repository_root=ROOT,
+            eia_api_key_available=False,
+            ercot_eia_fallback_activated=False,
+        )
+        self.assertEqual(assessment["status"], "COVERAGE_VERIFIED")
+        self.assertEqual(assessment["blockers"], {})
+        self.assertEqual(set(assessment["markets"]), set(self.live_evidence["markets"]))
 
     def assess(
         self,

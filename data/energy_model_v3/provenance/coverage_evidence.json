@@ -1,84 +1,42 @@
 {
   "schema_version": "energy-model-v3-coverage",
-  "observed_at_utc": "2026-08-08T23:15:22Z",
+  "observed_at_utc": "2026-08-09T00:53:41Z",
   "candidate_start_utc": "2025-09-01T00:00:00Z",
   "candidate_end_utc": "2026-05-01T00:00:00Z",
+  "verified_live_handoff": {
+    "acquisition_manifest": {
+      "path": "data/energy_model_v3/provenance/live-acquisition-manifest.json",
+      "sha256": "64fd78254dabefa8d525f3e43144b2a50bc12c3050bad21efcc8836e3d11b7e7"
+    },
+    "panel_manifest": {
+      "path": "output/energy_model_v3/live-panel/manifest.json",
+      "sha256": "489cb39c61c19952fe90b213c1ea20e4f5eb904563425ec8b751a15ceed446df"
+    }
+  },
   "markets": {
-    "PJM_DOM": {
-      "candidate_complete": false,
-      "reason": "PJM_API_KEY is absent; price and RTO physical coverage cannot be verified"
-    },
-    "NYISO_NYC_J": {
-      "candidate_complete": false,
-      "reason": "Monthly DAM LBMP, PAL load, and fuel-mix ZIPs are complete at both candidate boundaries, but every intervening product month has not been downloaded and exact-index validated",
-      "products": [
-        "damlbmp monthly ZIP",
-        "pal monthly ZIP",
-        "rtfuelmix monthly ZIP"
-      ]
-    },
     "CAISO_NP15": {
-      "candidate_complete": false,
-      "reason": "Outlook netdemand.csv and fuelsource.csv return valid boundary data for 2025-09-01 and 2026-04-30 and OASIS DAM price probes are valid, but the exact full candidate product calendar is not staged",
-      "products": [
-        "OASIS PRC_LMP v12 DAM",
-        "Outlook netdemand.csv",
-        "Outlook fuelsource.csv"
-      ]
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
     },
     "ERCOT_LZ_NORTH": {
-      "candidate_complete": false,
-      "reason": "The public primary physical path is now confirmed for the full candidate, including an exact 5808-hour native-load index and report-13052 retention covering every required operating date, but the 243 daily SCED disclosures and complete DAM archive have not yet been persisted, hash-bound, and exact-index validated together",
-      "price_archives": {
-        "DAM_2025_observed_doc_id": "1177667469",
-        "DAM_2026_observed_doc_id": "1257494221",
-        "RTM_2025_observed_doc_id": "1177737535",
-        "RTM_2026_observed_doc_id": "1257501090",
-        "selection_rule": "discover by report type and friendly name; never hard-code DocID"
-      },
-      "physical_archives": {
-        "native_load_archives": [
-          "https://www.ercot.com/files/docs/2025/02/11/Native_Load_2025.zip",
-          "https://www.ercot.com/files/docs/2026/02/10/Native_Load_2026.zip"
-        ],
-        "native_load_candidate_rows": 5808,
-        "native_load_exact_index_confirmed": true,
-        "renewable_primary_report": 13052,
-        "renewable_product": "NP3-965-ER 60-Day SCED Disclosure",
-        "renewable_classification": "source WIND class normalized to WGR; PVGR retained",
-        "required_operating_dates": "2025-08-31 through 2026-04-30 inclusive",
-        "required_daily_disclosures": 243,
-        "discovered_operating_date_range": "2024-01-24 through 2026-06-09",
-        "sample_operating_date": "2025-09-01",
-        "sample_observed_doc_id": "1155772966",
-        "sample_raw_sha256": "3bfb5efd750e2da743f9558e07f2e22584c2a883fe8990c5974f1d5ad204fafe",
-        "validation_report": 13424,
-        "validation_2025_observed_doc_id": "1182433954",
-        "validation_only_not_primary_substitute": true,
-        "live_probe": "output/energy_model_v3/ercot-physical-probe.json"
-      },
-      "forbidden_retrospective_reports": [13028, 13483, 14787, 21809],
-      "eia_930_fallback": {
-        "bulk_url": "https://api.eia.gov/bulk/EBA.zip",
-        "credential": "not required for bulk sensitivity",
-        "same_balancing_authority_only": true,
-        "explicit_activation_required": true,
-        "silent_substitution": false,
-        "role": "sensitivity only",
-        "known_gap": "24-hour renewable gap around 2025-12-05/06"
-      }
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "NYISO_NYC_J": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
     },
     "MISO_MINN_HUB": {
-      "candidate_complete": false,
-      "reason": "MISO_API_KEY and historical Data Exchange subscription are absent; physical coverage cannot be verified"
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
     },
     "SPP_NORTH_HUB": {
-      "candidate_complete": false,
-      "reason": "GenMix365 spans 2025-08-08T10:10:00Z through 2026-08-08T09:30:00Z with 104748 rows, but the candidate subset has not been exact-index validated with all DAM products",
-      "products": [
-        "DAM settlement-location LMP",
-        "GenMix365_SPP.csv"
-      ]
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "ISONE_NEMA": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
     }
   }
 }

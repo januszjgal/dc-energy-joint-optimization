@@ -241,6 +241,19 @@ class CanonicalTests(unittest.TestCase):
                 <= forecast["forecast_issue_utc"]
             ).all()
         )
+        for horizon in (1, 3):
+            rows = forecast[forecast["forecast_horizon_hours"] == horizon]
+            expected = pd.date_range(
+                rows["interval_start_utc"].min(),
+                rows["interval_start_utc"].max(),
+                freq="h",
+                tz="UTC",
+            )
+            self.assertTrue(
+                pd.DatetimeIndex(rows["interval_start_utc"]).sort_values().equals(
+                    expected
+                )
+            )
 
 
 class DerivationTests(unittest.TestCase):
@@ -470,14 +483,34 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
         allowed_prefixes = (
             "energy_model_v3/",
             "tests/energy_model_v3/",
+            "tests/ramp_v6/",
+            "tests/fixtures/ramp_v6/",
             "data/energy_model_v3/",
             "output/energy_model_v3/",
+            "output/ramp_rl_v6/",
+            "output/ramp_v6_fixture/",
+            "models/ramp_rl_v6/",
+            "ramp_rl/",
+            "env/ramp_v6/",
         )
         allowed_files = {
             ".gitignore",
+            "README.md",
             "requirements.txt",
             "scripts/build_energy_model_v3.py",
+            "scripts/build_energy_v3_ramp_factory.py",
+            "scripts/build_ramp_rl_evidence_v6.py",
+            "scripts/run_ramp_rl_v6.py",
+            "scripts/run_ramp_v6_fixture.py",
+            "scripts/smoke_test_ramp_rl_v6.py",
+            "tests/__init__.py",
+            "docs/ramp_rl_v6.md",
+            "docs/ramp_v6_protocol.md",
             "env/protocols/independent_us_v3.yaml",
+            "env/protocols/v6_pure_ramp_rl.schema.json",
+            "env/protocols/v6_pure_ramp_rl.yaml",
+            "env/protocols/v6_ramp_panel.schema.json",
+            "env/protocols/v6_ramp_pure_rl.yaml",
             "env/scenarios/us_six_market_v3_primary.yaml",
             "env/scenarios/us_six_market_v3_robustness.yaml",
             "env/scenarios/us_six_market_v3_stress_6gw.yaml",

@@ -51,10 +51,84 @@
     }
   ],
   "capability_failures": {},
-  "generated_at_utc": "2026-08-09T00:54:22.376837+00:00",
+  "coverage_assessment": {
+    "assessed_at_utc": "2026-08-09T15:21:43.461335+00:00",
+    "blockers": {},
+    "candidate_end_utc": "2026-05-01T00:00:00Z",
+    "candidate_start_utc": "2025-09-01T00:00:00Z",
+    "eia_api_key_available": false,
+    "ercot_eia_fallback_activated": false,
+    "evidence_sha256": "39fe68008e83f295c6641cd7d595f4b7a4257baac0aea2d6db644b474d36c5ed",
+    "markets": {
+      "CAISO_NP15": {
+        "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests.",
+        "status": "CANDIDATE_COVERAGE_VERIFIED"
+      },
+      "ERCOT_LZ_NORTH": {
+        "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests.",
+        "status": "CANDIDATE_COVERAGE_VERIFIED"
+      },
+      "ISONE_NEMA": {
+        "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests.",
+        "status": "CANDIDATE_COVERAGE_VERIFIED"
+      },
+      "MISO_MINN_HUB": {
+        "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests.",
+        "status": "CANDIDATE_COVERAGE_VERIFIED"
+      },
+      "NYISO_NYC_J": {
+        "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests.",
+        "status": "CANDIDATE_COVERAGE_VERIFIED"
+      },
+      "SPP_NORTH_HUB": {
+        "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests.",
+        "status": "CANDIDATE_COVERAGE_VERIFIED"
+      }
+    },
+    "schema_version": "energy-model-v3-coverage-assessment",
+    "status": "COVERAGE_VERIFIED",
+    "validated_files": {
+      "data/energy_model_v3/native/CAISO_NP15/physical_hourly.csv": "c7ec045bc53a9b3a55de56c8e45d68fbeaf0242199332e18620c34127237d162",
+      "data/energy_model_v3/native/CAISO_NP15/price_hourly.csv": "812520d9e669aa0cc69129ca4eb40074420ef15101168ad7e16afa169679fac1",
+      "data/energy_model_v3/native/ERCOT_LZ_NORTH/physical_hourly.csv": "6cc7a3ceb3def9011437547a02a094d37810c4ca6f5e0693d5d9a73cbbb93f6e",
+      "data/energy_model_v3/native/ERCOT_LZ_NORTH/price_hourly.csv": "0129dc0eb2427c3eb4d1cfe4dba667ec27310902117792eb2d93420d9350dbee",
+      "data/energy_model_v3/native/ISONE_NEMA/physical_hourly.csv": "eab48e0ddebb6ae6bf8d70f8dd916137c7db5c268be614be7f80d535131bf474",
+      "data/energy_model_v3/native/ISONE_NEMA/price_hourly.csv": "2b5cc643a5f23607752b2573353a99449c9fbfa1a60a3159eea745c3a0190a0f",
+      "data/energy_model_v3/native/MISO_MINN_HUB/physical_hourly.csv": "5658e652bb2b4a25cc17881abb7c172a26fcf2ca6e600ee4ef82c12a67e147c9",
+      "data/energy_model_v3/native/MISO_MINN_HUB/price_hourly.csv": "8c2786455c0d9b9badd9a3375bed7f3d894b496d856541d095c43aa712227b08",
+      "data/energy_model_v3/native/NYISO_NYC_J/physical_hourly.csv": "dc21b739475723d34b1f133cd3b672b51f34b6817aaad32bb2e14bff428b1620",
+      "data/energy_model_v3/native/NYISO_NYC_J/price_hourly.csv": "010af664551b66ec55c640820974a391076827aec02d20653dfe79612cddc883",
+      "data/energy_model_v3/native/SPP_NORTH_HUB/physical_hourly.csv": "5cf8d679e2fed58d58f0a2f4594d60c4f25d4f0ba6b7d1cb25b6096804cca368",
+      "data/energy_model_v3/native/SPP_NORTH_HUB/price_hourly.csv": "467fccaf9459cecd817ff63259c8e02a2264fcbc78b1d7351923f8a7f60b1490",
+      "data/energy_model_v3/provenance/live-acquisition-manifest.json": "64fd78254dabefa8d525f3e43144b2a50bc12c3050bad21efcc8836e3d11b7e7",
+      "output/energy_model_v3/live-panel/CAISO_NP15.csv": "b7d24a669d04e72b2b2c698ab86733e9cf414ca72800092d18e24f19be983bd9",
+      "output/energy_model_v3/live-panel/ERCOT_LZ_NORTH.csv": "330865b932d02dfa57a63d5f7edb96bb1b20faf2211e89142bcc346cf19e47bf",
+      "output/energy_model_v3/live-panel/ISONE_NEMA.csv": "810f9b4ad02d2a17dcf5e7aa4bd543eaf847638505e0d9e6e7a859e1571357a0",
+      "output/energy_model_v3/live-panel/MISO_MINN_HUB.csv": "72f05dc7701fa354154f93fc362fb84af52928ad6c78220f0f72b7a8d5d989ae",
+      "output/energy_model_v3/live-panel/NYISO_NYC_J.csv": "53bf6e4bd9b7f1ec9e35f00c9307883bc6522739ed24009955ba3f3843fb96b7",
+      "output/energy_model_v3/live-panel/SPP_NORTH_HUB.csv": "9668f1b9c4ab614ed3f3649af1c99482debeb40d8a8f933109c30a9b42f99d18",
+      "output/energy_model_v3/live-panel/manifest.json": "489cb39c61c19952fe90b213c1ea20e4f5eb904563425ec8b751a15ceed446df"
+    }
+  },
+  "coverage_failures": {},
+  "generated_at_utc": "2026-08-09T15:21:43.463307+00:00",
   "invalid_primary_inputs": {},
   "missing_primary_inputs": {},
   "schema_version": "energy-model-v3",
   "shortening_dropping_interpolation_forbidden": true,
-  "status": "READY"
+  "status": "READY",
+  "validated_primary_files": {
+    "data/energy_model_v3/native/CAISO_NP15/physical_hourly.csv": "c7ec045bc53a9b3a55de56c8e45d68fbeaf0242199332e18620c34127237d162",
+    "data/energy_model_v3/native/CAISO_NP15/price_hourly.csv": "812520d9e669aa0cc69129ca4eb40074420ef15101168ad7e16afa169679fac1",
+    "data/energy_model_v3/native/ERCOT_LZ_NORTH/physical_hourly.csv": "6cc7a3ceb3def9011437547a02a094d37810c4ca6f5e0693d5d9a73cbbb93f6e",
+    "data/energy_model_v3/native/ERCOT_LZ_NORTH/price_hourly.csv": "0129dc0eb2427c3eb4d1cfe4dba667ec27310902117792eb2d93420d9350dbee",
+    "data/energy_model_v3/native/ISONE_NEMA/physical_hourly.csv": "eab48e0ddebb6ae6bf8d70f8dd916137c7db5c268be614be7f80d535131bf474",
+    "data/energy_model_v3/native/ISONE_NEMA/price_hourly.csv": "2b5cc643a5f23607752b2573353a99449c9fbfa1a60a3159eea745c3a0190a0f",
+    "data/energy_model_v3/native/MISO_MINN_HUB/physical_hourly.csv": "5658e652bb2b4a25cc17881abb7c172a26fcf2ca6e600ee4ef82c12a67e147c9",
+    "data/energy_model_v3/native/MISO_MINN_HUB/price_hourly.csv": "8c2786455c0d9b9badd9a3375bed7f3d894b496d856541d095c43aa712227b08",
+    "data/energy_model_v3/native/NYISO_NYC_J/physical_hourly.csv": "dc21b739475723d34b1f133cd3b672b51f34b6817aaad32bb2e14bff428b1620",
+    "data/energy_model_v3/native/NYISO_NYC_J/price_hourly.csv": "010af664551b66ec55c640820974a391076827aec02d20653dfe79612cddc883",
+    "data/energy_model_v3/native/SPP_NORTH_HUB/physical_hourly.csv": "5cf8d679e2fed58d58f0a2f4594d60c4f25d4f0ba6b7d1cb25b6096804cca368",
+    "data/energy_model_v3/native/SPP_NORTH_HUB/price_hourly.csv": "467fccaf9459cecd817ff63259c8e02a2264fcbc78b1d7351923f8a7f60b1490"
+  }
 }
