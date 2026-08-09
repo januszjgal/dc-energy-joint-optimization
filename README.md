@@ -1,10 +1,50 @@
-# Safe Joint Energy Optimization for Geo-Distributed Data Centers
+# Anticipatory Grid-Ramp Smoothing for Geo-Distributed Data Centers
 
-The preregistered, additive pure-PPO/SAC harness is integrated with the
-ramp-aware v6 core and documented in
-[`docs/ramp_rl_v6.md`](docs/ramp_rl_v6.md). Miniature jobs run against the real
-six-market ramp-core fixture. The long campaign remains blocked only on the
-energy-model v3 ramp panel; frozen v2-v5 behavior and artifacts are untouched.
+The final ramp-aware thesis and reproducible DOCX are
+[`thesis_paper.md`](thesis_paper.md) and
+[`thesis_paper.docx`](thesis_paper.docx). The authoritative result is the
+hash-gated recovered-policy V4R package at
+[`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`](output/ramp_rl_v6/recovered_v4r/canonical_evidence.json).
+Its SHA-256 is
+`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`.
+Frozen v2-v5 behavior, models, reproduction commands, and evidence remain
+unchanged.
+
+## Final ramp-aware V4R result
+
+V4R is a new recovered-container identity for five independently random-init,
+reward-only V3 PPO members. Exact policy/critic weights, normalizers, and
+training provenance are recovery-bound; there was no new V4R training. Every
+decision invokes all five deterministic members and averages their environment
+actions with fixed weights of 0.2. There is no member selection, learned
+weighting, trainable combiner, teacher, behavior cloning, MPC, analytic policy,
+or optimizer action.
+
+| Split | Episodes | Ramp impact | DA cost ratio | Every market negative | Strict gates |
+|---|---:|---:|---:|---|---|
+| February validation | 28 | -1.4086907198e-05 | 0.9858280673 | yes | pass |
+| March-April sealed test | 60 | -1.4258710514e-05 | 0.9775584402 | yes | pass |
+
+The sealed test opened exactly once after validation freeze. The original V4
+remains blocked and unevaluated because its binaries were lost. The 1 GW-total
+and c-h overlapping analyses are post-selection robustness; c-h is not an
+independent holdout. PJM DOM / Northern Virginia was not evaluated.
+
+### Rebuild final thesis artifacts
+
+Run from this repository worktree. Restricted raw market files and recovered
+model containers may remain local; committed hashes and canonical evidence are
+the publication boundary.
+
+```powershell
+python scripts\build_ramp_rl_thesis_results.py --v4r output\ramp_rl_v6\recovered_v4r\canonical_evidence.json --output output\ramp_rl_v6\recovered_v4r\thesis
+python scripts\build_ramp_thesis_figures.py
+python scripts\materialize_ramp_thesis.py --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json --output thesis_paper.md
+python scripts\validate_ramp_thesis.py --source thesis_paper.md --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json
+python scripts\build_final_thesis.py --source thesis_paper.md --output thesis_paper.docx
+```
+
+## Legacy V5 study
 
 This repository is the executable companion to a thesis on joint spatial and
 temporal workload scheduling across four proxy data centers.
@@ -20,7 +60,7 @@ trained TD3+BC network chooses routing/timing preferences
 The analytic teacher is used only for offline demonstrations. It is disabled
 during reward-driven TD3 updates and at inference.
 
-## Final verified result
+## Frozen V5 verified result
 
 The corrected frozen-v3 study uses five training seeds per region. Cells a-d
 are the development/frozen-confirmation scope; cells e-h are descriptive
@@ -191,10 +231,13 @@ Tested final RL stack:
 
 ```powershell
 python scripts\preflight_energy_model_v2.py
+python scripts\build_energy_model_v3.py preflight
 python scripts\smoke_test_demand_charge.py
 python scripts\smoke_test_ppo_v3.py
 python scripts\smoke_test_safety_v4.py
 python scripts\smoke_test_offpolicy_v5.py
+python -m unittest tests.test_ramp_thesis -v
+python -m unittest discover -s tests\ramp_v6 -p "test_*.py" -v
 ```
 
 ## Reproduce the final campaign
@@ -230,10 +273,11 @@ that commit. This multi-revision provenance is intentional and documented in
 the final paper. Running training from a later commit creates a new
 `source_commit` and a new evidence package.
 
-## Build the thesis
+## Build the legacy V5 thesis source directly
 
-The final paper is authored at the repository root and regenerated from
-scratch:
+The DOCX builder remains compatible with the preserved V5-era Markdown and
+builder tests. The final ramp-aware publication should use the hash-gated
+five-command pipeline at the top of this README.
 
 ```powershell
 python scripts\build_final_thesis.py
@@ -256,12 +300,14 @@ The DOCX builder uses the pinned local `docx` package from `package.json`.
 | `env/protocols/` | Frozen v2-v6 environment, panel, and campaign contracts |
 | `env/ramp_v6/` | Hourly six-market ramp environment and trainer factories |
 | `ramp_rl/` | Pure PPO/SAC campaign, resume, evaluation, and evidence harness |
+| `ramp_rl/v4r_thesis.py` | V4R hash/recovery/claim-ledger publication gate |
 | `scripts/run_offpolicy_campaign_v5.py` | Teacher collection, BC, TD3+BC, evaluation |
 | `scripts/build_offpolicy_evidence_v5.py` | Cryptographic evidence validation |
 | `scripts/build_v5_results.py` | Final metrics, report, and figures |
 | `scripts/build_final_thesis.py` | Final DOCX entry point |
 | `models/offpolicy_v5_continuous/` | Final network artifacts |
 | `output/offpolicy_v5_continuous/` | Final evidence and results |
+| `output/ramp_rl_v6/recovered_v4r/` | Canonical V4R evidence and thesis tables |
 | `archive/` | Historical/invalid/superseded material only |
 
 Nothing under `archive/` is required to run or explain the final solution.
@@ -274,5 +320,7 @@ Nothing under `archive/` is required to run or explain the final solution.
 - **v4:** exact hard safety; Global +3.262% but 18.786% projector intervention.
 - **v5:** structured network preferences, constraint decoder, offline causal
   teacher, BC, and verified post-BC TD3+BC.
+- **v6:** six-market ramp objective; V1-V3 strict failures, blocked original
+  V4, and successful recovered-policy equal-action ensemble V4R.
 
 The detailed history and limitations are in `thesis_paper.md`.

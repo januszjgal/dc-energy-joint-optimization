@@ -206,3 +206,28 @@ The preserved live acquisition provides the complete six-market candidate
 calendar and validated local panel. PJM DOM / Northern Virginia remains
 credential-blocked, was not evaluated, and is excluded from every result and
 claim.
+
+The final ramp-aware publication consumes the hash-bound derivative at
+`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json` (SHA-256
+`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`).
+The V4R thesis build validates the committed factory/source identities and does
+not reacquire, interpolate, retrain, or retune data or models.
+
+Raw operator downloads, restricted native products, the full local panel, and
+recovered model containers may be absent from a fresh clone because of
+licensing or artifact-size constraints. Their permissible manifests, hashes,
+coverage evidence, source freeze, recovery binding, and canonical evaluation
+results are committed. Run the live preflight only in a worktree where the
+restricted local files have been staged at the exact paths recorded by the
+manifests:
+
+```powershell
+python scripts\build_energy_model_v3.py preflight
+```
+
+The eight-month September 2025-April 2026 panel does not support a prior-year
+or future-year conclusion. Any extension must acquire complete all-six market
+coverage, freeze new causal forecast vintages and train-only scales, define a
+new sealed split, and publish a new protocol identity. The present
+March-April 2026 sealed test cannot be recycled for model or tolerance
+development.

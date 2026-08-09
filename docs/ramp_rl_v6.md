@@ -96,14 +96,14 @@ Every training manifest records protocol/source/artifact hashes, random initiali
 
 The evidence helpers enforce validation-only selection and Lagrangian updates, epsilon sensitivities of 0/2/5%, day/month bootstrap intervals, optimizer-seed ranges, behavior audits, and named success-gate failures. A failed gate is retained as a valid scientific result and cannot authorize sealed-test tuning.
 
-## Live campaign closeout
+## Immutable V1 campaign closeout
 
-The canonical live campaign result is
+The original live V1 campaign result is
 `output/ramp_rl_v6/live/final_results.json`, with a human-readable report at
 `output/ramp_rl_v6/live/final_report.md`. The five-seed PPO confirmation did
 not qualify a protocol for sealed-test access, and its validation curve did not
 authorize extension toward 2M. The March-April test split therefore remains
-sealed.
+sealed for that protocol.
 
 ## Immutable v2 retry
 
@@ -125,3 +125,27 @@ freezing:
 V2 uses fresh random-init seeds 2701-2705 and the separate
 `env.ramp_v6.factory:make_energy_model_v3_env_v2` factory. Raw unshaped ramp,
 cost, safety, and behavior evidence remains the sole selection surface.
+
+Both V2 candidates failed strict validation and did not open sealed test. V3
+then replicated the stronger original PPO recipe on fresh seeds 2801-2805.
+Four seeds passed, but seed 2805 had positive MISO incremental ramp impact, so
+the conjunctive all-five decision remained false.
+
+## Final recovered-policy V4R result
+
+Original V4 was blocked before evaluation because the required model binaries
+were lost. V4R is a new recovered-container identity, not a reuse of the
+blocked identity. Its five members reproduce the exact internal V3 policy and
+critic weights, normalization state, and training provenance. There was no new
+V4R training. Every decision invokes all five deterministic members and uses a
+fixed equal environment-action mean; member selection, learned weighting,
+trainable combination, supervision, analytic policy actions, MPC, and optimizer
+actions are prohibited.
+
+The authoritative evidence is
+`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`, SHA-256
+`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`.
+V4R passed all 28 February validation episodes, then opened the March-April
+sealed test exactly once and passed all 60 test episodes. The 1 GW-total and
+c-h overlapping analyses are post-selection robustness; c-h is not an
+independent workload holdout.

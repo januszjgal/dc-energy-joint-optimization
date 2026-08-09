@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import re
 import subprocess
 import sys
@@ -13,12 +14,13 @@ from xml.etree import ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 DEFAULT_SOURCE = ROOT / "thesis_paper.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.docx"
 NODE_BUILDER = ROOT / "scripts" / "build_final_thesis_docx.js"
 IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
 UNRESOLVED_RESULT_PATTERN = re.compile(
-    r"\{\{CANONICAL_V2:[A-Z0-9_]+\}\}"
+    r"\{\{CANONICAL_V4R:[A-Z0-9_]+\}\}"
 )
 HYPERLINK_RELATIONSHIP_TYPE = (
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
@@ -37,6 +39,7 @@ WORD_SAFE_HYPERLINK_IDS = (
 )
 FIXED_CORE_TIMESTAMP = "2026-08-07T00:00:00.000Z"
 FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+V4R_FIGURE_MANIFEST = ROOT / "docs" / "figures" / "ramp_v6" / "v4r_figure_manifest.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,6 +64,26 @@ def validate_source(source: Path) -> None:
             "Materialize the source from schema-valid evidence before building:\n"
             f"{rendered}"
         )
+    if "data-result-contract-begin" in text or UNRESOLVED_RESULT_PATTERN.search(text):
+        from ramp_rl.v4r_thesis import load_verified_evidence
+        from scripts.validate_ramp_thesis import validate_text
+
+        errors = validate_text(
+            text,
+            allow_placeholders=False,
+            evidence=load_verified_evidence(),
+        )
+        if errors:
+            raise RuntimeError("Invalid ramp thesis source: " + "; ".join(errors))
+    figure_manifest: dict[str, object] | None = None
+    if "data-result-contract-begin" in text:
+        if not V4R_FIGURE_MANIFEST.is_file():
+            raise FileNotFoundError(f"Missing V4R figure manifest: {V4R_FIGURE_MANIFEST}")
+        figure_manifest = json.loads(V4R_FIGURE_MANIFEST.read_text(encoding="utf-8"))
+        from ramp_rl.v4r_thesis import EXPECTED_CANONICAL_SHA256
+
+        if figure_manifest.get("canonical_evidence_sha256") != EXPECTED_CANONICAL_SHA256:
+            raise RuntimeError("V4R figure manifest is bound to the wrong canonical evidence")
     missing: list[Path] = []
     for raw_path in IMAGE_PATTERN.findall(text):
         if re.match(r"^[a-z]+://", raw_path, flags=re.IGNORECASE):
@@ -69,6 +92,15 @@ def validate_source(source: Path) -> None:
         root_relative = (ROOT / raw_path).resolve()
         if not source_relative.is_file() and not root_relative.is_file():
             missing.append(source_relative)
+            continue
+        if figure_manifest is not None and raw_path.startswith("docs/figures/ramp_v6/"):
+            image_path = root_relative if root_relative.is_file() else source_relative
+            expected = figure_manifest.get("files", {}).get(image_path.name)
+            if not isinstance(expected, str):
+                raise RuntimeError(f"V4R figure is not declared in the manifest: {image_path.name}")
+            actual = hashlib.sha256(image_path.read_bytes()).hexdigest()
+            if actual != expected:
+                raise RuntimeError(f"V4R figure hash mismatch: {image_path.name}")
     if missing:
         rendered = "\n".join(f"  - {path}" for path in missing)
         raise FileNotFoundError(f"Missing thesis image(s):\n{rendered}")
@@ -251,7 +283,7 @@ def main() -> int:
     )
     normalize_docx_package(
         output,
-        frozen_v5_hyperlinks=source == DEFAULT_SOURCE.resolve(),
+        frozen_v5_hyperlinks=False,
     )
     validate_docx(output)
 
