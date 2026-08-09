@@ -44,3 +44,8 @@ data/energy_model_v3/native/
 data/energy_model_v3/forecasts/*.csv
 data/energy_model_v3/modeled_dc_power/
 output/energy_model_v3/live-panel/
+
+# Real ramp-RL checkpoints stay local; manifests and evaluation evidence are tracked.
+models/ramp_rl_v6/live/**/model.zip
+models/ramp_rl_v6/live/**/vecnormalize.pkl
+models/ramp_rl_v6/live/**/replay_buffer.pkl
