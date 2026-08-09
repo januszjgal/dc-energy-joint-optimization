@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ramp-v6-thesis-results-v1",
+  "title": "Canonical ramp-v6 thesis result insertion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "canonical",
+    "generated",
+    "protocol_commit",
+    "source_commit",
+    "campaign_status",
+    "selection_split",
+    "validation_rows",
+    "selection",
+    "sealed_test",
+    "test_rows",
+    "statistics",
+    "verdict_code"
+  ],
+  "properties": {
+    "schema_version": {"const": "ramp-v6-thesis-results-v1"},
+    "canonical": {"const": true},
+    "generated": {"const": true},
+    "protocol_commit": {"type": "string", "pattern": "^4d47a9a[0-9a-f]*$"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "campaign_status": {
+      "type": "string",
+      "enum": [
+        "validation_blocker_no_selected_protocol",
+        "validation_selected_test_pending",
+        "campaign_complete"
+      ]
+    },
+    "selection_split": {"const": "validation"},
+    "validation_rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidate_id",
+          "seed_count",
+          "mean_incremental_ramp_impact",
+          "mean_da_cost_ratio",
+          "exact_safety_all_seeds",
+          "all_strict_gates_pass"
+        ],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "seed_count": {"type": "integer", "minimum": 1},
+          "mean_incremental_ramp_impact": {"type": "number"},
+          "mean_da_cost_ratio": {"type": "number"},
+          "exact_safety_all_seeds": {"type": "boolean"},
+          "all_strict_gates_pass": {"type": "boolean"}
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected", "candidate_id", "failed_gates"],
+      "properties": {
+        "selected": {"type": "boolean"},
+        "candidate_id": {"type": "string"},
+        "failed_gates": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "sealed_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opened", "selection_or_tuning_used"],
+      "properties": {
+        "opened": {"type": "boolean"},
+        "selection_or_tuning_used": {"type": "boolean"}
+      }
+    },
+    "test_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidate_id",
+          "seed_count",
+          "mean_incremental_ramp_impact",
+          "mean_da_cost_ratio",
+          "exact_safety_all_seeds",
+          "all_strict_gates_pass"
+        ],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "seed_count": {"type": "integer", "minimum": 1},
+          "mean_incremental_ramp_impact": {"type": "number"},
+          "mean_da_cost_ratio": {"type": "number"},
+          "exact_safety_all_seeds": {"type": "boolean"},
+          "all_strict_gates_pass": {"type": "boolean"}
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "optimizer_seed_count",
+        "day_units",
+        "month_units",
+        "interval_method"
+      ],
+      "properties": {
+        "optimizer_seed_count": {"type": "integer", "minimum": 1},
+        "day_units": {"type": "integer", "minimum": 0},
+        "month_units": {"type": "integer", "minimum": 0},
+        "interval_method": {"type": "string", "minLength": 1}
+      }
+    },
+    "verdict_code": {
+      "type": "string",
+      "enum": [
+        "validation_blocker_no_selected_protocol",
+        "validation_selected_test_pending",
+        "sealed_test_success",
+        "sealed_test_failure"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "campaign_status": {
+            "const": "validation_blocker_no_selected_protocol"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "verdict_code": {
+            "const": "validation_blocker_no_selected_protocol"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "campaign_status": {
+            "const": "validation_selected_test_pending"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "verdict_code": {
+            "const": "validation_selected_test_pending"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"campaign_status": {"const": "campaign_complete"}}
+      },
+      "then": {
+        "properties": {
+          "verdict_code": {
+            "enum": ["sealed_test_success", "sealed_test_failure"]
+          }
+        }
+      }
+    }
+  ]
+}
