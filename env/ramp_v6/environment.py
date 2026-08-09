@@ -21,11 +21,7 @@ from env.ramp_v6.models import (
 )
 from env.ramp_v6.panel import CanonicalMarketPanel
 from env.ramp_v6.projection import ProjectedAction, project_action
-from env.ramp_v6.reward import (
-    causal_anticipatory_potential,
-    closed_window_terms,
-    smooth_worst_market_positive_harm,
-)
+from env.ramp_v6.reward import closed_window_terms
 from ramp_rl.contract import CONTRACT_VERSION, SEMANTIC_ACTION_ID
 
 
@@ -134,7 +130,6 @@ class RampAwareEnv(gym.Env):
     def ramp_rl_contract(self) -> dict[str, Any]:
         return {
             "version": CONTRACT_VERSION,
-            "protocol_id": self.protocol.protocol_id,
             "semantic_feasible_action": True,
             "semantic_action_id": SEMANTIC_ACTION_ID,
             "raw_redundant_projected_logits": False,
@@ -485,34 +480,6 @@ class RampAwareEnv(gym.Env):
             result[deadline] = capacity
         return result
 
-    def _causal_shaping_potential(self) -> float:
-        if self.protocol.anticipatory_potential_scale == 0.0:
-            return 0.0
-        panel_index = self.protocol.history_hours + self._step
-        current = self.panel.observation_rows(panel_index)
-        forecast_up = []
-        previous_power = []
-        for market in self.panel.markets:
-            row = current.loc[market]
-            scale = self.stats.gross_q95_mw[market]
-            net_now = float(row["net_load_mw"])
-            forecast_up.append(
-                max(
-                    (
-                        float(row[f"forecast_net_h{horizon}_mw"]) - net_now
-                    )
-                    / (scale * horizon)
-                    for horizon in FORECAST_HOURS
-                )
-            )
-            previous_power.append(self._market_power_history[market][-1] / scale)
-        queued_fraction = self.queue.total / float(self._capacity.sum())
-        return causal_anticipatory_potential(
-            forecast_up,
-            previous_power,
-            queued_fraction,
-        )
-
     def step(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
@@ -526,7 +493,6 @@ class RampAwareEnv(gym.Env):
         ):
             raise ValueError("action is outside the frozen [-6, 6] bounds")
         self._load_current_arrivals()
-        current_potential = self._causal_shaping_potential()
         action_provenance = self._next_action_provenance
         self._next_action_provenance = "agent_semantic"
         service_total = float(self.workload.service_arrivals[self._step].sum())
@@ -613,7 +579,6 @@ class RampAwareEnv(gym.Env):
                 info[f"terminal_tail_{field}"] = [item[field] for item in tail]
             info["tail_complete"] = True
             info["actual_terminal"] = True
-            next_potential = 0.0
         else:
             self._step += 1
             self._arrivals_loaded = False
@@ -621,15 +586,6 @@ class RampAwareEnv(gym.Env):
             observation = self._observation()
             info["tail_complete"] = False
             info["actual_terminal"] = False
-            next_potential = self._causal_shaping_potential()
-        potential_shaping_reward = self.protocol.anticipatory_potential_scale * (
-            next_potential - current_potential
-        )
-        reward += potential_shaping_reward
-        info["potential_before"] = current_potential
-        info["potential_after"] = next_potential
-        info["potential_shaping_reward"] = potential_shaping_reward
-        info["scalar_reward"] = reward
         return observation, reward, terminated, False, info
 
     def _step_info(
@@ -757,19 +713,7 @@ class RampAwareEnv(gym.Env):
         weighted_impact /= macro_divisor
         weighted_tail /= macro_divisor
         scalar_objective = weighted_impact + self.protocol.tail_weight * weighted_tail
-        raw_unshaped_ramp_reward = (
-            -self.protocol.ramp_reward_scale * scalar_objective
-        )
-        worst_market_positive_harm = smooth_worst_market_positive_harm(
-            incremental_by_market,
-            self.protocol.worst_market_temperature,
-        )
-        robust_harm_penalty = (
-            self.protocol.ramp_reward_scale
-            * self.protocol.worst_market_harm_weight
-            * worst_market_positive_harm
-        )
-        ramp_reward = raw_unshaped_ramp_reward - robust_harm_penalty
+        ramp_reward = -self.protocol.ramp_reward_scale * scalar_objective
         status_quo_cost = self._status_quo_energy_cost(current)
         energy_budget = status_quo_cost + (
             self._epsilon_pct / 100.0
@@ -799,9 +743,6 @@ class RampAwareEnv(gym.Env):
             ),
             "scalar_reward": reward,
             "ramp_reward": ramp_reward,
-            "raw_unshaped_ramp_reward": raw_unshaped_ramp_reward,
-            "worst_market_positive_harm": worst_market_positive_harm,
-            "robust_harm_penalty": robust_harm_penalty,
             "lagrangian_multiplier": self._lagrangian_multiplier,
             "lagrangian_penalty": lagrangian_penalty,
             "weighted_incremental_ramp_impact": weighted_impact,

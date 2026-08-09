@@ -12,11 +12,7 @@ from env.ramp_v6.projection import (
     project_action,
     project_capped_simplex,
 )
-from env.ramp_v6.reward import (
-    causal_anticipatory_potential,
-    closed_window_terms,
-    smooth_worst_market_positive_harm,
-)
+from env.ramp_v6.reward import closed_window_terms
 
 
 class RampMathTests(unittest.TestCase):
@@ -37,29 +33,6 @@ class RampMathTests(unittest.TestCase):
             upward.incremental_squared_impact,
             downward.incremental_squared_impact,
         )
-
-    def test_smooth_worst_market_penalty_targets_positive_harm(self) -> None:
-        safe = smooth_worst_market_positive_harm(
-            [-2e-5, -1e-5, -4e-6], 1e-7
-        )
-        harmed = smooth_worst_market_positive_harm(
-            [-2e-5, 2e-7, -4e-6], 1e-7
-        )
-        self.assertGreater(harmed, safe)
-        self.assertGreater(harmed, 0.0)
-
-    def test_causal_potential_rewards_reduced_forecast_burden(self) -> None:
-        before = causal_anticipatory_potential(
-            [0.03, 0.01],
-            [0.08, 0.06],
-            0.10,
-        )
-        after = causal_anticipatory_potential(
-            [0.03, 0.01],
-            [0.04, 0.03],
-            0.02,
-        )
-        self.assertGreater(after - before, 0.0)
 
     def test_capped_simplex_and_transport_are_exact(self) -> None:
         allocation = project_capped_simplex(

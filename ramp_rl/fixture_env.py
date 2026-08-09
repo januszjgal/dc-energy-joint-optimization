@@ -58,7 +58,6 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
     def ramp_rl_contract(self) -> dict[str, Any]:
         return {
             "version": CONTRACT_VERSION,
-            "protocol_id": "ramp-v6-pure-rl-frozen-v1",
             "semantic_feasible_action": True,
             "semantic_action_id": SEMANTIC_ACTION_ID,
             "raw_redundant_projected_logits": False,
