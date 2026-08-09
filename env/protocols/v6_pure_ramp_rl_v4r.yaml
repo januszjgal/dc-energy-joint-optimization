@@ -54,16 +54,16 @@ pure_rl_attribution:
   random_initialization_only: true
 
 recovery_evidence:
-  recovery_commit: d19761451ef79deeb904ef834b476bfdb7608595
-  recovery_manifest_git_path: output/ramp_rl_v6/live_v3/recovery_manifest.json
-  recovery_manifest_sha256: e67d2b2cc4cad8f0453142f5d82c6d6ea0f6b5a759facce65d9f3f6d90e2959c
+  recovery_commit: d1d4828c32bada1ba1e852d0479c37bb71164561
+  recovery_manifest_git_path: output/ramp_rl_v6/live_v3/recovery_transfer_manifest.json
+  recovery_manifest_sha256: d1ccf86acf6ed8f9a58c1d07546d02678f77f1aeab8c1181e09e16a3173357e6
   recovery_source_git_path: scripts/recover_ramp_rl_v3.py
-  recovery_source_sha256: b1cbfa4abf4b8669a0bdafe0665744bce5100836d15b13d2d9da99bf2d26564e
+  recovery_source_sha256: 18f509b1cb7694d7e854e18846ba25481f0d5c89438f3f55f648ed649f8423a1
   recovery_command_template: >-
     OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
     NUMEXPR_NUM_THREADS=1 python scripts/run_ramp_rl_v3.py train
-    --seed <2801..2805> --output models/ramp_rl_v6/recovery_v3/<seed>
-  recovery_report_status: deterministic_divergence
+    --seed <2801..2805> --output models/ramp_rl_v6/recovery_v3_transfer/<seed>
+  recovery_report_status: exact_match_not_published
   expected_mismatches:
     - seed.2801.artifact.model.zip.original
     - seed.2802.artifact.model.zip.original
@@ -97,9 +97,9 @@ frozen_bindings:
       original_training_manifest_path: models/ramp_rl_v6/live_v3/confirmation/ppo/2801/training_manifest.json
       original_training_manifest_sha256: b1e235d920b6f478bb5f3b30786f431d153dbc64cd9063b734d978a9c5ef8406
       original_model_sha256: ce9a464851c78a2db988c1be51f0bb58970945b50ac1ae2aa798abf04d88577b
-      recovered_training_manifest_sha256: d926dacd3497006f5e42b7e8a0ad89d20fb0fce26ffbd5e02e4a31f9783c47cd
+      recovered_training_manifest_sha256: 615dabd38d102f7760dbb0c386678f9fa9493074f2dc052cf17c0d9e8e256085
       recovered_model_path: models/ramp_rl_v6/recovered_v4r/members/2801/model.zip
-      recovered_model_sha256: 1e2ce58a6716eb26d7cf4e9cd5940d145db0e4cfe11a31accd3bc008540ee838
+      recovered_model_sha256: 47e68ae430be484da860b6e1520f1868e5869ccbd49d86fe48920a253c861883
       recovered_vecnormalize_path: models/ramp_rl_v6/recovered_v4r/members/2801/vecnormalize.pkl
       recovered_vecnormalize_sha256: 0789b19f8999d1cdc79249daa33db92fe4ef9152f7202274d26a90bcae0549c3
       initial_policy_sha256: 2d1d33a85391203cd6f6b2cdbdb096f0630915a7811ef118b7ba78844d0ec97d
@@ -112,9 +112,9 @@ frozen_bindings:
       original_training_manifest_path: models/ramp_rl_v6/live_v3/confirmation/ppo/2802/training_manifest.json
       original_training_manifest_sha256: b18ed998b0ed9c176f6a258dca7244d27eb21c7e1abc5aece80053a08f0394b9
       original_model_sha256: 60afb3c1799316d92d7f27d72f5f95cd2e0d00c06147d4cd85b779a50be63bbc
-      recovered_training_manifest_sha256: 547479eec4b9c1628ff9ae5a4696cf9015d6e83b6e2ecb0b7ea5d1edfec4ca7e
+      recovered_training_manifest_sha256: 53f3964674d5367994871d6a97daa1e17c47555f766b29badba9f707217921f3
       recovered_model_path: models/ramp_rl_v6/recovered_v4r/members/2802/model.zip
-      recovered_model_sha256: efb00eb7121cbdaef010b212cda65554f1ab187c86e9009ed81dc352fd2283a4
+      recovered_model_sha256: 93296e54bb61be72b9c41f58175860734208f1785089a11730236891f9a8700f
       recovered_vecnormalize_path: models/ramp_rl_v6/recovered_v4r/members/2802/vecnormalize.pkl
       recovered_vecnormalize_sha256: bbb6ccad327453c757fd636ed64b4c5af6012490dbaecfc004aaab57fc0c5bd3
       initial_policy_sha256: 77267baa6929bd655f3bcaacd70afaca894b31a2ef053d05744511b93220ea9d
@@ -127,9 +127,9 @@ frozen_bindings:
       original_training_manifest_path: models/ramp_rl_v6/live_v3/confirmation/ppo/2803/training_manifest.json
       original_training_manifest_sha256: 15da97a85637f5b013e309489fe1b4d1fe69e96842e212d2e70ec447f154465f
       original_model_sha256: e912d4ead89fbf3872ded0717f9c621eca36ec1c6e7443f06cfa8d4aa7da0dd1
-      recovered_training_manifest_sha256: 5357972fc5566f5ad177707ecbd534cb7beb2cec40542b417a4dff502e339186
+      recovered_training_manifest_sha256: 9a3de3fe1a972f99660452f4d589f24cc6cd46e19b13d1fa233e2422d9817615
       recovered_model_path: models/ramp_rl_v6/recovered_v4r/members/2803/model.zip
-      recovered_model_sha256: 6a677b5f9bbb34848877d25bf6af96d546f9bebe3d9fd2e90b4df9434fe5ad44
+      recovered_model_sha256: 292a24819bb13dd8372b25c932eb3ac44b06bab891237ab331c7ba224873f507
       recovered_vecnormalize_path: models/ramp_rl_v6/recovered_v4r/members/2803/vecnormalize.pkl
       recovered_vecnormalize_sha256: f5362840c1fb8c96983ec2d60505e15619fa0bfb3b35ec69a18808f4c178dd9c
       initial_policy_sha256: a6dc0cd909beeba3ac6d9937f2dd95979ced7dfd2dee9296d75a9d6b8f7bed36
@@ -142,9 +142,9 @@ frozen_bindings:
       original_training_manifest_path: models/ramp_rl_v6/live_v3/confirmation/ppo/2804/training_manifest.json
       original_training_manifest_sha256: 7e19e1b9bc6704d200712a45091bacc7712677b0e131fd42519f8ec9a7476145
       original_model_sha256: 99893a31ee32aa40dc7638b1a4c533db49986822eca6f0161f24c8b836ab9ae1
-      recovered_training_manifest_sha256: 9eb83271c0c0e4436c6c0b0afd1092811f320ad2f77c99991b7741c1a6bdfc5f
+      recovered_training_manifest_sha256: 7f1e2e8f9d3704112993c4dc6eadd93d7381c4a2126125510b7dcc6d564a2be3
       recovered_model_path: models/ramp_rl_v6/recovered_v4r/members/2804/model.zip
-      recovered_model_sha256: 25b44dbbaa1a0675e3597ad0f69c9cd1293457db2e0e8b312a13c218d45904ac
+      recovered_model_sha256: ee5ee15ce884d7958da253ea7fb6f95297d395cb0ca5cc816d83ac72bb345fbb
       recovered_vecnormalize_path: models/ramp_rl_v6/recovered_v4r/members/2804/vecnormalize.pkl
       recovered_vecnormalize_sha256: 778fb2ad91d1ec1e9a16a76f5b1cef139c2c2fbb6256479868473bbb9155b63e
       initial_policy_sha256: 1cf742e2a0489c50e5b3e68adf6c9b19f1a987cd675462229252b290575ee57f
@@ -157,9 +157,9 @@ frozen_bindings:
       original_training_manifest_path: models/ramp_rl_v6/live_v3/confirmation/ppo/2805/training_manifest.json
       original_training_manifest_sha256: c88829c63c64d1775560ab7c48d75f996569f0f5f43333becbf01e2d91086cbc
       original_model_sha256: 8af7f31ea23041a0eb03b56d5dc93c88446271c0ea072f359c165ee922ca1d63
-      recovered_training_manifest_sha256: c840ac17848082181af5af518c7ef33e9bd056b4f5b76ce817c7417e614135f9
+      recovered_training_manifest_sha256: 3bd7964924eb091045c3246fe0544a856eee0bc6a9103cb091f595980532d2eb
       recovered_model_path: models/ramp_rl_v6/recovered_v4r/members/2805/model.zip
-      recovered_model_sha256: 1c7575ce7a0d16113bd4057c53638db298cab5c54b0c9e736698fb4458918b5d
+      recovered_model_sha256: ffba64a2b4574e1a10edfd96e91bcd08f78d380c756a4d3231ac5ee1365e07f6
       recovered_vecnormalize_path: models/ramp_rl_v6/recovered_v4r/members/2805/vecnormalize.pkl
       recovered_vecnormalize_sha256: e9e1d4523ddfd16f17744deaa371627fcae2d0316a971a02f140cc73c2d2e8f7
       initial_policy_sha256: 35214ba9a7a06c661bb8528e7de14f0159d999967b7c23fb4b5c85db700b30aa

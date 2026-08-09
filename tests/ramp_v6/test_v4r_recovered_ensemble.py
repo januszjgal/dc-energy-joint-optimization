@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
+import numpy as np
 import yaml
+from gymnasium import spaces
 
+from env.ramp_v6.factory import make_energy_model_v3_env
+from ramp_rl.contract import EnvRequest, RampEnvAdapter
 from ramp_rl.ensemble import EXPECTED_MEMBER_SEEDS
-from ramp_rl.recovered_ensemble import PROTOCOL_ID
+from ramp_rl.recovered_ensemble import PROTOCOL_ID, load_recovered_ensemble
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -87,6 +94,94 @@ class RecoveredV4RProtocolTests(unittest.TestCase):
         self.assertTrue(test["sealed"])
         self.assertEqual(test["open_count_max"], 1)
         self.assertFalse(test["tune_or_select"])
+
+
+class RecoveredV4RLoaderTests(unittest.TestCase):
+    def test_recovered_container_hash_mismatch_fails_before_load(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / "manifest.json"
+            model = root / "model.zip"
+            normalization = root / "vecnormalize.pkl"
+            for path in (manifest, model, normalization):
+                path.write_bytes(b"present")
+            binding = {
+                "seed": 2801,
+                "original_training_manifest_path": "manifest.json",
+                "original_training_manifest_sha256": "1" * 64,
+                "recovered_model_path": "model.zip",
+                "recovered_model_sha256": "2" * 64,
+                "recovered_vecnormalize_path": "vecnormalize.pkl",
+                "recovered_vecnormalize_sha256": "3" * 64,
+            }
+            observation_space = spaces.Box(
+                low=-np.inf, high=np.inf, shape=(20,), dtype=np.float32
+            )
+            action_space = spaces.Box(
+                low=-6.0, high=6.0, shape=(13,), dtype=np.float32
+            )
+            with patch(
+                "ramp_rl.recovered_ensemble.sha256_file",
+                side_effect=lambda path: {
+                    manifest: "1" * 64,
+                    model: "f" * 64,
+                    normalization: "3" * 64,
+                }[path],
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError, "V4R artifact hash mismatch"
+                ):
+                    load_recovered_ensemble(
+                        bindings=[binding],
+                        root=root,
+                        observation_space=observation_space,
+                        action_space=action_space,
+                    )
+
+    def test_local_recovered_members_are_deterministic_and_all_invoked(
+        self,
+    ) -> None:
+        protocol = yaml.safe_load(PROTOCOL_PATH.read_text(encoding="utf-8"))
+        bindings = protocol["frozen_bindings"]["members"]
+        if not all((ROOT / row["recovered_model_path"]).is_file() for row in bindings):
+            self.skipTest("gitignored V4R binaries are not present")
+        factory_manifest = json.loads(
+            (
+                ROOT
+                / "output"
+                / "energy_model_v3"
+                / "ramp_v6"
+                / "factory_manifest.json"
+            ).read_text(encoding="utf-8")
+        )
+        window = sorted(factory_manifest["windows"]["train"])[0]
+        request = EnvRequest(
+            split="train", seed=2800, window_id=window, training=False
+        )
+        adapter = RampEnvAdapter(make_energy_model_v3_env(request), request)
+        observation, _ = adapter.reset(seed=2800)
+        controller = load_recovered_ensemble(
+            bindings=bindings,
+            root=ROOT,
+            observation_space=adapter.observation_space,
+            action_space=adapter.action_space,
+        )
+        try:
+            first = controller.predict(observation)
+            second = controller.predict(observation)
+            np.testing.assert_array_equal(first, second)
+            self.assertTrue(adapter.action_space.contains(first))
+            audit = controller.audit()
+            self.assertEqual(audit["weights"], [0.2] * 5)
+            self.assertTrue(audit["all_members_invoked_once_per_decision"])
+            self.assertFalse(
+                audit["analytic_or_evaluation_actions_used_by_controller"]
+            )
+            _, _, _, _, info = adapter.step(first)
+            self.assertEqual(info["action_provenance"], "agent_semantic")
+        finally:
+            controller.close()
+            adapter.close()
 
 
 if __name__ == "__main__":
