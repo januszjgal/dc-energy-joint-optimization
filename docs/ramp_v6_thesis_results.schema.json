@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ramp-pure-rl-recovered-v4r-canonical-evidence-v2",
+  "title": "Corrected canonical V4R provenance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "hash_contract",
+    "migration_map",
+    "numerical_results_changed",
+    "protocol_controller_model_data_factory_forecast_identities_changed",
+    "protocol_id",
+    "recovery_binding",
+    "robustness_chain",
+    "schema_version",
+    "sealed_test_chain",
+    "sealed_test_open_count",
+    "sealed_test_passed",
+    "source_freeze",
+    "status",
+    "supersedes",
+    "supersession_scope",
+    "training_or_retuning_performed",
+    "validation_chain",
+    "validation_or_test_evaluation_rerun",
+    "validation_passed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ramp-pure-rl-recovered-v4r-canonical-evidence-v2"
+    },
+    "status": {"const": "canonical-corrected-provenance"},
+    "protocol_id": {
+      "const": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r"
+    },
+    "hash_contract": {"$ref": "#/$defs/canonicalJsonReference"},
+    "migration_map": {"$ref": "#/$defs/canonicalJsonReference"},
+    "source_freeze": {"$ref": "#/$defs/canonicalJsonReference"},
+    "recovery_binding": {"$ref": "#/$defs/canonicalJsonReference"},
+    "validation_chain": {"$ref": "#/$defs/canonicalJsonReference"},
+    "sealed_test_chain": {"$ref": "#/$defs/canonicalJsonReference"},
+    "robustness_chain": {"$ref": "#/$defs/canonicalJsonReference"},
+    "supersedes": {"$ref": "#/$defs/canonicalJsonReference"},
+    "supersession_scope": {"const": "provenance-hash-chain-only"},
+    "numerical_results_changed": {"const": false},
+    "protocol_controller_model_data_factory_forecast_identities_changed": {
+      "const": false
+    },
+    "training_or_retuning_performed": {"const": false},
+    "validation_or_test_evaluation_rerun": {"const": false},
+    "validation_passed": {"const": true},
+    "sealed_test_passed": {"const": true},
+    "sealed_test_open_count": {"const": 1}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "canonicalJsonReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "path", "representation", "sha256"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "path": {"type": "string", "minLength": 1},
+        "representation": {
+          "const": "canonical-json-utf8-sort-compact-v1"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

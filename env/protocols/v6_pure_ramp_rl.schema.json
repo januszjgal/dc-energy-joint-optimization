@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/dc-energy/v6-pure-ramp-rl.schema.json",
+  "title": "v6 pure ramp RL protocol",
+  "type": "object",
+  "required": ["protocol", "environment_protocol", "attribution", "data", "training", "algorithms", "multiobjective", "campaign", "success_gate"],
+  "properties": {
+    "protocol": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": {"const": "v6-ramp-pure-rl-preregistered-v1"},
+        "status": {"const": "preregistered-awaiting-energy-v3-panel"}
+      }
+    },
+    "environment_protocol": {
+      "type": "object",
+      "required": ["path", "id", "panel_schema", "cadence", "semantic_action_id", "dimensions_for_n_sites", "bounds"],
+      "properties": {
+        "path": {"const": "env/protocols/v6_ramp_pure_rl.yaml"},
+        "id": {"const": "ramp-v6-pure-rl-frozen-v1"},
+        "panel_schema": {"const": "env/protocols/v6_ramp_panel.schema.json"},
+        "cadence": {"const": "hourly UTC"},
+        "semantic_action_id": {"const": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"},
+        "dimensions_for_n_sites": {"const": "2N+1"},
+        "bounds": {"const": [-6.0, 6.0]}
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["random_initialization_only"],
+      "properties": {
+        "random_initialization_only": {"const": true},
+        "teacher": {"const": false},
+        "behavior_cloning": {"const": false},
+        "demonstrations": {"const": false},
+        "expert_replay": {"const": false},
+        "warm_start": {"const": false},
+        "analytic_economic_base": {"const": false},
+        "mpc_actions": {"const": false},
+        "offline_expert_labels": {"const": false},
+        "optimizer_actions": {"const": false},
+        "oracle_reward_shaping": {"const": false},
+        "curriculum_trajectories": {"const": false}
+      }
+    },
+    "training": {
+      "type": "object",
+      "properties": {
+        "stable_baselines3": {"const": "2.9.0"},
+        "gamma": {"const": 1.0},
+        "actual_terminals": {"const": true},
+        "bootstrap_across_terminal": {"const": false},
+        "history_hours": {"const": 3},
+        "terminal_tail_hours": {"const": 3},
+        "action_contract": {"const": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"},
+        "raw_redundant_projected_logits": {"const": false}
+      }
+    },
+    "algorithms": {
+      "type": "object",
+      "required": ["ppo", "sac"],
+      "properties": {
+        "ppo": {"type": "object", "properties": {"pure_rl": {"const": true}, "gamma": {"const": 1.0}}},
+        "sac": {"type": "object", "properties": {"pure_rl": {"const": true}, "gamma": {"const": 1.0}, "n_steps": {"minimum": 36}}}
+      }
+    }
+  }
+}

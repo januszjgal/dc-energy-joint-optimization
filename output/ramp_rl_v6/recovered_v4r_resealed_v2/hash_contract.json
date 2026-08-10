@@ -1,0 +1,30 @@
+{
+  "algorithm": "sha256",
+  "binary_and_data": {
+    "normalization": "none",
+    "representation": "raw-bytes-v1"
+  },
+  "contract_id": "dc-energy-provenance-sha256-v2",
+  "internal_model_state": {
+    "implementation": "ramp_rl.runner.model_hashes",
+    "representation": "ordered-tensor-state-bytes-v1"
+  },
+  "json_evidence": {
+    "allow_nan": false,
+    "encoding": "UTF-8",
+    "ensure_ascii": false,
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "separators": [
+      ",",
+      ":"
+    ],
+    "sort_keys": true,
+    "trailing_newline": false
+  },
+  "schema_version": "dc-energy-provenance-hash-contract-v2",
+  "tracked_non_json_text": {
+    "commit_and_path_required": true,
+    "representation": "git-blob-bytes-v1",
+    "working_tree_used": false
+  }
+}

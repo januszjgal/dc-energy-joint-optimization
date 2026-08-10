@@ -1,0 +1,116 @@
+protocol:
+  id: ramp-v6-pure-rl-frozen-v2
+  status: frozen
+  trainer_campaign_protocol: env/protocols/v6_pure_ramp_rl_v2.yaml
+  predecessor: ramp-v6-pure-rl-frozen-v1
+  frozen_predecessor_artifacts_untouched: true
+  cadence: hourly UTC
+  primary_sites: 6
+  supports_n_sites: true
+  primary_rated_power_mw_per_site: 100
+
+data:
+  panel_schema: env/protocols/v6_ramp_panel.schema.json
+  primary_split: complete chronological calendar months
+  train_only_fits:
+    - gross demand Q95 scale S by market
+    - gross and net level normalization
+    - native absolute ramp Q90 thresholds by market and horizon
+    - forecast models and calibration
+  forbidden_policy_inputs:
+    - realized future gross demand
+    - realized future net load
+    - real-time price
+    - forecast issued after controller timestamp
+
+state:
+  trailing_hours: 3
+  includes:
+    - current and trailing normalized gross and net levels
+    - current native 1h and 3h ramps
+    - causal forecast h1/h2/h3 endpoints and maximum upward ramp
+    - previous modeled site power
+    - current service and batch arrivals
+    - EDF queue origin totals and deadline buckets
+    - site capacity and affine power parameters
+    - day-ahead LMP
+    - forecast vintage age and quality
+    - UTC time features
+
+action:
+  semantic_action_id: ramp-v6-constraint-decoded-preferences-2n-plus-1-v1
+  dimensions_for_n_sites: 2N+1
+  fields:
+    - N service allocation preferences
+    - 1 optional total batch execution preference
+    - N batch destination preferences
+  decoder:
+    role: constraint-only
+    guaranteed_batch_capacity_fraction: 0.25
+    service_envelope_fraction_of_fleet: 0.75
+    batch_arrival_envelope_fraction_of_fleet: 0.10
+    service: capped-simplex exact conservation
+    batch_origin: deterministic global EDF
+    batch_destination: residual-capacity capped simplex
+    transport: exact origin-to-destination conservation
+  prohibited:
+    - teacher
+    - behavior cloning
+    - demonstrations
+    - analytic economic base policy
+    - MPC
+    - optimizer in policy or training
+
+ramp_objective:
+  horizons_hours: [1, 3]
+  weights: {1: 0.40, 3: 0.60}
+  scale: frozen train gross-demand Q95 by market
+  native: (N_t - N_t-h) / (S * h_hours)
+  adjusted: ((N_t + P_t) - (N_t-h + P_t-h)) / (S * h_hours)
+  incremental_impact: adjusted^2 - native^2
+  residual_tail:
+    threshold: frozen train native absolute-ramp Q90
+    weight: 0.15
+  robust_market_non_harm:
+    id: smooth-positive-log-mean-exp-v1
+    weight: 2.0
+    temperature: 0.0000001
+    inputs: closed realized per-market incremental impacts
+    formula: 2 * LME_tau(softplus_tau(per_market_incremental_impact))
+    post_hoc_tolerance: false
+  potential_shaping:
+    id: causal-forecast-queue-power-potential-v1
+    gamma: 1.0
+    scale: 0.001
+    terminal_potential: 0.0
+    formula: scale * (Phi(s_next) - Phi(s_current))
+    state_inputs:
+      - causal h1/h2/h3 net-load forecasts
+      - current EDF queue
+      - previous modeled market power
+    realized_future_inputs: false
+    policy_invariant_finite_horizon: true
+  scalar_reward:
+    id: ramp-v6-pure-rl-scalar-v2
+    formula: raw_v1_ramp_reward - robust_market_non_harm + potential_difference
+    raw_unshaped_evidence_retained: true
+  energy_cost:
+    formula: DA_LMP_USD_per_MWh * modeled_power_MW * 1h
+    role: separate Pareto and cost-budget reporting
+    default_budget_fraction_over_status_quo: 0.05
+
+anti_gaming:
+  sliding_windows_no_wrap: true
+  symmetric_square: true
+  aggregate_power_once_per_market: true
+  warm_history_hours: 3
+  terminal_tail_hours: 3
+  terminal_tail_new_arrivals: false
+  exact_work_conservation: true
+  exact_completion: true
+  causal_reward_when_window_closes: true
+
+evidence:
+  raw_unshaped_metrics_are_selection_metrics: true
+  train_reward_components_recorded: true
+  sealed_test_opened: false

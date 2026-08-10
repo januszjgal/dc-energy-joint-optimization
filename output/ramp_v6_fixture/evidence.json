@@ -1,0 +1,378 @@
+{
+  "candidate_flat_preferences": {
+    "da_energy_cost_usd": 42604.0693359375,
+    "forecast_error_strata": {
+      "high": {
+        "count": 0,
+        "mean_abs_forecast_error_mw": null,
+        "mean_incremental_1h_ramp_impact": null
+      },
+      "low": {
+        "count": 18,
+        "mean_abs_forecast_error_mw": 2.0,
+        "mean_incremental_1h_ramp_impact": 2.5066985199493066e-05
+      },
+      "medium": {
+        "count": 0,
+        "mean_abs_forecast_error_mw": null,
+        "mean_incremental_1h_ramp_impact": null
+      }
+    },
+    "macro_incremental_high_tail_burden_mean": 4.898305819058466e-08,
+    "macro_incremental_ramp_impact_mean": 2.2017520174697833e-05,
+    "per_market": {
+      "A": {
+        "1h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.0416015625,
+          "adjusted_max_up_mw": 49.921875,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.038658854166666666,
+          "adjusted_p95_abs_mw": 46.390625,
+          "incremental_high_tail_burden_sum": -8.638170030381479e-07,
+          "incremental_ramp_impact_mean": 6.896478335062666e-05,
+          "incremental_ramp_impact_sum": 0.00062068305015564,
+          "native_max_up_fraction_s_per_hour": 0.041666666666666664,
+          "native_max_up_mw": 50.0,
+          "native_p95_abs_fraction_s_per_hour": 0.03833333333333333,
+          "native_p95_abs_mw": 46.0
+        },
+        "3h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.03387586805555556,
+          "adjusted_max_up_mw": 121.953125,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.030958116319444444,
+          "adjusted_p95_abs_mw": 111.44921874999999,
+          "incremental_high_tail_burden_sum": 1.4304599644225327e-05,
+          "incremental_ramp_impact_mean": 5.910545742887856e-05,
+          "incremental_ramp_impact_sum": 0.000531949116859907,
+          "native_max_up_fraction_s_per_hour": 0.03333333333333333,
+          "native_max_up_mw": 120.0,
+          "native_p95_abs_fraction_s_per_hour": 0.02944444444444444,
+          "native_p95_abs_mw": 105.99999999999999
+        },
+        "da_energy_cost_usd": 25189.130859375,
+        "power_over_frozen_s_mean": 0.051620370370370365,
+        "power_over_gross_demand_mean": 0.05676538034110928,
+        "power_over_market_scale_mean": 0.051620370370370365
+      },
+      "B": {
+        "1h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.01818181818181818,
+          "adjusted_max_up_mw": 39.99999999999999,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.01605522017045454,
+          "adjusted_p95_abs_mw": 35.32148437499999,
+          "incremental_high_tail_burden_sum": 0.0,
+          "incremental_ramp_impact_mean": -1.883081295164054e-05,
+          "incremental_ramp_impact_sum": -0.00016947731656476484,
+          "native_max_up_fraction_s_per_hour": 0.01818181818181818,
+          "native_max_up_mw": 40.0,
+          "native_p95_abs_fraction_s_per_hour": 0.01636363636363636,
+          "native_p95_abs_mw": 36.0
+        },
+        "3h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.012592033617424243,
+          "adjusted_max_up_mw": 83.107421875,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.012155894886363636,
+          "adjusted_p95_abs_mw": 80.22890625,
+          "incremental_high_tail_burden_sum": -1.2259229896482355e-05,
+          "incremental_ramp_impact_mean": -1.9136370445876544e-05,
+          "incremental_ramp_impact_sum": -0.0001722273340128889,
+          "native_max_up_fraction_s_per_hour": 0.015151515151515152,
+          "native_max_up_mw": 100.0,
+          "native_p95_abs_fraction_s_per_hour": 0.014545454545454545,
+          "native_p95_abs_mw": 96.0
+        },
+        "da_energy_cost_usd": 17414.9384765625,
+        "power_over_frozen_s_mean": 0.029886363636363638,
+        "power_over_gross_demand_mean": 0.033231923230812435,
+        "power_over_market_scale_mean": 0.029886363636363638
+      }
+    },
+    "protocol_id": "ramp-v6-pure-rl-frozen-v1",
+    "total_scalar_reward": -0.00019822380870083777,
+    "workload_safety": {
+      "batch_arrived": 0.8,
+      "batch_completed": 0.8,
+      "batch_conservation_error": 0.0,
+      "deadline_missed_work": 0.0,
+      "minimum_capacity_slack": 0.624609375,
+      "service_arrived": 3.5,
+      "service_completed": 3.5,
+      "service_conservation_error": 0.0,
+      "terminal_batch_queue": 0.0,
+      "terminal_tail_new_arrivals": 0.0
+    }
+  },
+  "candidate_vs_status_quo": {
+    "candidate_da_cost_usd": 42604.0693359375,
+    "cost_budget_compliant": true,
+    "cost_budget_fraction": 0.05,
+    "cost_budget_limit_usd": 44606.79245840328,
+    "cost_delta_fraction": 0.002857868438982039,
+    "pareto_improves_ramp_without_higher_cost": false,
+    "ramp_impact_delta_vs_status_quo": 2.1986728116537338e-05,
+    "status_quo_da_cost_usd": 42482.6594841936
+  },
+  "evidence_id": "ramp-v6-fixture-oracle-v1",
+  "input_sha256": {
+    "env/protocols/v6_ramp_panel.schema.json": "f3f7bc78cfb36a35924f0632b22a746c44229185cd09ca7dec1216d637ef8b8a",
+    "env/protocols/v6_ramp_pure_rl.yaml": "2b6ffdcbb55908b0f87ac679cb30bf41f1575ad1753cf15c298b1395edec5a31",
+    "tests/fixtures/ramp_v6/canonical_panel.csv": "dce376978113e79e1faea3725eb6994b3f310fff7820389104fe4e39fc0c2214",
+    "tests/fixtures/ramp_v6/fixture.json": "6ac296ec276b4cf59a28d501df471e40d88ba497538a4a9c4b2294a82bf6cc78"
+  },
+  "integration_contract": {
+    "action_schema": [
+      "service_preference:site-a",
+      "service_preference:site-b",
+      "optional_total_batch_execution",
+      "batch_destination_preference:site-a",
+      "batch_destination_preference:site-b"
+    ],
+    "observation_schema": [
+      "A:gross_level_z_lag0",
+      "A:gross_level_z_lag1",
+      "A:gross_level_z_lag2",
+      "A:gross_level_z_lag3",
+      "A:net_level_z_lag0",
+      "A:net_level_z_lag1",
+      "A:net_level_z_lag2",
+      "A:net_level_z_lag3",
+      "A:native_ramp_1h_fraction_s_per_hour",
+      "A:native_ramp_3h_fraction_s_per_hour",
+      "A:forecast_gross_h1_z",
+      "A:forecast_gross_h2_z",
+      "A:forecast_gross_h3_z",
+      "A:forecast_gross_max_up_3h_fraction_s",
+      "A:forecast_net_h1_z",
+      "A:forecast_net_h2_z",
+      "A:forecast_net_h3_z",
+      "A:forecast_net_max_up_3h_fraction_s",
+      "A:da_lmp_usd_per_mwh_scaled",
+      "A:forecast_vintage_age_hours",
+      "A:quality_ok",
+      "B:gross_level_z_lag0",
+      "B:gross_level_z_lag1",
+      "B:gross_level_z_lag2",
+      "B:gross_level_z_lag3",
+      "B:net_level_z_lag0",
+      "B:net_level_z_lag1",
+      "B:net_level_z_lag2",
+      "B:net_level_z_lag3",
+      "B:native_ramp_1h_fraction_s_per_hour",
+      "B:native_ramp_3h_fraction_s_per_hour",
+      "B:forecast_gross_h1_z",
+      "B:forecast_gross_h2_z",
+      "B:forecast_gross_h3_z",
+      "B:forecast_gross_max_up_3h_fraction_s",
+      "B:forecast_net_h1_z",
+      "B:forecast_net_h2_z",
+      "B:forecast_net_h3_z",
+      "B:forecast_net_max_up_3h_fraction_s",
+      "B:da_lmp_usd_per_mwh_scaled",
+      "B:forecast_vintage_age_hours",
+      "B:quality_ok",
+      "site-a:service_arrival_capacity_fraction",
+      "site-a:batch_arrival_capacity_fraction",
+      "site-a:queued_batch_capacity_fraction",
+      "site-a:previous_power_rated_fraction",
+      "site-a:compute_capacity",
+      "site-a:rated_power_100mw_units",
+      "site-a:idle_power_fraction",
+      "site-a:dynamic_power_fraction",
+      "site-b:service_arrival_capacity_fraction",
+      "site-b:batch_arrival_capacity_fraction",
+      "site-b:queued_batch_capacity_fraction",
+      "site-b:previous_power_rated_fraction",
+      "site-b:compute_capacity",
+      "site-b:rated_power_100mw_units",
+      "site-b:idle_power_fraction",
+      "site-b:dynamic_power_fraction",
+      "batch_queue_deadline_le_1h_capacity_fraction",
+      "batch_queue_deadline_le_3h_capacity_fraction",
+      "batch_queue_deadline_le_6h_capacity_fraction",
+      "batch_queue_deadline_le_12h_capacity_fraction",
+      "batch_queue_deadline_le_24h_capacity_fraction",
+      "batch_queue_deadline_beyond_24h_capacity_fraction",
+      "episode_progress",
+      "terminal_tail_active",
+      "hour_sin",
+      "hour_cos",
+      "day_of_week_sin",
+      "day_of_week_cos"
+    ],
+    "panel_columns": [
+      "timestamp_utc",
+      "market_id",
+      "gross_demand_mw",
+      "net_load_mw",
+      "wind_mw",
+      "solar_mw",
+      "market_scale_mw",
+      "da_lmp_usd_per_mwh",
+      "forecast_issue_time_utc",
+      "forecast_vintage_id",
+      "quality_ok",
+      "forecast_gross_h1_mw",
+      "forecast_gross_h2_mw",
+      "forecast_gross_h3_mw",
+      "forecast_net_h1_mw",
+      "forecast_net_h2_mw",
+      "forecast_net_h3_mw"
+    ],
+    "stats_id": "fixture-train-only-stats-v1"
+  },
+  "long_rl_campaign_run": false,
+  "market_count": 2,
+  "no_proxy": {
+    "da_energy_cost_usd": 0.0,
+    "definition": "No data-center proxy: P_t=0 in every market-hour.",
+    "macro_incremental_high_tail_burden_mean": 0.0,
+    "macro_incremental_ramp_impact_mean": 0.0,
+    "per_market": {
+      "A": {
+        "1h": {
+          "adjusted_max_up_mw": 50.0,
+          "adjusted_p95_abs_mw": 46.0,
+          "incremental_high_tail_burden_sum": 0.0,
+          "incremental_ramp_impact_sum": 0.0,
+          "native_max_up_mw": 50.0,
+          "native_p95_abs_mw": 46.0
+        },
+        "3h": {
+          "adjusted_max_up_mw": 120.0,
+          "adjusted_p95_abs_mw": 105.99999999999999,
+          "incremental_high_tail_burden_sum": 0.0,
+          "incremental_ramp_impact_sum": 0.0,
+          "native_max_up_mw": 120.0,
+          "native_p95_abs_mw": 105.99999999999999
+        }
+      },
+      "B": {
+        "1h": {
+          "adjusted_max_up_mw": 40.0,
+          "adjusted_p95_abs_mw": 36.0,
+          "incremental_high_tail_burden_sum": 0.0,
+          "incremental_ramp_impact_sum": 0.0,
+          "native_max_up_mw": 40.0,
+          "native_p95_abs_mw": 36.0
+        },
+        "3h": {
+          "adjusted_max_up_mw": 100.0,
+          "adjusted_p95_abs_mw": 96.0,
+          "incremental_high_tail_burden_sum": 0.0,
+          "incremental_ramp_impact_sum": 0.0,
+          "native_max_up_mw": 100.0,
+          "native_p95_abs_mw": 96.0
+        }
+      }
+    }
+  },
+  "oracle_sanity": {
+    "constant_power_incremental_impact": 0.0,
+    "identities_pass": true,
+    "lower_power_during_up_ramp_incremental_impact": -0.0018750000000000004,
+    "overshoot_incremental_impact": 0.037500000000000006
+  },
+  "scale_multiplier": 1.0,
+  "site_count": 2,
+  "status_quo": {
+    "da_energy_cost_usd": 42482.6594841936,
+    "forecast_error_strata": {
+      "high": {
+        "count": 0,
+        "mean_abs_forecast_error_mw": null,
+        "mean_incremental_1h_ramp_impact": null
+      },
+      "low": {
+        "count": 18,
+        "mean_abs_forecast_error_mw": 2.0,
+        "mean_incremental_1h_ramp_impact": -1.2616020208282824e-05
+      },
+      "medium": {
+        "count": 0,
+        "mean_abs_forecast_error_mw": null,
+        "mean_incremental_1h_ramp_impact": null
+      }
+    },
+    "macro_incremental_high_tail_burden_mean": -2.2432234577747927e-06,
+    "macro_incremental_ramp_impact_mean": 3.079205816049573e-08,
+    "per_market": {
+      "A": {
+        "1h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.03748969740351404,
+          "adjusted_max_up_mw": 44.98763688421684,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.035827151775441754,
+          "adjusted_p95_abs_mw": 42.9925821305301,
+          "incremental_high_tail_burden_sum": -3.824585128337985e-05,
+          "incremental_ramp_impact_mean": -5.1900286529238246e-06,
+          "incremental_ramp_impact_sum": -4.6710257876314424e-05,
+          "native_max_up_fraction_s_per_hour": 0.041666666666666664,
+          "native_max_up_mw": 50.0,
+          "native_p95_abs_fraction_s_per_hour": 0.03833333333333333,
+          "native_p95_abs_mw": 46.0
+        },
+        "3h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.03125343419882866,
+          "adjusted_max_up_mw": 112.51236311578316,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.029031211976606432,
+          "adjusted_p95_abs_mw": 104.51236311578316,
+          "incremental_high_tail_burden_sum": -2.9369717478208162e-05,
+          "incremental_ramp_impact_mean": 3.868760877063011e-05,
+          "incremental_ramp_impact_sum": 0.000348188478935671,
+          "native_max_up_fraction_s_per_hour": 0.03333333333333333,
+          "native_max_up_mw": 120.0,
+          "native_p95_abs_fraction_s_per_hour": 0.02944444444444444,
+          "native_p95_abs_mw": 105.99999999999999
+        },
+        "da_energy_cost_usd": 25157.6483573894,
+        "power_over_frozen_s_mean": 0.05185185185185185,
+        "power_over_gross_demand_mean": 0.05708008124000098,
+        "power_over_market_scale_mean": 0.05185185185185185
+      },
+      "B": {
+        "1h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.01818181818181818,
+          "adjusted_max_up_mw": 39.99999999999999,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.01636363636363636,
+          "adjusted_p95_abs_mw": 35.999999999999986,
+          "incremental_high_tail_burden_sum": 0.0,
+          "incremental_ramp_impact_mean": -2.0042011763641814e-05,
+          "incremental_ramp_impact_sum": -0.0001803781058727763,
+          "native_max_up_fraction_s_per_hour": 0.01818181818181818,
+          "native_max_up_mw": 40.0,
+          "native_p95_abs_fraction_s_per_hour": 0.01636363636363636,
+          "native_p95_abs_mw": 36.0
+        },
+        "3h": {
+          "adjusted_max_up_fraction_s_per_hour": 0.012424242424242424,
+          "adjusted_max_up_mw": 81.99999999999999,
+          "adjusted_p95_abs_fraction_s_per_hour": 0.011681818181818182,
+          "adjusted_p95_abs_mw": 77.1,
+          "incremental_high_tail_burden_sum": -1.2429752066115702e-05,
+          "incremental_ramp_impact_mean": -2.1763608299051353e-05,
+          "incremental_ramp_impact_sum": -0.00019587247469146217,
+          "native_max_up_fraction_s_per_hour": 0.015151515151515152,
+          "native_max_up_mw": 100.0,
+          "native_p95_abs_fraction_s_per_hour": 0.014545454545454545,
+          "native_p95_abs_mw": 96.0
+        },
+        "da_energy_cost_usd": 17325.011126804206,
+        "power_over_frozen_s_mean": 0.02977272727272727,
+        "power_over_gross_demand_mean": 0.03311179001929755,
+        "power_over_market_scale_mean": 0.02977272727272727
+      }
+    },
+    "protocol_id": "ramp-v6-pure-rl-frozen-v1",
+    "total_scalar_reward": 2.7512231445515033e-06,
+    "workload_safety": {
+      "batch_arrived": 0.8,
+      "batch_completed": 0.8,
+      "batch_conservation_error": 0.0,
+      "deadline_missed_work": 0.0,
+      "minimum_capacity_slack": 0.5002472623156634,
+      "service_arrived": 3.5,
+      "service_completed": 3.5,
+      "service_conservation_error": 0.0,
+      "terminal_batch_queue": 0.0,
+      "terminal_tail_new_arrivals": 0.0
+    }
+  }
+}

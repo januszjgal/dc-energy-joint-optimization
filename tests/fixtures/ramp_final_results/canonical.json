@@ -1,0 +1,63 @@
+{
+  "campaign_status": "selected_on_validation",
+  "confirmation": {
+    "aggregate": {
+      "mean_energy_cost_ratio": 0.99,
+      "mean_incremental_ramp_impact": -0.15
+    },
+    "promotion_decision": {
+      "promoted_algorithms": ["ppo"],
+      "sealed_test_used": false,
+      "selection_split": "validation"
+    },
+    "rows": [
+      {
+        "algorithm": "ppo",
+        "behavior_audit": {
+          "deferrable_pre_service": 4.0,
+          "policy_ramp_power": 80.0,
+          "status_quo_ramp_power": 100.0
+        },
+        "energy_budget_pass": true,
+        "energy_cost_ratio": 0.98,
+        "mean_incremental_ramp_impact": -0.2,
+        "per_market_macro": {
+          "MKT_A": -0.3,
+          "MKT_B": -0.1
+        },
+        "safety_pass": true,
+        "seed": 11,
+        "success_gate_pass": true
+      },
+      {
+        "algorithm": "ppo",
+        "behavior_audit": {
+          "deferrable_pre_service": 5.0,
+          "policy_ramp_power": 85.0,
+          "status_quo_ramp_power": 100.0
+        },
+        "energy_budget_pass": true,
+        "energy_cost_ratio": 1.0,
+        "mean_incremental_ramp_impact": -0.1,
+        "per_market_macro": {
+          "MKT_A": -0.15,
+          "MKT_B": -0.05
+        },
+        "safety_pass": true,
+        "seed": 12,
+        "success_gate_pass": true
+      }
+    ]
+  },
+  "frozen_inputs": {
+    "live_panel_manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "raw_acquisition_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "sealed_test_months": ["2025-03"],
+    "train_months": ["2025-01"],
+    "validation_months": ["2025-02"]
+  },
+  "sealed_test": {
+    "opened": false,
+    "reason": "not yet opened"
+  }
+}

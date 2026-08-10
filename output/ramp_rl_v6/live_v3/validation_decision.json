@@ -1,0 +1,3951 @@
+{
+  "aggregate_for_reporting_only": {
+    "mean_energy_cost_ratio": 0.9863649332472247,
+    "mean_incremental_ramp_impact": -1.371091986086174e-05,
+    "seed_count": 5,
+    "strict_pass_count": 4
+  },
+  "all_five_pass": false,
+  "automatic_follow_on_protocol_launched": false,
+  "decision": "publish-v3-failure-and-keep-test-sealed",
+  "paired_context": {
+    "v1_100k_screen": {
+      "all_safety_pass": true,
+      "all_success_gates_pass": true,
+      "mean_energy_cost_ratio": 0.9801356986033037,
+      "mean_incremental_ramp_impact": -1.3349297807182322e-05,
+      "seed_count": 3
+    },
+    "v2_a": {
+      "all_safety_pass": true,
+      "all_success_gates_pass": false,
+      "mean_energy_cost_ratio": 1.0091997163325592,
+      "mean_incremental_ramp_impact": -4.983717818021212e-07,
+      "seed_count": 3
+    },
+    "v2_b": {
+      "candidate": "v2-B",
+      "factory": {
+        "integration_metadata": {
+          "blockers": [],
+          "energy-model-v3-ramp-panel": "READY"
+        },
+        "path": "output\\energy_model_v3\\ramp_v6\\factory_manifest.json",
+        "sha256": "b2c88f8831eec0e2d1321e779eb9e823d96cd165fd3fd6d2ca3ba34ed1497e8c"
+      },
+      "immutable_v1_link": {
+        "campaign_commit": "b1bb302e66b8c1585b6a3116c46a4cffe17fb76d",
+        "confirmation_commit": "3391440d168ade7127899a8a2c2d84e3a47a9ad3",
+        "v1_artifacts_modified": false
+      },
+      "protocol_id": "v6-ramp-pure-rl-robust-earlystop-v2",
+      "protocol_sha256": "832f0ab8686fd93258f5758f1c0bc80403d44613a6e411651805ba84b952da64",
+      "schema_version": "ramp-pure-rl-v2-validation-candidate-v1",
+      "selection": {
+        "confirmation_launched": false,
+        "coordinator_selection_pending": true,
+        "months": [
+          "2026-02"
+        ],
+        "split": "validation",
+        "test_opened": false
+      },
+      "training": {
+        "algorithm": "ppo",
+        "analytic_economic_base": false,
+        "behavior_cloning": false,
+        "demonstrations": false,
+        "effective_terminal_rollout_boundary_interactions": 110592,
+        "expert_replay": false,
+        "manifests": {
+          "2701": {
+            "path": "models\\ramp_rl_v6\\live_v2\\screen\\ppo\\2701\\training_manifest.json",
+            "sha256": "8322868617413214b6327a8f643c433a25f662e59049d23fc01efda85291fef0"
+          },
+          "2702": {
+            "path": "models\\ramp_rl_v6\\live_v2\\screen\\ppo\\2702\\training_manifest.json",
+            "sha256": "93134d08ee263fd25557b763a5d6382347ec73f6f248954ba07ee5473f3c44d4"
+          },
+          "2703": {
+            "path": "models\\ramp_rl_v6\\live_v2\\screen\\ppo\\2703\\training_manifest.json",
+            "sha256": "52cd24b8054d127cfe99b9d7150ad764027d1adf1d1c22f0acebf755a2402b16"
+          }
+        },
+        "mpc_actions": false,
+        "optimizer_actions": false,
+        "random_initialization_only": true,
+        "seeds": [
+          2701,
+          2702,
+          2703
+        ],
+        "target_interactions": 100000,
+        "teacher": false
+      },
+      "validation": {
+        "evidence_index_artifact": {
+          "path": "output\\ramp_rl_v6\\live_v2\\screen_evidence_index.json",
+          "sha256": "d84c2d6786e3a0dc095b1d5542c0e52dba429f496143ff28c693b0e685e81430"
+        },
+        "summary": {
+          "aggregates": {
+            "ppo": {
+              "all_safety_pass": true,
+              "all_success_gates_pass": false,
+              "mean_energy_cost_ratio": 0.9934819185990135,
+              "mean_incremental_ramp_impact": -1.412252682718701e-06,
+              "seed_count": 3
+            }
+          },
+          "promotion_decision": {
+            "failed_gates": {
+              "ppo": [
+                "validation_success_gate"
+              ]
+            },
+            "failure_is_publishable": true,
+            "mean_validation_incremental_ramp_impact": {
+              "ppo": -1.412252682718701e-06
+            },
+            "promoted_algorithms": [],
+            "sealed_test_used": false,
+            "selection_split": "validation"
+          },
+          "rows": [
+            {
+              "algorithm": "ppo",
+              "behavior_audit": {
+                "deferrable_pre_service": 315.9512395874886,
+                "policy_ramp_power": 134645.11208626023,
+                "status_quo_ramp_power": 135587.93643082705
+              },
+              "emergency_feasibility_rate": 0.0,
+              "energy_budget_pass": true,
+              "energy_cost_ratio": 0.9815834855021087,
+              "episode_count": 28,
+              "failed_gates": [],
+              "mean_incremental_ramp_impact": -1.8597770279300423e-06,
+              "per_market_macro": {
+                "CAISO_NP15": -2.349247461815446e-06,
+                "ERCOT_LZ_NORTH": -9.129365084031733e-07,
+                "ISONE_NEMA": -3.883973197074647e-06,
+                "MISO_MINN_HUB": -1.824016478893709e-06,
+                "NYISO_NYC_J": -1.762063013516487e-06,
+                "SPP_NORTH_HUB": -4.2642550787679207e-07
+              },
+              "safety_pass": true,
+              "seed": 2701,
+              "split": "validation",
+              "success_gate_pass": true,
+              "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2701_validation.json",
+              "validation_sha256": "14d253cf5e1968264319a2123ebe55c9ba049eb33342a727ced04de618e963de"
+            },
+            {
+              "algorithm": "ppo",
+              "behavior_audit": {
+                "deferrable_pre_service": 314.2979364340304,
+                "policy_ramp_power": 134642.74440052675,
+                "status_quo_ramp_power": 135587.93643082705
+              },
+              "emergency_feasibility_rate": 0.0,
+              "energy_budget_pass": true,
+              "energy_cost_ratio": 1.00365785939525,
+              "episode_count": 28,
+              "failed_gates": [
+                "every_market_ramp_improves"
+              ],
+              "mean_incremental_ramp_impact": -1.5177355185721604e-06,
+              "per_market_macro": {
+                "CAISO_NP15": 2.9455657685405384e-06,
+                "ERCOT_LZ_NORTH": -6.54464453151852e-07,
+                "ISONE_NEMA": -4.488934847186914e-06,
+                "MISO_MINN_HUB": -1.48728611788366e-06,
+                "NYISO_NYC_J": -3.981696464373111e-06,
+                "SPP_NORTH_HUB": -1.4395969973779638e-06
+              },
+              "safety_pass": true,
+              "seed": 2702,
+              "split": "validation",
+              "success_gate_pass": false,
+              "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2702_validation.json",
+              "validation_sha256": "79b6cc8c92e00e2b8bf56df61bc587ae4a191ce361d64b37539d622a38a37f9a"
+            },
+            {
+              "algorithm": "ppo",
+              "behavior_audit": {
+                "deferrable_pre_service": 322.3105128850212,
+                "policy_ramp_power": 136944.39579520287,
+                "status_quo_ramp_power": 135587.93643082705
+              },
+              "emergency_feasibility_rate": 0.0,
+              "energy_budget_pass": true,
+              "energy_cost_ratio": 0.9952044108996816,
+              "episode_count": 28,
+              "failed_gates": [
+                "every_market_ramp_improves",
+                "behavior_lower_ramp_power"
+              ],
+              "mean_incremental_ramp_impact": -8.592455016539003e-07,
+              "per_market_macro": {
+                "CAISO_NP15": -2.5674239632283317e-06,
+                "ERCOT_LZ_NORTH": -2.1986617037300805e-06,
+                "ISONE_NEMA": -3.989620383693521e-06,
+                "MISO_MINN_HUB": 3.6586194953311676e-08,
+                "NYISO_NYC_J": 4.391869112700032e-06,
+                "SPP_NORTH_HUB": -8.28222266924813e-07
+              },
+              "safety_pass": true,
+              "seed": 2703,
+              "split": "validation",
+              "success_gate_pass": false,
+              "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2703_validation.json",
+              "validation_sha256": "1ed6ad2fae160b809c8026ed51a9bb2cd5342240ac3d00ba9ef54d51294a0121"
+            }
+          ],
+          "schema_version": "ramp-pure-rl-stage-summary-v1",
+          "sealed_test_used": false,
+          "selection_split": "validation",
+          "stage": "screen",
+          "stage_rows": [
+            {
+              "algorithm": "ppo",
+              "behavior_audit": {
+                "deferrable_pre_service": 315.9512395874886,
+                "policy_ramp_power": 134645.11208626023,
+                "status_quo_ramp_power": 135587.93643082705
+              },
+              "emergency_feasibility_rate": 0.0,
+              "energy_budget_pass": true,
+              "energy_cost_ratio": 0.9815834855021087,
+              "episode_count": 28,
+              "failed_gates": [],
+              "mean_incremental_ramp_impact": -1.8597770279300423e-06,
+              "per_market_macro": {
+                "CAISO_NP15": -2.349247461815446e-06,
+                "ERCOT_LZ_NORTH": -9.129365084031733e-07,
+                "ISONE_NEMA": -3.883973197074647e-06,
+                "MISO_MINN_HUB": -1.824016478893709e-06,
+                "NYISO_NYC_J": -1.762063013516487e-06,
+                "SPP_NORTH_HUB": -4.2642550787679207e-07
+              },
+              "safety_pass": true,
+              "seed": 2701,
+              "split": "validation",
+              "success_gate_pass": true,
+              "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2701_validation.json",
+              "validation_sha256": "14d253cf5e1968264319a2123ebe55c9ba049eb33342a727ced04de618e963de"
+            },
+            {
+              "algorithm": "ppo",
+              "behavior_audit": {
+                "deferrable_pre_service": 314.2979364340304,
+                "policy_ramp_power": 134642.74440052675,
+                "status_quo_ramp_power": 135587.93643082705
+              },
+              "emergency_feasibility_rate": 0.0,
+              "energy_budget_pass": true,
+              "energy_cost_ratio": 1.00365785939525,
+              "episode_count": 28,
+              "failed_gates": [
+                "every_market_ramp_improves"
+              ],
+              "mean_incremental_ramp_impact": -1.5177355185721604e-06,
+              "per_market_macro": {
+                "CAISO_NP15": 2.9455657685405384e-06,
+                "ERCOT_LZ_NORTH": -6.54464453151852e-07,
+                "ISONE_NEMA": -4.488934847186914e-06,
+                "MISO_MINN_HUB": -1.48728611788366e-06,
+                "NYISO_NYC_J": -3.981696464373111e-06,
+                "SPP_NORTH_HUB": -1.4395969973779638e-06
+              },
+              "safety_pass": true,
+              "seed": 2702,
+              "split": "validation",
+              "success_gate_pass": false,
+              "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2702_validation.json",
+              "validation_sha256": "79b6cc8c92e00e2b8bf56df61bc587ae4a191ce361d64b37539d622a38a37f9a"
+            },
+            {
+              "algorithm": "ppo",
+              "behavior_audit": {
+                "deferrable_pre_service": 322.3105128850212,
+                "policy_ramp_power": 136944.39579520287,
+                "status_quo_ramp_power": 135587.93643082705
+              },
+              "emergency_feasibility_rate": 0.0,
+              "energy_budget_pass": true,
+              "energy_cost_ratio": 0.9952044108996816,
+              "episode_count": 28,
+              "failed_gates": [
+                "every_market_ramp_improves",
+                "behavior_lower_ramp_power"
+              ],
+              "mean_incremental_ramp_impact": -8.592455016539003e-07,
+              "per_market_macro": {
+                "CAISO_NP15": -2.5674239632283317e-06,
+                "ERCOT_LZ_NORTH": -2.1986617037300805e-06,
+                "ISONE_NEMA": -3.989620383693521e-06,
+                "MISO_MINN_HUB": 3.6586194953311676e-08,
+                "NYISO_NYC_J": 4.391869112700032e-06,
+                "SPP_NORTH_HUB": -8.28222266924813e-07
+              },
+              "safety_pass": true,
+              "seed": 2703,
+              "split": "validation",
+              "success_gate_pass": false,
+              "validation_artifact": "output\\ramp_rl_v6\\live_v2\\screen\\ppo_2703_validation.json",
+              "validation_sha256": "1ed6ad2fae160b809c8026ed51a9bb2cd5342240ac3d00ba9ef54d51294a0121"
+            }
+          ]
+        },
+        "summary_artifact": {
+          "path": "output\\ramp_rl_v6\\live_v2\\screen_summary.json",
+          "sha256": "1f1728c559645ee4122ed299802968a55f6f378d74dfdc7621d3d364c11566f8"
+        }
+      }
+    }
+  },
+  "protocol_id": "v6-ramp-pure-rl-v1-replication-earlystop-v3",
+  "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+  "rows": [
+    {
+      "behavior_audit": {
+        "deferrable_pre_service": 321.0883617617342,
+        "policy_ramp_power": 132520.22591638647,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_cost_ratio": 0.9919667653056136,
+      "factory": {
+        "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+        "source_path": "env\\ramp_v6\\factory.py",
+        "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+      },
+      "failed_gates": [],
+      "final_critic_sha256": "c0b564e69436417c45213c76c0e443176596a0f99ff044bc76cf643cd096b4d9",
+      "final_policy_sha256": "1bbd1918564a87ac2b2357185207016cf9835e5e9c0c4949d58fec62e63c0d6b",
+      "forecast_identities": [
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-002c84061fedeaa099404a32"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-02599b983dc5f4917ffef043"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-093a1e646ff3149372125ea9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0a1fa8c550b77a2f92a2b30a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0c3b3a889fc043b587280fd6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0ffc94427fc6205288b49a4d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-10d36bf50a37d893acc105ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-11e8e4cf64feef0ed5e24a58"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-122676a61aa15eb5a0541c60"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-13e95aafabe95a44bc9ab2a8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1679729c1ba51e4d66e938f2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-17ed5e3cb904b74ff005cd73"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-18d504baa545554fdb4b4622"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1ad4ddc765c01704aedac3ad"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b008f5435561baecc42a551"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b818fb0e136e2b225548564"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1e8529c04a131ff2207d6786"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2113964a4ca4ccf35d333b06"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-229eaa41ac6eb21b4aa7d965"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2681ee36888864998443b39d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-273cc3ff105b6a2e1b8e0bc7"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3231edc442a899f0d539a133"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-384e9b56cddb7d7c1f8a687e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3bb65e845c10dd13aa4e13c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3c0aca172cbddbb4d38fd141"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3fa8bfe27b1d7beba74acd31"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-434f6927b36cd21ed9495fff"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4ac0b12e7e1289194188aaf1"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4b2e3e0768d0cec3950eb65d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4dd88ba72c06e4ff35b9e749"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4e32bfecdebf35f536fdb802"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4f1146ef83b7da434a4c86e0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4fd721e540e7f0811b2553e9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5307c1906fd5ac03dda4eb51"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-54c4c0cf1b5f5bfb1f317a18"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-55f109c05ef60182984286b9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-58e53cebce1bc23b4148929b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5a67e223e0545c6e9980bb94"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-60d7148477ec54f6a62bb7c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-62fb4d936ec73ef4f48f1f34"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-64f6c697a8c5c851bf41727d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-66085e3fe19a5a69b324927f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6786042ac07e95d87ca39cc5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-69e3026067534aef19bebcbc"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6bf1d02668aa900c7cc4e58e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-71e46df62e106af455017af3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-76af296c9d6a90b39e467a78"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-781485ce39612f6127dcd971"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-782722f28063f9c6d7ee2c81"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7a9fa21e50415aace85de1f4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f76e02631b76b7c0c24228e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f870824d70c7619caa147ee"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8184957f45fbee3195cdeb42"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-818a2c96ae8b7dcfde2d2978"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8242a3d78f21e6969246b2af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8274d046a388f392e7e5b9d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-84b59ce676aaad4bb4ecc60d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-859684f4d1503fecf9530213"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-863c6edf31fc3cec347e46d3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8920366dc711d29bba5b1f30"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d244cd719618cc637b3a3d8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d9781fa890602f453e92e64"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e346c02c0b55a799cd5bf28"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e6aaa9d18c2552f3eaa4e38"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-95edbd22639f095d6758b4ca"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9dd7bd979c282873aa296961"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9f8373375486f36bc397144a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a31bffc961b9c7e26b73efe3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a74b825cb82f8b705125ccb0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a9143d694c51c6607b1db985"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa482bd8cac6dad17abfc6af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa9603a311013325c31aee99"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-abf98251679cc7e7421f476f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ad3163683397635fea764e1a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ae4a3c850ff73d05c39acdd4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af1780d60e3da42453042285"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af19a77f25d498a5e7a6b15c"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b075e8511add615f787ecdb3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b0f7eb85c3e2aa4bd2487458"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ba44ac9ece611384939de841"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bc44279dd81ba513ebd96f8e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bd0dcd1b9b77b6042ce9d7bf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-be2d966aa53792ef06c4fbab"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c277d84044a19c410818d903"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c2efb7757b908aa3fa400497"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c40acdc4aa53f03244873abf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c4f7e039af222126d7e0237b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c6605d5bf492a60f26de406d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c7296873a261d504f2afab13"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cbb0d2fa9a2c39c43bf841e5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cd6208e6561521ee42dddbc8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d09db205c94a1b59f1583f44"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d144196a138f11c12343c818"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d3d955f7d2a193edddfb9db6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d59d1718d438bd6df30400cf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d703ea79fadc595c259c9cb9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d9561093b54bf9b4625351d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-da4cf8eda6347de3b010125f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dc2e46275a51061dd7a3632f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dcb2631f98be6ddc887e6aa0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-df8f4ede57e289c3be848b3f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e1328bcdf28dbe4961f79caa"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e24ec7ff24413343b1b3de7e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e5b42f849810103ce0d1a959"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e86403fd0ec0e74fd73f5f40"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-eddbd3c7318ce8d832c2a8a9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee0cce5328ca3a73073a892f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee4dd664946e9be9ed4c2070"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f0af3ec99f2bd2d6bee561c5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f538962cf3337e3176337117"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f59cba1fe6ca8abc9eaff156"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f7217a169eb9e94392a1155e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f9fc01c1534b1b0c3f9182ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-fead1440675bec1b86b36626"
+        ]
+      ],
+      "initial_critic_sha256": "476c2ba5a4624bad60df61f2f03cf05e8b494cc46e4692fd66cd1154123c7311",
+      "initial_policy_sha256": "2d1d33a85391203cd6f6b2cdbdb096f0630915a7811ef118b7ba78844d0ec97d",
+      "interactions": 110592,
+      "mean_incremental_ramp_impact": -1.3627966454421239e-05,
+      "per_market_macro": {
+        "CAISO_NP15": -1.715611988392564e-05,
+        "ERCOT_LZ_NORTH": -3.150428714398914e-06,
+        "ISONE_NEMA": -2.212310387436026e-05,
+        "MISO_MINN_HUB": -2.533505606333035e-07,
+        "NYISO_NYC_J": -3.6886967075824584e-05,
+        "SPP_NORTH_HUB": -2.1978286173847362e-06
+      },
+      "pure_rl_pass": true,
+      "seed": 2801,
+      "source_hashes": [
+        "00220c0ba02f97d2e5bb1d2dfc807a6808dcc064b5a728cfdc2ab009beae1bb7",
+        "0219a57716fa10ba301ed3f7fb885d122ab02eb837277d03662dad601984f776",
+        "026457e545286539ed2d3da7239e0e4e3f7bf613ae696108b5498230c0ad0075",
+        "033b0c70818624cf40fa0186dba85eff58905df301c08902b4bce5212381ecd9",
+        "03d6a21c1dc254ebadc69daaf09a071ec79b72427e2e4500e7ecec7f2b4ea2cf",
+        "04897507abdc48dd31ecee0f63dee0f2c485049846494d4a8114fb10ac1d321e",
+        "050911dc72e5df15483d3f777a8ac2e7b18e4405f48de4257179cbf6ea5c8784",
+        "0627af632335c175f62248b8b9c226eff374a50690605727480ff4a42dade3f1",
+        "077644917f5800b9d3201066327cc8438ebb25615f84280244b6cdfa32437e0c",
+        "099b238cc573a5f885cbf1988b44bfcc0135660c5156f895abee7c0a112d51a1",
+        "09e981c22ec25e0b8b4f9d41f2d00c47cc60dcf59058d58c1eb1d603cc996164",
+        "0a35e1e3253fd02fd228878f214c3015881b7904524d728a15aca9fd1086b2c9",
+        "0ac15a4ecb98eb29852311ff4579db74a3bb9f6a29026c1a3d6f065d1131f318",
+        "0ba4d46fc490b7ddbf5c06436f7e15fb7e5e2e4f3eb93ef7fb406a3e5a4254bf",
+        "0d3bc6742009c41c1f28735beaff55d1b5ccb05c93eb3612309a65fadf1ab89c",
+        "0d4e4f84bb6a36d0a14b4aa2acbad9ec61c72b5c1bd2e16227ae62b07f188f0a",
+        "0e491d2c9cdc71abaab6e052c75766de2eb1ac76e0bc5e7328cc62d9a917619d",
+        "0e5c2257417b5cc4bfd341523910a09c14b60f214c96d77201540003a81e79f7",
+        "0e790417b93286fc178e33435215adce62f5c88d55799629248bbde2cdf25cf9",
+        "0ed39d1b38d00e71292c1de4b2480414210f63cde97514f9cbbc1a98a66375ea",
+        "0f3fac198579fafbd61cdcbadf789bb483e3d088e4919fe2f71d7eaa9b98821a",
+        "1160fcb3afdfdd338da10c2dc24d99d5124fea4ef7e64eb4e035e55f34e8169b",
+        "117ca65dbb36968f27f7a2d66483d149c19b7c33e66ba8034c825826a7479100",
+        "11a132df1626552e76cccc4af8827f37bb66b0879bd54e05c94541b1608dbc00",
+        "13b04e96e90c81a7c13a0787fe446b492cf0987d2bd4485a7183ee01b395ff45",
+        "147c998c51b5b9499c3b24d950a30e5e8c9af19b2d4ff44ceb7dee5a16c1a57f",
+        "16adc2525b0fa121278ee70e25445c932541883ab2351f8317fe062280f09f1e",
+        "17a592def3d7ee4c94cb35c2b0d0618e5d2ec5da892e578d201f71024c1f38f4",
+        "17aa83d5a004326b3639895e1efd66c05dbc7503499542793570f33c8a191beb",
+        "17baa4638059c74b1c2f706bd66e5ac3c218b6cb2e4a06cf382a50e70c7bdc7b",
+        "181823dbd2f86ff2821183a16d47f3bbf7bc88a8d23b0d6f6ab02c0f09fd846c",
+        "182dba2c48d5a387600b3ad1fa6896051754709566d9499500ec9777debdac7d",
+        "1953b9522bf6dac3651d33b0cd1f13b35e51b4ba0a742bcaa8e4bf3c591a173f",
+        "19563cee19f079623f806db80ab6bda77f8e01320f18b5e01008895153074872",
+        "1ac66b0dba2b7f48b5f90923de13ecaf80a8ce94b2e037ae28fd8ec987c721ce",
+        "1aefb83299f97a5e8d18349b6ae0fdad9fd3fc3542c32a3b3d766da78aa8f2b3",
+        "1b58d0ae1d93ba3f5674209056e38853a7fb2785d021b015a2a31d5c1619ae7a",
+        "1c449dbb17fec6e216786ae1e7ee9534cfbb0d0f9e410d53e6c0c5b718f25704",
+        "20eee2b98178f356c6df836ee570a2c2d6dc21db1cbe310a9aad2278962e481d",
+        "2147d532d933ff9e1a8a27cc33bbd07530de7f3c2bb09ea4c83e8d28f9dd1421",
+        "229329c45fcce0404f961987a7642ec3bade37ff55018a5f0350d3d06d75dece",
+        "233c9a8f33c85e2f63be658821867de316e09ee9289ccfe34af7039eb5e9f873",
+        "23b7c05efb8902dc72ff51b58cdf21661ed0bce2c28d7dd13d62b2c6464c8ea6",
+        "23d27579ec5551151e0b7772c762d23e6d46000130fdd3f43f8f5d5579e9f76e",
+        "2454f71f528b57c09a380046eb6c3c680c5402403100499f8f84d488659bd9fe",
+        "24d5adaad472b5902438d4ef5cd4d2aed776f2ab4e096baae259bd10f2581755",
+        "262a104d622886bb08277827dc8753859be81a303bc6de19536dcfb190869586",
+        "26fade43af36df2b20e7cc2512e8e0df1e903efec80793a95e8c6e6fd42f824d",
+        "270231dad5dc3356e097927ec7c331c306b3e9ba8180d07dd37bcc37a5c17596",
+        "28f7645e6723427c74c72853dbfd9176af9e986d831818a7f524bb2371e7444b",
+        "2a21c721e4e0db9a29fa9ed95592763cf73cca75e0c891a7a4b0057c40daa49f",
+        "2addc438b4ade677bc110360f422c69e60b3258d896cc0182e50c4ccf2f9b8a4",
+        "2c13455d534c449f956866b1a762a73dd6e601f5ae0bb439de780a82f1929f76",
+        "2c885341fd07c1b12514779cc27aa87ee7b4b6af5ee89678cba8de434dd90b5b",
+        "2f1b083b58b51e86dfb0bdfd8fe5b5dc97f10a50b8a94e5da67bd653567f9ec7",
+        "304c7b85abe3bb3c6aa278ecd03c5dce9de746f46e447533ec0b39fd6d748f80",
+        "30a0f2e7a9653c5ee9f8f01702e1e3ae9866d467633be97043f716cf2523d191",
+        "3118895aa33e9a1ae74eb5496e8d5b4177058db9cdab40b13089a6e269730b57",
+        "327b61d1ba4a9bf905ba18458085b82619aa52719d01675eb7dabdd6c726aa56",
+        "3403425a638c764ee2b362c55c2fd2297fb87716452e7a1d8f7aa92b02a4f1b2",
+        "35334d8059e4231dd716ccdf1a37b4298285a4ed1ea786262e4a998d93a1fce7",
+        "35ce0edc76269d099316f99ce7de4c4c3ebbe7499108c85edf5058174006853a",
+        "35f4bad871a8e3b9332a54b338a701e60531348891f81d54702cca0a25b1cacc",
+        "36a6bc882cb4947da81b78efac28aa998b7daa684ca654b263bf4e4b88d478b0",
+        "38f1134cd94df18935d4d67d9344518dbf88ff81d510d076eeabfbf163b0b162",
+        "392abc92f0150c27ce825a33ff49dc6862b5f2b5538aacd07f28e0e614baf3d2",
+        "3978fa6fe2834401cef88696fe1c5fa5685605b647a4048b4e06352a4505180e",
+        "39f6f9228a7b6821233484576e5327c5f35c914b15ab54daeece195d5f4dbd17",
+        "3b01e00334ffe5182e2e20d50467793727a40d08785382de1b01fa336fbf99c2",
+        "3bde749c5f7c7016034b35501f5d397bc0c8281b6ff9d8277b661e6d98dbc742",
+        "3e96970074e0bac2573df1d14c5da5ac676dc5b049af61b3d8e9ca5d32a32ac4",
+        "3eced1cf143dff6bde4af9cf5c7338462b52452df566b3914701b60c8bd5f482",
+        "3fe9b482a0e4bfe4c3b38f371f099e1dd42b5a6d12e02942dca66007d453e2a7",
+        "40189348268671388cef5e15a790c3c08c2b64683bc13e15ac9b17706adb6af7",
+        "402727ee92abcdb75657e88d1b3c511fb97362d50d9691b4004e1d4f0abf21cf",
+        "43cec2c788ee0d20df8ac0bea23084b90d93255dc83a7f707354b4889aa5c330",
+        "4495986e7f9b98a7530da9a13e49da09bc338adee3fac7f0c5065bbdd97cc5de",
+        "45fb6ffc226e8b40f95045e6e4ae90c05f7241e4dbee916c5dc30b52e6ab30c0",
+        "46b35fda38e992c4d221edda5e76c0c2f037fb766da6f585fce0fb6fbc642902",
+        "485c844bb152bb257c817ec738f787a71c02cdb843d9dbc9682b8404053063ac",
+        "4add604f8e6736ac4a475800619c2eb876d0e32e0bc820888e7c28c617d533e9",
+        "4b44ba701f53eb6496dce6eb8a2de1a43950c5f211fc7e483e5311b6b8d69c82",
+        "4c9afe944d4c109025b5702197d70d8eca498906a9b4e9cf979fbf8cc7166ea2",
+        "4ce56b02f62cdabbf358b8b3e367884bc7f6becc55ea0551eaa5179eee644393",
+        "4dc25e9793af22a54720845c9bebf84caeede0c74cc3643c58bc68044e464b5e",
+        "51bb0c3bf2813317f9edbd90f1563d02bbde503c7c37bf8325a13d653597488c",
+        "53975e7684947445fab21fb368d6c22aac26327eeec9b98441bf650735f72282",
+        "5968e8c102bceb2d28ad1f9cda90e509cfa532160dce1bbb9231b994304ec9ef",
+        "59a9da3662f15b43536055cf644b8f3fce4936f595db51419d77237f580fbd59",
+        "5cd7bde5407fca1f63857c15e1c01cc4e9beaf5dea2650e15b5a020fcae51b2e",
+        "5d7c1a3aeb0807ab267b325e40b3ff8a4c0dc28054394f12e7f0a72c52341617",
+        "5ebc69da41b236e25435a4a13ed0e8a4f7fc6a7858854137179c2f8e63c0ae9f",
+        "5f5f16429d9b3e89b4399839e75b92d95f5c6297534469b5630fdaf69e06c4e4",
+        "5f845e035d01193bf5a18f2edcd2fd991f73708c666614447264f06404eb9fb4",
+        "61fd7cf16a7a3e06fca2aeb65caf752b30db9f8ffad1931b3b37a91ba06c0910",
+        "6223493061a7746ca14ccf08a004014ee6bb70340171007fe74948b48c9e60fc",
+        "62895b874befed1c3661c91cd64559d7da90d26c406ce1efe8f1ef1f91c0e8d1",
+        "62d28abd71249e0cbb4e1a136e20c92a2b550c8dc4efe599195df0d78c9bfacc",
+        "645aaef42be5e25bd2ab2eb49077a17581ae47dd2d294963619a77caec424067",
+        "64b98a605539f2734c065ded44e7c1235d672885079654415a01e470ec9f6eec",
+        "65a80a8f5ebd58fb577e2cdf22856a8ff36fa67e027907a45a96447c7932129f",
+        "67452ec373dc726993bc68df71783ffc7698e01fb04dd0a32beab5cf0d4bdef0",
+        "680553f15c57744d4b1eca85459cb037eddc63dfee22fe5284faf28a5fc9e79a",
+        "6c48ba9071c4629fc655226cfd5ac496013a5f2502f0a044e159216d45337b69",
+        "6c9fd8b5f6af79d8964f94eac1b12cd5b452e5696e5174686f4276394f33c421",
+        "6dbb8ec6bd8aa9cfdc9cded4a2fc599b2ccce922bac6db6dbf0e8cf6784abcdc",
+        "6ddf699f680511d1a20aa38d5bc193365f036841e3edac01d1713de0ddb5fd57",
+        "6e19af9369b3da9dd0276148f78503f64932c9b124006dd5371b264eed78807a",
+        "6f5cbc2c31e2625e572e98ce8942293a26063e548f3e3bab1265ad6016f33159",
+        "6fac230bfbd17448b6aca4c8c3eb7257ef150d711b566ded38cdd962aad0f1c3",
+        "6ffcd059d6a9e121fc9780fa7559c64d407e8a5b88b97349c527ab63d1f77ace",
+        "7058d8c34cbef4946b62f251a1e90d35be7f8db53803a7b68c3e2875116524e8",
+        "70c3a3b38331689e71a02cd3fcfbf1678de790efecfe192b873b9769c874190a",
+        "70cc33c3ac701d81753146c6d4860119db3d8efdae351ac0aa6eeb19301c1c75",
+        "724fca7f6db25533a808470caa9bf013f16a298f6bafbdb188f4ff080ae8a907",
+        "7328e04b19a052abf58552b6b6686c451ca94807c42c7aca45d2caa71416f7b2",
+        "73e1080c6523d30c93f641821f027d4618ef57e2abccb922b487b71e93145a33",
+        "747a3fdb9f2dc94b5cbef6edf23cf75c03b6e37f4fde53f2111c5ef15ada7e4d",
+        "74d9170935898d9c577fca995ca52baffefda4f099aa70358c5c6ec216427510",
+        "7608c841b6aa6bc7f6fec198cfea793f3f67f8a7b66f04401ca6f811d9d7d6f9",
+        "7a6651b30c579d58a40beab377ad03b23b9fe37034357a14d1727547a60896e3",
+        "7cb70e037d69b562d833975af142a6897a14dec5508fcfe6c34a14b91df19e13",
+        "7ce782bd4d3254995f10a52e080aeee700b2e24a52878b13ff32d69ca2010cf0",
+        "7cfff28e34b5d122517896062d3bf480ad8e4da4a24085cb67219d4019c802ed",
+        "7ef9e9f6449acfde72d6a936d728165370a0bbe6623e4f38343d9b44a6c629d2",
+        "7f38cafac1376137cb1809962db08e1a502b8872a241d161081028397a1787ae",
+        "80afac79f7d9b183ce8fd5f73b940fb7a095f9752c6318ed4cac126d754c4a75",
+        "826b9cf53173a1e76e70fd8946b68ac1a565690594f7d36f8e527b9e2075d357",
+        "83a48911aa205fc00787b3ddeaba3b02828c5e59ca26a770cf31b911d379c9f4",
+        "8536bc81f51f0f9396a8e5e5655ff2ac369e4ede99eab8122b6e6c1dec23cfc9",
+        "856207482cc1960144d9e7c35b580d9a5c69899d2b36b6f8e0b7cf6ec9c6e7f2",
+        "85641930f6b984e46e948dd09498a4bf00ad069e2c7fb5f0fe3bd2a26deba637",
+        "86bb8c41b6b7fb2f398814312614678dfeb8d346ff0e2a8f5a1d3a6d24d902f0",
+        "87bd22a4cd1fa9c981ad2979bcca9ebdbeeb71ffba942d7ec20624a6966fe374",
+        "888b47162fdfb5f50a6081f5a8fcdad208ca8ca77916c8d3e202b6daaefdc143",
+        "896fd2b056c0fda9435e208e61c680092522b31be71caeb33cd62835122b3eb3",
+        "8981d9ab9c990a8f5e77fc4c587d0350d5642e9ea38364281659479704205c18",
+        "8b488e00483ed9db1217d38cc4dfc847acd664d2d01255d6c5750531690a93ac",
+        "8c019947f473136122af06c6a1546af2522f1f94ae317888d57bfef637809dd1",
+        "8c372db482ae83409903f4f35383791ec4afa540f86f2c7697b390b34a97c37b",
+        "8e6003437c590809c6b79f61f22556d02f4dc65d4357a2bf684637e2d2b45ecf",
+        "90808acc9f333d20955024a92d711a7ea8a90f6cc6620648fd9190739b4d5caf",
+        "91d8c36713b90184ec393fb191a87f1dc5c438d6d17ca68bb70e1d7b189fc817",
+        "927ecf79122506942b95ddd6c19d340b3ae3e1875e3c34a1869db355abdb022a",
+        "92d5597bb1e2f26ad55de0dfd9e819aa61d9fd39f694b21ccb7af4e0d7e096de",
+        "993b341ac90548763d8f479d56688749f72c1b39a473cfa5985ed181cb918f83",
+        "9993a98021089a45c414ad79da9c5f59f0bc0410ba780b2da67da7859f4bf0cc",
+        "9a20723847be78821bf285405d7f00763a0e00494d98abd757fb7f31de73b8b5",
+        "9c368df4e08b487d52a020f9a5c10fdd408d49999bdae6880f71dc545b46f5c6",
+        "9d0213cc9136e3b45dd8510ae7034df71e3965f4923e45eb522271c86ff17031",
+        "9d96f1f081e64c597bf4080a12498e0e38e4b80d645b7ab400574e959c9a5fd8",
+        "9f26ba97df8ad0b41a78fb72ec6cca4ff6c611246631f836f21d192b9c59698a",
+        "a18242e2c672704a14931850f1af9654abde04c2874cc5e096d7dd6eae47918b",
+        "a2da7ebd47d2bc544e8cc464d8aa30dd81811ddd1e4aa00b9bc76ee04fd1d06a",
+        "a2f27083b93776be41819ec102088ec151f4193b3d1fcf6efc01acb9316545b5",
+        "a3e87af1fefd625701543eddd86a3858b012f69b6e0d532bbe9a250acd3ffcfa",
+        "a4263509ff80274568e96729e980ed229e316d6261e79e8cf962114e6ef218a7",
+        "a4b1fe3965e3b40f98c30a05191bb51c9a209b1d88c487252910e1033f99e12d",
+        "a520263e766d21811796ac3b8375ba520315905800d3bae91ff6d40601cebb2b",
+        "a8eaadd0333b982890f6cba3bf13417bf7f95b25c459710965fba832144a2f50",
+        "a8ff0774b037032d741dde2f981039fa776a65979c24d1ff06c44c5a8115648f",
+        "ab013fdb3046e0a6611e8652dc5057d4d2de070f542f4ad424bb82ace594880f",
+        "abb08ffe6c2ae0fa76a5459819324ec7f8e2f34f17ffa2dbd9077ee063b753ab",
+        "ac8eeddf961514ad3398ba9ee9addd3b72c88763a5ac06d2393bd2ca20edcd70",
+        "adc2dca9848c7ad07414a369c95a8b9f91327cd0e5516e95bdf8abd0e8a18c47",
+        "b3affdb31141306d07825ebcc4dd8c851e7187ac16634a4fa8fd7bedbd61db36",
+        "b557a4583884fe50e95734ecc92975d34646d9d1ab62fe095bb82681281fca79",
+        "b5656af039e482d20b3294581a47542e23cb0f4e0405f74c41518eb3d69d9e53",
+        "b89eaed6975df1617e2416e3a645e222896791097174d379b695c8f37f1d961a",
+        "bacc48498ba19fbffe49800fabdf66415e8c89bd42703249449cb5a94f1eedcd",
+        "bb5a9d097c1ff520ad7f7ad9d37e361870802f687870f67ade3e7b534298ef88",
+        "bcc2923b6412272df2d579e7963e88ca7888deeda1b8ff94996f6f0bfd03e164",
+        "be80b4d89b15bec7b0b4fb71340a72b36487c2285ab682e977cc05aed91eb9e8",
+        "c0a0bb42086f0481aded2ee85e6a197693839800bf843a43e29982691caa79b9",
+        "c3410a1ac28e20dbe4af738bf1ebfc0e3500ec9d039d96120b4de9db68384e04",
+        "c3ebcc9f50c9573bc002500976ad98ff8032c238739374795df8ff4d9f94c711",
+        "c40724b86a150f54614b14c443e467eaffa14d4bf73346d0f8b4d79f12e40858",
+        "c48e1f6f6f48946664158686090e4a51e505dc6f8c0f051d2f0ba9eacd5a7264",
+        "c61f834713d8730220220f04fe30bfd3b3fe87e095817c3475596d0d8d927072",
+        "c6dbddd075ae36a382b4e371c417f6d73bb7ad9562858b2e6b1c5187ac652713",
+        "c92b47cac70cef33f1f8cf1ec553d4b4e3d0c12da7df1a62484be7d6ea602bc2",
+        "c9bb8c8d40b74036394a0ccd92a7bf2d7e439f0b7bb9907c0a275afd74e5713f",
+        "cce0c0f3ac8d311d705fa838940261aaf4ada186c182516ddf1c369f0f75d6c8",
+        "cd6016e5f81be1f326f80f95cf0fcf3b05616e77fb0565873ffa6c3941106b6a",
+        "ce2b472b16a58a5a27681815fe3a8750141f14b4a929fc923334bc739fb3b645",
+        "d093f932e46d3d18c3bd22dbe77230bb0035e219fbbf47a7b1306c8835cacdbb",
+        "d27186a1c31c9aace1d7640172849f6495d9caf8433423e7569199face0411af",
+        "d2ad3022ab18c62b5dedadb5648fcf75f06c9f2c3156b8fb1cbbd472c9c1069d",
+        "d2b94590ac548358d5bc9e21fb0cc16092fa9ba36dfd91fe5479744c13bfc860",
+        "d3616ac08e30109833bfb1d1d9d35f2d8568584df7e1d15756f2e27c65fb4335",
+        "d3d85ae87661a389918097eff3609849f714d93f85122a24cbb9f952422be1d5",
+        "d518ee7ccfaa3d77f2728040617569abcccaa66700c4555c4e9f2a765cf7bcb8",
+        "d51bc36a6607454a9372615e11271f94bcf2a0d2174431ca32a5c271b7cf2acd",
+        "d574e73a5f0bca30b8bf394bb778cb166f0dd06ad33e2a743248d49fa345f9c7",
+        "d5d7d9afdd78274ee934e657b15cf7f0ac1800ab39610a277c2692febbd1cc65",
+        "d63330d77dbdaa1397a7b02fe3426900ca3e8443a1486dc5055a4d694d6f4775",
+        "d70fdf920f6430eeec9e4014beb16e7516079216303581e5b9bb01f5b97af087",
+        "db415e3a29b2448fd32fbbc71c7f1ed1ab98803cb27b694720e1baa83db166a5",
+        "e08b48c6e3c35dd01c2c455a2c39a72004483279337bdaeb4eb7f0f19eec6bd9",
+        "e16e6ed12751d7214a6decc9361777331b7adb2d4da593ccecae57706316b1c1",
+        "e2c887d844a7f58be4002fe86e41d413edb3f864662273c895e852085ac9165d",
+        "e2fe2088ed919bac6351acb974145d3133fe7c4a8cab15524817b3705a373e4d",
+        "e31caf23d3b21e6bf3d829c698be07d13ac023629a240629fd1978ea2f9a45f3",
+        "e40c7cf6f336311fa0508b59f965a66b2e0a30ebb92b971a183db5ce27877f1f",
+        "e42909569b6b9a269564f21d4e00b28bc4faae3e27b4a981824f1e4e92627d59",
+        "e55077cd31855e05dd45f8ce4802f90b28df7d56cab987091b4a3107ea8401af",
+        "e5af9169b72d164071e1a4df5e562317b9382c9f8b499ac4c4a7c7e29a3a48da",
+        "e89d685e79cb4187c24068af5937d5c3003cbcf6fb0caad9241ff8285ff973dc",
+        "e985ff9eedf3c1ce101de5b96fcf2a82694844390e690b982eb25b5341673d54",
+        "e99f0f1173177cc76228dc777bc67c9a1c76121a9dcaa90f9c5424582535ca38",
+        "e9d61dd2bde5db514a3d3e08224e93e3b9510a8c2b90d95a0929ae5c3d85bf56",
+        "ed4ae69e3e1c2780284ee0e92844754f85f26221240237ca88b146799d1f5b3e",
+        "edc37676692d4380d8e0406c0a56dba80b3e7d3fb6f43448eb4cd56672e4eabd",
+        "efaae630a2c7dcc200904f8f8c15bbbde0c9353c760cf0d4821ab6e82bb2e7bc",
+        "f1cbfe85f3be5725d204c3c72ff2c66a6c89bbc5d2f109a7a963207b42e50c43",
+        "f39bb4be4feee942f7efd1d5ab0c44142babcdc98f104fa2e0793e86e96a25ad",
+        "f60f60cf208bbcbfda88e4e418c4a8ba9ea8da5323be2a29f6629f9801f2744c",
+        "f71ec1ce24b344e781b5079e7896b5a67730cae493c06187f4db2d47510ccebb",
+        "f7b411d24183a5b3ee9335925c06b60d3bc77f46d7f115f0e2227413c8e80e17",
+        "f8d06d94bea5e9445e397dc641cdcb082be07f266ef2699350974f4084d3e3a1",
+        "f90ebb8da289f18e86066c74306828c78fec496207d124ca9f5920f682b5befb",
+        "fa24cde0552562d3224b051f77b0c7190e0c3bf2aa6fd3bf1e98a756c8c0a90a",
+        "faada191b39afb9af4aeab539df5bd9bfd6189fc6ad8c96e4c307a86f13a1087",
+        "fbd20666f36bd03b7ffae22773a577faada0fce720d4fd8bcc13d92141eb4ee8",
+        "fc48711697f54bb0838484b50f14510602062490931c57e1afd1e778775d4d2b",
+        "fcc00d78f508a785cbe4cc9d8de89b3adb7dba41f9d576e8919759b8995a80e7",
+        "fea0cf3a54af9404922d56aecf40e29dd459ee2645078cb0f24e8fc7d7d159c2",
+        "ff28c803fb69da14790898946dbff4a29b1bfaa378828d5496fb0b0958817e81"
+      ],
+      "success_gate_pass": true,
+      "training_manifest_path": "models\\ramp_rl_v6\\live_v3\\confirmation\\ppo\\2801\\training_manifest.json",
+      "training_manifest_sha256": "b1e235d920b6f478bb5f3b30786f431d153dbc64cd9063b734d978a9c5ef8406",
+      "updates": 540,
+      "validation_path": "output\\ramp_rl_v6\\live_v3\\validation\\ppo_2801_validation.json",
+      "validation_sha256": "2bbd563c8011c9891d1171839a2040b0672389a398c815b6ba6c6b9b709aad56"
+    },
+    {
+      "behavior_audit": {
+        "deferrable_pre_service": 323.01664530194137,
+        "policy_ramp_power": 133046.93019337283,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_cost_ratio": 0.9861848878113981,
+      "factory": {
+        "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+        "source_path": "env\\ramp_v6\\factory.py",
+        "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+      },
+      "failed_gates": [],
+      "final_critic_sha256": "7dbd8aaeec645bb0fbec5213d05ff7c97804f425d4c2c9b8a7adddbb7e71bfaa",
+      "final_policy_sha256": "236030e9d320e735242f320fe42b8e4a3d9cb794b7422fc544f3204029d8df4f",
+      "forecast_identities": [
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-002c84061fedeaa099404a32"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-02599b983dc5f4917ffef043"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-093a1e646ff3149372125ea9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0a1fa8c550b77a2f92a2b30a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0c3b3a889fc043b587280fd6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0ffc94427fc6205288b49a4d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-10d36bf50a37d893acc105ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-11e8e4cf64feef0ed5e24a58"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-122676a61aa15eb5a0541c60"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-13e95aafabe95a44bc9ab2a8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1679729c1ba51e4d66e938f2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-17ed5e3cb904b74ff005cd73"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-18d504baa545554fdb4b4622"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1ad4ddc765c01704aedac3ad"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b008f5435561baecc42a551"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b818fb0e136e2b225548564"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1e8529c04a131ff2207d6786"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2113964a4ca4ccf35d333b06"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-229eaa41ac6eb21b4aa7d965"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2681ee36888864998443b39d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-273cc3ff105b6a2e1b8e0bc7"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3231edc442a899f0d539a133"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-384e9b56cddb7d7c1f8a687e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3bb65e845c10dd13aa4e13c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3c0aca172cbddbb4d38fd141"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3fa8bfe27b1d7beba74acd31"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-434f6927b36cd21ed9495fff"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4ac0b12e7e1289194188aaf1"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4b2e3e0768d0cec3950eb65d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4dd88ba72c06e4ff35b9e749"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4e32bfecdebf35f536fdb802"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4f1146ef83b7da434a4c86e0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4fd721e540e7f0811b2553e9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5307c1906fd5ac03dda4eb51"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-54c4c0cf1b5f5bfb1f317a18"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-55f109c05ef60182984286b9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-58e53cebce1bc23b4148929b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5a67e223e0545c6e9980bb94"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-60d7148477ec54f6a62bb7c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-62fb4d936ec73ef4f48f1f34"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-64f6c697a8c5c851bf41727d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-66085e3fe19a5a69b324927f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6786042ac07e95d87ca39cc5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-69e3026067534aef19bebcbc"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6bf1d02668aa900c7cc4e58e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-71e46df62e106af455017af3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-76af296c9d6a90b39e467a78"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-781485ce39612f6127dcd971"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-782722f28063f9c6d7ee2c81"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7a9fa21e50415aace85de1f4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f76e02631b76b7c0c24228e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f870824d70c7619caa147ee"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8184957f45fbee3195cdeb42"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-818a2c96ae8b7dcfde2d2978"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8242a3d78f21e6969246b2af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8274d046a388f392e7e5b9d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-84b59ce676aaad4bb4ecc60d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-859684f4d1503fecf9530213"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-863c6edf31fc3cec347e46d3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8920366dc711d29bba5b1f30"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d244cd719618cc637b3a3d8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d9781fa890602f453e92e64"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e346c02c0b55a799cd5bf28"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e6aaa9d18c2552f3eaa4e38"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-95edbd22639f095d6758b4ca"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9dd7bd979c282873aa296961"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9f8373375486f36bc397144a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a31bffc961b9c7e26b73efe3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a74b825cb82f8b705125ccb0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a9143d694c51c6607b1db985"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa482bd8cac6dad17abfc6af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa9603a311013325c31aee99"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-abf98251679cc7e7421f476f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ad3163683397635fea764e1a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ae4a3c850ff73d05c39acdd4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af1780d60e3da42453042285"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af19a77f25d498a5e7a6b15c"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b075e8511add615f787ecdb3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b0f7eb85c3e2aa4bd2487458"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ba44ac9ece611384939de841"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bc44279dd81ba513ebd96f8e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bd0dcd1b9b77b6042ce9d7bf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-be2d966aa53792ef06c4fbab"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c277d84044a19c410818d903"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c2efb7757b908aa3fa400497"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c40acdc4aa53f03244873abf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c4f7e039af222126d7e0237b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c6605d5bf492a60f26de406d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c7296873a261d504f2afab13"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cbb0d2fa9a2c39c43bf841e5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cd6208e6561521ee42dddbc8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d09db205c94a1b59f1583f44"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d144196a138f11c12343c818"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d3d955f7d2a193edddfb9db6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d59d1718d438bd6df30400cf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d703ea79fadc595c259c9cb9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d9561093b54bf9b4625351d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-da4cf8eda6347de3b010125f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dc2e46275a51061dd7a3632f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dcb2631f98be6ddc887e6aa0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-df8f4ede57e289c3be848b3f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e1328bcdf28dbe4961f79caa"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e24ec7ff24413343b1b3de7e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e5b42f849810103ce0d1a959"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e86403fd0ec0e74fd73f5f40"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-eddbd3c7318ce8d832c2a8a9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee0cce5328ca3a73073a892f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee4dd664946e9be9ed4c2070"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f0af3ec99f2bd2d6bee561c5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f538962cf3337e3176337117"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f59cba1fe6ca8abc9eaff156"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f7217a169eb9e94392a1155e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f9fc01c1534b1b0c3f9182ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-fead1440675bec1b86b36626"
+        ]
+      ],
+      "initial_critic_sha256": "8787c5c51893f33a54282fc79e2287b3605b8deb36b5c23310e6f017dd481bc2",
+      "initial_policy_sha256": "77267baa6929bd655f3bcaacd70afaca894b31a2ef053d05744511b93220ea9d",
+      "interactions": 110592,
+      "mean_incremental_ramp_impact": -1.388446449575869e-05,
+      "per_market_macro": {
+        "CAISO_NP15": -1.788027168420509e-05,
+        "ERCOT_LZ_NORTH": -2.7663297662529044e-06,
+        "ISONE_NEMA": -2.1543109398640175e-05,
+        "MISO_MINN_HUB": -3.947216444053204e-07,
+        "NYISO_NYC_J": -3.7169089898955775e-05,
+        "SPP_NORTH_HUB": -3.553264582092873e-06
+      },
+      "pure_rl_pass": true,
+      "seed": 2802,
+      "source_hashes": [
+        "00220c0ba02f97d2e5bb1d2dfc807a6808dcc064b5a728cfdc2ab009beae1bb7",
+        "0219a57716fa10ba301ed3f7fb885d122ab02eb837277d03662dad601984f776",
+        "026457e545286539ed2d3da7239e0e4e3f7bf613ae696108b5498230c0ad0075",
+        "033b0c70818624cf40fa0186dba85eff58905df301c08902b4bce5212381ecd9",
+        "03d6a21c1dc254ebadc69daaf09a071ec79b72427e2e4500e7ecec7f2b4ea2cf",
+        "04897507abdc48dd31ecee0f63dee0f2c485049846494d4a8114fb10ac1d321e",
+        "050911dc72e5df15483d3f777a8ac2e7b18e4405f48de4257179cbf6ea5c8784",
+        "0627af632335c175f62248b8b9c226eff374a50690605727480ff4a42dade3f1",
+        "077644917f5800b9d3201066327cc8438ebb25615f84280244b6cdfa32437e0c",
+        "099b238cc573a5f885cbf1988b44bfcc0135660c5156f895abee7c0a112d51a1",
+        "09e981c22ec25e0b8b4f9d41f2d00c47cc60dcf59058d58c1eb1d603cc996164",
+        "0a35e1e3253fd02fd228878f214c3015881b7904524d728a15aca9fd1086b2c9",
+        "0ac15a4ecb98eb29852311ff4579db74a3bb9f6a29026c1a3d6f065d1131f318",
+        "0ba4d46fc490b7ddbf5c06436f7e15fb7e5e2e4f3eb93ef7fb406a3e5a4254bf",
+        "0d3bc6742009c41c1f28735beaff55d1b5ccb05c93eb3612309a65fadf1ab89c",
+        "0d4e4f84bb6a36d0a14b4aa2acbad9ec61c72b5c1bd2e16227ae62b07f188f0a",
+        "0e491d2c9cdc71abaab6e052c75766de2eb1ac76e0bc5e7328cc62d9a917619d",
+        "0e5c2257417b5cc4bfd341523910a09c14b60f214c96d77201540003a81e79f7",
+        "0e790417b93286fc178e33435215adce62f5c88d55799629248bbde2cdf25cf9",
+        "0ed39d1b38d00e71292c1de4b2480414210f63cde97514f9cbbc1a98a66375ea",
+        "0f3fac198579fafbd61cdcbadf789bb483e3d088e4919fe2f71d7eaa9b98821a",
+        "1160fcb3afdfdd338da10c2dc24d99d5124fea4ef7e64eb4e035e55f34e8169b",
+        "117ca65dbb36968f27f7a2d66483d149c19b7c33e66ba8034c825826a7479100",
+        "11a132df1626552e76cccc4af8827f37bb66b0879bd54e05c94541b1608dbc00",
+        "13b04e96e90c81a7c13a0787fe446b492cf0987d2bd4485a7183ee01b395ff45",
+        "147c998c51b5b9499c3b24d950a30e5e8c9af19b2d4ff44ceb7dee5a16c1a57f",
+        "16adc2525b0fa121278ee70e25445c932541883ab2351f8317fe062280f09f1e",
+        "17a592def3d7ee4c94cb35c2b0d0618e5d2ec5da892e578d201f71024c1f38f4",
+        "17aa83d5a004326b3639895e1efd66c05dbc7503499542793570f33c8a191beb",
+        "17baa4638059c74b1c2f706bd66e5ac3c218b6cb2e4a06cf382a50e70c7bdc7b",
+        "181823dbd2f86ff2821183a16d47f3bbf7bc88a8d23b0d6f6ab02c0f09fd846c",
+        "182dba2c48d5a387600b3ad1fa6896051754709566d9499500ec9777debdac7d",
+        "1953b9522bf6dac3651d33b0cd1f13b35e51b4ba0a742bcaa8e4bf3c591a173f",
+        "19563cee19f079623f806db80ab6bda77f8e01320f18b5e01008895153074872",
+        "1ac66b0dba2b7f48b5f90923de13ecaf80a8ce94b2e037ae28fd8ec987c721ce",
+        "1aefb83299f97a5e8d18349b6ae0fdad9fd3fc3542c32a3b3d766da78aa8f2b3",
+        "1b58d0ae1d93ba3f5674209056e38853a7fb2785d021b015a2a31d5c1619ae7a",
+        "1c449dbb17fec6e216786ae1e7ee9534cfbb0d0f9e410d53e6c0c5b718f25704",
+        "20eee2b98178f356c6df836ee570a2c2d6dc21db1cbe310a9aad2278962e481d",
+        "2147d532d933ff9e1a8a27cc33bbd07530de7f3c2bb09ea4c83e8d28f9dd1421",
+        "229329c45fcce0404f961987a7642ec3bade37ff55018a5f0350d3d06d75dece",
+        "233c9a8f33c85e2f63be658821867de316e09ee9289ccfe34af7039eb5e9f873",
+        "23b7c05efb8902dc72ff51b58cdf21661ed0bce2c28d7dd13d62b2c6464c8ea6",
+        "23d27579ec5551151e0b7772c762d23e6d46000130fdd3f43f8f5d5579e9f76e",
+        "2454f71f528b57c09a380046eb6c3c680c5402403100499f8f84d488659bd9fe",
+        "24d5adaad472b5902438d4ef5cd4d2aed776f2ab4e096baae259bd10f2581755",
+        "262a104d622886bb08277827dc8753859be81a303bc6de19536dcfb190869586",
+        "26fade43af36df2b20e7cc2512e8e0df1e903efec80793a95e8c6e6fd42f824d",
+        "270231dad5dc3356e097927ec7c331c306b3e9ba8180d07dd37bcc37a5c17596",
+        "28f7645e6723427c74c72853dbfd9176af9e986d831818a7f524bb2371e7444b",
+        "2a21c721e4e0db9a29fa9ed95592763cf73cca75e0c891a7a4b0057c40daa49f",
+        "2addc438b4ade677bc110360f422c69e60b3258d896cc0182e50c4ccf2f9b8a4",
+        "2c13455d534c449f956866b1a762a73dd6e601f5ae0bb439de780a82f1929f76",
+        "2c885341fd07c1b12514779cc27aa87ee7b4b6af5ee89678cba8de434dd90b5b",
+        "2f1b083b58b51e86dfb0bdfd8fe5b5dc97f10a50b8a94e5da67bd653567f9ec7",
+        "304c7b85abe3bb3c6aa278ecd03c5dce9de746f46e447533ec0b39fd6d748f80",
+        "30a0f2e7a9653c5ee9f8f01702e1e3ae9866d467633be97043f716cf2523d191",
+        "3118895aa33e9a1ae74eb5496e8d5b4177058db9cdab40b13089a6e269730b57",
+        "327b61d1ba4a9bf905ba18458085b82619aa52719d01675eb7dabdd6c726aa56",
+        "3403425a638c764ee2b362c55c2fd2297fb87716452e7a1d8f7aa92b02a4f1b2",
+        "35334d8059e4231dd716ccdf1a37b4298285a4ed1ea786262e4a998d93a1fce7",
+        "35ce0edc76269d099316f99ce7de4c4c3ebbe7499108c85edf5058174006853a",
+        "35f4bad871a8e3b9332a54b338a701e60531348891f81d54702cca0a25b1cacc",
+        "36a6bc882cb4947da81b78efac28aa998b7daa684ca654b263bf4e4b88d478b0",
+        "38f1134cd94df18935d4d67d9344518dbf88ff81d510d076eeabfbf163b0b162",
+        "392abc92f0150c27ce825a33ff49dc6862b5f2b5538aacd07f28e0e614baf3d2",
+        "3978fa6fe2834401cef88696fe1c5fa5685605b647a4048b4e06352a4505180e",
+        "39f6f9228a7b6821233484576e5327c5f35c914b15ab54daeece195d5f4dbd17",
+        "3b01e00334ffe5182e2e20d50467793727a40d08785382de1b01fa336fbf99c2",
+        "3bde749c5f7c7016034b35501f5d397bc0c8281b6ff9d8277b661e6d98dbc742",
+        "3e96970074e0bac2573df1d14c5da5ac676dc5b049af61b3d8e9ca5d32a32ac4",
+        "3eced1cf143dff6bde4af9cf5c7338462b52452df566b3914701b60c8bd5f482",
+        "3fe9b482a0e4bfe4c3b38f371f099e1dd42b5a6d12e02942dca66007d453e2a7",
+        "40189348268671388cef5e15a790c3c08c2b64683bc13e15ac9b17706adb6af7",
+        "402727ee92abcdb75657e88d1b3c511fb97362d50d9691b4004e1d4f0abf21cf",
+        "43cec2c788ee0d20df8ac0bea23084b90d93255dc83a7f707354b4889aa5c330",
+        "4495986e7f9b98a7530da9a13e49da09bc338adee3fac7f0c5065bbdd97cc5de",
+        "45fb6ffc226e8b40f95045e6e4ae90c05f7241e4dbee916c5dc30b52e6ab30c0",
+        "46b35fda38e992c4d221edda5e76c0c2f037fb766da6f585fce0fb6fbc642902",
+        "485c844bb152bb257c817ec738f787a71c02cdb843d9dbc9682b8404053063ac",
+        "4add604f8e6736ac4a475800619c2eb876d0e32e0bc820888e7c28c617d533e9",
+        "4b44ba701f53eb6496dce6eb8a2de1a43950c5f211fc7e483e5311b6b8d69c82",
+        "4c9afe944d4c109025b5702197d70d8eca498906a9b4e9cf979fbf8cc7166ea2",
+        "4ce56b02f62cdabbf358b8b3e367884bc7f6becc55ea0551eaa5179eee644393",
+        "4dc25e9793af22a54720845c9bebf84caeede0c74cc3643c58bc68044e464b5e",
+        "51bb0c3bf2813317f9edbd90f1563d02bbde503c7c37bf8325a13d653597488c",
+        "53975e7684947445fab21fb368d6c22aac26327eeec9b98441bf650735f72282",
+        "5968e8c102bceb2d28ad1f9cda90e509cfa532160dce1bbb9231b994304ec9ef",
+        "59a9da3662f15b43536055cf644b8f3fce4936f595db51419d77237f580fbd59",
+        "5cd7bde5407fca1f63857c15e1c01cc4e9beaf5dea2650e15b5a020fcae51b2e",
+        "5d7c1a3aeb0807ab267b325e40b3ff8a4c0dc28054394f12e7f0a72c52341617",
+        "5ebc69da41b236e25435a4a13ed0e8a4f7fc6a7858854137179c2f8e63c0ae9f",
+        "5f5f16429d9b3e89b4399839e75b92d95f5c6297534469b5630fdaf69e06c4e4",
+        "5f845e035d01193bf5a18f2edcd2fd991f73708c666614447264f06404eb9fb4",
+        "61fd7cf16a7a3e06fca2aeb65caf752b30db9f8ffad1931b3b37a91ba06c0910",
+        "6223493061a7746ca14ccf08a004014ee6bb70340171007fe74948b48c9e60fc",
+        "62895b874befed1c3661c91cd64559d7da90d26c406ce1efe8f1ef1f91c0e8d1",
+        "62d28abd71249e0cbb4e1a136e20c92a2b550c8dc4efe599195df0d78c9bfacc",
+        "645aaef42be5e25bd2ab2eb49077a17581ae47dd2d294963619a77caec424067",
+        "64b98a605539f2734c065ded44e7c1235d672885079654415a01e470ec9f6eec",
+        "65a80a8f5ebd58fb577e2cdf22856a8ff36fa67e027907a45a96447c7932129f",
+        "67452ec373dc726993bc68df71783ffc7698e01fb04dd0a32beab5cf0d4bdef0",
+        "680553f15c57744d4b1eca85459cb037eddc63dfee22fe5284faf28a5fc9e79a",
+        "6c48ba9071c4629fc655226cfd5ac496013a5f2502f0a044e159216d45337b69",
+        "6c9fd8b5f6af79d8964f94eac1b12cd5b452e5696e5174686f4276394f33c421",
+        "6dbb8ec6bd8aa9cfdc9cded4a2fc599b2ccce922bac6db6dbf0e8cf6784abcdc",
+        "6ddf699f680511d1a20aa38d5bc193365f036841e3edac01d1713de0ddb5fd57",
+        "6e19af9369b3da9dd0276148f78503f64932c9b124006dd5371b264eed78807a",
+        "6f5cbc2c31e2625e572e98ce8942293a26063e548f3e3bab1265ad6016f33159",
+        "6fac230bfbd17448b6aca4c8c3eb7257ef150d711b566ded38cdd962aad0f1c3",
+        "6ffcd059d6a9e121fc9780fa7559c64d407e8a5b88b97349c527ab63d1f77ace",
+        "7058d8c34cbef4946b62f251a1e90d35be7f8db53803a7b68c3e2875116524e8",
+        "70c3a3b38331689e71a02cd3fcfbf1678de790efecfe192b873b9769c874190a",
+        "70cc33c3ac701d81753146c6d4860119db3d8efdae351ac0aa6eeb19301c1c75",
+        "724fca7f6db25533a808470caa9bf013f16a298f6bafbdb188f4ff080ae8a907",
+        "7328e04b19a052abf58552b6b6686c451ca94807c42c7aca45d2caa71416f7b2",
+        "73e1080c6523d30c93f641821f027d4618ef57e2abccb922b487b71e93145a33",
+        "747a3fdb9f2dc94b5cbef6edf23cf75c03b6e37f4fde53f2111c5ef15ada7e4d",
+        "74d9170935898d9c577fca995ca52baffefda4f099aa70358c5c6ec216427510",
+        "7608c841b6aa6bc7f6fec198cfea793f3f67f8a7b66f04401ca6f811d9d7d6f9",
+        "7a6651b30c579d58a40beab377ad03b23b9fe37034357a14d1727547a60896e3",
+        "7cb70e037d69b562d833975af142a6897a14dec5508fcfe6c34a14b91df19e13",
+        "7ce782bd4d3254995f10a52e080aeee700b2e24a52878b13ff32d69ca2010cf0",
+        "7cfff28e34b5d122517896062d3bf480ad8e4da4a24085cb67219d4019c802ed",
+        "7ef9e9f6449acfde72d6a936d728165370a0bbe6623e4f38343d9b44a6c629d2",
+        "7f38cafac1376137cb1809962db08e1a502b8872a241d161081028397a1787ae",
+        "80afac79f7d9b183ce8fd5f73b940fb7a095f9752c6318ed4cac126d754c4a75",
+        "826b9cf53173a1e76e70fd8946b68ac1a565690594f7d36f8e527b9e2075d357",
+        "83a48911aa205fc00787b3ddeaba3b02828c5e59ca26a770cf31b911d379c9f4",
+        "8536bc81f51f0f9396a8e5e5655ff2ac369e4ede99eab8122b6e6c1dec23cfc9",
+        "856207482cc1960144d9e7c35b580d9a5c69899d2b36b6f8e0b7cf6ec9c6e7f2",
+        "85641930f6b984e46e948dd09498a4bf00ad069e2c7fb5f0fe3bd2a26deba637",
+        "86bb8c41b6b7fb2f398814312614678dfeb8d346ff0e2a8f5a1d3a6d24d902f0",
+        "87bd22a4cd1fa9c981ad2979bcca9ebdbeeb71ffba942d7ec20624a6966fe374",
+        "888b47162fdfb5f50a6081f5a8fcdad208ca8ca77916c8d3e202b6daaefdc143",
+        "896fd2b056c0fda9435e208e61c680092522b31be71caeb33cd62835122b3eb3",
+        "8981d9ab9c990a8f5e77fc4c587d0350d5642e9ea38364281659479704205c18",
+        "8b488e00483ed9db1217d38cc4dfc847acd664d2d01255d6c5750531690a93ac",
+        "8c019947f473136122af06c6a1546af2522f1f94ae317888d57bfef637809dd1",
+        "8c372db482ae83409903f4f35383791ec4afa540f86f2c7697b390b34a97c37b",
+        "8e6003437c590809c6b79f61f22556d02f4dc65d4357a2bf684637e2d2b45ecf",
+        "90808acc9f333d20955024a92d711a7ea8a90f6cc6620648fd9190739b4d5caf",
+        "91d8c36713b90184ec393fb191a87f1dc5c438d6d17ca68bb70e1d7b189fc817",
+        "927ecf79122506942b95ddd6c19d340b3ae3e1875e3c34a1869db355abdb022a",
+        "92d5597bb1e2f26ad55de0dfd9e819aa61d9fd39f694b21ccb7af4e0d7e096de",
+        "993b341ac90548763d8f479d56688749f72c1b39a473cfa5985ed181cb918f83",
+        "9993a98021089a45c414ad79da9c5f59f0bc0410ba780b2da67da7859f4bf0cc",
+        "9a20723847be78821bf285405d7f00763a0e00494d98abd757fb7f31de73b8b5",
+        "9c368df4e08b487d52a020f9a5c10fdd408d49999bdae6880f71dc545b46f5c6",
+        "9d0213cc9136e3b45dd8510ae7034df71e3965f4923e45eb522271c86ff17031",
+        "9d96f1f081e64c597bf4080a12498e0e38e4b80d645b7ab400574e959c9a5fd8",
+        "9f26ba97df8ad0b41a78fb72ec6cca4ff6c611246631f836f21d192b9c59698a",
+        "a18242e2c672704a14931850f1af9654abde04c2874cc5e096d7dd6eae47918b",
+        "a2da7ebd47d2bc544e8cc464d8aa30dd81811ddd1e4aa00b9bc76ee04fd1d06a",
+        "a2f27083b93776be41819ec102088ec151f4193b3d1fcf6efc01acb9316545b5",
+        "a3e87af1fefd625701543eddd86a3858b012f69b6e0d532bbe9a250acd3ffcfa",
+        "a4263509ff80274568e96729e980ed229e316d6261e79e8cf962114e6ef218a7",
+        "a4b1fe3965e3b40f98c30a05191bb51c9a209b1d88c487252910e1033f99e12d",
+        "a520263e766d21811796ac3b8375ba520315905800d3bae91ff6d40601cebb2b",
+        "a8eaadd0333b982890f6cba3bf13417bf7f95b25c459710965fba832144a2f50",
+        "a8ff0774b037032d741dde2f981039fa776a65979c24d1ff06c44c5a8115648f",
+        "ab013fdb3046e0a6611e8652dc5057d4d2de070f542f4ad424bb82ace594880f",
+        "abb08ffe6c2ae0fa76a5459819324ec7f8e2f34f17ffa2dbd9077ee063b753ab",
+        "ac8eeddf961514ad3398ba9ee9addd3b72c88763a5ac06d2393bd2ca20edcd70",
+        "adc2dca9848c7ad07414a369c95a8b9f91327cd0e5516e95bdf8abd0e8a18c47",
+        "b3affdb31141306d07825ebcc4dd8c851e7187ac16634a4fa8fd7bedbd61db36",
+        "b557a4583884fe50e95734ecc92975d34646d9d1ab62fe095bb82681281fca79",
+        "b5656af039e482d20b3294581a47542e23cb0f4e0405f74c41518eb3d69d9e53",
+        "b89eaed6975df1617e2416e3a645e222896791097174d379b695c8f37f1d961a",
+        "bacc48498ba19fbffe49800fabdf66415e8c89bd42703249449cb5a94f1eedcd",
+        "bb5a9d097c1ff520ad7f7ad9d37e361870802f687870f67ade3e7b534298ef88",
+        "bcc2923b6412272df2d579e7963e88ca7888deeda1b8ff94996f6f0bfd03e164",
+        "be80b4d89b15bec7b0b4fb71340a72b36487c2285ab682e977cc05aed91eb9e8",
+        "c0a0bb42086f0481aded2ee85e6a197693839800bf843a43e29982691caa79b9",
+        "c3410a1ac28e20dbe4af738bf1ebfc0e3500ec9d039d96120b4de9db68384e04",
+        "c3ebcc9f50c9573bc002500976ad98ff8032c238739374795df8ff4d9f94c711",
+        "c40724b86a150f54614b14c443e467eaffa14d4bf73346d0f8b4d79f12e40858",
+        "c48e1f6f6f48946664158686090e4a51e505dc6f8c0f051d2f0ba9eacd5a7264",
+        "c61f834713d8730220220f04fe30bfd3b3fe87e095817c3475596d0d8d927072",
+        "c6dbddd075ae36a382b4e371c417f6d73bb7ad9562858b2e6b1c5187ac652713",
+        "c92b47cac70cef33f1f8cf1ec553d4b4e3d0c12da7df1a62484be7d6ea602bc2",
+        "c9bb8c8d40b74036394a0ccd92a7bf2d7e439f0b7bb9907c0a275afd74e5713f",
+        "cce0c0f3ac8d311d705fa838940261aaf4ada186c182516ddf1c369f0f75d6c8",
+        "cd6016e5f81be1f326f80f95cf0fcf3b05616e77fb0565873ffa6c3941106b6a",
+        "ce2b472b16a58a5a27681815fe3a8750141f14b4a929fc923334bc739fb3b645",
+        "d093f932e46d3d18c3bd22dbe77230bb0035e219fbbf47a7b1306c8835cacdbb",
+        "d27186a1c31c9aace1d7640172849f6495d9caf8433423e7569199face0411af",
+        "d2ad3022ab18c62b5dedadb5648fcf75f06c9f2c3156b8fb1cbbd472c9c1069d",
+        "d2b94590ac548358d5bc9e21fb0cc16092fa9ba36dfd91fe5479744c13bfc860",
+        "d3616ac08e30109833bfb1d1d9d35f2d8568584df7e1d15756f2e27c65fb4335",
+        "d3d85ae87661a389918097eff3609849f714d93f85122a24cbb9f952422be1d5",
+        "d518ee7ccfaa3d77f2728040617569abcccaa66700c4555c4e9f2a765cf7bcb8",
+        "d51bc36a6607454a9372615e11271f94bcf2a0d2174431ca32a5c271b7cf2acd",
+        "d574e73a5f0bca30b8bf394bb778cb166f0dd06ad33e2a743248d49fa345f9c7",
+        "d5d7d9afdd78274ee934e657b15cf7f0ac1800ab39610a277c2692febbd1cc65",
+        "d63330d77dbdaa1397a7b02fe3426900ca3e8443a1486dc5055a4d694d6f4775",
+        "d70fdf920f6430eeec9e4014beb16e7516079216303581e5b9bb01f5b97af087",
+        "db415e3a29b2448fd32fbbc71c7f1ed1ab98803cb27b694720e1baa83db166a5",
+        "e08b48c6e3c35dd01c2c455a2c39a72004483279337bdaeb4eb7f0f19eec6bd9",
+        "e16e6ed12751d7214a6decc9361777331b7adb2d4da593ccecae57706316b1c1",
+        "e2c887d844a7f58be4002fe86e41d413edb3f864662273c895e852085ac9165d",
+        "e2fe2088ed919bac6351acb974145d3133fe7c4a8cab15524817b3705a373e4d",
+        "e31caf23d3b21e6bf3d829c698be07d13ac023629a240629fd1978ea2f9a45f3",
+        "e40c7cf6f336311fa0508b59f965a66b2e0a30ebb92b971a183db5ce27877f1f",
+        "e42909569b6b9a269564f21d4e00b28bc4faae3e27b4a981824f1e4e92627d59",
+        "e55077cd31855e05dd45f8ce4802f90b28df7d56cab987091b4a3107ea8401af",
+        "e5af9169b72d164071e1a4df5e562317b9382c9f8b499ac4c4a7c7e29a3a48da",
+        "e89d685e79cb4187c24068af5937d5c3003cbcf6fb0caad9241ff8285ff973dc",
+        "e985ff9eedf3c1ce101de5b96fcf2a82694844390e690b982eb25b5341673d54",
+        "e99f0f1173177cc76228dc777bc67c9a1c76121a9dcaa90f9c5424582535ca38",
+        "e9d61dd2bde5db514a3d3e08224e93e3b9510a8c2b90d95a0929ae5c3d85bf56",
+        "ed4ae69e3e1c2780284ee0e92844754f85f26221240237ca88b146799d1f5b3e",
+        "edc37676692d4380d8e0406c0a56dba80b3e7d3fb6f43448eb4cd56672e4eabd",
+        "efaae630a2c7dcc200904f8f8c15bbbde0c9353c760cf0d4821ab6e82bb2e7bc",
+        "f1cbfe85f3be5725d204c3c72ff2c66a6c89bbc5d2f109a7a963207b42e50c43",
+        "f39bb4be4feee942f7efd1d5ab0c44142babcdc98f104fa2e0793e86e96a25ad",
+        "f60f60cf208bbcbfda88e4e418c4a8ba9ea8da5323be2a29f6629f9801f2744c",
+        "f71ec1ce24b344e781b5079e7896b5a67730cae493c06187f4db2d47510ccebb",
+        "f7b411d24183a5b3ee9335925c06b60d3bc77f46d7f115f0e2227413c8e80e17",
+        "f8d06d94bea5e9445e397dc641cdcb082be07f266ef2699350974f4084d3e3a1",
+        "f90ebb8da289f18e86066c74306828c78fec496207d124ca9f5920f682b5befb",
+        "fa24cde0552562d3224b051f77b0c7190e0c3bf2aa6fd3bf1e98a756c8c0a90a",
+        "faada191b39afb9af4aeab539df5bd9bfd6189fc6ad8c96e4c307a86f13a1087",
+        "fbd20666f36bd03b7ffae22773a577faada0fce720d4fd8bcc13d92141eb4ee8",
+        "fc48711697f54bb0838484b50f14510602062490931c57e1afd1e778775d4d2b",
+        "fcc00d78f508a785cbe4cc9d8de89b3adb7dba41f9d576e8919759b8995a80e7",
+        "fea0cf3a54af9404922d56aecf40e29dd459ee2645078cb0f24e8fc7d7d159c2",
+        "ff28c803fb69da14790898946dbff4a29b1bfaa378828d5496fb0b0958817e81"
+      ],
+      "success_gate_pass": true,
+      "training_manifest_path": "models\\ramp_rl_v6\\live_v3\\confirmation\\ppo\\2802\\training_manifest.json",
+      "training_manifest_sha256": "b18ed998b0ed9c176f6a258dca7244d27eb21c7e1abc5aece80053a08f0394b9",
+      "updates": 540,
+      "validation_path": "output\\ramp_rl_v6\\live_v3\\validation\\ppo_2802_validation.json",
+      "validation_sha256": "0f4cfbdb33124b59e3817599815503898eddad37239f413ff412ad8a85ac743c"
+    },
+    {
+      "behavior_audit": {
+        "deferrable_pre_service": 320.8513933628269,
+        "policy_ramp_power": 131337.84813894966,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_cost_ratio": 0.9820278853015378,
+      "factory": {
+        "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+        "source_path": "env\\ramp_v6\\factory.py",
+        "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+      },
+      "failed_gates": [],
+      "final_critic_sha256": "a6aa43662a26babfcdc0fcfc80e22cd470736a2d3b6f2391657a887056a8d9c9",
+      "final_policy_sha256": "2e5874c9ac4a160ded42e26cf9a68680ad7f691a534b41bab4fe86c8413700ef",
+      "forecast_identities": [
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-002c84061fedeaa099404a32"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-02599b983dc5f4917ffef043"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-093a1e646ff3149372125ea9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0a1fa8c550b77a2f92a2b30a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0c3b3a889fc043b587280fd6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0ffc94427fc6205288b49a4d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-10d36bf50a37d893acc105ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-11e8e4cf64feef0ed5e24a58"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-122676a61aa15eb5a0541c60"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-13e95aafabe95a44bc9ab2a8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1679729c1ba51e4d66e938f2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-17ed5e3cb904b74ff005cd73"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-18d504baa545554fdb4b4622"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1ad4ddc765c01704aedac3ad"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b008f5435561baecc42a551"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b818fb0e136e2b225548564"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1e8529c04a131ff2207d6786"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2113964a4ca4ccf35d333b06"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-229eaa41ac6eb21b4aa7d965"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2681ee36888864998443b39d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-273cc3ff105b6a2e1b8e0bc7"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3231edc442a899f0d539a133"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-384e9b56cddb7d7c1f8a687e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3bb65e845c10dd13aa4e13c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3c0aca172cbddbb4d38fd141"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3fa8bfe27b1d7beba74acd31"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-434f6927b36cd21ed9495fff"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4ac0b12e7e1289194188aaf1"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4b2e3e0768d0cec3950eb65d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4dd88ba72c06e4ff35b9e749"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4e32bfecdebf35f536fdb802"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4f1146ef83b7da434a4c86e0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4fd721e540e7f0811b2553e9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5307c1906fd5ac03dda4eb51"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-54c4c0cf1b5f5bfb1f317a18"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-55f109c05ef60182984286b9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-58e53cebce1bc23b4148929b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5a67e223e0545c6e9980bb94"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-60d7148477ec54f6a62bb7c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-62fb4d936ec73ef4f48f1f34"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-64f6c697a8c5c851bf41727d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-66085e3fe19a5a69b324927f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6786042ac07e95d87ca39cc5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-69e3026067534aef19bebcbc"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6bf1d02668aa900c7cc4e58e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-71e46df62e106af455017af3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-76af296c9d6a90b39e467a78"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-781485ce39612f6127dcd971"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-782722f28063f9c6d7ee2c81"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7a9fa21e50415aace85de1f4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f76e02631b76b7c0c24228e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f870824d70c7619caa147ee"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8184957f45fbee3195cdeb42"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-818a2c96ae8b7dcfde2d2978"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8242a3d78f21e6969246b2af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8274d046a388f392e7e5b9d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-84b59ce676aaad4bb4ecc60d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-859684f4d1503fecf9530213"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-863c6edf31fc3cec347e46d3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8920366dc711d29bba5b1f30"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d244cd719618cc637b3a3d8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d9781fa890602f453e92e64"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e346c02c0b55a799cd5bf28"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e6aaa9d18c2552f3eaa4e38"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-95edbd22639f095d6758b4ca"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9dd7bd979c282873aa296961"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9f8373375486f36bc397144a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a31bffc961b9c7e26b73efe3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a74b825cb82f8b705125ccb0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a9143d694c51c6607b1db985"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa482bd8cac6dad17abfc6af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa9603a311013325c31aee99"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-abf98251679cc7e7421f476f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ad3163683397635fea764e1a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ae4a3c850ff73d05c39acdd4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af1780d60e3da42453042285"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af19a77f25d498a5e7a6b15c"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b075e8511add615f787ecdb3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b0f7eb85c3e2aa4bd2487458"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ba44ac9ece611384939de841"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bc44279dd81ba513ebd96f8e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bd0dcd1b9b77b6042ce9d7bf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-be2d966aa53792ef06c4fbab"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c277d84044a19c410818d903"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c2efb7757b908aa3fa400497"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c40acdc4aa53f03244873abf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c4f7e039af222126d7e0237b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c6605d5bf492a60f26de406d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c7296873a261d504f2afab13"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cbb0d2fa9a2c39c43bf841e5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cd6208e6561521ee42dddbc8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d09db205c94a1b59f1583f44"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d144196a138f11c12343c818"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d3d955f7d2a193edddfb9db6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d59d1718d438bd6df30400cf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d703ea79fadc595c259c9cb9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d9561093b54bf9b4625351d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-da4cf8eda6347de3b010125f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dc2e46275a51061dd7a3632f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dcb2631f98be6ddc887e6aa0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-df8f4ede57e289c3be848b3f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e1328bcdf28dbe4961f79caa"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e24ec7ff24413343b1b3de7e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e5b42f849810103ce0d1a959"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e86403fd0ec0e74fd73f5f40"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-eddbd3c7318ce8d832c2a8a9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee0cce5328ca3a73073a892f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee4dd664946e9be9ed4c2070"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f0af3ec99f2bd2d6bee561c5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f538962cf3337e3176337117"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f59cba1fe6ca8abc9eaff156"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f7217a169eb9e94392a1155e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f9fc01c1534b1b0c3f9182ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-fead1440675bec1b86b36626"
+        ]
+      ],
+      "initial_critic_sha256": "f63153e00094474160a805da7bde0e02e060944fac6d29ed9449c83faeca7d62",
+      "initial_policy_sha256": "a6dc0cd909beeba3ac6d9937f2dd95979ced7dfd2dee9296d75a9d6b8f7bed36",
+      "interactions": 110592,
+      "mean_incremental_ramp_impact": -1.355656260810689e-05,
+      "per_market_macro": {
+        "CAISO_NP15": -1.830599788680075e-05,
+        "ERCOT_LZ_NORTH": -3.5277904505138083e-06,
+        "ISONE_NEMA": -2.0241380540704797e-05,
+        "MISO_MINN_HUB": -2.1273090681347478e-07,
+        "NYISO_NYC_J": -3.531950969634298e-05,
+        "SPP_NORTH_HUB": -3.7319661674655354e-06
+      },
+      "pure_rl_pass": true,
+      "seed": 2803,
+      "source_hashes": [
+        "00220c0ba02f97d2e5bb1d2dfc807a6808dcc064b5a728cfdc2ab009beae1bb7",
+        "0219a57716fa10ba301ed3f7fb885d122ab02eb837277d03662dad601984f776",
+        "026457e545286539ed2d3da7239e0e4e3f7bf613ae696108b5498230c0ad0075",
+        "033b0c70818624cf40fa0186dba85eff58905df301c08902b4bce5212381ecd9",
+        "03d6a21c1dc254ebadc69daaf09a071ec79b72427e2e4500e7ecec7f2b4ea2cf",
+        "04897507abdc48dd31ecee0f63dee0f2c485049846494d4a8114fb10ac1d321e",
+        "050911dc72e5df15483d3f777a8ac2e7b18e4405f48de4257179cbf6ea5c8784",
+        "0627af632335c175f62248b8b9c226eff374a50690605727480ff4a42dade3f1",
+        "077644917f5800b9d3201066327cc8438ebb25615f84280244b6cdfa32437e0c",
+        "099b238cc573a5f885cbf1988b44bfcc0135660c5156f895abee7c0a112d51a1",
+        "09e981c22ec25e0b8b4f9d41f2d00c47cc60dcf59058d58c1eb1d603cc996164",
+        "0a35e1e3253fd02fd228878f214c3015881b7904524d728a15aca9fd1086b2c9",
+        "0ac15a4ecb98eb29852311ff4579db74a3bb9f6a29026c1a3d6f065d1131f318",
+        "0ba4d46fc490b7ddbf5c06436f7e15fb7e5e2e4f3eb93ef7fb406a3e5a4254bf",
+        "0d3bc6742009c41c1f28735beaff55d1b5ccb05c93eb3612309a65fadf1ab89c",
+        "0d4e4f84bb6a36d0a14b4aa2acbad9ec61c72b5c1bd2e16227ae62b07f188f0a",
+        "0e491d2c9cdc71abaab6e052c75766de2eb1ac76e0bc5e7328cc62d9a917619d",
+        "0e5c2257417b5cc4bfd341523910a09c14b60f214c96d77201540003a81e79f7",
+        "0e790417b93286fc178e33435215adce62f5c88d55799629248bbde2cdf25cf9",
+        "0ed39d1b38d00e71292c1de4b2480414210f63cde97514f9cbbc1a98a66375ea",
+        "0f3fac198579fafbd61cdcbadf789bb483e3d088e4919fe2f71d7eaa9b98821a",
+        "1160fcb3afdfdd338da10c2dc24d99d5124fea4ef7e64eb4e035e55f34e8169b",
+        "117ca65dbb36968f27f7a2d66483d149c19b7c33e66ba8034c825826a7479100",
+        "11a132df1626552e76cccc4af8827f37bb66b0879bd54e05c94541b1608dbc00",
+        "13b04e96e90c81a7c13a0787fe446b492cf0987d2bd4485a7183ee01b395ff45",
+        "147c998c51b5b9499c3b24d950a30e5e8c9af19b2d4ff44ceb7dee5a16c1a57f",
+        "16adc2525b0fa121278ee70e25445c932541883ab2351f8317fe062280f09f1e",
+        "17a592def3d7ee4c94cb35c2b0d0618e5d2ec5da892e578d201f71024c1f38f4",
+        "17aa83d5a004326b3639895e1efd66c05dbc7503499542793570f33c8a191beb",
+        "17baa4638059c74b1c2f706bd66e5ac3c218b6cb2e4a06cf382a50e70c7bdc7b",
+        "181823dbd2f86ff2821183a16d47f3bbf7bc88a8d23b0d6f6ab02c0f09fd846c",
+        "182dba2c48d5a387600b3ad1fa6896051754709566d9499500ec9777debdac7d",
+        "1953b9522bf6dac3651d33b0cd1f13b35e51b4ba0a742bcaa8e4bf3c591a173f",
+        "19563cee19f079623f806db80ab6bda77f8e01320f18b5e01008895153074872",
+        "1ac66b0dba2b7f48b5f90923de13ecaf80a8ce94b2e037ae28fd8ec987c721ce",
+        "1aefb83299f97a5e8d18349b6ae0fdad9fd3fc3542c32a3b3d766da78aa8f2b3",
+        "1b58d0ae1d93ba3f5674209056e38853a7fb2785d021b015a2a31d5c1619ae7a",
+        "1c449dbb17fec6e216786ae1e7ee9534cfbb0d0f9e410d53e6c0c5b718f25704",
+        "20eee2b98178f356c6df836ee570a2c2d6dc21db1cbe310a9aad2278962e481d",
+        "2147d532d933ff9e1a8a27cc33bbd07530de7f3c2bb09ea4c83e8d28f9dd1421",
+        "229329c45fcce0404f961987a7642ec3bade37ff55018a5f0350d3d06d75dece",
+        "233c9a8f33c85e2f63be658821867de316e09ee9289ccfe34af7039eb5e9f873",
+        "23b7c05efb8902dc72ff51b58cdf21661ed0bce2c28d7dd13d62b2c6464c8ea6",
+        "23d27579ec5551151e0b7772c762d23e6d46000130fdd3f43f8f5d5579e9f76e",
+        "2454f71f528b57c09a380046eb6c3c680c5402403100499f8f84d488659bd9fe",
+        "24d5adaad472b5902438d4ef5cd4d2aed776f2ab4e096baae259bd10f2581755",
+        "262a104d622886bb08277827dc8753859be81a303bc6de19536dcfb190869586",
+        "26fade43af36df2b20e7cc2512e8e0df1e903efec80793a95e8c6e6fd42f824d",
+        "270231dad5dc3356e097927ec7c331c306b3e9ba8180d07dd37bcc37a5c17596",
+        "28f7645e6723427c74c72853dbfd9176af9e986d831818a7f524bb2371e7444b",
+        "2a21c721e4e0db9a29fa9ed95592763cf73cca75e0c891a7a4b0057c40daa49f",
+        "2addc438b4ade677bc110360f422c69e60b3258d896cc0182e50c4ccf2f9b8a4",
+        "2c13455d534c449f956866b1a762a73dd6e601f5ae0bb439de780a82f1929f76",
+        "2c885341fd07c1b12514779cc27aa87ee7b4b6af5ee89678cba8de434dd90b5b",
+        "2f1b083b58b51e86dfb0bdfd8fe5b5dc97f10a50b8a94e5da67bd653567f9ec7",
+        "304c7b85abe3bb3c6aa278ecd03c5dce9de746f46e447533ec0b39fd6d748f80",
+        "30a0f2e7a9653c5ee9f8f01702e1e3ae9866d467633be97043f716cf2523d191",
+        "3118895aa33e9a1ae74eb5496e8d5b4177058db9cdab40b13089a6e269730b57",
+        "327b61d1ba4a9bf905ba18458085b82619aa52719d01675eb7dabdd6c726aa56",
+        "3403425a638c764ee2b362c55c2fd2297fb87716452e7a1d8f7aa92b02a4f1b2",
+        "35334d8059e4231dd716ccdf1a37b4298285a4ed1ea786262e4a998d93a1fce7",
+        "35ce0edc76269d099316f99ce7de4c4c3ebbe7499108c85edf5058174006853a",
+        "35f4bad871a8e3b9332a54b338a701e60531348891f81d54702cca0a25b1cacc",
+        "36a6bc882cb4947da81b78efac28aa998b7daa684ca654b263bf4e4b88d478b0",
+        "38f1134cd94df18935d4d67d9344518dbf88ff81d510d076eeabfbf163b0b162",
+        "392abc92f0150c27ce825a33ff49dc6862b5f2b5538aacd07f28e0e614baf3d2",
+        "3978fa6fe2834401cef88696fe1c5fa5685605b647a4048b4e06352a4505180e",
+        "39f6f9228a7b6821233484576e5327c5f35c914b15ab54daeece195d5f4dbd17",
+        "3b01e00334ffe5182e2e20d50467793727a40d08785382de1b01fa336fbf99c2",
+        "3bde749c5f7c7016034b35501f5d397bc0c8281b6ff9d8277b661e6d98dbc742",
+        "3e96970074e0bac2573df1d14c5da5ac676dc5b049af61b3d8e9ca5d32a32ac4",
+        "3eced1cf143dff6bde4af9cf5c7338462b52452df566b3914701b60c8bd5f482",
+        "3fe9b482a0e4bfe4c3b38f371f099e1dd42b5a6d12e02942dca66007d453e2a7",
+        "40189348268671388cef5e15a790c3c08c2b64683bc13e15ac9b17706adb6af7",
+        "402727ee92abcdb75657e88d1b3c511fb97362d50d9691b4004e1d4f0abf21cf",
+        "43cec2c788ee0d20df8ac0bea23084b90d93255dc83a7f707354b4889aa5c330",
+        "4495986e7f9b98a7530da9a13e49da09bc338adee3fac7f0c5065bbdd97cc5de",
+        "45fb6ffc226e8b40f95045e6e4ae90c05f7241e4dbee916c5dc30b52e6ab30c0",
+        "46b35fda38e992c4d221edda5e76c0c2f037fb766da6f585fce0fb6fbc642902",
+        "485c844bb152bb257c817ec738f787a71c02cdb843d9dbc9682b8404053063ac",
+        "4add604f8e6736ac4a475800619c2eb876d0e32e0bc820888e7c28c617d533e9",
+        "4b44ba701f53eb6496dce6eb8a2de1a43950c5f211fc7e483e5311b6b8d69c82",
+        "4c9afe944d4c109025b5702197d70d8eca498906a9b4e9cf979fbf8cc7166ea2",
+        "4ce56b02f62cdabbf358b8b3e367884bc7f6becc55ea0551eaa5179eee644393",
+        "4dc25e9793af22a54720845c9bebf84caeede0c74cc3643c58bc68044e464b5e",
+        "51bb0c3bf2813317f9edbd90f1563d02bbde503c7c37bf8325a13d653597488c",
+        "53975e7684947445fab21fb368d6c22aac26327eeec9b98441bf650735f72282",
+        "5968e8c102bceb2d28ad1f9cda90e509cfa532160dce1bbb9231b994304ec9ef",
+        "59a9da3662f15b43536055cf644b8f3fce4936f595db51419d77237f580fbd59",
+        "5cd7bde5407fca1f63857c15e1c01cc4e9beaf5dea2650e15b5a020fcae51b2e",
+        "5d7c1a3aeb0807ab267b325e40b3ff8a4c0dc28054394f12e7f0a72c52341617",
+        "5ebc69da41b236e25435a4a13ed0e8a4f7fc6a7858854137179c2f8e63c0ae9f",
+        "5f5f16429d9b3e89b4399839e75b92d95f5c6297534469b5630fdaf69e06c4e4",
+        "5f845e035d01193bf5a18f2edcd2fd991f73708c666614447264f06404eb9fb4",
+        "61fd7cf16a7a3e06fca2aeb65caf752b30db9f8ffad1931b3b37a91ba06c0910",
+        "6223493061a7746ca14ccf08a004014ee6bb70340171007fe74948b48c9e60fc",
+        "62895b874befed1c3661c91cd64559d7da90d26c406ce1efe8f1ef1f91c0e8d1",
+        "62d28abd71249e0cbb4e1a136e20c92a2b550c8dc4efe599195df0d78c9bfacc",
+        "645aaef42be5e25bd2ab2eb49077a17581ae47dd2d294963619a77caec424067",
+        "64b98a605539f2734c065ded44e7c1235d672885079654415a01e470ec9f6eec",
+        "65a80a8f5ebd58fb577e2cdf22856a8ff36fa67e027907a45a96447c7932129f",
+        "67452ec373dc726993bc68df71783ffc7698e01fb04dd0a32beab5cf0d4bdef0",
+        "680553f15c57744d4b1eca85459cb037eddc63dfee22fe5284faf28a5fc9e79a",
+        "6c48ba9071c4629fc655226cfd5ac496013a5f2502f0a044e159216d45337b69",
+        "6c9fd8b5f6af79d8964f94eac1b12cd5b452e5696e5174686f4276394f33c421",
+        "6dbb8ec6bd8aa9cfdc9cded4a2fc599b2ccce922bac6db6dbf0e8cf6784abcdc",
+        "6ddf699f680511d1a20aa38d5bc193365f036841e3edac01d1713de0ddb5fd57",
+        "6e19af9369b3da9dd0276148f78503f64932c9b124006dd5371b264eed78807a",
+        "6f5cbc2c31e2625e572e98ce8942293a26063e548f3e3bab1265ad6016f33159",
+        "6fac230bfbd17448b6aca4c8c3eb7257ef150d711b566ded38cdd962aad0f1c3",
+        "6ffcd059d6a9e121fc9780fa7559c64d407e8a5b88b97349c527ab63d1f77ace",
+        "7058d8c34cbef4946b62f251a1e90d35be7f8db53803a7b68c3e2875116524e8",
+        "70c3a3b38331689e71a02cd3fcfbf1678de790efecfe192b873b9769c874190a",
+        "70cc33c3ac701d81753146c6d4860119db3d8efdae351ac0aa6eeb19301c1c75",
+        "724fca7f6db25533a808470caa9bf013f16a298f6bafbdb188f4ff080ae8a907",
+        "7328e04b19a052abf58552b6b6686c451ca94807c42c7aca45d2caa71416f7b2",
+        "73e1080c6523d30c93f641821f027d4618ef57e2abccb922b487b71e93145a33",
+        "747a3fdb9f2dc94b5cbef6edf23cf75c03b6e37f4fde53f2111c5ef15ada7e4d",
+        "74d9170935898d9c577fca995ca52baffefda4f099aa70358c5c6ec216427510",
+        "7608c841b6aa6bc7f6fec198cfea793f3f67f8a7b66f04401ca6f811d9d7d6f9",
+        "7a6651b30c579d58a40beab377ad03b23b9fe37034357a14d1727547a60896e3",
+        "7cb70e037d69b562d833975af142a6897a14dec5508fcfe6c34a14b91df19e13",
+        "7ce782bd4d3254995f10a52e080aeee700b2e24a52878b13ff32d69ca2010cf0",
+        "7cfff28e34b5d122517896062d3bf480ad8e4da4a24085cb67219d4019c802ed",
+        "7ef9e9f6449acfde72d6a936d728165370a0bbe6623e4f38343d9b44a6c629d2",
+        "7f38cafac1376137cb1809962db08e1a502b8872a241d161081028397a1787ae",
+        "80afac79f7d9b183ce8fd5f73b940fb7a095f9752c6318ed4cac126d754c4a75",
+        "826b9cf53173a1e76e70fd8946b68ac1a565690594f7d36f8e527b9e2075d357",
+        "83a48911aa205fc00787b3ddeaba3b02828c5e59ca26a770cf31b911d379c9f4",
+        "8536bc81f51f0f9396a8e5e5655ff2ac369e4ede99eab8122b6e6c1dec23cfc9",
+        "856207482cc1960144d9e7c35b580d9a5c69899d2b36b6f8e0b7cf6ec9c6e7f2",
+        "85641930f6b984e46e948dd09498a4bf00ad069e2c7fb5f0fe3bd2a26deba637",
+        "86bb8c41b6b7fb2f398814312614678dfeb8d346ff0e2a8f5a1d3a6d24d902f0",
+        "87bd22a4cd1fa9c981ad2979bcca9ebdbeeb71ffba942d7ec20624a6966fe374",
+        "888b47162fdfb5f50a6081f5a8fcdad208ca8ca77916c8d3e202b6daaefdc143",
+        "896fd2b056c0fda9435e208e61c680092522b31be71caeb33cd62835122b3eb3",
+        "8981d9ab9c990a8f5e77fc4c587d0350d5642e9ea38364281659479704205c18",
+        "8b488e00483ed9db1217d38cc4dfc847acd664d2d01255d6c5750531690a93ac",
+        "8c019947f473136122af06c6a1546af2522f1f94ae317888d57bfef637809dd1",
+        "8c372db482ae83409903f4f35383791ec4afa540f86f2c7697b390b34a97c37b",
+        "8e6003437c590809c6b79f61f22556d02f4dc65d4357a2bf684637e2d2b45ecf",
+        "90808acc9f333d20955024a92d711a7ea8a90f6cc6620648fd9190739b4d5caf",
+        "91d8c36713b90184ec393fb191a87f1dc5c438d6d17ca68bb70e1d7b189fc817",
+        "927ecf79122506942b95ddd6c19d340b3ae3e1875e3c34a1869db355abdb022a",
+        "92d5597bb1e2f26ad55de0dfd9e819aa61d9fd39f694b21ccb7af4e0d7e096de",
+        "993b341ac90548763d8f479d56688749f72c1b39a473cfa5985ed181cb918f83",
+        "9993a98021089a45c414ad79da9c5f59f0bc0410ba780b2da67da7859f4bf0cc",
+        "9a20723847be78821bf285405d7f00763a0e00494d98abd757fb7f31de73b8b5",
+        "9c368df4e08b487d52a020f9a5c10fdd408d49999bdae6880f71dc545b46f5c6",
+        "9d0213cc9136e3b45dd8510ae7034df71e3965f4923e45eb522271c86ff17031",
+        "9d96f1f081e64c597bf4080a12498e0e38e4b80d645b7ab400574e959c9a5fd8",
+        "9f26ba97df8ad0b41a78fb72ec6cca4ff6c611246631f836f21d192b9c59698a",
+        "a18242e2c672704a14931850f1af9654abde04c2874cc5e096d7dd6eae47918b",
+        "a2da7ebd47d2bc544e8cc464d8aa30dd81811ddd1e4aa00b9bc76ee04fd1d06a",
+        "a2f27083b93776be41819ec102088ec151f4193b3d1fcf6efc01acb9316545b5",
+        "a3e87af1fefd625701543eddd86a3858b012f69b6e0d532bbe9a250acd3ffcfa",
+        "a4263509ff80274568e96729e980ed229e316d6261e79e8cf962114e6ef218a7",
+        "a4b1fe3965e3b40f98c30a05191bb51c9a209b1d88c487252910e1033f99e12d",
+        "a520263e766d21811796ac3b8375ba520315905800d3bae91ff6d40601cebb2b",
+        "a8eaadd0333b982890f6cba3bf13417bf7f95b25c459710965fba832144a2f50",
+        "a8ff0774b037032d741dde2f981039fa776a65979c24d1ff06c44c5a8115648f",
+        "ab013fdb3046e0a6611e8652dc5057d4d2de070f542f4ad424bb82ace594880f",
+        "abb08ffe6c2ae0fa76a5459819324ec7f8e2f34f17ffa2dbd9077ee063b753ab",
+        "ac8eeddf961514ad3398ba9ee9addd3b72c88763a5ac06d2393bd2ca20edcd70",
+        "adc2dca9848c7ad07414a369c95a8b9f91327cd0e5516e95bdf8abd0e8a18c47",
+        "b3affdb31141306d07825ebcc4dd8c851e7187ac16634a4fa8fd7bedbd61db36",
+        "b557a4583884fe50e95734ecc92975d34646d9d1ab62fe095bb82681281fca79",
+        "b5656af039e482d20b3294581a47542e23cb0f4e0405f74c41518eb3d69d9e53",
+        "b89eaed6975df1617e2416e3a645e222896791097174d379b695c8f37f1d961a",
+        "bacc48498ba19fbffe49800fabdf66415e8c89bd42703249449cb5a94f1eedcd",
+        "bb5a9d097c1ff520ad7f7ad9d37e361870802f687870f67ade3e7b534298ef88",
+        "bcc2923b6412272df2d579e7963e88ca7888deeda1b8ff94996f6f0bfd03e164",
+        "be80b4d89b15bec7b0b4fb71340a72b36487c2285ab682e977cc05aed91eb9e8",
+        "c0a0bb42086f0481aded2ee85e6a197693839800bf843a43e29982691caa79b9",
+        "c3410a1ac28e20dbe4af738bf1ebfc0e3500ec9d039d96120b4de9db68384e04",
+        "c3ebcc9f50c9573bc002500976ad98ff8032c238739374795df8ff4d9f94c711",
+        "c40724b86a150f54614b14c443e467eaffa14d4bf73346d0f8b4d79f12e40858",
+        "c48e1f6f6f48946664158686090e4a51e505dc6f8c0f051d2f0ba9eacd5a7264",
+        "c61f834713d8730220220f04fe30bfd3b3fe87e095817c3475596d0d8d927072",
+        "c6dbddd075ae36a382b4e371c417f6d73bb7ad9562858b2e6b1c5187ac652713",
+        "c92b47cac70cef33f1f8cf1ec553d4b4e3d0c12da7df1a62484be7d6ea602bc2",
+        "c9bb8c8d40b74036394a0ccd92a7bf2d7e439f0b7bb9907c0a275afd74e5713f",
+        "cce0c0f3ac8d311d705fa838940261aaf4ada186c182516ddf1c369f0f75d6c8",
+        "cd6016e5f81be1f326f80f95cf0fcf3b05616e77fb0565873ffa6c3941106b6a",
+        "ce2b472b16a58a5a27681815fe3a8750141f14b4a929fc923334bc739fb3b645",
+        "d093f932e46d3d18c3bd22dbe77230bb0035e219fbbf47a7b1306c8835cacdbb",
+        "d27186a1c31c9aace1d7640172849f6495d9caf8433423e7569199face0411af",
+        "d2ad3022ab18c62b5dedadb5648fcf75f06c9f2c3156b8fb1cbbd472c9c1069d",
+        "d2b94590ac548358d5bc9e21fb0cc16092fa9ba36dfd91fe5479744c13bfc860",
+        "d3616ac08e30109833bfb1d1d9d35f2d8568584df7e1d15756f2e27c65fb4335",
+        "d3d85ae87661a389918097eff3609849f714d93f85122a24cbb9f952422be1d5",
+        "d518ee7ccfaa3d77f2728040617569abcccaa66700c4555c4e9f2a765cf7bcb8",
+        "d51bc36a6607454a9372615e11271f94bcf2a0d2174431ca32a5c271b7cf2acd",
+        "d574e73a5f0bca30b8bf394bb778cb166f0dd06ad33e2a743248d49fa345f9c7",
+        "d5d7d9afdd78274ee934e657b15cf7f0ac1800ab39610a277c2692febbd1cc65",
+        "d63330d77dbdaa1397a7b02fe3426900ca3e8443a1486dc5055a4d694d6f4775",
+        "d70fdf920f6430eeec9e4014beb16e7516079216303581e5b9bb01f5b97af087",
+        "db415e3a29b2448fd32fbbc71c7f1ed1ab98803cb27b694720e1baa83db166a5",
+        "e08b48c6e3c35dd01c2c455a2c39a72004483279337bdaeb4eb7f0f19eec6bd9",
+        "e16e6ed12751d7214a6decc9361777331b7adb2d4da593ccecae57706316b1c1",
+        "e2c887d844a7f58be4002fe86e41d413edb3f864662273c895e852085ac9165d",
+        "e2fe2088ed919bac6351acb974145d3133fe7c4a8cab15524817b3705a373e4d",
+        "e31caf23d3b21e6bf3d829c698be07d13ac023629a240629fd1978ea2f9a45f3",
+        "e40c7cf6f336311fa0508b59f965a66b2e0a30ebb92b971a183db5ce27877f1f",
+        "e42909569b6b9a269564f21d4e00b28bc4faae3e27b4a981824f1e4e92627d59",
+        "e55077cd31855e05dd45f8ce4802f90b28df7d56cab987091b4a3107ea8401af",
+        "e5af9169b72d164071e1a4df5e562317b9382c9f8b499ac4c4a7c7e29a3a48da",
+        "e89d685e79cb4187c24068af5937d5c3003cbcf6fb0caad9241ff8285ff973dc",
+        "e985ff9eedf3c1ce101de5b96fcf2a82694844390e690b982eb25b5341673d54",
+        "e99f0f1173177cc76228dc777bc67c9a1c76121a9dcaa90f9c5424582535ca38",
+        "e9d61dd2bde5db514a3d3e08224e93e3b9510a8c2b90d95a0929ae5c3d85bf56",
+        "ed4ae69e3e1c2780284ee0e92844754f85f26221240237ca88b146799d1f5b3e",
+        "edc37676692d4380d8e0406c0a56dba80b3e7d3fb6f43448eb4cd56672e4eabd",
+        "efaae630a2c7dcc200904f8f8c15bbbde0c9353c760cf0d4821ab6e82bb2e7bc",
+        "f1cbfe85f3be5725d204c3c72ff2c66a6c89bbc5d2f109a7a963207b42e50c43",
+        "f39bb4be4feee942f7efd1d5ab0c44142babcdc98f104fa2e0793e86e96a25ad",
+        "f60f60cf208bbcbfda88e4e418c4a8ba9ea8da5323be2a29f6629f9801f2744c",
+        "f71ec1ce24b344e781b5079e7896b5a67730cae493c06187f4db2d47510ccebb",
+        "f7b411d24183a5b3ee9335925c06b60d3bc77f46d7f115f0e2227413c8e80e17",
+        "f8d06d94bea5e9445e397dc641cdcb082be07f266ef2699350974f4084d3e3a1",
+        "f90ebb8da289f18e86066c74306828c78fec496207d124ca9f5920f682b5befb",
+        "fa24cde0552562d3224b051f77b0c7190e0c3bf2aa6fd3bf1e98a756c8c0a90a",
+        "faada191b39afb9af4aeab539df5bd9bfd6189fc6ad8c96e4c307a86f13a1087",
+        "fbd20666f36bd03b7ffae22773a577faada0fce720d4fd8bcc13d92141eb4ee8",
+        "fc48711697f54bb0838484b50f14510602062490931c57e1afd1e778775d4d2b",
+        "fcc00d78f508a785cbe4cc9d8de89b3adb7dba41f9d576e8919759b8995a80e7",
+        "fea0cf3a54af9404922d56aecf40e29dd459ee2645078cb0f24e8fc7d7d159c2",
+        "ff28c803fb69da14790898946dbff4a29b1bfaa378828d5496fb0b0958817e81"
+      ],
+      "success_gate_pass": true,
+      "training_manifest_path": "models\\ramp_rl_v6\\live_v3\\confirmation\\ppo\\2803\\training_manifest.json",
+      "training_manifest_sha256": "15da97a85637f5b013e309489fe1b4d1fe69e96842e212d2e70ec447f154465f",
+      "updates": 540,
+      "validation_path": "output\\ramp_rl_v6\\live_v3\\validation\\ppo_2803_validation.json",
+      "validation_sha256": "afb2779488d8a488a41387e9c504080cafaad41fb1bf9d9ac9e4d66f99368f30"
+    },
+    {
+      "behavior_audit": {
+        "deferrable_pre_service": 323.83626139421114,
+        "policy_ramp_power": 132445.93458663076,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_cost_ratio": 0.980332907813542,
+      "factory": {
+        "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+        "source_path": "env\\ramp_v6\\factory.py",
+        "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+      },
+      "failed_gates": [],
+      "final_critic_sha256": "d8aeea3ce5d520893f4fa5161b52363e99a71ea73c118698f865c2d14ef19bb4",
+      "final_policy_sha256": "9d0342ecb9da1ae578e578604a005220b00bfeea48fc144fcf3d9cae67470bb6",
+      "forecast_identities": [
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-002c84061fedeaa099404a32"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-02599b983dc5f4917ffef043"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-093a1e646ff3149372125ea9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0a1fa8c550b77a2f92a2b30a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0c3b3a889fc043b587280fd6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0ffc94427fc6205288b49a4d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-10d36bf50a37d893acc105ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-11e8e4cf64feef0ed5e24a58"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-122676a61aa15eb5a0541c60"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-13e95aafabe95a44bc9ab2a8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1679729c1ba51e4d66e938f2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-17ed5e3cb904b74ff005cd73"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-18d504baa545554fdb4b4622"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1ad4ddc765c01704aedac3ad"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b008f5435561baecc42a551"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b818fb0e136e2b225548564"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1e8529c04a131ff2207d6786"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2113964a4ca4ccf35d333b06"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-229eaa41ac6eb21b4aa7d965"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2681ee36888864998443b39d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-273cc3ff105b6a2e1b8e0bc7"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3231edc442a899f0d539a133"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-384e9b56cddb7d7c1f8a687e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3bb65e845c10dd13aa4e13c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3c0aca172cbddbb4d38fd141"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3fa8bfe27b1d7beba74acd31"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-434f6927b36cd21ed9495fff"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4ac0b12e7e1289194188aaf1"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4b2e3e0768d0cec3950eb65d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4dd88ba72c06e4ff35b9e749"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4e32bfecdebf35f536fdb802"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4f1146ef83b7da434a4c86e0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4fd721e540e7f0811b2553e9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5307c1906fd5ac03dda4eb51"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-54c4c0cf1b5f5bfb1f317a18"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-55f109c05ef60182984286b9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-58e53cebce1bc23b4148929b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5a67e223e0545c6e9980bb94"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-60d7148477ec54f6a62bb7c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-62fb4d936ec73ef4f48f1f34"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-64f6c697a8c5c851bf41727d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-66085e3fe19a5a69b324927f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6786042ac07e95d87ca39cc5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-69e3026067534aef19bebcbc"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6bf1d02668aa900c7cc4e58e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-71e46df62e106af455017af3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-76af296c9d6a90b39e467a78"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-781485ce39612f6127dcd971"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-782722f28063f9c6d7ee2c81"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7a9fa21e50415aace85de1f4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f76e02631b76b7c0c24228e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f870824d70c7619caa147ee"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8184957f45fbee3195cdeb42"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-818a2c96ae8b7dcfde2d2978"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8242a3d78f21e6969246b2af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8274d046a388f392e7e5b9d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-84b59ce676aaad4bb4ecc60d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-859684f4d1503fecf9530213"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-863c6edf31fc3cec347e46d3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8920366dc711d29bba5b1f30"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d244cd719618cc637b3a3d8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d9781fa890602f453e92e64"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e346c02c0b55a799cd5bf28"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e6aaa9d18c2552f3eaa4e38"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-95edbd22639f095d6758b4ca"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9dd7bd979c282873aa296961"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9f8373375486f36bc397144a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a31bffc961b9c7e26b73efe3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a74b825cb82f8b705125ccb0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a9143d694c51c6607b1db985"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa482bd8cac6dad17abfc6af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa9603a311013325c31aee99"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-abf98251679cc7e7421f476f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ad3163683397635fea764e1a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ae4a3c850ff73d05c39acdd4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af1780d60e3da42453042285"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af19a77f25d498a5e7a6b15c"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b075e8511add615f787ecdb3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b0f7eb85c3e2aa4bd2487458"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ba44ac9ece611384939de841"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bc44279dd81ba513ebd96f8e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bd0dcd1b9b77b6042ce9d7bf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-be2d966aa53792ef06c4fbab"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c277d84044a19c410818d903"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c2efb7757b908aa3fa400497"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c40acdc4aa53f03244873abf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c4f7e039af222126d7e0237b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c6605d5bf492a60f26de406d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c7296873a261d504f2afab13"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cbb0d2fa9a2c39c43bf841e5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cd6208e6561521ee42dddbc8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d09db205c94a1b59f1583f44"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d144196a138f11c12343c818"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d3d955f7d2a193edddfb9db6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d59d1718d438bd6df30400cf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d703ea79fadc595c259c9cb9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d9561093b54bf9b4625351d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-da4cf8eda6347de3b010125f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dc2e46275a51061dd7a3632f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dcb2631f98be6ddc887e6aa0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-df8f4ede57e289c3be848b3f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e1328bcdf28dbe4961f79caa"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e24ec7ff24413343b1b3de7e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e5b42f849810103ce0d1a959"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e86403fd0ec0e74fd73f5f40"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-eddbd3c7318ce8d832c2a8a9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee0cce5328ca3a73073a892f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee4dd664946e9be9ed4c2070"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f0af3ec99f2bd2d6bee561c5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f538962cf3337e3176337117"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f59cba1fe6ca8abc9eaff156"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f7217a169eb9e94392a1155e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f9fc01c1534b1b0c3f9182ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-fead1440675bec1b86b36626"
+        ]
+      ],
+      "initial_critic_sha256": "89b3add1102ab9229b4e6fd38cdfed1359bb4ae8323c8a80645b2487c2f0ba46",
+      "initial_policy_sha256": "1cf742e2a0489c50e5b3e68adf6c9b19f1a987cd675462229252b290575ee57f",
+      "interactions": 110592,
+      "mean_incremental_ramp_impact": -1.3584708514139388e-05,
+      "per_market_macro": {
+        "CAISO_NP15": -1.7956844899590567e-05,
+        "ERCOT_LZ_NORTH": -3.3825871007723113e-06,
+        "ISONE_NEMA": -1.928426157661318e-05,
+        "MISO_MINN_HUB": -4.791646819918639e-07,
+        "NYISO_NYC_J": -3.7362676941574585e-05,
+        "SPP_NORTH_HUB": -3.0427158842938147e-06
+      },
+      "pure_rl_pass": true,
+      "seed": 2804,
+      "source_hashes": [
+        "00220c0ba02f97d2e5bb1d2dfc807a6808dcc064b5a728cfdc2ab009beae1bb7",
+        "0219a57716fa10ba301ed3f7fb885d122ab02eb837277d03662dad601984f776",
+        "026457e545286539ed2d3da7239e0e4e3f7bf613ae696108b5498230c0ad0075",
+        "033b0c70818624cf40fa0186dba85eff58905df301c08902b4bce5212381ecd9",
+        "03d6a21c1dc254ebadc69daaf09a071ec79b72427e2e4500e7ecec7f2b4ea2cf",
+        "04897507abdc48dd31ecee0f63dee0f2c485049846494d4a8114fb10ac1d321e",
+        "050911dc72e5df15483d3f777a8ac2e7b18e4405f48de4257179cbf6ea5c8784",
+        "0627af632335c175f62248b8b9c226eff374a50690605727480ff4a42dade3f1",
+        "077644917f5800b9d3201066327cc8438ebb25615f84280244b6cdfa32437e0c",
+        "099b238cc573a5f885cbf1988b44bfcc0135660c5156f895abee7c0a112d51a1",
+        "09e981c22ec25e0b8b4f9d41f2d00c47cc60dcf59058d58c1eb1d603cc996164",
+        "0a35e1e3253fd02fd228878f214c3015881b7904524d728a15aca9fd1086b2c9",
+        "0ac15a4ecb98eb29852311ff4579db74a3bb9f6a29026c1a3d6f065d1131f318",
+        "0ba4d46fc490b7ddbf5c06436f7e15fb7e5e2e4f3eb93ef7fb406a3e5a4254bf",
+        "0d3bc6742009c41c1f28735beaff55d1b5ccb05c93eb3612309a65fadf1ab89c",
+        "0d4e4f84bb6a36d0a14b4aa2acbad9ec61c72b5c1bd2e16227ae62b07f188f0a",
+        "0e491d2c9cdc71abaab6e052c75766de2eb1ac76e0bc5e7328cc62d9a917619d",
+        "0e5c2257417b5cc4bfd341523910a09c14b60f214c96d77201540003a81e79f7",
+        "0e790417b93286fc178e33435215adce62f5c88d55799629248bbde2cdf25cf9",
+        "0ed39d1b38d00e71292c1de4b2480414210f63cde97514f9cbbc1a98a66375ea",
+        "0f3fac198579fafbd61cdcbadf789bb483e3d088e4919fe2f71d7eaa9b98821a",
+        "1160fcb3afdfdd338da10c2dc24d99d5124fea4ef7e64eb4e035e55f34e8169b",
+        "117ca65dbb36968f27f7a2d66483d149c19b7c33e66ba8034c825826a7479100",
+        "11a132df1626552e76cccc4af8827f37bb66b0879bd54e05c94541b1608dbc00",
+        "13b04e96e90c81a7c13a0787fe446b492cf0987d2bd4485a7183ee01b395ff45",
+        "147c998c51b5b9499c3b24d950a30e5e8c9af19b2d4ff44ceb7dee5a16c1a57f",
+        "16adc2525b0fa121278ee70e25445c932541883ab2351f8317fe062280f09f1e",
+        "17a592def3d7ee4c94cb35c2b0d0618e5d2ec5da892e578d201f71024c1f38f4",
+        "17aa83d5a004326b3639895e1efd66c05dbc7503499542793570f33c8a191beb",
+        "17baa4638059c74b1c2f706bd66e5ac3c218b6cb2e4a06cf382a50e70c7bdc7b",
+        "181823dbd2f86ff2821183a16d47f3bbf7bc88a8d23b0d6f6ab02c0f09fd846c",
+        "182dba2c48d5a387600b3ad1fa6896051754709566d9499500ec9777debdac7d",
+        "1953b9522bf6dac3651d33b0cd1f13b35e51b4ba0a742bcaa8e4bf3c591a173f",
+        "19563cee19f079623f806db80ab6bda77f8e01320f18b5e01008895153074872",
+        "1ac66b0dba2b7f48b5f90923de13ecaf80a8ce94b2e037ae28fd8ec987c721ce",
+        "1aefb83299f97a5e8d18349b6ae0fdad9fd3fc3542c32a3b3d766da78aa8f2b3",
+        "1b58d0ae1d93ba3f5674209056e38853a7fb2785d021b015a2a31d5c1619ae7a",
+        "1c449dbb17fec6e216786ae1e7ee9534cfbb0d0f9e410d53e6c0c5b718f25704",
+        "20eee2b98178f356c6df836ee570a2c2d6dc21db1cbe310a9aad2278962e481d",
+        "2147d532d933ff9e1a8a27cc33bbd07530de7f3c2bb09ea4c83e8d28f9dd1421",
+        "229329c45fcce0404f961987a7642ec3bade37ff55018a5f0350d3d06d75dece",
+        "233c9a8f33c85e2f63be658821867de316e09ee9289ccfe34af7039eb5e9f873",
+        "23b7c05efb8902dc72ff51b58cdf21661ed0bce2c28d7dd13d62b2c6464c8ea6",
+        "23d27579ec5551151e0b7772c762d23e6d46000130fdd3f43f8f5d5579e9f76e",
+        "2454f71f528b57c09a380046eb6c3c680c5402403100499f8f84d488659bd9fe",
+        "24d5adaad472b5902438d4ef5cd4d2aed776f2ab4e096baae259bd10f2581755",
+        "262a104d622886bb08277827dc8753859be81a303bc6de19536dcfb190869586",
+        "26fade43af36df2b20e7cc2512e8e0df1e903efec80793a95e8c6e6fd42f824d",
+        "270231dad5dc3356e097927ec7c331c306b3e9ba8180d07dd37bcc37a5c17596",
+        "28f7645e6723427c74c72853dbfd9176af9e986d831818a7f524bb2371e7444b",
+        "2a21c721e4e0db9a29fa9ed95592763cf73cca75e0c891a7a4b0057c40daa49f",
+        "2addc438b4ade677bc110360f422c69e60b3258d896cc0182e50c4ccf2f9b8a4",
+        "2c13455d534c449f956866b1a762a73dd6e601f5ae0bb439de780a82f1929f76",
+        "2c885341fd07c1b12514779cc27aa87ee7b4b6af5ee89678cba8de434dd90b5b",
+        "2f1b083b58b51e86dfb0bdfd8fe5b5dc97f10a50b8a94e5da67bd653567f9ec7",
+        "304c7b85abe3bb3c6aa278ecd03c5dce9de746f46e447533ec0b39fd6d748f80",
+        "30a0f2e7a9653c5ee9f8f01702e1e3ae9866d467633be97043f716cf2523d191",
+        "3118895aa33e9a1ae74eb5496e8d5b4177058db9cdab40b13089a6e269730b57",
+        "327b61d1ba4a9bf905ba18458085b82619aa52719d01675eb7dabdd6c726aa56",
+        "3403425a638c764ee2b362c55c2fd2297fb87716452e7a1d8f7aa92b02a4f1b2",
+        "35334d8059e4231dd716ccdf1a37b4298285a4ed1ea786262e4a998d93a1fce7",
+        "35ce0edc76269d099316f99ce7de4c4c3ebbe7499108c85edf5058174006853a",
+        "35f4bad871a8e3b9332a54b338a701e60531348891f81d54702cca0a25b1cacc",
+        "36a6bc882cb4947da81b78efac28aa998b7daa684ca654b263bf4e4b88d478b0",
+        "38f1134cd94df18935d4d67d9344518dbf88ff81d510d076eeabfbf163b0b162",
+        "392abc92f0150c27ce825a33ff49dc6862b5f2b5538aacd07f28e0e614baf3d2",
+        "3978fa6fe2834401cef88696fe1c5fa5685605b647a4048b4e06352a4505180e",
+        "39f6f9228a7b6821233484576e5327c5f35c914b15ab54daeece195d5f4dbd17",
+        "3b01e00334ffe5182e2e20d50467793727a40d08785382de1b01fa336fbf99c2",
+        "3bde749c5f7c7016034b35501f5d397bc0c8281b6ff9d8277b661e6d98dbc742",
+        "3e96970074e0bac2573df1d14c5da5ac676dc5b049af61b3d8e9ca5d32a32ac4",
+        "3eced1cf143dff6bde4af9cf5c7338462b52452df566b3914701b60c8bd5f482",
+        "3fe9b482a0e4bfe4c3b38f371f099e1dd42b5a6d12e02942dca66007d453e2a7",
+        "40189348268671388cef5e15a790c3c08c2b64683bc13e15ac9b17706adb6af7",
+        "402727ee92abcdb75657e88d1b3c511fb97362d50d9691b4004e1d4f0abf21cf",
+        "43cec2c788ee0d20df8ac0bea23084b90d93255dc83a7f707354b4889aa5c330",
+        "4495986e7f9b98a7530da9a13e49da09bc338adee3fac7f0c5065bbdd97cc5de",
+        "45fb6ffc226e8b40f95045e6e4ae90c05f7241e4dbee916c5dc30b52e6ab30c0",
+        "46b35fda38e992c4d221edda5e76c0c2f037fb766da6f585fce0fb6fbc642902",
+        "485c844bb152bb257c817ec738f787a71c02cdb843d9dbc9682b8404053063ac",
+        "4add604f8e6736ac4a475800619c2eb876d0e32e0bc820888e7c28c617d533e9",
+        "4b44ba701f53eb6496dce6eb8a2de1a43950c5f211fc7e483e5311b6b8d69c82",
+        "4c9afe944d4c109025b5702197d70d8eca498906a9b4e9cf979fbf8cc7166ea2",
+        "4ce56b02f62cdabbf358b8b3e367884bc7f6becc55ea0551eaa5179eee644393",
+        "4dc25e9793af22a54720845c9bebf84caeede0c74cc3643c58bc68044e464b5e",
+        "51bb0c3bf2813317f9edbd90f1563d02bbde503c7c37bf8325a13d653597488c",
+        "53975e7684947445fab21fb368d6c22aac26327eeec9b98441bf650735f72282",
+        "5968e8c102bceb2d28ad1f9cda90e509cfa532160dce1bbb9231b994304ec9ef",
+        "59a9da3662f15b43536055cf644b8f3fce4936f595db51419d77237f580fbd59",
+        "5cd7bde5407fca1f63857c15e1c01cc4e9beaf5dea2650e15b5a020fcae51b2e",
+        "5d7c1a3aeb0807ab267b325e40b3ff8a4c0dc28054394f12e7f0a72c52341617",
+        "5ebc69da41b236e25435a4a13ed0e8a4f7fc6a7858854137179c2f8e63c0ae9f",
+        "5f5f16429d9b3e89b4399839e75b92d95f5c6297534469b5630fdaf69e06c4e4",
+        "5f845e035d01193bf5a18f2edcd2fd991f73708c666614447264f06404eb9fb4",
+        "61fd7cf16a7a3e06fca2aeb65caf752b30db9f8ffad1931b3b37a91ba06c0910",
+        "6223493061a7746ca14ccf08a004014ee6bb70340171007fe74948b48c9e60fc",
+        "62895b874befed1c3661c91cd64559d7da90d26c406ce1efe8f1ef1f91c0e8d1",
+        "62d28abd71249e0cbb4e1a136e20c92a2b550c8dc4efe599195df0d78c9bfacc",
+        "645aaef42be5e25bd2ab2eb49077a17581ae47dd2d294963619a77caec424067",
+        "64b98a605539f2734c065ded44e7c1235d672885079654415a01e470ec9f6eec",
+        "65a80a8f5ebd58fb577e2cdf22856a8ff36fa67e027907a45a96447c7932129f",
+        "67452ec373dc726993bc68df71783ffc7698e01fb04dd0a32beab5cf0d4bdef0",
+        "680553f15c57744d4b1eca85459cb037eddc63dfee22fe5284faf28a5fc9e79a",
+        "6c48ba9071c4629fc655226cfd5ac496013a5f2502f0a044e159216d45337b69",
+        "6c9fd8b5f6af79d8964f94eac1b12cd5b452e5696e5174686f4276394f33c421",
+        "6dbb8ec6bd8aa9cfdc9cded4a2fc599b2ccce922bac6db6dbf0e8cf6784abcdc",
+        "6ddf699f680511d1a20aa38d5bc193365f036841e3edac01d1713de0ddb5fd57",
+        "6e19af9369b3da9dd0276148f78503f64932c9b124006dd5371b264eed78807a",
+        "6f5cbc2c31e2625e572e98ce8942293a26063e548f3e3bab1265ad6016f33159",
+        "6fac230bfbd17448b6aca4c8c3eb7257ef150d711b566ded38cdd962aad0f1c3",
+        "6ffcd059d6a9e121fc9780fa7559c64d407e8a5b88b97349c527ab63d1f77ace",
+        "7058d8c34cbef4946b62f251a1e90d35be7f8db53803a7b68c3e2875116524e8",
+        "70c3a3b38331689e71a02cd3fcfbf1678de790efecfe192b873b9769c874190a",
+        "70cc33c3ac701d81753146c6d4860119db3d8efdae351ac0aa6eeb19301c1c75",
+        "724fca7f6db25533a808470caa9bf013f16a298f6bafbdb188f4ff080ae8a907",
+        "7328e04b19a052abf58552b6b6686c451ca94807c42c7aca45d2caa71416f7b2",
+        "73e1080c6523d30c93f641821f027d4618ef57e2abccb922b487b71e93145a33",
+        "747a3fdb9f2dc94b5cbef6edf23cf75c03b6e37f4fde53f2111c5ef15ada7e4d",
+        "74d9170935898d9c577fca995ca52baffefda4f099aa70358c5c6ec216427510",
+        "7608c841b6aa6bc7f6fec198cfea793f3f67f8a7b66f04401ca6f811d9d7d6f9",
+        "7a6651b30c579d58a40beab377ad03b23b9fe37034357a14d1727547a60896e3",
+        "7cb70e037d69b562d833975af142a6897a14dec5508fcfe6c34a14b91df19e13",
+        "7ce782bd4d3254995f10a52e080aeee700b2e24a52878b13ff32d69ca2010cf0",
+        "7cfff28e34b5d122517896062d3bf480ad8e4da4a24085cb67219d4019c802ed",
+        "7ef9e9f6449acfde72d6a936d728165370a0bbe6623e4f38343d9b44a6c629d2",
+        "7f38cafac1376137cb1809962db08e1a502b8872a241d161081028397a1787ae",
+        "80afac79f7d9b183ce8fd5f73b940fb7a095f9752c6318ed4cac126d754c4a75",
+        "826b9cf53173a1e76e70fd8946b68ac1a565690594f7d36f8e527b9e2075d357",
+        "83a48911aa205fc00787b3ddeaba3b02828c5e59ca26a770cf31b911d379c9f4",
+        "8536bc81f51f0f9396a8e5e5655ff2ac369e4ede99eab8122b6e6c1dec23cfc9",
+        "856207482cc1960144d9e7c35b580d9a5c69899d2b36b6f8e0b7cf6ec9c6e7f2",
+        "85641930f6b984e46e948dd09498a4bf00ad069e2c7fb5f0fe3bd2a26deba637",
+        "86bb8c41b6b7fb2f398814312614678dfeb8d346ff0e2a8f5a1d3a6d24d902f0",
+        "87bd22a4cd1fa9c981ad2979bcca9ebdbeeb71ffba942d7ec20624a6966fe374",
+        "888b47162fdfb5f50a6081f5a8fcdad208ca8ca77916c8d3e202b6daaefdc143",
+        "896fd2b056c0fda9435e208e61c680092522b31be71caeb33cd62835122b3eb3",
+        "8981d9ab9c990a8f5e77fc4c587d0350d5642e9ea38364281659479704205c18",
+        "8b488e00483ed9db1217d38cc4dfc847acd664d2d01255d6c5750531690a93ac",
+        "8c019947f473136122af06c6a1546af2522f1f94ae317888d57bfef637809dd1",
+        "8c372db482ae83409903f4f35383791ec4afa540f86f2c7697b390b34a97c37b",
+        "8e6003437c590809c6b79f61f22556d02f4dc65d4357a2bf684637e2d2b45ecf",
+        "90808acc9f333d20955024a92d711a7ea8a90f6cc6620648fd9190739b4d5caf",
+        "91d8c36713b90184ec393fb191a87f1dc5c438d6d17ca68bb70e1d7b189fc817",
+        "927ecf79122506942b95ddd6c19d340b3ae3e1875e3c34a1869db355abdb022a",
+        "92d5597bb1e2f26ad55de0dfd9e819aa61d9fd39f694b21ccb7af4e0d7e096de",
+        "993b341ac90548763d8f479d56688749f72c1b39a473cfa5985ed181cb918f83",
+        "9993a98021089a45c414ad79da9c5f59f0bc0410ba780b2da67da7859f4bf0cc",
+        "9a20723847be78821bf285405d7f00763a0e00494d98abd757fb7f31de73b8b5",
+        "9c368df4e08b487d52a020f9a5c10fdd408d49999bdae6880f71dc545b46f5c6",
+        "9d0213cc9136e3b45dd8510ae7034df71e3965f4923e45eb522271c86ff17031",
+        "9d96f1f081e64c597bf4080a12498e0e38e4b80d645b7ab400574e959c9a5fd8",
+        "9f26ba97df8ad0b41a78fb72ec6cca4ff6c611246631f836f21d192b9c59698a",
+        "a18242e2c672704a14931850f1af9654abde04c2874cc5e096d7dd6eae47918b",
+        "a2da7ebd47d2bc544e8cc464d8aa30dd81811ddd1e4aa00b9bc76ee04fd1d06a",
+        "a2f27083b93776be41819ec102088ec151f4193b3d1fcf6efc01acb9316545b5",
+        "a3e87af1fefd625701543eddd86a3858b012f69b6e0d532bbe9a250acd3ffcfa",
+        "a4263509ff80274568e96729e980ed229e316d6261e79e8cf962114e6ef218a7",
+        "a4b1fe3965e3b40f98c30a05191bb51c9a209b1d88c487252910e1033f99e12d",
+        "a520263e766d21811796ac3b8375ba520315905800d3bae91ff6d40601cebb2b",
+        "a8eaadd0333b982890f6cba3bf13417bf7f95b25c459710965fba832144a2f50",
+        "a8ff0774b037032d741dde2f981039fa776a65979c24d1ff06c44c5a8115648f",
+        "ab013fdb3046e0a6611e8652dc5057d4d2de070f542f4ad424bb82ace594880f",
+        "abb08ffe6c2ae0fa76a5459819324ec7f8e2f34f17ffa2dbd9077ee063b753ab",
+        "ac8eeddf961514ad3398ba9ee9addd3b72c88763a5ac06d2393bd2ca20edcd70",
+        "adc2dca9848c7ad07414a369c95a8b9f91327cd0e5516e95bdf8abd0e8a18c47",
+        "b3affdb31141306d07825ebcc4dd8c851e7187ac16634a4fa8fd7bedbd61db36",
+        "b557a4583884fe50e95734ecc92975d34646d9d1ab62fe095bb82681281fca79",
+        "b5656af039e482d20b3294581a47542e23cb0f4e0405f74c41518eb3d69d9e53",
+        "b89eaed6975df1617e2416e3a645e222896791097174d379b695c8f37f1d961a",
+        "bacc48498ba19fbffe49800fabdf66415e8c89bd42703249449cb5a94f1eedcd",
+        "bb5a9d097c1ff520ad7f7ad9d37e361870802f687870f67ade3e7b534298ef88",
+        "bcc2923b6412272df2d579e7963e88ca7888deeda1b8ff94996f6f0bfd03e164",
+        "be80b4d89b15bec7b0b4fb71340a72b36487c2285ab682e977cc05aed91eb9e8",
+        "c0a0bb42086f0481aded2ee85e6a197693839800bf843a43e29982691caa79b9",
+        "c3410a1ac28e20dbe4af738bf1ebfc0e3500ec9d039d96120b4de9db68384e04",
+        "c3ebcc9f50c9573bc002500976ad98ff8032c238739374795df8ff4d9f94c711",
+        "c40724b86a150f54614b14c443e467eaffa14d4bf73346d0f8b4d79f12e40858",
+        "c48e1f6f6f48946664158686090e4a51e505dc6f8c0f051d2f0ba9eacd5a7264",
+        "c61f834713d8730220220f04fe30bfd3b3fe87e095817c3475596d0d8d927072",
+        "c6dbddd075ae36a382b4e371c417f6d73bb7ad9562858b2e6b1c5187ac652713",
+        "c92b47cac70cef33f1f8cf1ec553d4b4e3d0c12da7df1a62484be7d6ea602bc2",
+        "c9bb8c8d40b74036394a0ccd92a7bf2d7e439f0b7bb9907c0a275afd74e5713f",
+        "cce0c0f3ac8d311d705fa838940261aaf4ada186c182516ddf1c369f0f75d6c8",
+        "cd6016e5f81be1f326f80f95cf0fcf3b05616e77fb0565873ffa6c3941106b6a",
+        "ce2b472b16a58a5a27681815fe3a8750141f14b4a929fc923334bc739fb3b645",
+        "d093f932e46d3d18c3bd22dbe77230bb0035e219fbbf47a7b1306c8835cacdbb",
+        "d27186a1c31c9aace1d7640172849f6495d9caf8433423e7569199face0411af",
+        "d2ad3022ab18c62b5dedadb5648fcf75f06c9f2c3156b8fb1cbbd472c9c1069d",
+        "d2b94590ac548358d5bc9e21fb0cc16092fa9ba36dfd91fe5479744c13bfc860",
+        "d3616ac08e30109833bfb1d1d9d35f2d8568584df7e1d15756f2e27c65fb4335",
+        "d3d85ae87661a389918097eff3609849f714d93f85122a24cbb9f952422be1d5",
+        "d518ee7ccfaa3d77f2728040617569abcccaa66700c4555c4e9f2a765cf7bcb8",
+        "d51bc36a6607454a9372615e11271f94bcf2a0d2174431ca32a5c271b7cf2acd",
+        "d574e73a5f0bca30b8bf394bb778cb166f0dd06ad33e2a743248d49fa345f9c7",
+        "d5d7d9afdd78274ee934e657b15cf7f0ac1800ab39610a277c2692febbd1cc65",
+        "d63330d77dbdaa1397a7b02fe3426900ca3e8443a1486dc5055a4d694d6f4775",
+        "d70fdf920f6430eeec9e4014beb16e7516079216303581e5b9bb01f5b97af087",
+        "db415e3a29b2448fd32fbbc71c7f1ed1ab98803cb27b694720e1baa83db166a5",
+        "e08b48c6e3c35dd01c2c455a2c39a72004483279337bdaeb4eb7f0f19eec6bd9",
+        "e16e6ed12751d7214a6decc9361777331b7adb2d4da593ccecae57706316b1c1",
+        "e2c887d844a7f58be4002fe86e41d413edb3f864662273c895e852085ac9165d",
+        "e2fe2088ed919bac6351acb974145d3133fe7c4a8cab15524817b3705a373e4d",
+        "e31caf23d3b21e6bf3d829c698be07d13ac023629a240629fd1978ea2f9a45f3",
+        "e40c7cf6f336311fa0508b59f965a66b2e0a30ebb92b971a183db5ce27877f1f",
+        "e42909569b6b9a269564f21d4e00b28bc4faae3e27b4a981824f1e4e92627d59",
+        "e55077cd31855e05dd45f8ce4802f90b28df7d56cab987091b4a3107ea8401af",
+        "e5af9169b72d164071e1a4df5e562317b9382c9f8b499ac4c4a7c7e29a3a48da",
+        "e89d685e79cb4187c24068af5937d5c3003cbcf6fb0caad9241ff8285ff973dc",
+        "e985ff9eedf3c1ce101de5b96fcf2a82694844390e690b982eb25b5341673d54",
+        "e99f0f1173177cc76228dc777bc67c9a1c76121a9dcaa90f9c5424582535ca38",
+        "e9d61dd2bde5db514a3d3e08224e93e3b9510a8c2b90d95a0929ae5c3d85bf56",
+        "ed4ae69e3e1c2780284ee0e92844754f85f26221240237ca88b146799d1f5b3e",
+        "edc37676692d4380d8e0406c0a56dba80b3e7d3fb6f43448eb4cd56672e4eabd",
+        "efaae630a2c7dcc200904f8f8c15bbbde0c9353c760cf0d4821ab6e82bb2e7bc",
+        "f1cbfe85f3be5725d204c3c72ff2c66a6c89bbc5d2f109a7a963207b42e50c43",
+        "f39bb4be4feee942f7efd1d5ab0c44142babcdc98f104fa2e0793e86e96a25ad",
+        "f60f60cf208bbcbfda88e4e418c4a8ba9ea8da5323be2a29f6629f9801f2744c",
+        "f71ec1ce24b344e781b5079e7896b5a67730cae493c06187f4db2d47510ccebb",
+        "f7b411d24183a5b3ee9335925c06b60d3bc77f46d7f115f0e2227413c8e80e17",
+        "f8d06d94bea5e9445e397dc641cdcb082be07f266ef2699350974f4084d3e3a1",
+        "f90ebb8da289f18e86066c74306828c78fec496207d124ca9f5920f682b5befb",
+        "fa24cde0552562d3224b051f77b0c7190e0c3bf2aa6fd3bf1e98a756c8c0a90a",
+        "faada191b39afb9af4aeab539df5bd9bfd6189fc6ad8c96e4c307a86f13a1087",
+        "fbd20666f36bd03b7ffae22773a577faada0fce720d4fd8bcc13d92141eb4ee8",
+        "fc48711697f54bb0838484b50f14510602062490931c57e1afd1e778775d4d2b",
+        "fcc00d78f508a785cbe4cc9d8de89b3adb7dba41f9d576e8919759b8995a80e7",
+        "fea0cf3a54af9404922d56aecf40e29dd459ee2645078cb0f24e8fc7d7d159c2",
+        "ff28c803fb69da14790898946dbff4a29b1bfaa378828d5496fb0b0958817e81"
+      ],
+      "success_gate_pass": true,
+      "training_manifest_path": "models\\ramp_rl_v6\\live_v3\\confirmation\\ppo\\2804\\training_manifest.json",
+      "training_manifest_sha256": "7e19e1b9bc6704d200712a45091bacc7712677b0e131fd42519f8ec9a7476145",
+      "updates": 540,
+      "validation_path": "output\\ramp_rl_v6\\live_v3\\validation\\ppo_2804_validation.json",
+      "validation_sha256": "2ad5b07f7014d9fd30ba37d2a6ee316b7934a18defdd7eceabfd6b224ee76566"
+    },
+    {
+      "behavior_audit": {
+        "deferrable_pre_service": 319.76873701676914,
+        "policy_ramp_power": 133038.81693590392,
+        "status_quo_ramp_power": 135587.93643082705
+      },
+      "emergency_feasibility_rate": 0.0,
+      "energy_cost_ratio": 0.9913122200040323,
+      "factory": {
+        "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+        "source_path": "env\\ramp_v6\\factory.py",
+        "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+      },
+      "failed_gates": [
+        "every_market_ramp_improves"
+      ],
+      "final_critic_sha256": "8bf203bb9303cac0a815f5c4325e85f5e1ccc8f01eb4140fdb5b7fa8d810027e",
+      "final_policy_sha256": "8aa28e035f7f0710adffdbe5773ffc4a6a43d9a562ecca784ea616599f61e42f",
+      "forecast_identities": [
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-002c84061fedeaa099404a32"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-02599b983dc5f4917ffef043"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-093a1e646ff3149372125ea9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0a1fa8c550b77a2f92a2b30a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0c3b3a889fc043b587280fd6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-0ffc94427fc6205288b49a4d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-10d36bf50a37d893acc105ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-11e8e4cf64feef0ed5e24a58"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-122676a61aa15eb5a0541c60"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-13e95aafabe95a44bc9ab2a8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1679729c1ba51e4d66e938f2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-17ed5e3cb904b74ff005cd73"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-18d504baa545554fdb4b4622"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1ad4ddc765c01704aedac3ad"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b008f5435561baecc42a551"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1b818fb0e136e2b225548564"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-1e8529c04a131ff2207d6786"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2113964a4ca4ccf35d333b06"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-229eaa41ac6eb21b4aa7d965"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-2681ee36888864998443b39d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-273cc3ff105b6a2e1b8e0bc7"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3231edc442a899f0d539a133"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-384e9b56cddb7d7c1f8a687e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3bb65e845c10dd13aa4e13c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3c0aca172cbddbb4d38fd141"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-3fa8bfe27b1d7beba74acd31"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-434f6927b36cd21ed9495fff"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4ac0b12e7e1289194188aaf1"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4b2e3e0768d0cec3950eb65d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4dd88ba72c06e4ff35b9e749"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4e32bfecdebf35f536fdb802"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4f1146ef83b7da434a4c86e0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-4fd721e540e7f0811b2553e9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5307c1906fd5ac03dda4eb51"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-54c4c0cf1b5f5bfb1f317a18"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-55f109c05ef60182984286b9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-58e53cebce1bc23b4148929b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-5a67e223e0545c6e9980bb94"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-60d7148477ec54f6a62bb7c8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-62fb4d936ec73ef4f48f1f34"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-64f6c697a8c5c851bf41727d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-66085e3fe19a5a69b324927f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6786042ac07e95d87ca39cc5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-69e3026067534aef19bebcbc"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-6bf1d02668aa900c7cc4e58e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-71e46df62e106af455017af3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-76af296c9d6a90b39e467a78"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-781485ce39612f6127dcd971"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-782722f28063f9c6d7ee2c81"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7a9fa21e50415aace85de1f4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f76e02631b76b7c0c24228e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-7f870824d70c7619caa147ee"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8184957f45fbee3195cdeb42"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-818a2c96ae8b7dcfde2d2978"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8242a3d78f21e6969246b2af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8274d046a388f392e7e5b9d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-84b59ce676aaad4bb4ecc60d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-859684f4d1503fecf9530213"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-863c6edf31fc3cec347e46d3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8920366dc711d29bba5b1f30"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d244cd719618cc637b3a3d8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8d9781fa890602f453e92e64"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e346c02c0b55a799cd5bf28"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-8e6aaa9d18c2552f3eaa4e38"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-95edbd22639f095d6758b4ca"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9dd7bd979c282873aa296961"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-9f8373375486f36bc397144a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a31bffc961b9c7e26b73efe3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a74b825cb82f8b705125ccb0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-a9143d694c51c6607b1db985"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa482bd8cac6dad17abfc6af"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-aa9603a311013325c31aee99"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-abf98251679cc7e7421f476f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ad3163683397635fea764e1a"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ae4a3c850ff73d05c39acdd4"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af1780d60e3da42453042285"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-af19a77f25d498a5e7a6b15c"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b075e8511add615f787ecdb3"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-b0f7eb85c3e2aa4bd2487458"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ba44ac9ece611384939de841"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bc44279dd81ba513ebd96f8e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-bd0dcd1b9b77b6042ce9d7bf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-be2d966aa53792ef06c4fbab"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c277d84044a19c410818d903"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c2efb7757b908aa3fa400497"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c40acdc4aa53f03244873abf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c4f7e039af222126d7e0237b"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c6605d5bf492a60f26de406d"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-c7296873a261d504f2afab13"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cbb0d2fa9a2c39c43bf841e5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-cd6208e6561521ee42dddbc8"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d09db205c94a1b59f1583f44"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d144196a138f11c12343c818"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d3d955f7d2a193edddfb9db6"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d59d1718d438bd6df30400cf"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d703ea79fadc595c259c9cb9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-d9561093b54bf9b4625351d2"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-da4cf8eda6347de3b010125f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dc2e46275a51061dd7a3632f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-dcb2631f98be6ddc887e6aa0"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-df8f4ede57e289c3be848b3f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e1328bcdf28dbe4961f79caa"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e24ec7ff24413343b1b3de7e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e5b42f849810103ce0d1a959"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-e86403fd0ec0e74fd73f5f40"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-eddbd3c7318ce8d832c2a8a9"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee0cce5328ca3a73073a892f"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-ee4dd664946e9be9ed4c2070"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f0af3ec99f2bd2d6bee561c5"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f538962cf3337e3176337117"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f59cba1fe6ca8abc9eaff156"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f7217a169eb9e94392a1155e"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-f9fc01c1534b1b0c3f9182ef"
+        ],
+        [
+          "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+          "window-fead1440675bec1b86b36626"
+        ]
+      ],
+      "initial_critic_sha256": "134bd501ebaa0d393aeca09c06c5b10e5c81859ece85b801087374b7eddaee48",
+      "initial_policy_sha256": "35214ba9a7a06c661bb8528e7de14f0159d999967b7c23fb4b5c85db700b30aa",
+      "interactions": 110592,
+      "mean_incremental_ramp_impact": -1.3900897231882494e-05,
+      "per_market_macro": {
+        "CAISO_NP15": -1.8906659559292627e-05,
+        "ERCOT_LZ_NORTH": -3.446857815689279e-06,
+        "ISONE_NEMA": -2.1842183655795706e-05,
+        "MISO_MINN_HUB": 1.294008014178523e-07,
+        "NYISO_NYC_J": -3.684800288510596e-05,
+        "SPP_NORTH_HUB": -2.4910802768292412e-06
+      },
+      "pure_rl_pass": true,
+      "seed": 2805,
+      "source_hashes": [
+        "00220c0ba02f97d2e5bb1d2dfc807a6808dcc064b5a728cfdc2ab009beae1bb7",
+        "0219a57716fa10ba301ed3f7fb885d122ab02eb837277d03662dad601984f776",
+        "026457e545286539ed2d3da7239e0e4e3f7bf613ae696108b5498230c0ad0075",
+        "033b0c70818624cf40fa0186dba85eff58905df301c08902b4bce5212381ecd9",
+        "03d6a21c1dc254ebadc69daaf09a071ec79b72427e2e4500e7ecec7f2b4ea2cf",
+        "04897507abdc48dd31ecee0f63dee0f2c485049846494d4a8114fb10ac1d321e",
+        "050911dc72e5df15483d3f777a8ac2e7b18e4405f48de4257179cbf6ea5c8784",
+        "0627af632335c175f62248b8b9c226eff374a50690605727480ff4a42dade3f1",
+        "077644917f5800b9d3201066327cc8438ebb25615f84280244b6cdfa32437e0c",
+        "099b238cc573a5f885cbf1988b44bfcc0135660c5156f895abee7c0a112d51a1",
+        "09e981c22ec25e0b8b4f9d41f2d00c47cc60dcf59058d58c1eb1d603cc996164",
+        "0a35e1e3253fd02fd228878f214c3015881b7904524d728a15aca9fd1086b2c9",
+        "0ac15a4ecb98eb29852311ff4579db74a3bb9f6a29026c1a3d6f065d1131f318",
+        "0ba4d46fc490b7ddbf5c06436f7e15fb7e5e2e4f3eb93ef7fb406a3e5a4254bf",
+        "0d3bc6742009c41c1f28735beaff55d1b5ccb05c93eb3612309a65fadf1ab89c",
+        "0d4e4f84bb6a36d0a14b4aa2acbad9ec61c72b5c1bd2e16227ae62b07f188f0a",
+        "0e491d2c9cdc71abaab6e052c75766de2eb1ac76e0bc5e7328cc62d9a917619d",
+        "0e5c2257417b5cc4bfd341523910a09c14b60f214c96d77201540003a81e79f7",
+        "0e790417b93286fc178e33435215adce62f5c88d55799629248bbde2cdf25cf9",
+        "0ed39d1b38d00e71292c1de4b2480414210f63cde97514f9cbbc1a98a66375ea",
+        "0f3fac198579fafbd61cdcbadf789bb483e3d088e4919fe2f71d7eaa9b98821a",
+        "1160fcb3afdfdd338da10c2dc24d99d5124fea4ef7e64eb4e035e55f34e8169b",
+        "117ca65dbb36968f27f7a2d66483d149c19b7c33e66ba8034c825826a7479100",
+        "11a132df1626552e76cccc4af8827f37bb66b0879bd54e05c94541b1608dbc00",
+        "13b04e96e90c81a7c13a0787fe446b492cf0987d2bd4485a7183ee01b395ff45",
+        "147c998c51b5b9499c3b24d950a30e5e8c9af19b2d4ff44ceb7dee5a16c1a57f",
+        "16adc2525b0fa121278ee70e25445c932541883ab2351f8317fe062280f09f1e",
+        "17a592def3d7ee4c94cb35c2b0d0618e5d2ec5da892e578d201f71024c1f38f4",
+        "17aa83d5a004326b3639895e1efd66c05dbc7503499542793570f33c8a191beb",
+        "17baa4638059c74b1c2f706bd66e5ac3c218b6cb2e4a06cf382a50e70c7bdc7b",
+        "181823dbd2f86ff2821183a16d47f3bbf7bc88a8d23b0d6f6ab02c0f09fd846c",
+        "182dba2c48d5a387600b3ad1fa6896051754709566d9499500ec9777debdac7d",
+        "1953b9522bf6dac3651d33b0cd1f13b35e51b4ba0a742bcaa8e4bf3c591a173f",
+        "19563cee19f079623f806db80ab6bda77f8e01320f18b5e01008895153074872",
+        "1ac66b0dba2b7f48b5f90923de13ecaf80a8ce94b2e037ae28fd8ec987c721ce",
+        "1aefb83299f97a5e8d18349b6ae0fdad9fd3fc3542c32a3b3d766da78aa8f2b3",
+        "1b58d0ae1d93ba3f5674209056e38853a7fb2785d021b015a2a31d5c1619ae7a",
+        "1c449dbb17fec6e216786ae1e7ee9534cfbb0d0f9e410d53e6c0c5b718f25704",
+        "20eee2b98178f356c6df836ee570a2c2d6dc21db1cbe310a9aad2278962e481d",
+        "2147d532d933ff9e1a8a27cc33bbd07530de7f3c2bb09ea4c83e8d28f9dd1421",
+        "229329c45fcce0404f961987a7642ec3bade37ff55018a5f0350d3d06d75dece",
+        "233c9a8f33c85e2f63be658821867de316e09ee9289ccfe34af7039eb5e9f873",
+        "23b7c05efb8902dc72ff51b58cdf21661ed0bce2c28d7dd13d62b2c6464c8ea6",
+        "23d27579ec5551151e0b7772c762d23e6d46000130fdd3f43f8f5d5579e9f76e",
+        "2454f71f528b57c09a380046eb6c3c680c5402403100499f8f84d488659bd9fe",
+        "24d5adaad472b5902438d4ef5cd4d2aed776f2ab4e096baae259bd10f2581755",
+        "262a104d622886bb08277827dc8753859be81a303bc6de19536dcfb190869586",
+        "26fade43af36df2b20e7cc2512e8e0df1e903efec80793a95e8c6e6fd42f824d",
+        "270231dad5dc3356e097927ec7c331c306b3e9ba8180d07dd37bcc37a5c17596",
+        "28f7645e6723427c74c72853dbfd9176af9e986d831818a7f524bb2371e7444b",
+        "2a21c721e4e0db9a29fa9ed95592763cf73cca75e0c891a7a4b0057c40daa49f",
+        "2addc438b4ade677bc110360f422c69e60b3258d896cc0182e50c4ccf2f9b8a4",
+        "2c13455d534c449f956866b1a762a73dd6e601f5ae0bb439de780a82f1929f76",
+        "2c885341fd07c1b12514779cc27aa87ee7b4b6af5ee89678cba8de434dd90b5b",
+        "2f1b083b58b51e86dfb0bdfd8fe5b5dc97f10a50b8a94e5da67bd653567f9ec7",
+        "304c7b85abe3bb3c6aa278ecd03c5dce9de746f46e447533ec0b39fd6d748f80",
+        "30a0f2e7a9653c5ee9f8f01702e1e3ae9866d467633be97043f716cf2523d191",
+        "3118895aa33e9a1ae74eb5496e8d5b4177058db9cdab40b13089a6e269730b57",
+        "327b61d1ba4a9bf905ba18458085b82619aa52719d01675eb7dabdd6c726aa56",
+        "3403425a638c764ee2b362c55c2fd2297fb87716452e7a1d8f7aa92b02a4f1b2",
+        "35334d8059e4231dd716ccdf1a37b4298285a4ed1ea786262e4a998d93a1fce7",
+        "35ce0edc76269d099316f99ce7de4c4c3ebbe7499108c85edf5058174006853a",
+        "35f4bad871a8e3b9332a54b338a701e60531348891f81d54702cca0a25b1cacc",
+        "36a6bc882cb4947da81b78efac28aa998b7daa684ca654b263bf4e4b88d478b0",
+        "38f1134cd94df18935d4d67d9344518dbf88ff81d510d076eeabfbf163b0b162",
+        "392abc92f0150c27ce825a33ff49dc6862b5f2b5538aacd07f28e0e614baf3d2",
+        "3978fa6fe2834401cef88696fe1c5fa5685605b647a4048b4e06352a4505180e",
+        "39f6f9228a7b6821233484576e5327c5f35c914b15ab54daeece195d5f4dbd17",
+        "3b01e00334ffe5182e2e20d50467793727a40d08785382de1b01fa336fbf99c2",
+        "3bde749c5f7c7016034b35501f5d397bc0c8281b6ff9d8277b661e6d98dbc742",
+        "3e96970074e0bac2573df1d14c5da5ac676dc5b049af61b3d8e9ca5d32a32ac4",
+        "3eced1cf143dff6bde4af9cf5c7338462b52452df566b3914701b60c8bd5f482",
+        "3fe9b482a0e4bfe4c3b38f371f099e1dd42b5a6d12e02942dca66007d453e2a7",
+        "40189348268671388cef5e15a790c3c08c2b64683bc13e15ac9b17706adb6af7",
+        "402727ee92abcdb75657e88d1b3c511fb97362d50d9691b4004e1d4f0abf21cf",
+        "43cec2c788ee0d20df8ac0bea23084b90d93255dc83a7f707354b4889aa5c330",
+        "4495986e7f9b98a7530da9a13e49da09bc338adee3fac7f0c5065bbdd97cc5de",
+        "45fb6ffc226e8b40f95045e6e4ae90c05f7241e4dbee916c5dc30b52e6ab30c0",
+        "46b35fda38e992c4d221edda5e76c0c2f037fb766da6f585fce0fb6fbc642902",
+        "485c844bb152bb257c817ec738f787a71c02cdb843d9dbc9682b8404053063ac",
+        "4add604f8e6736ac4a475800619c2eb876d0e32e0bc820888e7c28c617d533e9",
+        "4b44ba701f53eb6496dce6eb8a2de1a43950c5f211fc7e483e5311b6b8d69c82",
+        "4c9afe944d4c109025b5702197d70d8eca498906a9b4e9cf979fbf8cc7166ea2",
+        "4ce56b02f62cdabbf358b8b3e367884bc7f6becc55ea0551eaa5179eee644393",
+        "4dc25e9793af22a54720845c9bebf84caeede0c74cc3643c58bc68044e464b5e",
+        "51bb0c3bf2813317f9edbd90f1563d02bbde503c7c37bf8325a13d653597488c",
+        "53975e7684947445fab21fb368d6c22aac26327eeec9b98441bf650735f72282",
+        "5968e8c102bceb2d28ad1f9cda90e509cfa532160dce1bbb9231b994304ec9ef",
+        "59a9da3662f15b43536055cf644b8f3fce4936f595db51419d77237f580fbd59",
+        "5cd7bde5407fca1f63857c15e1c01cc4e9beaf5dea2650e15b5a020fcae51b2e",
+        "5d7c1a3aeb0807ab267b325e40b3ff8a4c0dc28054394f12e7f0a72c52341617",
+        "5ebc69da41b236e25435a4a13ed0e8a4f7fc6a7858854137179c2f8e63c0ae9f",
+        "5f5f16429d9b3e89b4399839e75b92d95f5c6297534469b5630fdaf69e06c4e4",
+        "5f845e035d01193bf5a18f2edcd2fd991f73708c666614447264f06404eb9fb4",
+        "61fd7cf16a7a3e06fca2aeb65caf752b30db9f8ffad1931b3b37a91ba06c0910",
+        "6223493061a7746ca14ccf08a004014ee6bb70340171007fe74948b48c9e60fc",
+        "62895b874befed1c3661c91cd64559d7da90d26c406ce1efe8f1ef1f91c0e8d1",
+        "62d28abd71249e0cbb4e1a136e20c92a2b550c8dc4efe599195df0d78c9bfacc",
+        "645aaef42be5e25bd2ab2eb49077a17581ae47dd2d294963619a77caec424067",
+        "64b98a605539f2734c065ded44e7c1235d672885079654415a01e470ec9f6eec",
+        "65a80a8f5ebd58fb577e2cdf22856a8ff36fa67e027907a45a96447c7932129f",
+        "67452ec373dc726993bc68df71783ffc7698e01fb04dd0a32beab5cf0d4bdef0",
+        "680553f15c57744d4b1eca85459cb037eddc63dfee22fe5284faf28a5fc9e79a",
+        "6c48ba9071c4629fc655226cfd5ac496013a5f2502f0a044e159216d45337b69",
+        "6c9fd8b5f6af79d8964f94eac1b12cd5b452e5696e5174686f4276394f33c421",
+        "6dbb8ec6bd8aa9cfdc9cded4a2fc599b2ccce922bac6db6dbf0e8cf6784abcdc",
+        "6ddf699f680511d1a20aa38d5bc193365f036841e3edac01d1713de0ddb5fd57",
+        "6e19af9369b3da9dd0276148f78503f64932c9b124006dd5371b264eed78807a",
+        "6f5cbc2c31e2625e572e98ce8942293a26063e548f3e3bab1265ad6016f33159",
+        "6fac230bfbd17448b6aca4c8c3eb7257ef150d711b566ded38cdd962aad0f1c3",
+        "6ffcd059d6a9e121fc9780fa7559c64d407e8a5b88b97349c527ab63d1f77ace",
+        "7058d8c34cbef4946b62f251a1e90d35be7f8db53803a7b68c3e2875116524e8",
+        "70c3a3b38331689e71a02cd3fcfbf1678de790efecfe192b873b9769c874190a",
+        "70cc33c3ac701d81753146c6d4860119db3d8efdae351ac0aa6eeb19301c1c75",
+        "724fca7f6db25533a808470caa9bf013f16a298f6bafbdb188f4ff080ae8a907",
+        "7328e04b19a052abf58552b6b6686c451ca94807c42c7aca45d2caa71416f7b2",
+        "73e1080c6523d30c93f641821f027d4618ef57e2abccb922b487b71e93145a33",
+        "747a3fdb9f2dc94b5cbef6edf23cf75c03b6e37f4fde53f2111c5ef15ada7e4d",
+        "74d9170935898d9c577fca995ca52baffefda4f099aa70358c5c6ec216427510",
+        "7608c841b6aa6bc7f6fec198cfea793f3f67f8a7b66f04401ca6f811d9d7d6f9",
+        "7a6651b30c579d58a40beab377ad03b23b9fe37034357a14d1727547a60896e3",
+        "7cb70e037d69b562d833975af142a6897a14dec5508fcfe6c34a14b91df19e13",
+        "7ce782bd4d3254995f10a52e080aeee700b2e24a52878b13ff32d69ca2010cf0",
+        "7cfff28e34b5d122517896062d3bf480ad8e4da4a24085cb67219d4019c802ed",
+        "7ef9e9f6449acfde72d6a936d728165370a0bbe6623e4f38343d9b44a6c629d2",
+        "7f38cafac1376137cb1809962db08e1a502b8872a241d161081028397a1787ae",
+        "80afac79f7d9b183ce8fd5f73b940fb7a095f9752c6318ed4cac126d754c4a75",
+        "826b9cf53173a1e76e70fd8946b68ac1a565690594f7d36f8e527b9e2075d357",
+        "83a48911aa205fc00787b3ddeaba3b02828c5e59ca26a770cf31b911d379c9f4",
+        "8536bc81f51f0f9396a8e5e5655ff2ac369e4ede99eab8122b6e6c1dec23cfc9",
+        "856207482cc1960144d9e7c35b580d9a5c69899d2b36b6f8e0b7cf6ec9c6e7f2",
+        "85641930f6b984e46e948dd09498a4bf00ad069e2c7fb5f0fe3bd2a26deba637",
+        "86bb8c41b6b7fb2f398814312614678dfeb8d346ff0e2a8f5a1d3a6d24d902f0",
+        "87bd22a4cd1fa9c981ad2979bcca9ebdbeeb71ffba942d7ec20624a6966fe374",
+        "888b47162fdfb5f50a6081f5a8fcdad208ca8ca77916c8d3e202b6daaefdc143",
+        "896fd2b056c0fda9435e208e61c680092522b31be71caeb33cd62835122b3eb3",
+        "8981d9ab9c990a8f5e77fc4c587d0350d5642e9ea38364281659479704205c18",
+        "8b488e00483ed9db1217d38cc4dfc847acd664d2d01255d6c5750531690a93ac",
+        "8c019947f473136122af06c6a1546af2522f1f94ae317888d57bfef637809dd1",
+        "8c372db482ae83409903f4f35383791ec4afa540f86f2c7697b390b34a97c37b",
+        "8e6003437c590809c6b79f61f22556d02f4dc65d4357a2bf684637e2d2b45ecf",
+        "90808acc9f333d20955024a92d711a7ea8a90f6cc6620648fd9190739b4d5caf",
+        "91d8c36713b90184ec393fb191a87f1dc5c438d6d17ca68bb70e1d7b189fc817",
+        "927ecf79122506942b95ddd6c19d340b3ae3e1875e3c34a1869db355abdb022a",
+        "92d5597bb1e2f26ad55de0dfd9e819aa61d9fd39f694b21ccb7af4e0d7e096de",
+        "993b341ac90548763d8f479d56688749f72c1b39a473cfa5985ed181cb918f83",
+        "9993a98021089a45c414ad79da9c5f59f0bc0410ba780b2da67da7859f4bf0cc",
+        "9a20723847be78821bf285405d7f00763a0e00494d98abd757fb7f31de73b8b5",
+        "9c368df4e08b487d52a020f9a5c10fdd408d49999bdae6880f71dc545b46f5c6",
+        "9d0213cc9136e3b45dd8510ae7034df71e3965f4923e45eb522271c86ff17031",
+        "9d96f1f081e64c597bf4080a12498e0e38e4b80d645b7ab400574e959c9a5fd8",
+        "9f26ba97df8ad0b41a78fb72ec6cca4ff6c611246631f836f21d192b9c59698a",
+        "a18242e2c672704a14931850f1af9654abde04c2874cc5e096d7dd6eae47918b",
+        "a2da7ebd47d2bc544e8cc464d8aa30dd81811ddd1e4aa00b9bc76ee04fd1d06a",
+        "a2f27083b93776be41819ec102088ec151f4193b3d1fcf6efc01acb9316545b5",
+        "a3e87af1fefd625701543eddd86a3858b012f69b6e0d532bbe9a250acd3ffcfa",
+        "a4263509ff80274568e96729e980ed229e316d6261e79e8cf962114e6ef218a7",
+        "a4b1fe3965e3b40f98c30a05191bb51c9a209b1d88c487252910e1033f99e12d",
+        "a520263e766d21811796ac3b8375ba520315905800d3bae91ff6d40601cebb2b",
+        "a8eaadd0333b982890f6cba3bf13417bf7f95b25c459710965fba832144a2f50",
+        "a8ff0774b037032d741dde2f981039fa776a65979c24d1ff06c44c5a8115648f",
+        "ab013fdb3046e0a6611e8652dc5057d4d2de070f542f4ad424bb82ace594880f",
+        "abb08ffe6c2ae0fa76a5459819324ec7f8e2f34f17ffa2dbd9077ee063b753ab",
+        "ac8eeddf961514ad3398ba9ee9addd3b72c88763a5ac06d2393bd2ca20edcd70",
+        "adc2dca9848c7ad07414a369c95a8b9f91327cd0e5516e95bdf8abd0e8a18c47",
+        "b3affdb31141306d07825ebcc4dd8c851e7187ac16634a4fa8fd7bedbd61db36",
+        "b557a4583884fe50e95734ecc92975d34646d9d1ab62fe095bb82681281fca79",
+        "b5656af039e482d20b3294581a47542e23cb0f4e0405f74c41518eb3d69d9e53",
+        "b89eaed6975df1617e2416e3a645e222896791097174d379b695c8f37f1d961a",
+        "bacc48498ba19fbffe49800fabdf66415e8c89bd42703249449cb5a94f1eedcd",
+        "bb5a9d097c1ff520ad7f7ad9d37e361870802f687870f67ade3e7b534298ef88",
+        "bcc2923b6412272df2d579e7963e88ca7888deeda1b8ff94996f6f0bfd03e164",
+        "be80b4d89b15bec7b0b4fb71340a72b36487c2285ab682e977cc05aed91eb9e8",
+        "c0a0bb42086f0481aded2ee85e6a197693839800bf843a43e29982691caa79b9",
+        "c3410a1ac28e20dbe4af738bf1ebfc0e3500ec9d039d96120b4de9db68384e04",
+        "c3ebcc9f50c9573bc002500976ad98ff8032c238739374795df8ff4d9f94c711",
+        "c40724b86a150f54614b14c443e467eaffa14d4bf73346d0f8b4d79f12e40858",
+        "c48e1f6f6f48946664158686090e4a51e505dc6f8c0f051d2f0ba9eacd5a7264",
+        "c61f834713d8730220220f04fe30bfd3b3fe87e095817c3475596d0d8d927072",
+        "c6dbddd075ae36a382b4e371c417f6d73bb7ad9562858b2e6b1c5187ac652713",
+        "c92b47cac70cef33f1f8cf1ec553d4b4e3d0c12da7df1a62484be7d6ea602bc2",
+        "c9bb8c8d40b74036394a0ccd92a7bf2d7e439f0b7bb9907c0a275afd74e5713f",
+        "cce0c0f3ac8d311d705fa838940261aaf4ada186c182516ddf1c369f0f75d6c8",
+        "cd6016e5f81be1f326f80f95cf0fcf3b05616e77fb0565873ffa6c3941106b6a",
+        "ce2b472b16a58a5a27681815fe3a8750141f14b4a929fc923334bc739fb3b645",
+        "d093f932e46d3d18c3bd22dbe77230bb0035e219fbbf47a7b1306c8835cacdbb",
+        "d27186a1c31c9aace1d7640172849f6495d9caf8433423e7569199face0411af",
+        "d2ad3022ab18c62b5dedadb5648fcf75f06c9f2c3156b8fb1cbbd472c9c1069d",
+        "d2b94590ac548358d5bc9e21fb0cc16092fa9ba36dfd91fe5479744c13bfc860",
+        "d3616ac08e30109833bfb1d1d9d35f2d8568584df7e1d15756f2e27c65fb4335",
+        "d3d85ae87661a389918097eff3609849f714d93f85122a24cbb9f952422be1d5",
+        "d518ee7ccfaa3d77f2728040617569abcccaa66700c4555c4e9f2a765cf7bcb8",
+        "d51bc36a6607454a9372615e11271f94bcf2a0d2174431ca32a5c271b7cf2acd",
+        "d574e73a5f0bca30b8bf394bb778cb166f0dd06ad33e2a743248d49fa345f9c7",
+        "d5d7d9afdd78274ee934e657b15cf7f0ac1800ab39610a277c2692febbd1cc65",
+        "d63330d77dbdaa1397a7b02fe3426900ca3e8443a1486dc5055a4d694d6f4775",
+        "d70fdf920f6430eeec9e4014beb16e7516079216303581e5b9bb01f5b97af087",
+        "db415e3a29b2448fd32fbbc71c7f1ed1ab98803cb27b694720e1baa83db166a5",
+        "e08b48c6e3c35dd01c2c455a2c39a72004483279337bdaeb4eb7f0f19eec6bd9",
+        "e16e6ed12751d7214a6decc9361777331b7adb2d4da593ccecae57706316b1c1",
+        "e2c887d844a7f58be4002fe86e41d413edb3f864662273c895e852085ac9165d",
+        "e2fe2088ed919bac6351acb974145d3133fe7c4a8cab15524817b3705a373e4d",
+        "e31caf23d3b21e6bf3d829c698be07d13ac023629a240629fd1978ea2f9a45f3",
+        "e40c7cf6f336311fa0508b59f965a66b2e0a30ebb92b971a183db5ce27877f1f",
+        "e42909569b6b9a269564f21d4e00b28bc4faae3e27b4a981824f1e4e92627d59",
+        "e55077cd31855e05dd45f8ce4802f90b28df7d56cab987091b4a3107ea8401af",
+        "e5af9169b72d164071e1a4df5e562317b9382c9f8b499ac4c4a7c7e29a3a48da",
+        "e89d685e79cb4187c24068af5937d5c3003cbcf6fb0caad9241ff8285ff973dc",
+        "e985ff9eedf3c1ce101de5b96fcf2a82694844390e690b982eb25b5341673d54",
+        "e99f0f1173177cc76228dc777bc67c9a1c76121a9dcaa90f9c5424582535ca38",
+        "e9d61dd2bde5db514a3d3e08224e93e3b9510a8c2b90d95a0929ae5c3d85bf56",
+        "ed4ae69e3e1c2780284ee0e92844754f85f26221240237ca88b146799d1f5b3e",
+        "edc37676692d4380d8e0406c0a56dba80b3e7d3fb6f43448eb4cd56672e4eabd",
+        "efaae630a2c7dcc200904f8f8c15bbbde0c9353c760cf0d4821ab6e82bb2e7bc",
+        "f1cbfe85f3be5725d204c3c72ff2c66a6c89bbc5d2f109a7a963207b42e50c43",
+        "f39bb4be4feee942f7efd1d5ab0c44142babcdc98f104fa2e0793e86e96a25ad",
+        "f60f60cf208bbcbfda88e4e418c4a8ba9ea8da5323be2a29f6629f9801f2744c",
+        "f71ec1ce24b344e781b5079e7896b5a67730cae493c06187f4db2d47510ccebb",
+        "f7b411d24183a5b3ee9335925c06b60d3bc77f46d7f115f0e2227413c8e80e17",
+        "f8d06d94bea5e9445e397dc641cdcb082be07f266ef2699350974f4084d3e3a1",
+        "f90ebb8da289f18e86066c74306828c78fec496207d124ca9f5920f682b5befb",
+        "fa24cde0552562d3224b051f77b0c7190e0c3bf2aa6fd3bf1e98a756c8c0a90a",
+        "faada191b39afb9af4aeab539df5bd9bfd6189fc6ad8c96e4c307a86f13a1087",
+        "fbd20666f36bd03b7ffae22773a577faada0fce720d4fd8bcc13d92141eb4ee8",
+        "fc48711697f54bb0838484b50f14510602062490931c57e1afd1e778775d4d2b",
+        "fcc00d78f508a785cbe4cc9d8de89b3adb7dba41f9d576e8919759b8995a80e7",
+        "fea0cf3a54af9404922d56aecf40e29dd459ee2645078cb0f24e8fc7d7d159c2",
+        "ff28c803fb69da14790898946dbff4a29b1bfaa378828d5496fb0b0958817e81"
+      ],
+      "success_gate_pass": false,
+      "training_manifest_path": "models\\ramp_rl_v6\\live_v3\\confirmation\\ppo\\2805\\training_manifest.json",
+      "training_manifest_sha256": "c88829c63c64d1775560ab7c48d75f996569f0f5f43333becbf01e2d91086cbc",
+      "updates": 540,
+      "validation_path": "output\\ramp_rl_v6\\live_v3\\validation\\ppo_2805_validation.json",
+      "validation_sha256": "92eeba0313cea11b344e6706dcac5c007b0d4582bd46f39178a19e4124483a46"
+    }
+  ],
+  "schema_version": "ramp-pure-rl-v3-validation-decision-v1",
+  "selected": false,
+  "selection_split": "validation",
+  "source_freeze": {
+    "byte_equivalent_to_b1bb302": true,
+    "deterministic_regression_equal": true,
+    "path": "output\\ramp_rl_v6\\live_v3\\source_freeze.json",
+    "sha256": "cf3db44cc24e2fafd6b35aaf3483ea93dc72e7d29824b832ff7aa2a60f2b718b",
+    "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0"
+  },
+  "test_open_count": 0,
+  "test_opened": false
+}

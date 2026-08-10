@@ -1,0 +1,17 @@
+{
+  "capabilities": [
+    {
+      "capability": "historical_primary_tuple",
+      "checked_at_utc": "2026-08-09T00:53:39.013107+00:00",
+      "credential": "PJM_API_KEY",
+      "details": {
+        "fail_closed": true
+      },
+      "market": "PJM_DOM",
+      "reason": "required credential PJM_API_KEY is not set",
+      "status": "BLOCKED"
+    }
+  ],
+  "prominent_notice": "PJM DOM / Northern Virginia was not evaluated and is excluded from all live results and claims until PJM_API_KEY is supplied.",
+  "status": "BLOCKED_EXCLUDED_FROM_LIVE_ROSTER"
+}

@@ -1,0 +1,118 @@
+{
+  "canonical_evidence_representation": "canonical-json-utf8-sort-compact-v1",
+  "canonical_evidence_sha256": "f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b",
+  "claims": [
+    {
+      "claim_id": "v4r-recovery-identity",
+      "evidence_pointer": "/recovery_binding",
+      "value": "new-binary-identity-weight-equivalent-recovered-pure-rl"
+    },
+    {
+      "claim_id": "provenance-hash-contract",
+      "evidence_pointer": "/hash_contract",
+      "representation": "canonical-json-utf8-sort-compact-v1",
+      "value": "dc-energy-provenance-sha256-v2"
+    },
+    {
+      "claim_id": "provenance-supersession-scope",
+      "evidence_pointer": "/supersession_scope",
+      "value": "provenance-hash-chain-only"
+    },
+    {
+      "claim_id": "validation-mean-ramp-impact",
+      "evidence_pointer": "/validation/result/mean_incremental_ramp_impact",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -1.4086907197938803e-05
+    },
+    {
+      "claim_id": "validation-cost-ratio",
+      "evidence_pointer": "/validation/result/energy_cost_ratio",
+      "unit": "policy DA cost / status-quo DA cost",
+      "value": 0.9858280672779312
+    },
+    {
+      "claim_id": "test-mean-ramp-impact",
+      "evidence_pointer": "/test/result/mean_incremental_ramp_impact",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -1.4258710514255097e-05
+    },
+    {
+      "claim_id": "test-cost-ratio",
+      "evidence_pointer": "/test/result/energy_cost_ratio",
+      "unit": "policy DA cost / status-quo DA cost",
+      "value": 0.9775584402489343
+    },
+    {
+      "claim_id": "sealed-test-opening-count",
+      "evidence_pointer": "/sealed_test_open_count",
+      "unit": "openings",
+      "value": 1
+    },
+    {
+      "claim_id": "test-every-market-negative",
+      "evidence_pointer": "/test/result/per_market_macro",
+      "value": true
+    },
+    {
+      "claim_id": "test-exact-safety",
+      "evidence_pointer": "/test/result/success_gate/checks",
+      "value": true
+    },
+    {
+      "claim_id": "one-gw-total-robustness",
+      "evidence_pointer": "/robustness/one_gw_total/result",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -1.707526521658319e-05
+    },
+    {
+      "claim_id": "c-h-overlapping-robustness",
+      "evidence_pointer": "/robustness/c_h_overlapping/result",
+      "scope": "overlapping/non-independent robustness",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -1.713557824325034e-05
+    },
+    {
+      "claim_id": "test-market-caiso_np15",
+      "evidence_pointer": "/test/result/per_market_macro/CAISO_NP15",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -2.106596962375112e-05
+    },
+    {
+      "claim_id": "test-market-ercot_lz_north",
+      "evidence_pointer": "/test/result/per_market_macro/ERCOT_LZ_NORTH",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -2.3454355897116744e-06
+    },
+    {
+      "claim_id": "test-market-isone_nema",
+      "evidence_pointer": "/test/result/per_market_macro/ISONE_NEMA",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -2.7491577052292107e-05
+    },
+    {
+      "claim_id": "test-market-miso_minn_hub",
+      "evidence_pointer": "/test/result/per_market_macro/MISO_MINN_HUB",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -5.652448501033376e-07
+    },
+    {
+      "claim_id": "test-market-nyiso_nyc_j",
+      "evidence_pointer": "/test/result/per_market_macro/NYISO_NYC_J",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -3.297854729324165e-05
+    },
+    {
+      "claim_id": "test-market-spp_north_hub",
+      "evidence_pointer": "/test/result/per_market_macro/SPP_NORTH_HUB",
+      "unit": "normalized incremental squared-ramp impact",
+      "value": -1.1054886764306852e-06
+    }
+  ],
+  "hash_contract_id": "dc-energy-provenance-sha256-v2",
+  "protocol_id": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r",
+  "protocol_sha256": "57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd",
+  "recovery_binding_sha256": "ecbeb41753627231a0d601eedb1a5b1906879dd80b5ccb248028cfc8256005e7",
+  "reseal_commit": "3097c9aeca248a12e7239b40a895c5cd5fcd037b",
+  "schema_version": "ramp-v6-v4r-claim-ledger-v2",
+  "source_commit": "46329fe765f596f84eeac71f061dcbd191a90583"
+}

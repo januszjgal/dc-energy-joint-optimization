@@ -1,0 +1,15 @@
+schema_version: energy-model-v3
+name: us-six-market-v3-primary-600mw
+protocol: env/protocols/independent_us_v3.yaml
+study_role: primary
+mapping: primary_independent
+total_dc_power_mw: 600.0
+max_penetration_fraction: 0.05
+penetration_override: false
+sites:
+  - {name: Northern California, market: CAISO_NP15, borg_cell: a, rated_power_mw: 100.0}
+  - {name: North Texas, market: ERCOT_LZ_NORTH, borg_cell: b, rated_power_mw: 100.0}
+  - {name: New York City, market: NYISO_NYC_J, borg_cell: c, rated_power_mw: 100.0}
+  - {name: Minnesota, market: MISO_MINN_HUB, borg_cell: d, rated_power_mw: 100.0}
+  - {name: SPP North, market: SPP_NORTH_HUB, borg_cell: e, rated_power_mw: 100.0}
+  - {name: Boston NEMA, market: ISONE_NEMA, borg_cell: f, rated_power_mw: 100.0}
