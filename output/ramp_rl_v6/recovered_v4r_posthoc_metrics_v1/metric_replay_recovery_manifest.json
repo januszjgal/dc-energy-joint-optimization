@@ -1,0 +1,722 @@
+{
+  "checkpoint_binaries_ignored": true,
+  "checkpoint_binaries_tracked": false,
+  "checkpoint_root": "models/ramp_rl_v6/recovery_v3_metric_replay",
+  "classification": "deterministic_checkpoint_reconstruction_after_binary_archival",
+  "completed_at_utc": "2026-08-10T04:17:14.186705+00:00",
+  "corrective_replay_scope": "physical-ramp-status-quo-labeling-and-decoder-telemetry-only",
+  "data_access_audit": {
+    "member_training_splits": {
+      "2801": [
+        "train"
+      ],
+      "2802": [
+        "train"
+      ],
+      "2803": [
+        "train"
+      ],
+      "2804": [
+        "train"
+      ],
+      "2805": [
+        "train"
+      ]
+    },
+    "member_validation_or_test_rows": {
+      "2801": 0,
+      "2802": 0,
+      "2803": 0,
+      "2804": 0,
+      "2805": 0
+    },
+    "raw_source_test_opened": false
+  },
+  "fresh_generalization_evidence": false,
+  "march_april_replay_is_fresh_sealed_test": false,
+  "member_selection_or_exclusion_performed": false,
+  "member_weighting_changed": false,
+  "members": [
+    {
+      "binaries_ignored": true,
+      "binaries_tracked": false,
+      "checkpoint_root": "models/ramp_rl_v6/recovery_v3_metric_replay/2801",
+      "comparison_fields": [
+        "initial_policy_sha256",
+        "initial_critic_sha256",
+        "final_policy_sha256",
+        "final_critic_sha256",
+        "interaction_count",
+        "interaction_count_this_invocation",
+        "update_count",
+        "actual_terminal_count_this_invocation",
+        "requested_target_timesteps",
+        "effective_boundary_target_timesteps",
+        "checkpoint_boundary_quantum",
+        "normalization",
+        "pure_rl_assertions",
+        "pure_rl_verification",
+        "replay_provenance",
+        "training_data_provenance",
+        "forecast_identity",
+        "job_identity"
+      ],
+      "comparison_fields_canonical_sha256": "30e38921bc7cfa62702826d803f8493462c3b96cfa82fd5954cc7301e65ee5be",
+      "comparison_fields_exact": true,
+      "final_critic_sha256": "c0b564e69436417c45213c76c0e443176596a0f99ff044bc76cf643cd096b4d9",
+      "final_policy_sha256": "1bbd1918564a87ac2b2357185207016cf9835e5e9c0c4949d58fec62e63c0d6b",
+      "initial_critic_sha256": "476c2ba5a4624bad60df61f2f03cf05e8b494cc46e4692fd66cd1154123c7311",
+      "initial_policy_sha256": "2d1d33a85391203cd6f6b2cdbdb096f0630915a7811ef118b7ba78844d0ec97d",
+      "interaction_count": 110592,
+      "job_identity": {
+        "action_high": [
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0
+        ],
+        "action_low": [
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0
+        ],
+        "action_shape": [
+          13
+        ],
+        "algorithm": "ppo",
+        "config_sha256": "ac13aabe3348f9c7e4a36ff226528b5feae6a8db540f4054be634259c7943218",
+        "decision_steps": 27,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+          "source_path": "env\\ramp_v6\\factory.py",
+          "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+        },
+        "n_envs": 4,
+        "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+        "seed": 2801,
+        "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+        "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0"
+      },
+      "model_container": {
+        "algorithm": "sha256",
+        "byte_identical_to_original_v4r_container": false,
+        "container_difference_scope": "outer SB3 container byte identity is not claimed; exact policy and critic tensors are verified",
+        "original_v4r_container_sha256": "47e68ae430be484da860b6e1520f1868e5869ccbd49d86fe48920a253c861883",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2801/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "bfe74b8eef0f6187c4b476bcbf1ef860cdb0c093be01e13ec314c5f18e6e806d"
+      },
+      "original_training_manifest": {
+        "canonical_json_sha256": "4f6feff02e44c804e3064f98e0c02587664b6d98e7a0e755b6e0227b84e45648",
+        "historical_raw_sha256": "b1e235d920b6f478bb5f3b30786f431d153dbc64cd9063b734d978a9c5ef8406",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2801/training_manifest.json",
+        "unchanged": true
+      },
+      "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+      "reconstructed_training_manifest": {
+        "algorithm": "sha256",
+        "canonical_json_sha256": "9114fa539d1cd037d587b93c751c15547547da7509f86b0e0a75008948a18d7a",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2801/training_manifest.json",
+        "representation": "raw-bytes-v1",
+        "sha256": "2bca568036d476e3928daeb1d7e0ff616989956ec379e7869e8a81bafb2eec01"
+      },
+      "seed": 2801,
+      "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0",
+      "training_data_splits_observed": [
+        "train"
+      ],
+      "update_count": 540,
+      "validation_or_test_rows": 0,
+      "vecnormalize": {
+        "algorithm": "sha256",
+        "byte_identical_to_frozen_v3": true,
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2801/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "0789b19f8999d1cdc79249daa33db92fe4ef9152f7202274d26a90bcae0549c3"
+      }
+    },
+    {
+      "binaries_ignored": true,
+      "binaries_tracked": false,
+      "checkpoint_root": "models/ramp_rl_v6/recovery_v3_metric_replay/2802",
+      "comparison_fields": [
+        "initial_policy_sha256",
+        "initial_critic_sha256",
+        "final_policy_sha256",
+        "final_critic_sha256",
+        "interaction_count",
+        "interaction_count_this_invocation",
+        "update_count",
+        "actual_terminal_count_this_invocation",
+        "requested_target_timesteps",
+        "effective_boundary_target_timesteps",
+        "checkpoint_boundary_quantum",
+        "normalization",
+        "pure_rl_assertions",
+        "pure_rl_verification",
+        "replay_provenance",
+        "training_data_provenance",
+        "forecast_identity",
+        "job_identity"
+      ],
+      "comparison_fields_canonical_sha256": "c9fa4a75982904e909a25ce89aa364f51212a03b6c53e68861f798e794dbe3d9",
+      "comparison_fields_exact": true,
+      "final_critic_sha256": "7dbd8aaeec645bb0fbec5213d05ff7c97804f425d4c2c9b8a7adddbb7e71bfaa",
+      "final_policy_sha256": "236030e9d320e735242f320fe42b8e4a3d9cb794b7422fc544f3204029d8df4f",
+      "initial_critic_sha256": "8787c5c51893f33a54282fc79e2287b3605b8deb36b5c23310e6f017dd481bc2",
+      "initial_policy_sha256": "77267baa6929bd655f3bcaacd70afaca894b31a2ef053d05744511b93220ea9d",
+      "interaction_count": 110592,
+      "job_identity": {
+        "action_high": [
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0
+        ],
+        "action_low": [
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0
+        ],
+        "action_shape": [
+          13
+        ],
+        "algorithm": "ppo",
+        "config_sha256": "ac13aabe3348f9c7e4a36ff226528b5feae6a8db540f4054be634259c7943218",
+        "decision_steps": 27,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+          "source_path": "env\\ramp_v6\\factory.py",
+          "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+        },
+        "n_envs": 4,
+        "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+        "seed": 2802,
+        "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+        "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0"
+      },
+      "model_container": {
+        "algorithm": "sha256",
+        "byte_identical_to_original_v4r_container": false,
+        "container_difference_scope": "outer SB3 container byte identity is not claimed; exact policy and critic tensors are verified",
+        "original_v4r_container_sha256": "93296e54bb61be72b9c41f58175860734208f1785089a11730236891f9a8700f",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2802/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "383fcc1cafd947ff354b8d600a7d65a276f2120e89a7c2c61cc469b93039d5da"
+      },
+      "original_training_manifest": {
+        "canonical_json_sha256": "7c43af0c040bf6bfa24b3f23413734fe48ccf377c6496e2a59260cb9776b57f7",
+        "historical_raw_sha256": "b18ed998b0ed9c176f6a258dca7244d27eb21c7e1abc5aece80053a08f0394b9",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2802/training_manifest.json",
+        "unchanged": true
+      },
+      "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+      "reconstructed_training_manifest": {
+        "algorithm": "sha256",
+        "canonical_json_sha256": "abac3d8b4cd5f892954ff90819103e6664afc147793d7212c77ab119bb84584e",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2802/training_manifest.json",
+        "representation": "raw-bytes-v1",
+        "sha256": "72e4c9a13194bf1c59b4cf07a00b48959e9b60e5c8fb41479ba229f651ad7d53"
+      },
+      "seed": 2802,
+      "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0",
+      "training_data_splits_observed": [
+        "train"
+      ],
+      "update_count": 540,
+      "validation_or_test_rows": 0,
+      "vecnormalize": {
+        "algorithm": "sha256",
+        "byte_identical_to_frozen_v3": true,
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2802/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "bbb6ccad327453c757fd636ed64b4c5af6012490dbaecfc004aaab57fc0c5bd3"
+      }
+    },
+    {
+      "binaries_ignored": true,
+      "binaries_tracked": false,
+      "checkpoint_root": "models/ramp_rl_v6/recovery_v3_metric_replay/2803",
+      "comparison_fields": [
+        "initial_policy_sha256",
+        "initial_critic_sha256",
+        "final_policy_sha256",
+        "final_critic_sha256",
+        "interaction_count",
+        "interaction_count_this_invocation",
+        "update_count",
+        "actual_terminal_count_this_invocation",
+        "requested_target_timesteps",
+        "effective_boundary_target_timesteps",
+        "checkpoint_boundary_quantum",
+        "normalization",
+        "pure_rl_assertions",
+        "pure_rl_verification",
+        "replay_provenance",
+        "training_data_provenance",
+        "forecast_identity",
+        "job_identity"
+      ],
+      "comparison_fields_canonical_sha256": "9d3419d442dd365e145d3b1efc8c5c4738a4957e2f110ca764ac051a85de791d",
+      "comparison_fields_exact": true,
+      "final_critic_sha256": "a6aa43662a26babfcdc0fcfc80e22cd470736a2d3b6f2391657a887056a8d9c9",
+      "final_policy_sha256": "2e5874c9ac4a160ded42e26cf9a68680ad7f691a534b41bab4fe86c8413700ef",
+      "initial_critic_sha256": "f63153e00094474160a805da7bde0e02e060944fac6d29ed9449c83faeca7d62",
+      "initial_policy_sha256": "a6dc0cd909beeba3ac6d9937f2dd95979ced7dfd2dee9296d75a9d6b8f7bed36",
+      "interaction_count": 110592,
+      "job_identity": {
+        "action_high": [
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0
+        ],
+        "action_low": [
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0
+        ],
+        "action_shape": [
+          13
+        ],
+        "algorithm": "ppo",
+        "config_sha256": "ac13aabe3348f9c7e4a36ff226528b5feae6a8db540f4054be634259c7943218",
+        "decision_steps": 27,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+          "source_path": "env\\ramp_v6\\factory.py",
+          "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+        },
+        "n_envs": 4,
+        "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+        "seed": 2803,
+        "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+        "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0"
+      },
+      "model_container": {
+        "algorithm": "sha256",
+        "byte_identical_to_original_v4r_container": false,
+        "container_difference_scope": "outer SB3 container byte identity is not claimed; exact policy and critic tensors are verified",
+        "original_v4r_container_sha256": "292a24819bb13dd8372b25c932eb3ac44b06bab891237ab331c7ba224873f507",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2803/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "f99b07e05cff623fa01f447778f9f4f3180f7a98163a7ff574c220b68a66279e"
+      },
+      "original_training_manifest": {
+        "canonical_json_sha256": "38e9a955244b7d4147366d464bdddb5e10eb6ab1a7ec937d6c37bd776d506375",
+        "historical_raw_sha256": "15da97a85637f5b013e309489fe1b4d1fe69e96842e212d2e70ec447f154465f",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2803/training_manifest.json",
+        "unchanged": true
+      },
+      "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+      "reconstructed_training_manifest": {
+        "algorithm": "sha256",
+        "canonical_json_sha256": "92892fdb513a06c3b95507bb43c697f4655e221c4f36c82e0770e286bed5d601",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2803/training_manifest.json",
+        "representation": "raw-bytes-v1",
+        "sha256": "9c5cec7152a5b4d36a17b94fbd0d46976bd901d7ab7d92261b320e152c891197"
+      },
+      "seed": 2803,
+      "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0",
+      "training_data_splits_observed": [
+        "train"
+      ],
+      "update_count": 540,
+      "validation_or_test_rows": 0,
+      "vecnormalize": {
+        "algorithm": "sha256",
+        "byte_identical_to_frozen_v3": true,
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2803/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "f5362840c1fb8c96983ec2d60505e15619fa0bfb3b35ec69a18808f4c178dd9c"
+      }
+    },
+    {
+      "binaries_ignored": true,
+      "binaries_tracked": false,
+      "checkpoint_root": "models/ramp_rl_v6/recovery_v3_metric_replay/2804",
+      "comparison_fields": [
+        "initial_policy_sha256",
+        "initial_critic_sha256",
+        "final_policy_sha256",
+        "final_critic_sha256",
+        "interaction_count",
+        "interaction_count_this_invocation",
+        "update_count",
+        "actual_terminal_count_this_invocation",
+        "requested_target_timesteps",
+        "effective_boundary_target_timesteps",
+        "checkpoint_boundary_quantum",
+        "normalization",
+        "pure_rl_assertions",
+        "pure_rl_verification",
+        "replay_provenance",
+        "training_data_provenance",
+        "forecast_identity",
+        "job_identity"
+      ],
+      "comparison_fields_canonical_sha256": "54aed3204d3dc77dd3ec52d93b138e08e428840e05b83a5d37ea05b9102cec2b",
+      "comparison_fields_exact": true,
+      "final_critic_sha256": "d8aeea3ce5d520893f4fa5161b52363e99a71ea73c118698f865c2d14ef19bb4",
+      "final_policy_sha256": "9d0342ecb9da1ae578e578604a005220b00bfeea48fc144fcf3d9cae67470bb6",
+      "initial_critic_sha256": "89b3add1102ab9229b4e6fd38cdfed1359bb4ae8323c8a80645b2487c2f0ba46",
+      "initial_policy_sha256": "1cf742e2a0489c50e5b3e68adf6c9b19f1a987cd675462229252b290575ee57f",
+      "interaction_count": 110592,
+      "job_identity": {
+        "action_high": [
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0
+        ],
+        "action_low": [
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0
+        ],
+        "action_shape": [
+          13
+        ],
+        "algorithm": "ppo",
+        "config_sha256": "ac13aabe3348f9c7e4a36ff226528b5feae6a8db540f4054be634259c7943218",
+        "decision_steps": 27,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+          "source_path": "env\\ramp_v6\\factory.py",
+          "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+        },
+        "n_envs": 4,
+        "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+        "seed": 2804,
+        "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+        "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0"
+      },
+      "model_container": {
+        "algorithm": "sha256",
+        "byte_identical_to_original_v4r_container": false,
+        "container_difference_scope": "outer SB3 container byte identity is not claimed; exact policy and critic tensors are verified",
+        "original_v4r_container_sha256": "ee5ee15ce884d7958da253ea7fb6f95297d395cb0ca5cc816d83ac72bb345fbb",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2804/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "8f507f3e2f6bde1d0b48b6c6850370cfa4da173a40e7b25ca0f06afeb2100fbe"
+      },
+      "original_training_manifest": {
+        "canonical_json_sha256": "ac9a9c28cd40183ff923c152a0de3edf40871396907ce826c3b61f96cec18b95",
+        "historical_raw_sha256": "7e19e1b9bc6704d200712a45091bacc7712677b0e131fd42519f8ec9a7476145",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2804/training_manifest.json",
+        "unchanged": true
+      },
+      "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+      "reconstructed_training_manifest": {
+        "algorithm": "sha256",
+        "canonical_json_sha256": "e90e0eb6d2a63c78385174d6e0fbbef1fd6b9f1c5e647a91cb17ecda96272cdd",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2804/training_manifest.json",
+        "representation": "raw-bytes-v1",
+        "sha256": "bf8223e7600816cc5cd4f5fdff6f719b7c8076037a5a7fe19c6ed07e3b3cf7c4"
+      },
+      "seed": 2804,
+      "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0",
+      "training_data_splits_observed": [
+        "train"
+      ],
+      "update_count": 540,
+      "validation_or_test_rows": 0,
+      "vecnormalize": {
+        "algorithm": "sha256",
+        "byte_identical_to_frozen_v3": true,
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2804/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "778fb2ad91d1ec1e9a16a76f5b1cef139c2c2fbb6256479868473bbb9155b63e"
+      }
+    },
+    {
+      "binaries_ignored": true,
+      "binaries_tracked": false,
+      "checkpoint_root": "models/ramp_rl_v6/recovery_v3_metric_replay/2805",
+      "comparison_fields": [
+        "initial_policy_sha256",
+        "initial_critic_sha256",
+        "final_policy_sha256",
+        "final_critic_sha256",
+        "interaction_count",
+        "interaction_count_this_invocation",
+        "update_count",
+        "actual_terminal_count_this_invocation",
+        "requested_target_timesteps",
+        "effective_boundary_target_timesteps",
+        "checkpoint_boundary_quantum",
+        "normalization",
+        "pure_rl_assertions",
+        "pure_rl_verification",
+        "replay_provenance",
+        "training_data_provenance",
+        "forecast_identity",
+        "job_identity"
+      ],
+      "comparison_fields_canonical_sha256": "43632c41c4e9805da710cb208a9162831e1e3505a3caae1d2b07217b2a683716",
+      "comparison_fields_exact": true,
+      "final_critic_sha256": "8bf203bb9303cac0a815f5c4325e85f5e1ccc8f01eb4140fdb5b7fa8d810027e",
+      "final_policy_sha256": "8aa28e035f7f0710adffdbe5773ffc4a6a43d9a562ecca784ea616599f61e42f",
+      "initial_critic_sha256": "134bd501ebaa0d393aeca09c06c5b10e5c81859ece85b801087374b7eddaee48",
+      "initial_policy_sha256": "35214ba9a7a06c661bb8528e7de14f0159d999967b7c23fb4b5c85db700b30aa",
+      "interaction_count": 110592,
+      "job_identity": {
+        "action_high": [
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0,
+          6.0
+        ],
+        "action_low": [
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0,
+          -6.0
+        ],
+        "action_shape": [
+          13
+        ],
+        "algorithm": "ppo",
+        "config_sha256": "ac13aabe3348f9c7e4a36ff226528b5feae6a8db540f4054be634259c7943218",
+        "decision_steps": 27,
+        "epsilon_pct": 2.0,
+        "factory": {
+          "callable": "env.ramp_v6.factory:make_energy_model_v3_env",
+          "source_path": "env\\ramp_v6\\factory.py",
+          "source_sha256": "2f9a5f39a1150c0495b5b04bdf3c3176c9de80f570341c1b6a6a4d39185058af"
+        },
+        "n_envs": 4,
+        "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+        "seed": 2805,
+        "semantic_action_id": "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1",
+        "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0"
+      },
+      "model_container": {
+        "algorithm": "sha256",
+        "byte_identical_to_original_v4r_container": false,
+        "container_difference_scope": "outer SB3 container byte identity is not claimed; exact policy and critic tensors are verified",
+        "original_v4r_container_sha256": "ffba64a2b4574e1a10edfd96e91bcd08f78d380c756a4d3231ac5ee1365e07f6",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2805/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "42e45f0ea45134bea1476b34345ad5ab1c5ace6b063690a130cb51310ca10f95"
+      },
+      "original_training_manifest": {
+        "canonical_json_sha256": "fcb26fcc2d376013132d3a9ce64803dcf744963c5ea7d9f4ca485e07b2cc6f70",
+        "historical_raw_sha256": "c88829c63c64d1775560ab7c48d75f996569f0f5f43333becbf01e2d91086cbc",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2805/training_manifest.json",
+        "unchanged": true
+      },
+      "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+      "reconstructed_training_manifest": {
+        "algorithm": "sha256",
+        "canonical_json_sha256": "d719269e1819e527649786804db4fb69268bbf6c7afcb92295cafc812d6c57e2",
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2805/training_manifest.json",
+        "representation": "raw-bytes-v1",
+        "sha256": "5d01165b95b0d06564520beb0a0a4d9ceb64ed6123da400859759f2ba2551d9e"
+      },
+      "seed": 2805,
+      "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0",
+      "training_data_splits_observed": [
+        "train"
+      ],
+      "update_count": 540,
+      "validation_or_test_rows": 0,
+      "vecnormalize": {
+        "algorithm": "sha256",
+        "byte_identical_to_frozen_v3": true,
+        "path": "models/ramp_rl_v6/recovery_v3_metric_replay/2805/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "e9e1d4523ddfd16f17744deaa371627fcae2d0316a971a02f140cc73c2d2e8f7"
+      }
+    }
+  ],
+  "model_selection_performed": false,
+  "original_sealed_result_immutable": true,
+  "performed_after_sealed_test_unblinding": true,
+  "policy_critic_or_normalizer_identity_changed": false,
+  "raw_equivalence_all_exact": true,
+  "raw_equivalence_contract": {
+    "final_critic_sha256_required": true,
+    "final_policy_sha256_required": true,
+    "initial_critic_sha256_required": true,
+    "initial_policy_sha256_required": true,
+    "loaded_critic_sha256_required": true,
+    "loaded_policy_sha256_required": true,
+    "model_container_sha256_required": false,
+    "training_manifest_fields_required": [
+      "initial_policy_sha256",
+      "initial_critic_sha256",
+      "final_policy_sha256",
+      "final_critic_sha256",
+      "interaction_count",
+      "interaction_count_this_invocation",
+      "update_count",
+      "actual_terminal_count_this_invocation",
+      "requested_target_timesteps",
+      "effective_boundary_target_timesteps",
+      "checkpoint_boundary_quantum",
+      "normalization",
+      "pure_rl_assertions",
+      "pure_rl_verification",
+      "replay_provenance",
+      "training_data_provenance",
+      "forecast_identity",
+      "job_identity"
+    ],
+    "vecnormalize_sha256_required": true
+  },
+  "raw_equivalence_verification": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_verification_raw.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "6be9c32be10777146d67eca4246610f3b730f8b2fb81f3085f9b3140bcf082f8"
+  },
+  "schema_version": "v4r-metric-replay-checkpoint-recovery-v1",
+  "sealed_evidence": {
+    "algorithm": "sha256",
+    "immutable": true,
+    "path": "output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sealed_test_open_count": 1,
+    "sha256": "f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b"
+  },
+  "source_identity": {
+    "factory_manifest_sha256": "b2c88f8831eec0e2d1321e779eb9e823d96cd165fd3fd6d2ca3ba34ed1497e8c",
+    "protocol_id": "v6-ramp-pure-rl-v1-replication-earlystop-v3",
+    "protocol_sha256": "f692364cd68a6da4228eec25fe246532051cb332f5c22f139f361349e30662df",
+    "source_bundle_sha256": "8c4c4c468251bd1d54c230fc9be7b1882ab9b43eeb15c40ccd645f234bbd9fe0",
+    "source_commits": [
+      "f6cd9c9",
+      "dede685"
+    ],
+    "source_freeze_path": "output\\ramp_rl_v6\\live_v3\\source_freeze.json",
+    "source_freeze_sha256": "cf3db44cc24e2fafd6b35aaf3483ea93dc72e7d29824b832ff7aa2a60f2b718b",
+    "test_opened": false,
+    "training_evidence_commits": [
+      "fc8954b",
+      "1f2a7dc"
+    ]
+  },
+  "stable_recovery_commit": "d1d4828c32bada1ba1e852d0479c37bb71164561",
+  "stable_recovery_tooling": {
+    "output/ramp_rl_v6/live_v3/recovery_transfer_manifest.json": {
+      "algorithm": "sha256",
+      "commit": "d1d4828c32bada1ba1e852d0479c37bb71164561",
+      "git_blob_oid": "e520add5ad942b1aa8631a023cb5c043c55408a8",
+      "path": "output/ramp_rl_v6/live_v3/recovery_transfer_manifest.json",
+      "representation": "git-blob-bytes-v1",
+      "sha256": "d1ccf86acf6ed8f9a58c1d07546d02678f77f1aeab8c1181e09e16a3173357e6"
+    },
+    "scripts/recover_ramp_rl_v3.py": {
+      "algorithm": "sha256",
+      "commit": "d1d4828c32bada1ba1e852d0479c37bb71164561",
+      "git_blob_oid": "b4f16173453900a4ee47a917c21e11c30503f869",
+      "path": "scripts/recover_ramp_rl_v3.py",
+      "representation": "git-blob-bytes-v1",
+      "sha256": "18f509b1cb7694d7e854e18846ba25481f0d5c89438f3f55f648ed649f8423a1"
+    }
+  },
+  "status": "exact_internal_equivalence_for_posthoc_metric_replay",
+  "training_computation_performed": true,
+  "training_or_retuning_for_policy_change": false,
+  "training_purpose": "reconstruct frozen V3 checkpoint state for post-hoc telemetry replay",
+  "validation_or_test_opened_during_recovery": false
+}

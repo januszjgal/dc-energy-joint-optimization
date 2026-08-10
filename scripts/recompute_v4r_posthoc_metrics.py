@@ -24,6 +24,10 @@ from ramp_rl.recovered_ensemble import (  # noqa: E402
     PROTOCOL_ID,
     evaluate_recovered_equal_action_ensemble,
 )
+from ramp_rl.v4r_metric_replay_recovery import (  # noqa: E402
+    DEFAULT_MANIFEST as DEFAULT_RECOVERY_MANIFEST,
+    verify_metric_replay_recovery_manifest,
+)
 from ramp_rl.v4r_thesis import (  # noqa: E402
     DEFAULT_CANONICAL as ORIGINAL_CANONICAL,
     EXPECTED_CANONICAL_SHA256 as ORIGINAL_CANONICAL_SHA256,
@@ -62,6 +66,7 @@ ORIGINAL_RESULTS = {
     ),
 }
 CORRECTED_SOURCE_PATHS = (
+    ".gitignore",
     "env/ramp_v6/environment.py",
     "env/ramp_v6/factory.py",
     "env/ramp_v6/projection.py",
@@ -72,6 +77,8 @@ CORRECTED_SOURCE_PATHS = (
     "ramp_rl/evidence.py",
     "ramp_rl/provenance.py",
     "ramp_rl/recovered_ensemble.py",
+    "ramp_rl/v4r_metric_replay_recovery.py",
+    "scripts/bind_v4r_metric_replay_recovery.py",
     "scripts/recompute_v4r_posthoc_metrics.py",
 )
 INVARIANT_FIELDS = (
@@ -255,8 +262,13 @@ def _correction_declaration(
 def _replay_bindings(
     bindings: list[dict[str, Any]],
     recovered_binary_root: Path | None,
+    recovery_manifest: dict[str, Any] | None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if recovered_binary_root is None:
+        if recovery_manifest is not None:
+            raise ValueError(
+                "checkpoint recovery manifest requires reconstructed binaries"
+            )
         return bindings, {
             "mode": "protocol_bound_v4r_containers",
             "deterministic_checkpoint_reconstruction_performed": False,
@@ -277,6 +289,14 @@ def _replay_bindings(
                 for binding in bindings
             ],
         }
+    if recovery_manifest is None:
+        raise ValueError(
+            "reconstructed binaries require a verified checkpoint recovery manifest"
+        )
+    recovery_members = {
+        int(member["seed"]): member
+        for member in recovery_manifest["members"]
+    }
     replay: list[dict[str, Any]] = []
     members: list[dict[str, Any]] = []
     for binding in bindings:
@@ -291,6 +311,16 @@ def _replay_bindings(
             )
         model_sha256 = _raw_sha256(model_path)
         normalization_sha256 = _raw_sha256(normalization_path)
+        recovery_member = recovery_members[seed]
+        if (
+            model_sha256
+            != recovery_member["model_container"]["sha256"]
+            or normalization_sha256
+            != recovery_member["vecnormalize"]["sha256"]
+        ):
+            raise ValueError(
+                f"seed {seed} reconstructed checkpoint differs from recovery manifest"
+            )
         if (
             normalization_sha256
             != binding["recovered_vecnormalize_sha256"]
@@ -342,8 +372,14 @@ def recompute(
     output: Path,
     recomputed_at_utc: str,
     recovered_binary_root: Path | None = None,
+    recovery_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     load_verified_evidence()
+    if recovered_binary_root is None:
+        raise ValueError(
+            "canonical v2 metric correction requires reconstructed binaries "
+            "and a tracked checkpoint recovery manifest"
+        )
     if canonical_json_file_sha256(
         ORIGINAL_CANONICAL
     ) != ORIGINAL_CANONICAL_SHA256:
@@ -351,9 +387,20 @@ def recompute(
     protocol = yaml.safe_load(PROTOCOL_PATH.read_text(encoding="utf-8"))
     if protocol["protocol"]["id"] != PROTOCOL_ID:
         raise ValueError("unexpected V4R protocol identity")
+    recovery_manifest = None
+    resolved_recovery_manifest = None
+    if recovered_binary_root is not None:
+        resolved_recovery_manifest = (
+            recovery_manifest_path or DEFAULT_RECOVERY_MANIFEST
+        ).resolve()
+        recovery_manifest = verify_metric_replay_recovery_manifest(
+            resolved_recovery_manifest,
+            require_binaries=True,
+        )
     bindings, binary_recovery = _replay_bindings(
         protocol["frozen_bindings"]["members"],
         recovered_binary_root,
+        recovery_manifest,
     )
     reconstructed = bool(
         binary_recovery[
@@ -400,8 +447,10 @@ def recompute(
         for path in CORRECTED_SOURCE_PATHS
     }
     wrapper = {
-        "schema_version": "v4r-posthoc-corrected-metrics-canonical-v1",
-        "status": "authoritative_posthoc_metric_correction",
+        "schema_version": "v4r-posthoc-corrected-metrics-canonical-v2",
+        "status": (
+            "authoritative_posthoc_metric_correction_with_bound_checkpoint_recovery"
+        ),
         "protocol_id": PROTOCOL_ID,
         "recomputed_at_utc": recomputed_at_utc,
         "original_sealed_evidence": {
@@ -426,6 +475,11 @@ def recompute(
         "telemetry_and_portable_verification_source_changed": True,
         "primary_incremental_squared_ramp_objective_changed": False,
         "binary_recovery": binary_recovery,
+        "checkpoint_recovery": (
+            _reference(resolved_recovery_manifest)
+            if resolved_recovery_manifest is not None
+            else None
+        ),
         "corrected_results": {
             split: _reference(path)
             for split, path in corrected_paths.items()
@@ -471,10 +525,13 @@ def verify(canonical: Path) -> dict[str, Any]:
     wrapper = _load(canonical)
     if (
         wrapper.get("schema_version")
-        != "v4r-posthoc-corrected-metrics-canonical-v1"
+        != "v4r-posthoc-corrected-metrics-canonical-v2"
     ):
         raise ValueError("unsupported post-hoc metric package")
-    if wrapper.get("status") != "authoritative_posthoc_metric_correction":
+    if (
+        wrapper.get("status")
+        != "authoritative_posthoc_metric_correction_with_bound_checkpoint_recovery"
+    ):
         raise ValueError("post-hoc metric package is not authoritative")
     if wrapper.get("second_sealed_generalization_test") is not False:
         raise ValueError("post-hoc replay is mislabeled as a new sealed test")
@@ -523,6 +580,38 @@ def verify(canonical: Path) -> dict[str, Any]:
         != protocol_reference.get("sha256")
     ):
         raise ValueError("protocol hash mismatch")
+    checkpoint_recovery = wrapper.get("checkpoint_recovery")
+    if wrapper.get("deterministic_checkpoint_reconstruction_performed"):
+        if not isinstance(checkpoint_recovery, dict):
+            raise ValueError("checkpoint recovery reference is missing")
+        recovery_path = _verify_reference(
+            checkpoint_recovery,
+            "checkpoint recovery",
+        )
+        recovery = verify_metric_replay_recovery_manifest(recovery_path)
+        recovery_members = {
+            int(member["seed"]): member
+            for member in recovery["members"]
+        }
+        for member in wrapper.get("binary_recovery", {}).get("members", []):
+            seed = int(member["seed"])
+            if (
+                member["replay_model_sha256"]
+                != recovery_members[seed]["model_container"]["sha256"]
+                or member["normalizer_sha256"]
+                != recovery_members[seed]["vecnormalize"]["sha256"]
+                or member["final_policy_sha256"]
+                != recovery_members[seed]["final_policy_sha256"]
+                or member["final_critic_sha256"]
+                != recovery_members[seed]["final_critic_sha256"]
+            ):
+                raise ValueError(
+                    f"seed {seed} binary recovery differs from tracked manifest"
+                )
+    else:
+        raise ValueError(
+            "canonical v2 metric correction is missing checkpoint recovery"
+        )
     for split in ("validation", "test"):
         path = _verify_reference(
             wrapper["corrected_results"][split],
@@ -568,6 +657,14 @@ def parse_args() -> argparse.Namespace:
             "critic, and normalizer identities must match frozen V4R."
         ),
     )
+    replay.add_argument(
+        "--recovery-manifest",
+        type=Path,
+        help=(
+            "Tracked metric-replay checkpoint recovery manifest. Required "
+            "when reconstructed binaries are used."
+        ),
+    )
     check = subparsers.add_parser("verify")
     check.add_argument(
         "--canonical",
@@ -586,6 +683,11 @@ def main() -> int:
             recovered_binary_root=(
                 args.recovered_binary_root.resolve()
                 if args.recovered_binary_root
+                else None
+            ),
+            recovery_manifest_path=(
+                args.recovery_manifest.resolve()
+                if args.recovery_manifest
                 else None
             ),
         )

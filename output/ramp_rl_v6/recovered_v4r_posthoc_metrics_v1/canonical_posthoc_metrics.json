@@ -9,7 +9,7 @@
         "final_policy_sha256": "1bbd1918564a87ac2b2357185207016cf9835e5e9c0c4949d58fec62e63c0d6b",
         "normalizer_sha256": "0789b19f8999d1cdc79249daa33db92fe4ef9152f7202274d26a90bcae0549c3",
         "protocol_model_sha256": "47e68ae430be484da860b6e1520f1868e5869ccbd49d86fe48920a253c861883",
-        "replay_model_sha256": "b366fdf6bb8f6c53ce95be255377dac894bcd243f851be907b96e87f64c0d334",
+        "replay_model_sha256": "bfe74b8eef0f6187c4b476bcbf1ef860cdb0c093be01e13ec314c5f18e6e806d",
         "seed": 2801
       },
       {
@@ -18,7 +18,7 @@
         "final_policy_sha256": "236030e9d320e735242f320fe42b8e4a3d9cb794b7422fc544f3204029d8df4f",
         "normalizer_sha256": "bbb6ccad327453c757fd636ed64b4c5af6012490dbaecfc004aaab57fc0c5bd3",
         "protocol_model_sha256": "93296e54bb61be72b9c41f58175860734208f1785089a11730236891f9a8700f",
-        "replay_model_sha256": "dc7e22d29afc6df838196253cae3bd34eb2f950ff35bd47d2c64bcea07c28ce2",
+        "replay_model_sha256": "383fcc1cafd947ff354b8d600a7d65a276f2120e89a7c2c61cc469b93039d5da",
         "seed": 2802
       },
       {
@@ -27,7 +27,7 @@
         "final_policy_sha256": "2e5874c9ac4a160ded42e26cf9a68680ad7f691a534b41bab4fe86c8413700ef",
         "normalizer_sha256": "f5362840c1fb8c96983ec2d60505e15619fa0bfb3b35ec69a18808f4c178dd9c",
         "protocol_model_sha256": "292a24819bb13dd8372b25c932eb3ac44b06bab891237ab331c7ba224873f507",
-        "replay_model_sha256": "829bebde4048b86d714c17a8bbb85fdcebe779b03a15273e55c4c8bcdda2fb0a",
+        "replay_model_sha256": "f99b07e05cff623fa01f447778f9f4f3180f7a98163a7ff574c220b68a66279e",
         "seed": 2803
       },
       {
@@ -36,7 +36,7 @@
         "final_policy_sha256": "9d0342ecb9da1ae578e578604a005220b00bfeea48fc144fcf3d9cae67470bb6",
         "normalizer_sha256": "778fb2ad91d1ec1e9a16a76f5b1cef139c2c2fbb6256479868473bbb9155b63e",
         "protocol_model_sha256": "ee5ee15ce884d7958da253ea7fb6f95297d395cb0ca5cc816d83ac72bb345fbb",
-        "replay_model_sha256": "7ea5e8590e3eb8dcfc46f413b51450398a7530468273c9ef468640f846a29bdd",
+        "replay_model_sha256": "8f507f3e2f6bde1d0b48b6c6850370cfa4da173a40e7b25ca0f06afeb2100fbe",
         "seed": 2804
       },
       {
@@ -45,7 +45,7 @@
         "final_policy_sha256": "8aa28e035f7f0710adffdbe5773ffc4a6a43d9a562ecca784ea616599f61e42f",
         "normalizer_sha256": "e9e1d4523ddfd16f17744deaa371627fcae2d0316a971a02f140cc73c2d2e8f7",
         "protocol_model_sha256": "ffba64a2b4574e1a10edfd96e91bcd08f78d380c756a4d3231ac5ee1365e07f6",
-        "replay_model_sha256": "d48c478b9dc2c89c7750c9283baa7174f4d13a39c54cc4b76d9d8139c62225d1",
+        "replay_model_sha256": "42e45f0ea45134bea1476b34345ad5ab1c5ace6b063690a130cb51310ca10f95",
         "seed": 2805
       }
     ],
@@ -53,21 +53,31 @@
     "purpose": "restore exact frozen policy/critic/normalizer state for post-hoc metric replay after ignored containers were unavailable",
     "selection_or_tuning": false
   },
+  "checkpoint_recovery": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_manifest.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "26e9c77a1d932ff7edb66fe8b7d55b6f769a2e2029a49c95411b62465b14f064"
+  },
   "corrected_results": {
     "test": {
       "algorithm": "sha256",
       "path": "output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/test_corrected_metrics.json",
       "representation": "canonical-json-utf8-sort-compact-v1",
-      "sha256": "e3ff115ee5ad87e7bfaf903a3398592540272adf7e05936e4015861be0f1f82e"
+      "sha256": "41a869495b183c70f71202237946d51aa994153a8b042a4f5d1b8f7a523ce0ed"
     },
     "validation": {
       "algorithm": "sha256",
       "path": "output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/validation_corrected_metrics.json",
       "representation": "canonical-json-utf8-sort-compact-v1",
-      "sha256": "1a498017fb5964ebff410e082615325d87000f7dbbc8bc29f4465ac758bbf8cb"
+      "sha256": "0de52efd5a6d2221b591e1f19fbdd61630f77803f032cb75db94ef469b2a07ae"
     }
   },
   "corrected_source_files": {
+    ".gitignore": {
+      "representation": "utf8-lf-text-v1",
+      "sha256": "dae0a217696e5d79767b421f8371fcb6c0c12b37921a5f6cf802406093431664"
+    },
     "energy_model_v3/ramp_factory.py": {
       "representation": "utf8-lf-text-v1",
       "sha256": "24f862fa1d15cac43b42face2563a96966c1145398d487bf5efce85e2db272ee"
@@ -108,9 +118,17 @@
       "representation": "utf8-lf-text-v1",
       "sha256": "62e903c36ed8f218ac86c7bb8a1e097c355e12f5c59586fa87de143eeffede4a"
     },
+    "ramp_rl/v4r_metric_replay_recovery.py": {
+      "representation": "utf8-lf-text-v1",
+      "sha256": "dc313331d4340ce405c39386e008c335f7b20d8b57dd04ab4b57f92a2d67a259"
+    },
+    "scripts/bind_v4r_metric_replay_recovery.py": {
+      "representation": "utf8-lf-text-v1",
+      "sha256": "cbc692b64076b85caadb79a4b85f8924cf800842b6343bc87f04fc661ebe961f"
+    },
     "scripts/recompute_v4r_posthoc_metrics.py": {
       "representation": "utf8-lf-text-v1",
-      "sha256": "f14df2bed8477638729b6f065e877bb9e7d301f31462efdc041b2ab7e21abb0d"
+      "sha256": "25a45593b06bd745965614cb61b4f660bbb29c4924eaabe50bb4ea3ccbfcbf79"
     }
   },
   "deterministic_checkpoint_reconstruction_performed": true,
@@ -169,10 +187,10 @@
     "sha256": "57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd"
   },
   "protocol_id": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r",
-  "recomputed_at_utc": "2026-08-10T02:55:50Z",
-  "schema_version": "v4r-posthoc-corrected-metrics-canonical-v1",
+  "recomputed_at_utc": "2026-08-10T04:44:57Z",
+  "schema_version": "v4r-posthoc-corrected-metrics-canonical-v2",
   "second_sealed_generalization_test": false,
-  "status": "authoritative_posthoc_metric_correction",
+  "status": "authoritative_posthoc_metric_correction_with_bound_checkpoint_recovery",
   "supersession_scope": "physical-ramp-status-quo-labeling-and-decoder-telemetry-only",
   "telemetry_and_portable_verification_source_changed": true
 }
