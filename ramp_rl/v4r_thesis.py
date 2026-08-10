@@ -9,16 +9,30 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from ramp_rl.provenance import (
+    CANONICAL_JSON_REPRESENTATION,
+    HASH_CONTRACT_ID,
+    canonical_json_file_sha256,
+    canonical_json_sha256,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CANONICAL = (
-    ROOT / "output" / "ramp_rl_v6" / "recovered_v4r" / "canonical_evidence.json"
+    ROOT
+    / "output"
+    / "ramp_rl_v6"
+    / "recovered_v4r_resealed_v2"
+    / "canonical_evidence.json"
 )
-DEFAULT_OUTPUT = ROOT / "output" / "ramp_rl_v6" / "recovered_v4r" / "thesis"
+DEFAULT_OUTPUT = (
+    ROOT / "output" / "ramp_rl_v6" / "recovered_v4r_resealed_v2" / "thesis"
+)
 
 EXPECTED_CANONICAL_SHA256 = (
-    "b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30"
+    "f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b"
 )
+EXPECTED_RESEAL_COMMIT = "3097c9aeca248a12e7239b40a895c5cd5fcd037b"
 EXPECTED_PROTOCOL_ID = "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r"
 EXPECTED_PROTOCOL_SHA256 = (
     "57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd"
@@ -28,19 +42,19 @@ EXPECTED_SOURCE_BUNDLE_SHA256 = (
     "9c660175f345537636816e0278f427ec0f0bea162bf672bd9e8160efe157eb21"
 )
 EXPECTED_SOURCE_FREEZE_SHA256 = (
-    "21e3b036be9e111a4af26ac60697e44993fbc681cd38d2b9ec2ad7c9d9848c02"
+    "04d358ff4b7629e49eec92fd2ca10bc25ca38fa3f1116d7fd66c3763b8a08973"
 )
 EXPECTED_RECOVERY_BINDING_SHA256 = (
-    "2c125bce0de306aa6606942dba05d85f975153e33dffc41b5b6d8e4d258e98b4"
+    "ecbeb41753627231a0d601eedb1a5b1906879dd80b5ccb248028cfc8256005e7"
 )
-EXPECTED_TEST_OPENING_SHA256 = (
-    "fd596881c6f83dc1bc0d77f238727ceb8d2a12b12c42b96a6d4061397c90f837"
+EXPECTED_VALIDATION_CHAIN_SHA256 = (
+    "30e987b704d7af6aee3a9b7a4b630ed2ccfb6c3b33439fb608be278582fd3849"
 )
-EXPECTED_VALIDATION_DECISION_SHA256 = (
-    "4d07c14122eeb40601e7a573fc9b8026ea9c347e7932c2cd0923ded7e38af5a1"
+EXPECTED_SEALED_TEST_CHAIN_SHA256 = (
+    "af05566bc43afb50eea3ac0f7f186bb4bb192d8c16a48241ca758c35a23a98db"
 )
-EXPECTED_TEST_DECISION_SHA256 = (
-    "ad459855624705dbb0231f1e31595373ba2035659a2e62b2e5bc33aab05ef52e"
+EXPECTED_ROBUSTNESS_CHAIN_SHA256 = (
+    "3ae009ae74ee54b7f5ff41e675c1c4f283066f73b9a02c13bd8e332e03ec29b0"
 )
 EXPECTED_MEMBER_SEEDS = (2801, 2802, 2803, 2804, 2805)
 EXPECTED_MODEL_SHA256 = {
@@ -84,21 +98,41 @@ def _resolve_evidence_path(raw: str) -> Path:
 
 
 def _verify_git_identity(path: Path) -> None:
+    relative = path.relative_to(ROOT).as_posix()
     completed = subprocess.run(
-        ["git", "show", f"7ebd9b2:{path.relative_to(ROOT).as_posix()}"],
+        ["git", "show", f"{EXPECTED_RESEAL_COMMIT}:{relative}"],
         cwd=ROOT,
         capture_output=True,
         check=False,
     )
-    _require(completed.returncode == 0, "canonical evidence commit 7ebd9b2 is missing")
-    committed_hash = hashlib.sha256(completed.stdout).hexdigest()
-    normalized_worktree_hash = hashlib.sha256(
-        path.read_text(encoding="utf-8").encode("utf-8")
-    ).hexdigest()
     _require(
-        committed_hash == normalized_worktree_hash,
-        "canonical evidence content differs from commit 7ebd9b2",
+        completed.returncode == 0,
+        f"corrected canonical evidence is missing from {EXPECTED_RESEAL_COMMIT}",
     )
+    committed_payload = json.loads(completed.stdout.decode("utf-8"))
+    committed_hash = canonical_json_sha256(committed_payload)
+    worktree_hash = canonical_json_file_sha256(path)
+    _require(
+        committed_hash == worktree_hash == EXPECTED_CANONICAL_SHA256,
+        "corrected canonical evidence differs from its committed canonical-JSON identity",
+    )
+
+
+def _verify_reference(
+    reference: dict[str, Any],
+    *,
+    expected_sha256: str | None = None,
+    label: str,
+) -> tuple[Path, dict[str, Any]]:
+    _require(reference.get("algorithm") == "sha256", f"wrong {label} algorithm")
+    _require(
+        reference.get("representation") == CANONICAL_JSON_REPRESENTATION,
+        f"wrong {label} representation",
+    )
+    path = _resolve_evidence_path(str(reference.get("path", "")))
+    expected = expected_sha256 or str(reference.get("sha256", ""))
+    _require(reference.get("sha256") == expected, f"wrong {label} reference SHA-256")
+    return path, _verify_sidecar(path, expected, label=label)
 
 
 def _verify_sidecar(
@@ -108,7 +142,10 @@ def _verify_sidecar(
     label: str,
 ) -> dict[str, Any]:
     _require(path.is_file(), f"missing {label}: {path}")
-    _require(sha256_file(path) == expected_sha256, f"wrong {label} SHA-256")
+    _require(
+        canonical_json_file_sha256(path) == expected_sha256,
+        f"wrong {label} canonical-JSON SHA-256",
+    )
     return _load(path)
 
 
@@ -143,7 +180,8 @@ def _verify_controller(result: dict[str, Any], binding: dict[str, Any]) -> None:
             f"wrong recovered model hash for seed {seed}",
         )
         _require(
-            member.get("model_sha256") == binding_members[seed].get("recovered_model_sha256"),
+            member.get("model_sha256")
+            == binding_members[seed].get("recovered_model", {}).get("sha256"),
             f"model hash is not recovery-bound for seed {seed}",
         )
         _require(member.get("weight") == 0.2, f"wrong member weight for seed {seed}")
@@ -181,11 +219,6 @@ def _verify_result(
     _require(all(float(markets[market]) < 0.0 for market in EXPECTED_MARKETS), "every market must improve")
     _require(float(result.get("mean_incremental_ramp_impact", 0.0)) < 0.0, "mean ramp must improve")
     _require(float(result.get("energy_cost_ratio", 2.0)) <= 1.02, "cost gate failed")
-    if "recovery_binding_sha256" in result:
-        _require(
-            result["recovery_binding_sha256"] == EXPECTED_RECOVERY_BINDING_SHA256,
-            "wrong recovery binding in result",
-        )
     if post_selection:
         _require(result.get("post_selection_only") is True, "robustness must be post-selection")
         _require(result.get("selection_or_tuning") is False, "robustness used for selection or tuning")
@@ -195,140 +228,189 @@ def _verify_result(
 def load_verified_evidence(path: Path = DEFAULT_CANONICAL) -> dict[str, Any]:
     path = path.resolve()
     _require(path.is_file(), f"missing canonical evidence: {path}")
-    _require(sha256_file(path) == EXPECTED_CANONICAL_SHA256, "wrong canonical evidence SHA-256")
-    _verify_git_identity(path)
-    evidence = _load(path)
     _require(
-        evidence.get("schema_version")
-        == "ramp-pure-rl-recovered-v4r-canonical-evidence-v1",
+        canonical_json_file_sha256(path) == EXPECTED_CANONICAL_SHA256,
+        "wrong canonical evidence canonical-JSON SHA-256",
+    )
+    _verify_git_identity(path)
+    canonical = _load(path)
+    _require(
+        canonical.get("schema_version")
+        == "ramp-pure-rl-recovered-v4r-canonical-evidence-v2",
         "unsupported canonical evidence schema",
     )
-    _require(evidence.get("protocol_id") == EXPECTED_PROTOCOL_ID, "wrong canonical protocol ID")
+    _require(canonical.get("protocol_id") == EXPECTED_PROTOCOL_ID, "wrong canonical protocol ID")
     _require(
-        evidence.get("protocol_sha256") == EXPECTED_PROTOCOL_SHA256,
-        "wrong canonical protocol SHA-256",
+        canonical.get("status") == "canonical-corrected-provenance",
+        "canonical evidence is not the corrected provenance package",
     )
-    _require(evidence.get("blocked_original_v4_evaluated") is False, "blocked V4 was evaluated")
-    _require(evidence.get("sealed_test_opened") is True, "sealed test was not opened")
-    _require(evidence.get("sealed_test_open_count") == 1, "sealed test must open exactly once")
+    _require(
+        canonical.get("supersession_scope") == "provenance-hash-chain-only",
+        "wrong provenance supersession scope",
+    )
+    _require(canonical.get("numerical_results_changed") is False, "numerical results changed")
+    _require(
+        canonical.get("protocol_controller_model_data_factory_forecast_identities_changed")
+        is False,
+        "experimental identities changed",
+    )
+    _require(canonical.get("validation_or_test_evaluation_rerun") is False, "evaluation reran")
+    _require(canonical.get("training_or_retuning_performed") is False, "training or retuning ran")
+    _require(canonical.get("sealed_test_open_count") == 1, "sealed test must open exactly once")
 
-    base = path.parent
-    source_freeze = _verify_sidecar(
-        base / "source_freeze.json",
-        EXPECTED_SOURCE_FREEZE_SHA256,
+    _, hash_contract = _verify_reference(
+        canonical["hash_contract"],
+        label="hash contract",
+    )
+    _require(hash_contract.get("contract_id") == HASH_CONTRACT_ID, "wrong hash contract ID")
+
+    _, source_freeze = _verify_reference(
+        canonical["source_freeze"],
+        expected_sha256=EXPECTED_SOURCE_FREEZE_SHA256,
         label="source freeze",
     )
-    binding = _verify_sidecar(
-        base / "recovery_binding.json",
-        EXPECTED_RECOVERY_BINDING_SHA256,
+    _, binding = _verify_reference(
+        canonical["recovery_binding"],
+        expected_sha256=EXPECTED_RECOVERY_BINDING_SHA256,
         label="recovery binding",
     )
-    opening = _verify_sidecar(
-        base / "sealed_test_opening.json",
-        EXPECTED_TEST_OPENING_SHA256,
-        label="sealed-test opening",
+    _, validation_chain = _verify_reference(
+        canonical["validation_chain"],
+        expected_sha256=EXPECTED_VALIDATION_CHAIN_SHA256,
+        label="validation chain",
     )
-    _require(source_freeze.get("source_commit") == EXPECTED_SOURCE_COMMIT, "wrong source commit")
-    _require(source_freeze.get("new_binary_identity") is True, "V4R must have a new binary identity")
-    _require(source_freeze.get("blocked_original_v4_unchanged") is True, "blocked V4 changed")
-    _require(source_freeze.get("v3_artifacts_unchanged") is True, "V3 artifacts changed")
-    _require(source_freeze.get("test_opened") is False, "source freeze occurred after test opening")
-    _require(binding.get("all_non_container_recovery_checks_exact") is True, "recovery is not exact")
-    _require(binding.get("blocked_original_v4_identity_reused") is False, "blocked V4 identity reused")
-    _require(binding.get("original_v3_artifact_reuse") is False, "original V3 containers were reused")
-    _require(binding.get("performance_claim") is None, "recovery binding contains a performance claim")
-    _require(opening.get("open_count") == 1, "sealed test opening count is not one")
-    _require(opening.get("tuning_or_selection_permitted") is False, "test selection/tuning was permitted")
-    _require(opening.get("condition_satisfied") is True, "test opening condition was not satisfied")
-    _require(opening.get("months_opened") == ["2026-03", "2026-04"], "wrong test months")
+    _, sealed_test_chain = _verify_reference(
+        canonical["sealed_test_chain"],
+        expected_sha256=EXPECTED_SEALED_TEST_CHAIN_SHA256,
+        label="sealed-test chain",
+    )
+    _, robustness_chain = _verify_reference(
+        canonical["robustness_chain"],
+        expected_sha256=EXPECTED_ROBUSTNESS_CHAIN_SHA256,
+        label="robustness chain",
+    )
 
-    decisions: dict[str, dict[str, Any]] = {}
-    for section, split, count in (
-        ("validation", "validation", 28),
-        ("test", "test", 60),
+    preserved = source_freeze.get("preserved_identity", {})
+    _require(
+        source_freeze.get("experimental_source_commit") == EXPECTED_SOURCE_COMMIT,
+        "wrong source commit",
+    )
+    _require(preserved.get("new_binary_identity") is True, "V4R must have a new binary identity")
+    _require(preserved.get("blocked_original_v4_unchanged") is True, "blocked V4 changed")
+    _require(preserved.get("v3_artifacts_unchanged") is True, "V3 artifacts changed")
+    _require(
+        preserved.get("test_opened_at_freeze") is False,
+        "source freeze occurred after test opening",
+    )
+    _require(binding.get("all_non_container_recovery_checks_exact") is True, "recovery is not exact")
+    _require(
+        binding.get("classification")
+        == "new-binary-identity-weight-equivalent-recovered-pure-rl",
+        "wrong recovery classification",
+    )
+
+    records: dict[str, dict[str, Any]] = {}
+    for section, chain, split, count in (
+        ("validation", validation_chain, "validation", 28),
+        ("test", sealed_test_chain, "test", 60),
     ):
-        record = evidence.get(section)
-        _require(isinstance(record, dict), f"missing {section} evidence")
-        expected_decision_hash = (
-            EXPECTED_VALIDATION_DECISION_SHA256
-            if section == "validation"
-            else EXPECTED_TEST_DECISION_SHA256
-        )
+        _, result = _verify_reference(chain["result"], label=f"{section} result")
         _require(
-            record.get("decision_sha256") == expected_decision_hash,
-            f"wrong {section} decision hash in canonical evidence",
+            all(result.get(key) == value for key, value in chain["numeric_summary"].items()),
+            f"{section} corrected numeric summary differs from immutable result",
         )
-        decisions[section] = _verify_sidecar(
-            _resolve_evidence_path(str(record.get("decision_path", ""))),
-            expected_decision_hash,
+        _verify_result(result, split=split, episode_count=count, binding=binding)
+        decision_path, decision = _verify_reference(
+            chain["decision"],
             label=f"{section} decision",
         )
-        result_path = _resolve_evidence_path(str(record.get("path", "")))
-        expected_hash = str(record.get("sha256", ""))
-        persisted = _verify_sidecar(result_path, expected_hash, label=f"{section} result")
-        _require(persisted == record.get("result"), f"{section} canonical embedding differs from source")
-        _verify_result(persisted, split=split, episode_count=count, binding=binding)
-    validation_decision = decisions["validation"]
-    _require(validation_decision.get("selected") is True, "V4R was not selected on validation")
-    _require(validation_decision.get("test_opened") is False, "validation decision opened test")
-    _require(validation_decision.get("test_open_count") == 0, "test opened before validation freeze")
-    _require(
-        validation_decision.get("validation_sha256") == evidence["validation"]["sha256"],
-        "validation decision is not bound to validation result",
-    )
-    _require(
-        validation_decision.get("strict_gate", {}).get("test_tuning_prohibited") is True,
-        "validation decision permits test tuning",
-    )
-    test_decision = decisions["test"]
-    _require(test_decision.get("sealed_test_passed") is True, "test decision is not a strict pass")
-    _require(test_decision.get("retuning_permitted") is False, "test decision permits retuning")
-    _require(
-        test_decision.get("post_selection_robustness_authorized") is True,
-        "post-selection robustness was not authorized",
-    )
-    _require(
-        test_decision.get("test_sha256") == evidence["test"]["sha256"],
-        "test decision is not bound to test result",
-    )
+        records[section] = {
+            "path": chain["result"]["path"],
+            "sha256": chain["result"]["sha256"],
+            "decision_path": decision_path.relative_to(ROOT).as_posix(),
+            "decision_sha256": chain["decision"]["sha256"],
+            "result": result,
+        }
+        _require(chain["strict_gate"].get("passed") is True, f"{section} strict gates failed")
+        _require(
+            chain["strict_gate"].get("test_tuning_prohibited") is True,
+            f"{section} chain permits test tuning",
+        )
+        if section == "validation":
+            _require(chain.get("selected") is True, "V4R was not selected on validation")
+            _require(chain["chronology"].get("test_opened") is False, "validation opened test")
+            _require(chain["chronology"].get("test_open_count") == 0, "test opened before freeze")
+            _require(decision.get("selected") is True, "validation decision did not select V4R")
+        else:
+            _require(chain.get("sealed_test_passed") is True, "sealed test did not pass")
+            _require(chain["chronology"].get("open_count") == 1, "wrong test opening count")
+            _require(
+                chain["chronology"].get("tuning_or_selection_permitted") is False,
+                "test selection/tuning was permitted",
+            )
 
+    robustness: dict[str, dict[str, Any]] = {}
     for key in ("one_gw_total", "c_h_overlapping"):
-        record = evidence.get("robustness", {}).get(key)
-        _require(isinstance(record, dict), f"missing robustness result: {key}")
-        persisted = _verify_sidecar(
-            _resolve_evidence_path(str(record.get("path", ""))),
-            str(record.get("sha256", "")),
+        chain_record = robustness_chain.get(key)
+        _require(isinstance(chain_record, dict), f"missing robustness result: {key}")
+        _, result = _verify_reference(
+            chain_record["artifact"],
             label=f"{key} robustness",
         )
-        _require(persisted == record.get("result"), f"{key} canonical embedding differs from source")
+        _require(
+            all(result.get(field) == value for field, value in chain_record["numeric_summary"].items()),
+            f"{key} corrected numeric summary differs from immutable result",
+        )
         _verify_result(
-            persisted,
+            result,
             split="test",
             episode_count=60,
             binding=binding,
             post_selection=True,
         )
-        _require(
-            persisted.get("test_decision_sha256") == EXPECTED_TEST_DECISION_SHA256,
-            f"{key} robustness is not bound to the test decision",
-        )
-        _require(
-            persisted.get("test_result_sha256") == evidence["test"]["sha256"],
-            f"{key} robustness is not bound to the sealed-test result",
-        )
+        robustness[key] = {
+            "path": chain_record["artifact"]["path"],
+            "sha256": chain_record["artifact"]["sha256"],
+            "result": result,
+        }
     _require(
-        evidence["robustness"]["c_h_overlapping"]["result"].get("variant")
-        == "c-h-overlapping",
+        robustness_chain.get("post_selection_only") is True,
+        "robustness is not post-selection",
+    )
+    _require(
+        robustness_chain.get("selection_or_tuning") is False,
+        "robustness was used for selection or tuning",
+    )
+    _require(
+        robustness["c_h_overlapping"]["result"].get("variant") == "c-h-overlapping",
         "c-h robustness must retain its overlapping identity",
     )
+
+    evidence = {
+        "schema_version": canonical["schema_version"],
+        "protocol_id": canonical["protocol_id"],
+        "protocol_sha256": EXPECTED_PROTOCOL_SHA256,
+        "hash_contract": canonical["hash_contract"],
+        "supersedes": canonical["supersedes"],
+        "supersession_scope": canonical["supersession_scope"],
+        "blocked_original_v4_evaluated": False,
+        "sealed_test_opened": True,
+        "sealed_test_open_count": canonical["sealed_test_open_count"],
+        "validation": records["validation"],
+        "test": records["test"],
+        "robustness": robustness,
+    }
     evidence["_verified"] = {
         "canonical_sha256": EXPECTED_CANONICAL_SHA256,
+        "canonical_representation": CANONICAL_JSON_REPRESENTATION,
+        "hash_contract_id": HASH_CONTRACT_ID,
+        "reseal_commit": EXPECTED_RESEAL_COMMIT,
         "source_commit": EXPECTED_SOURCE_COMMIT,
         "source_freeze_sha256": EXPECTED_SOURCE_FREEZE_SHA256,
         "recovery_binding_sha256": EXPECTED_RECOVERY_BINDING_SHA256,
-        "sealed_test_opening_sha256": EXPECTED_TEST_OPENING_SHA256,
-        "validation_decision_sha256": EXPECTED_VALIDATION_DECISION_SHA256,
-        "test_decision_sha256": EXPECTED_TEST_DECISION_SHA256,
+        "validation_chain_sha256": EXPECTED_VALIDATION_CHAIN_SHA256,
+        "sealed_test_chain_sha256": EXPECTED_SEALED_TEST_CHAIN_SHA256,
+        "robustness_chain_sha256": EXPECTED_ROBUSTNESS_CHAIN_SHA256,
     }
     return evidence
 
@@ -341,7 +423,18 @@ def build_claim_ledger(evidence: dict[str, Any]) -> dict[str, Any]:
         {
             "claim_id": "v4r-recovery-identity",
             "value": "new-binary-identity-weight-equivalent-recovered-pure-rl",
-            "evidence_pointer": "/recovery_binding_sha256",
+            "evidence_pointer": "/recovery_binding",
+        },
+        {
+            "claim_id": "provenance-hash-contract",
+            "value": HASH_CONTRACT_ID,
+            "representation": CANONICAL_JSON_REPRESENTATION,
+            "evidence_pointer": "/hash_contract",
+        },
+        {
+            "claim_id": "provenance-supersession-scope",
+            "value": "provenance-hash-chain-only",
+            "evidence_pointer": "/supersession_scope",
         },
         {
             "claim_id": "validation-mean-ramp-impact",
@@ -407,8 +500,11 @@ def build_claim_ledger(evidence: dict[str, Any]) -> dict[str, Any]:
             }
         )
     return {
-        "schema_version": "ramp-v6-v4r-claim-ledger-v1",
+        "schema_version": "ramp-v6-v4r-claim-ledger-v2",
         "canonical_evidence_sha256": EXPECTED_CANONICAL_SHA256,
+        "canonical_evidence_representation": CANONICAL_JSON_REPRESENTATION,
+        "hash_contract_id": HASH_CONTRACT_ID,
+        "reseal_commit": EXPECTED_RESEAL_COMMIT,
         "protocol_id": EXPECTED_PROTOCOL_ID,
         "protocol_sha256": EXPECTED_PROTOCOL_SHA256,
         "source_commit": EXPECTED_SOURCE_COMMIT,
@@ -514,8 +610,10 @@ def write_publication_package(
         ],
     )
     manifest = {
-        "schema_version": "ramp-v6-v4r-thesis-package-v1",
+        "schema_version": "ramp-v6-v4r-thesis-package-v2",
         "canonical_evidence_sha256": EXPECTED_CANONICAL_SHA256,
+        "canonical_evidence_representation": CANONICAL_JSON_REPRESENTATION,
+        "hash_contract_id": HASH_CONTRACT_ID,
         "claim_ledger_sha256": sha256_file(ledger_path),
         "files": {},
     }

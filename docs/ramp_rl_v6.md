@@ -143,8 +143,12 @@ trainable combination, supervision, analytic policy actions, MPC, and optimizer
 actions are prohibited.
 
 The authoritative evidence is
-`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`, SHA-256
-`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`.
+`output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`, with
+canonical-JSON SHA-256
+`f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b`
+under hash contract `dc-energy-provenance-sha256-v2`. The reseal supersedes
+only platform-dependent checkout hashes; protocol, chronology, models, data,
+metrics, and decisions are unchanged.
 V4R passed all 28 February validation episodes, then opened the March-April
 sealed test exactly once and passed all 60 test episodes. The 1 GW-total and
 c-h overlapping analyses are post-selection robustness; c-h is not an

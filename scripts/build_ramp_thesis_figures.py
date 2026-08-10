@@ -17,13 +17,39 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from ramp_rl.v4r_thesis import load_verified_evidence  # noqa: E402
+from ramp_rl.provenance import (  # noqa: E402
+    CANONICAL_JSON_REPRESENTATION,
+    HASH_CONTRACT_ID,
+)
 
 
 OUTPUT = ROOT / "docs" / "figures" / "ramp_v6"
 V1_RESULTS = ROOT / "output" / "ramp_rl_v6" / "live" / "final_results.json"
-SOURCE_CONTRACT = (
-    ROOT / "data" / "energy_model_v3" / "provenance" / "source_contract.json"
+LIVE_ACQUISITION_MANIFEST = (
+    ROOT
+    / "data"
+    / "energy_model_v3"
+    / "provenance"
+    / "live-acquisition-manifest.json"
 )
+PRICE_LABELS = {
+    "CAISO_NP15": "CAISO OASIS NP15 DAM LMP",
+    "ERCOT_LZ_NORTH": "ERCOT North DAM load-zone price",
+    "NYISO_NYC_J": "NYISO Zone J DAM LBMP",
+    "MISO_MINN_HUB": "MISO Minnesota Hub DA ex-post LMP",
+    "SPP_NORTH_HUB": "SPP North Hub DA LMP",
+    "ISONE_NEMA": "ISO-NE NEMA DA LMP",
+}
+DIRECT_PHYSICAL_LABELS = {
+    "ERCOT_LZ_NORTH": "ERCOT native load + hourly wind/solar",
+    "NYISO_NYC_J": "NYISO Zone J load + NYCA renewable context",
+}
+EIA_FALLBACK_LABELS = {
+    "CAISO_NP15": "EIA-930 CAISO BA fallback",
+    "MISO_MINN_HUB": "EIA-930 MISO BA fallback",
+    "SPP_NORTH_HUB": "EIA-930 SPP BA fallback",
+    "ISONE_NEMA": "EIA-930 ISO-NE BA fallback",
+}
 
 
 def build_v1_closeout() -> None:
@@ -63,7 +89,8 @@ def build_v1_closeout() -> None:
 
 
 def build_six_market_design() -> None:
-    contract = json.loads(SOURCE_CONTRACT.read_text(encoding="utf-8"))
+    manifest = json.loads(LIVE_ACQUISITION_MANIFEST.read_text(encoding="utf-8"))
+    physical_sources = manifest["physical_sources"]
     ordered = [
         ("CAISO_NP15", "CAISO NP15", "cell a"),
         ("ERCOT_LZ_NORTH", "ERCOT North", "cell b"),
@@ -78,9 +105,14 @@ def build_six_market_design() -> None:
     ax.axis("off")
     for index, (market, label, cell) in enumerate(ordered):
         y = 6.25 - index * 0.85
-        descriptors = contract["sources"][market]
-        price = descriptors[0]["source"]
-        physical = descriptors[-1]["source"]
+        price = PRICE_LABELS[market]
+        physical_record = physical_sources[market]
+        if isinstance(physical_record, dict) and physical_record.get("source_role") == (
+            "same_balancing_authority_EIA_bulk_fallback"
+        ):
+            physical = EIA_FALLBACK_LABELS[market]
+        else:
+            physical = DIRECT_PHYSICAL_LABELS[market]
         ax.add_patch(
             plt.Rectangle((0.2, y - 0.28), 2.4, 0.56, color="#d9eaf7", ec="#376996")
         )
@@ -103,7 +135,7 @@ def build_six_market_design() -> None:
         color="#9b2c2c",
         weight="bold",
     )
-    ax.set_title("Energy model v3: six independent evaluated markets and fixed split")
+    ax.set_title("Energy model v3: six separately sourced market/BA series and fixed split")
     fig.tight_layout()
     fig.savefig(OUTPUT / "six_market_study_design.png", dpi=180)
     plt.close(fig)
@@ -111,18 +143,22 @@ def build_six_market_design() -> None:
 
 def build_protocol_progression(evidence: dict) -> None:
     labels = ["V1 screen", "V1 confirm", "V2-A", "V2-B", "V3", "V4", "V4R"]
-    impacts = [
+    impacts: list[float | None] = [
         -1.3349297807182322e-05,
         -1.09572077294e-05,
         -4.983717818021212e-07,
         -1.412252682718701e-06,
         -1.371091986086174e-05,
-        0.0,
+        None,
         evidence["validation"]["result"]["mean_incremental_ramp_impact"],
     ]
     colors = ["#567c9e", "#a64b4b", "#a64b4b", "#a64b4b", "#a64b4b", "#777777", "#2f7d4a"]
     fig, ax = plt.subplots(figsize=(10.5, 4.8))
-    bars = ax.bar(labels, impacts, color=colors)
+    bars: dict[int, object] = {}
+    for index, (impact, color) in enumerate(zip(impacts, colors, strict=True)):
+        if impact is not None:
+            bars[index] = ax.bar(index, impact, color=color)[0]
+    ax.set_xticks(range(len(labels)), labels)
     ax.axhline(0, color="black", linewidth=0.8)
     ax.set_ylabel("Validation mean incremental ramp impact")
     ax.set_title("Protocol progression: failures remain visible; V4R is the first strict pass")
@@ -136,7 +172,12 @@ def build_protocol_progression(evidence: dict) -> None:
         "blocked\n(no evaluation)",
         "all gates pass",
     ]
-    for bar, note in zip(bars, annotations, strict=True):
+    for index, note in enumerate(annotations):
+        if impacts[index] is None:
+            ax.scatter(index, 8e-7, marker="x", s=70, color="#777777", linewidths=2)
+            ax.text(index, 1.4e-6, "N/A\nblocked; not evaluated", ha="center", va="bottom", fontsize=8)
+            continue
+        bar = bars[index]
         y = bar.get_height()
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -310,8 +351,10 @@ def main() -> None:
         "v4r_validation_and_test_separate.png",
     ]
     manifest = {
-        "schema_version": "ramp-v6-v4r-thesis-figures-v1",
+        "schema_version": "ramp-v6-v4r-thesis-figures-v2",
         "canonical_evidence_sha256": evidence["_verified"]["canonical_sha256"],
+        "canonical_evidence_representation": CANONICAL_JSON_REPRESENTATION,
+        "hash_contract_id": HASH_CONTRACT_ID,
         "files": {
             name: hashlib.sha256((OUTPUT / name).read_bytes()).hexdigest()
             for name in figure_names

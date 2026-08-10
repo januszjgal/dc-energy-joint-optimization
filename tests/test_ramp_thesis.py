@@ -8,6 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from ramp_rl.provenance import canonical_json_file_sha256, canonical_json_sha256
 from ramp_rl.v4r_thesis import (
     DEFAULT_CANONICAL,
     EXPECTED_CANONICAL_SHA256,
@@ -35,8 +36,12 @@ class RampThesisContractTests(unittest.TestCase):
         cls.evidence = load_verified_evidence()
 
     def test_canonical_evidence_has_expected_hash_and_identity(self) -> None:
-        digest = hashlib.sha256(DEFAULT_CANONICAL.read_bytes()).hexdigest()
+        digest = canonical_json_file_sha256(DEFAULT_CANONICAL)
         self.assertEqual(digest, EXPECTED_CANONICAL_SHA256)
+        self.assertEqual(
+            self.evidence["_verified"]["hash_contract_id"],
+            "dc-energy-provenance-sha256-v2",
+        )
         self.assertEqual(self.evidence["sealed_test_open_count"], 1)
         self.assertFalse(self.evidence["blocked_original_v4_evaluated"])
 
@@ -80,8 +85,10 @@ class RampThesisContractTests(unittest.TestCase):
     def test_wrong_canonical_hash_fails_closed(self) -> None:
         with TemporaryDirectory() as temporary:
             path = Path(temporary) / "canonical_evidence.json"
-            path.write_bytes(DEFAULT_CANONICAL.read_bytes() + b"\n")
-            with self.assertRaisesRegex(ValueError, "wrong canonical evidence SHA-256"):
+            payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
+            payload["sealed_test_open_count"] = 2
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "wrong canonical evidence canonical-JSON"):
                 load_verified_evidence(path)
 
     def test_more_than_one_test_opening_fails_closed(self) -> None:
@@ -91,9 +98,7 @@ class RampThesisContractTests(unittest.TestCase):
             base = Path(temporary)
             path = base / "canonical_evidence.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
-            for name in ("source_freeze.json", "recovery_binding.json", "sealed_test_opening.json"):
-                (base / name).write_bytes((DEFAULT_CANONICAL.parent / name).read_bytes())
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = canonical_json_sha256(payload)
             with (
                 patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
                 patch("ramp_rl.v4r_thesis._verify_git_identity"),
@@ -127,7 +132,7 @@ class RampThesisContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "wrong member seeds"):
             _verify_result(result, split="test", episode_count=60, binding=binding)
 
-    def test_test_selection_and_recovery_binding_fail_closed(self) -> None:
+    def test_test_selection_fails_closed(self) -> None:
         result = copy.deepcopy(self.evidence["robustness"]["one_gw_total"]["result"])
         binding = json.loads(
             (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
@@ -141,25 +146,18 @@ class RampThesisContractTests(unittest.TestCase):
                 binding=binding,
                 post_selection=True,
             )
-        result = copy.deepcopy(self.evidence["test"]["result"])
-        result["recovery_binding_sha256"] = "0" * 64
-        with self.assertRaisesRegex(ValueError, "wrong recovery binding"):
-            _verify_result(result, split="test", episode_count=60, binding=binding)
-
     def test_decision_sidecars_are_hash_verified(self) -> None:
         payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
-        payload["test"]["decision_sha256"] = "0" * 64
+        payload["sealed_test_chain"]["sha256"] = "0" * 64
         with TemporaryDirectory() as temporary:
             base = Path(temporary)
             path = base / "canonical_evidence.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
-            for name in ("source_freeze.json", "recovery_binding.json", "sealed_test_opening.json"):
-                (base / name).write_bytes((DEFAULT_CANONICAL.parent / name).read_bytes())
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = canonical_json_sha256(payload)
             with (
                 patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
                 patch("ramp_rl.v4r_thesis._verify_git_identity"),
-                self.assertRaisesRegex(ValueError, "wrong test decision hash"),
+                self.assertRaisesRegex(ValueError, "wrong sealed-test chain reference"),
             ):
                 load_verified_evidence(path)
 

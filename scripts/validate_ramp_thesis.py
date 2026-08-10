@@ -17,6 +17,8 @@ REQUIRED_PLACEHOLDERS = {
     "PROTOCOL_ID",
     "PROTOCOL_SHA256",
     "SOURCE_COMMIT",
+    "HASH_CONTRACT_ID",
+    "CANONICAL_REPRESENTATION",
     "CANONICAL_EVIDENCE_SHA256",
     "CLAIM_LEDGER_SHA256",
     "SPLIT_RESULTS_TABLE",
@@ -41,6 +43,11 @@ REQUIRED_SCOPE_PHRASES = {
     "c-h overlapping/non-independent": "overlapping robustness label",
     "new binary identity": "recovery identity",
     "no new V4R training": "V4R training distinction",
+    "same-balancing-authority EIA bulk fallback": "physical-source fallback scope",
+    "provenance-hash-chain-only": "provenance supersession scope",
+    "Git-blob bytes": "Git-blob identity scope",
+    "working-tree bytes": "working-tree identity scope",
+    "price-taking scale sensitivity": "1 GW sensitivity scope",
 }
 PROHIBITED_CLAIMS = (
     re.compile(r"\bc-h\b.{0,40}\b(?:(?<!non-)independent|holdout|out-of-fold)\b", re.I),
@@ -48,6 +55,10 @@ PROHIBITED_CLAIMS = (
     re.compile(r"\bV4R\b.{0,40}\b(?:trained|training run|randomly initialized)\b", re.I),
     re.compile(r"\bretail (?:cost|bill) savings?\b", re.I),
     re.compile(r"\b(?:validation|February).{0,80}(?:pooled|combined|blended).{0,40}(?:test|March-April)\b", re.I),
+    re.compile(r"\bcounter-ramp(?:ing)?\b", re.I),
+    re.compile(r"\b(?:six )?independent markets?\b", re.I),
+    re.compile(r"\bb1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30\b", re.I),
+    re.compile(r"\|\s*Original V4\s*\|\s*(?:0(?:\.0+)?|[-+]?\d)", re.I),
 )
 
 

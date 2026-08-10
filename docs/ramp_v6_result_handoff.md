@@ -5,12 +5,13 @@ available for V1-style evidence packages. The final V4R publication uses:
 
 ```powershell
 python scripts\build_ramp_rl_thesis_results.py --v4r `
-  output\ramp_rl_v6\recovered_v4r\canonical_evidence.json `
-  --output output\ramp_rl_v6\recovered_v4r\thesis
+  output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json `
+  --output output\ramp_rl_v6\recovered_v4r_resealed_v2\thesis
 ```
 
-The canonical input SHA-256 must be
-`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`.
+The canonical input canonical-JSON SHA-256 must be
+`f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b`
+under `dc-energy-provenance-sha256-v2`.
 Its protocol ID is
 `v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r`, with protocol SHA-256
 `57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd`.
@@ -19,7 +20,10 @@ Its protocol ID is
 
 The V4R builder verifies:
 
-- semantic equality to the canonical evidence committed at `7ebd9b2`;
+- semantic equality to the corrected canonical evidence committed through
+  `3097c9a`, with the original `7ebd9b2` evidence retained as append-only history;
+- canonical JSON identities for JSON, commit-and-path Git-blob identities for
+  tracked non-JSON text, and raw-byte identities for binaries;
 - exact source freeze, source commit, source bundle, recovery binding, and
   single-opening hashes;
 - a new recovered-container identity without reusing the blocked V4 identity
@@ -53,7 +57,7 @@ same verified canonical evidence:
 python scripts\build_ramp_thesis_figures.py
 python scripts\materialize_ramp_thesis.py --output thesis_paper.md
 python scripts\validate_ramp_thesis.py --source thesis_paper.md `
-  --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json
+  --results output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json
 python scripts\build_final_thesis.py --source thesis_paper.md `
   --output thesis_paper.docx
 ```
