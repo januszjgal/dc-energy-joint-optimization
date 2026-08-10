@@ -33,7 +33,7 @@ from scripts.validate_ramp_thesis import validate_text  # noqa: E402
 DEFAULT_SOURCE = ROOT / "thesis_ramp_v6.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.md"
 EXPECTED_TEMPLATE_SHA256 = (
-    "8237bfe7e6dbba9442ed7b60eae15223b8abdcedf4d6776947bf3de763096145"
+    "d09713fe7e9f8e08324788fb3c0f2012d9bbda194fb4e0ee0fac7d65fb72c4a6"
 )
 MARKET_LABELS = {
     "CAISO_NP15": "CAISO NP15",

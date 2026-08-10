@@ -1136,8 +1136,27 @@ stable recovery commit `d1d4828c32bada1ba1e852d0479c37bb71164561`. The
 committed procedure is:
 
 ```powershell
-git worktree add ..\dc-energy-v3-metric-recovery dede685
-Push-Location ..\dc-energy-v3-metric-recovery
+$repoRoot = (Resolve-Path ".").Path
+$worktreeParent = Split-Path $repoRoot -Parent
+$trainingRoot = Join-Path $worktreeParent "dc-energy-v3-metric-training"
+$verifierRoot = Join-Path $worktreeParent "dc-energy-v3-metric-verifier"
+$relativeCheckpoints = "models\ramp_rl_v6\recovery_v3_metric_replay"
+$trainingCheckpoints = Join-Path $trainingRoot $relativeCheckpoints
+$verifierCheckpoints = Join-Path $verifierRoot $relativeCheckpoints
+$localCheckpoints = Join-Path $repoRoot $relativeCheckpoints
+$rawVerification = Join-Path `
+  $verifierRoot "metric_replay_recovery_verification_raw.json"
+$recomputedAt = (Get-Date).ToUniversalTime().ToString(
+  "yyyy-MM-ddTHH:mm:ssZ"
+)
+
+if (Test-Path $trainingRoot) { throw "Training worktree already exists" }
+if (Test-Path $verifierRoot) { throw "Verifier worktree already exists" }
+if (Test-Path $localCheckpoints) { throw "Local checkpoint root already exists" }
+
+# Train only from the frozen historical execution source.
+git worktree add $trainingRoot dede685
+Push-Location $trainingRoot
 
 $env:OMP_NUM_THREADS = "1"
 $env:MKL_NUM_THREADS = "1"
@@ -1154,29 +1173,50 @@ $jobs = foreach ($seed in 2801..2805) {
     -PassThru
 }
 $jobs | Wait-Process
-
-python scripts\recover_ramp_rl_v3.py `
-  --recovery-root models\ramp_rl_v6\recovery_v3_metric_replay `
-  --manifest metric_replay_recovery_verification_raw.json `
-  --allow-model-container-difference
+if ($jobs | Where-Object { $_.ExitCode -ne 0 }) {
+  throw "At least one checkpoint reconstruction failed"
+}
 Pop-Location
 
-Copy-Item `
-  ..\dc-energy-v3-metric-recovery\models\ramp_rl_v6\recovery_v3_metric_replay `
-  models\ramp_rl_v6\recovery_v3_metric_replay `
-  -Recurse
+# Verify only from the stable recovery-tooling/evidence context. The verifier
+# and original live_v3 manifests are not present at dede685.
+git worktree add `
+  $verifierRoot d1d4828c32bada1ba1e852d0479c37bb71164561
+New-Item -ItemType Directory -Force `
+  -Path (Split-Path $verifierCheckpoints -Parent) | Out-Null
+Copy-Item -LiteralPath $trainingCheckpoints `
+  -Destination $verifierCheckpoints -Recurse
+
+Push-Location $verifierRoot
+python scripts\recover_ramp_rl_v3.py `
+  --recovery-root $verifierCheckpoints `
+  --manifest $rawVerification `
+  --allow-model-container-difference
+if ($LASTEXITCODE -ne 0) { throw "Equivalence verification failed" }
+Pop-Location
+
+# Stage only the verified ignored binaries in the current publication worktree.
+New-Item -ItemType Directory -Force `
+  -Path (Split-Path $localCheckpoints -Parent) | Out-Null
+Copy-Item -LiteralPath $verifierCheckpoints `
+  -Destination $localCheckpoints -Recurse
 
 python scripts\bind_v4r_metric_replay_recovery.py bind `
-  --raw-verification `
-    ..\dc-energy-v3-metric-recovery\metric_replay_recovery_verification_raw.json `
-  --recovery-root models\ramp_rl_v6\recovery_v3_metric_replay
+  --raw-verification $rawVerification `
+  --recovery-root $localCheckpoints
 
 python scripts\recompute_v4r_posthoc_metrics.py recompute `
-  --recomputed-at-utc <explicit-UTC-timestamp> `
-  --recovered-binary-root models\ramp_rl_v6\recovery_v3_metric_replay `
+  --recomputed-at-utc $recomputedAt `
+  --recovered-binary-root $localCheckpoints `
   --recovery-manifest `
     output\ramp_rl_v6\recovered_v4r_posthoc_metrics_v1\metric_replay_recovery_manifest.json
 ```
+
+The `dede685` worktree executes only `run_ramp_rl_v3.py train`. The separate
+`d1d4828...` worktree supplies `recover_ramp_rl_v3.py`, the original live_v3
+training manifests, source freeze, and recovery evidence needed by the full
+equivalence verifier. Copying only the verifier script into `dede685` is
+insufficient and is not part of this procedure.
 
 The stable verifier compares initial and final actor/critic hashes,
 interactions, updates, normalizer bytes, pure-RL assertions, replay provenance,
