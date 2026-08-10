@@ -21,6 +21,13 @@ The additive wrapper corrects only:
 - explicit native-grid versus operational status-quo labels and deltas; and
 - real semantic decoder-adjustment telemetry.
 
+The original sealed physical p95/max values are withdrawn and unavailable from
+the original traces, which retained only signed cross-market means. The
+original literal-zero decoder field is also withdrawn as unmeasured placeholder
+telemetry. Any physical extrema or decoder distribution in the publication is
+explicitly an equivalence-bound post-hoc replay; its March-April row is not a
+sealed test.
+
 The replay occurred after unblinding and is not a second sealed generalization
 test. The primary squared incremental objective, policy, members, equal weights,
 normalizers, data, forecasts, constraints, and original chronology are

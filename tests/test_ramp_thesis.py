@@ -338,6 +338,32 @@ class CorrectedRampThesisTests(unittest.TestCase):
                 f"{{{{CANONICAL_V4R:{name}}}}}",
                 text,
             )
+        rendered = render_tokens(self.evidence)
+        for token_name in (
+            "PHYSICAL_RAMP_TABLE",
+            "DECODER_ADJUSTMENT_TABLE",
+        ):
+            self.assertNotIn(
+                "| Sealed test |",
+                rendered[token_name],
+            )
+            self.assertIn(
+                "March-April original test windows (not a sealed test)",
+                rendered[token_name],
+            )
+        normalized_text = " ".join(text.split())
+        self.assertIn(
+            "unavailable from the original sealed traces",
+            normalized_text,
+        )
+        self.assertIn(
+            "literal-zero decoder field is invalid placeholder telemetry",
+            normalized_text,
+        )
+        self.assertIn(
+            "This comparator erratum requires no policy replay",
+            normalized_text,
+        )
         tampered = text.replace(
             "-1.42587105143e-05",
             "0.5",

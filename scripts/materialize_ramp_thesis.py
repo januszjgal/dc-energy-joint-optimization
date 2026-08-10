@@ -33,7 +33,7 @@ from scripts.validate_ramp_thesis import validate_text  # noqa: E402
 DEFAULT_SOURCE = ROOT / "thesis_ramp_v6.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.md"
 EXPECTED_TEMPLATE_SHA256 = (
-    "17b9470d5650a9bab1cdece28ce9c6671998cdc525fedde57767ef24f1cd7980"
+    "6f1a1b474b0293184e0f5dbae1506439a66702bce2d1955daf97783b218df4ec"
 )
 MARKET_LABELS = {
     "CAISO_NP15": "CAISO NP15",
@@ -95,7 +95,7 @@ def render_market_table(evidence: dict[str, Any]) -> str:
 def render_status_quo_table(evidence: dict[str, Any]) -> str:
     comparison = evidence["test"]["result"]["status_quo_comparison"]
     rows = [
-        "| Evaluated market | Policy vs native | Status quo vs native | Policy - status quo | Policy better? |",
+        "| Trace-derived March-April market | Policy vs native | Status quo vs native | Policy - status quo | Policy better? |",
         "|---|---:|---:|---:|---|",
     ]
     for market in MARKET_LABELS:
@@ -111,6 +111,8 @@ def render_status_quo_table(evidence: dict[str, Any]) -> str:
         [
             "",
             (
+                "Source: persisted original policy/status-quo episode arrays; "
+                "no policy replay is required. "
                 f"Overall policy-minus-status-quo mean: "
                 f"{fmt(comparison['policy_minus_status_quo_mean_incremental_ramp_impact'], 12)}. "
                 f"Markets better: {comparison['markets_better_count']}/"
@@ -126,12 +128,15 @@ def render_status_quo_table(evidence: dict[str, Any]) -> str:
 
 def render_physical_table(evidence: dict[str, Any]) -> str:
     rows = [
-        "| Split | Absolute adjusted 1 h p95 | Absolute adjusted 1 h max | Absolute adjusted 3 h p95 | Absolute adjusted 3 h max |",
+        "| Post-hoc replay window | Absolute adjusted 1 h p95 | Absolute adjusted 1 h max | Absolute adjusted 3 h p95 | Absolute adjusted 3 h max |",
         "|---|---:|---:|---:|---:|",
     ]
     for label, result in (
-        ("Validation", evidence["validation"]["result"]),
-        ("Sealed test", evidence["test"]["result"]),
+        ("February validation windows", evidence["validation"]["result"]),
+        (
+            "March-April original test windows (not a sealed test)",
+            evidence["test"]["result"],
+        ),
     ):
         rows.append(
             "| {label} | {h1p95} | {h1max} | {h3p95} | {h3max} |".format(
@@ -167,12 +172,15 @@ def render_physical_table(evidence: dict[str, Any]) -> str:
 
 def render_decoder_table(evidence: dict[str, Any]) -> str:
     rows = [
-        "| Split | Mean L2 | p50 L2 | p95 L2 | Maximum L2 | Positive rate | Emergency rate |",
+        "| Post-hoc replay window | Mean L2 | p50 L2 | p95 L2 | Maximum L2 | Positive rate | Emergency rate |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for label, result in (
-        ("Validation", evidence["validation"]["result"]),
-        ("Sealed test", evidence["test"]["result"]),
+        ("February validation windows", evidence["validation"]["result"]),
+        (
+            "March-April original test windows (not a sealed test)",
+            evidence["test"]["result"],
+        ),
     ):
         adjustment = result["semantic_adjustment"]
         rows.append(

@@ -392,6 +392,16 @@ could therefore cancel before the physical summary. In addition, the
 `semantic_adjustment_l2` field was a literal zero, and the historical gate name
 could be misread as a status-quo comparison.
 
+The original sealed physical p95/max values are therefore withdrawn. Correct
+absolute per-market horizon extrema are unavailable from the original sealed
+traces because those traces retain only signed cross-market means. The original
+literal-zero decoder field is also withdrawn: it is unmeasured placeholder
+telemetry, not evidence that the requested and projected allocations were
+identical.
+
+In short, valid absolute physical extrema are unavailable from the original
+sealed traces.
+
 The correction replays the frozen policy with unchanged dynamics and action
 execution. It pools absolute adjusted ramp magnitudes at the
 market-timestep level, computes decoder adjustment in comparable decoded work
@@ -970,10 +980,12 @@ the telemetry correction.
 Negative `I` means the fleet reduced the native squared ramp. This is a
 native-grid-relative statement. It does not yet compare policy with status quo.
 
-## 9.2 Corrected physical p95 and maximum
+## 9.2 Post-hoc replay physical p95 and maximum
 
-Physical summaries use `abs(a[m,t,h])`, not a signed cross-market average.
-For each split and horizon, the evaluator pools every scored market-timestep
+No valid absolute physical p95 or maximum is available from the original
+sealed traces. In the separate equivalence-bound post-hoc replay, physical
+summaries use `abs(a[m,t,h])`, not a signed cross-market average. For each
+window set and horizon, the evaluator pools every scored market-timestep
 magnitude with equal weight, then computes p95 and maximum. There are six
 market values per scored timestep. Upward and downward ramps enter with equal
 magnitude, so cross-market sign cancellation is impossible.
@@ -1257,7 +1269,7 @@ meaning of the historical market gate.
 
 ## 11.4 Policy versus status quo
 
-| Evaluated market | Policy vs native | Status quo vs native | Policy - status quo | Policy better? |
+| Trace-derived March-April market | Policy vs native | Status quo vs native | Policy - status quo | Policy better? |
 |---|---:|---:|---:|---|
 | CAISO NP15 | -2.1065969624e-05 | -1.5618292546e-06 | -1.9504140369e-05 | true |
 | ERCOT North | -2.3454355897e-06 | -1.5413318069e-06 | -8.0410378277e-07 | true |
@@ -1266,15 +1278,20 @@ meaning of the historical market gate.
 | NYISO Zone J | -3.2978547293e-05 | 4.3563737587e-06 | -3.7334921052e-05 | true |
 | SPP North Hub | -1.1054886764e-06 | -3.9831872909e-07 | -7.0716994734e-07 | true |
 
-Overall policy-minus-status-quo mean: -1.36142003824e-05. Markets better: 5/6 (83.3%). Every market outperforms status quo: false.
+Source: persisted original policy/status-quo episode arrays; no policy replay is required. Overall policy-minus-status-quo mean: -1.36142003824e-05. Markets better: 5/6 (83.3%). Every market outperforms status quo: false.
 
-![Figure 6. Separate sealed-test views of policy native-grid-relative impact and policy-minus-status-quo impact; five of six markets favor policy and MISO is the exception.](docs/figures/ramp_v6/status_quo_comparison.png)
+![Figure 6. Persisted March-April policy native-relative impacts and trace-derived policy-minus-status-quo deltas; five of six markets favor policy and MISO is the exception.](docs/figures/ramp_v6/status_quo_comparison.png)
 
 Policy outperforms status quo in five of six markets. MISO is worse: policy is
 about -5.65e-07 relative to native, while status quo is about -1.14e-06; because
 more negative is better, the baseline reduces the squared ramp more in MISO.
 The overall macro policy-minus-status-quo effect nevertheless strongly favors
 policy.
+
+This comparator erratum requires no policy replay. It is derived directly from
+the persisted original policy and status-quo episode arrays. It is a post-hoc
+diagnostic of the original March-April evaluation, not a rewritten
+preregistered gate and not a new sealed test.
 
 CAISO, ISO-NE, and NYISO contribute much larger favorable values than ERCOT,
 MISO, or SPP. The experiment did not isolate a causal reason for that
@@ -1296,34 +1313,39 @@ The test audit falls from about 313,167 to 303,078 units, a 3.22% reduction.
 This is behavior evidence consistent with pre-serving work, not a conversion
 of the primary normalized squared-ramp metric into MW.
 
-## 11.6 Physical adjusted-ramp magnitudes
+## 11.6 Post-hoc replay physical adjusted-ramp magnitudes
 
-| Split | Absolute adjusted 1 h p95 | Absolute adjusted 1 h max | Absolute adjusted 3 h p95 | Absolute adjusted 3 h max |
+| Post-hoc replay window | Absolute adjusted 1 h p95 | Absolute adjusted 1 h max | Absolute adjusted 3 h p95 | Absolute adjusted 3 h max |
 |---|---:|---:|---:|---:|
-| Validation | 0.097294046 | 0.30269855 | 0.083825111 | 0.16420604 |
-| Sealed test | 0.096081023 | 0.32285432 | 0.078321317 | 0.19145817 |
+| February validation windows | 0.097294046 | 0.30269855 | 0.083825111 | 0.16420604 |
+| March-April original test windows (not a sealed test) | 0.096081023 | 0.32285432 | 0.078321317 | 0.19145817 |
 
-![Figure 8. Corrected absolute adjusted 1 h and 3 h p95 and maximum values pool all market-timestep magnitudes without signed cancellation.](docs/figures/ramp_v6/physical_ramp_magnitudes.png)
+![Figure 8. Equivalence-bound post-hoc replay of absolute adjusted 1 h and 3 h p95 and maximum values; the original sealed traces cannot supply these metrics.](docs/figures/ramp_v6/physical_ramp_magnitudes.png)
 
-These are post-hoc corrected physical summaries. They describe the magnitude
-of adjusted market-normalized ramps, not incremental improvement and not a new
-generalization result.
+The original sealed physical extrema are invalid and unavailable. The displayed
+values come only from the equivalence-bound replay of the February and
+March-April windows. The March-April row is not a sealed test. These values
+describe adjusted market-normalized ramp magnitude, not incremental improvement
+and not a new generalization result.
 
-## 11.7 Decoder adjustment and emergency path
+## 11.7 Post-hoc replay decoder adjustment and emergency path
 
-| Split | Mean L2 | p50 L2 | p95 L2 | Maximum L2 | Positive rate | Emergency rate |
+| Post-hoc replay window | Mean L2 | p50 L2 | p95 L2 | Maximum L2 | Positive rate | Emergency rate |
 |---|---:|---:|---:|---:|---:|---:|
-| Validation | 0.38257833 | 0.21458075 | 1.217728 | 1.6188856 | 75.265% | 0.000% |
-| Sealed test | 0.40433577 | 0.26530135 | 1.1756256 | 1.504515 | 76.543% | 0.000% |
+| February validation windows | 0.38257833 | 0.21458075 | 1.217728 | 1.6188856 | 75.265% | 0.000% |
+| March-April original test windows (not a sealed test) | 0.40433577 | 0.26530135 | 1.1756256 | 1.504515 | 76.543% | 0.000% |
 
 Coordinates: N decoded service work amounts + one decoded total batch amount + N decoded batch-destination amounts. Units: compute-work units per hourly decision.
 
-![Figure 9. Distribution of ordinary decoder adjustment in decoded work-allocation coordinates, shown separately from the zero emergency fallback rate.](docs/figures/ramp_v6/decoder_adjustment.png)
+![Figure 9. Equivalence-bound post-hoc replay distribution of ordinary decoder adjustment in decoded work-allocation coordinates, shown separately from emergency fallback.](docs/figures/ramp_v6/decoder_adjustment.png)
 
-Positive adjustment is ordinary constraint projection. It shows how often and
-how much the unconstrained decoded request differs from executed work. It does
-not imply a safety failure. Emergency fallback is a separate mechanism and
-remained zero.
+The original literal-zero decoder field is invalid placeholder telemetry and
+cannot support a sealed-evaluation distribution. The displayed distribution is
+measured only by equivalence-bound post-hoc replay; its March-April row is not a
+sealed test. Positive adjustment is ordinary constraint projection. It shows
+how often and how much the unconstrained decoded request differs from executed
+work and does not imply a safety failure. Emergency fallback is a separate
+mechanism and remained zero.
 
 ## 11.8 Secondary modeled cost
 
@@ -1541,11 +1563,12 @@ secondary modeled wholesale cost. Every policy market was negative relative
 to native grid ramps. Direct comparison with status quo was favorable in five
 of six markets, with MISO as the honest exception.
 
-The later correction improves rather than enlarges the claim. Physical p95 and
-maximum now use absolute per-market per-timestep magnitudes, decoder adjustment
-is real and unit-defined, and native versus status-quo baselines are explicit.
-The immutable sealed result remains untouched and the replay is not presented
-as new test evidence.
+The later erratum improves rather than enlarges the claim. It withdraws the
+invalid original physical extrema and literal-zero decoder field. Separate
+equivalence-bound replay uses absolute per-market per-timestep magnitudes and a
+real, unit-defined decoder norm, while native versus status-quo baselines are
+explicit. The immutable sealed primary result remains untouched. No replay is
+presented as a sealed test or as new generalization evidence.
 
 The defensible conclusion is narrow: reward-only PPO preferences, fixed equal
 action aggregation, and constraint-only execution reduced the modeled fleet's
