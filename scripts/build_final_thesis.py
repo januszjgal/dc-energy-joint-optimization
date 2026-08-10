@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import re
 import subprocess
 import sys
@@ -13,10 +14,14 @@ from xml.etree import ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 DEFAULT_SOURCE = ROOT / "thesis_paper.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.docx"
 NODE_BUILDER = ROOT / "scripts" / "build_final_thesis_docx.js"
 IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+UNRESOLVED_RESULT_PATTERN = re.compile(
+    r"\{\{CANONICAL_V4R:[A-Z0-9_]+\}\}"
+)
 HYPERLINK_RELATIONSHIP_TYPE = (
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
 )
@@ -34,6 +39,10 @@ WORD_SAFE_HYPERLINK_IDS = (
 )
 FIXED_CORE_TIMESTAMP = "2026-08-07T00:00:00.000Z"
 FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+V4R_FIGURE_MANIFEST = ROOT / "docs" / "figures" / "ramp_v6" / "v4r_figure_manifest.json"
+EXPECTED_V4R_FIGURE_MANIFEST_SHA256 = (
+    "a906882bf0362a14279eaee3503c479dae49953b053afce8cec5e343fcc194d4"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,13 +59,69 @@ def validate_source(source: Path) -> None:
         raise FileNotFoundError(f"Thesis source does not exist: {source}")
 
     text = source.read_text(encoding="utf-8")
+    from ramp_rl.v4r_thesis import EXPECTED_CANONICAL_SHA256, load_verified_evidence
+    from scripts.materialize_ramp_thesis import DEFAULT_SOURCE as V4R_TEMPLATE
+    from scripts.materialize_ramp_thesis import materialize_text
+
+    expected = materialize_text(
+        V4R_TEMPLATE.read_text(encoding="utf-8"),
+        load_verified_evidence(),
+    )
+    if text != expected:
+        raise RuntimeError(
+            "Thesis source does not exactly match deterministic canonical V4R "
+            "materialization"
+        )
+    unresolved = sorted(set(UNRESOLVED_RESULT_PATTERN.findall(text)))
+    if unresolved:
+        rendered = "\n".join(f"  - {token}" for token in unresolved)
+        raise RuntimeError(
+            "Thesis source contains unresolved canonical-result placeholders. "
+            "Materialize the source from schema-valid evidence before building:\n"
+            f"{rendered}"
+        )
+    if "data-result-contract-begin" in text or UNRESOLVED_RESULT_PATTERN.search(text):
+        from scripts.validate_ramp_thesis import validate_text
+
+        errors = validate_text(
+            text,
+            allow_placeholders=False,
+            evidence=load_verified_evidence(),
+        )
+        if errors:
+            raise RuntimeError("Invalid ramp thesis source: " + "; ".join(errors))
+    figure_manifest: dict[str, object] | None = None
+    if "data-result-contract-begin" in text:
+        if not V4R_FIGURE_MANIFEST.is_file():
+            raise FileNotFoundError(f"Missing V4R figure manifest: {V4R_FIGURE_MANIFEST}")
+        manifest_bytes = V4R_FIGURE_MANIFEST.read_bytes()
+        manifest_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        if manifest_hash != EXPECTED_V4R_FIGURE_MANIFEST_SHA256:
+            raise RuntimeError(
+                "V4R figure manifest hash mismatch: "
+                f"expected {EXPECTED_V4R_FIGURE_MANIFEST_SHA256}, got {manifest_hash}"
+            )
+        figure_manifest = json.loads(manifest_bytes)
+
+        if figure_manifest.get("canonical_evidence_sha256") != EXPECTED_CANONICAL_SHA256:
+            raise RuntimeError("V4R figure manifest is bound to the wrong canonical evidence")
     missing: list[Path] = []
     for raw_path in IMAGE_PATTERN.findall(text):
         if re.match(r"^[a-z]+://", raw_path, flags=re.IGNORECASE):
             continue
-        image_path = (source.parent / raw_path).resolve()
-        if not image_path.is_file():
-            missing.append(image_path)
+        source_relative = (source.parent / raw_path).resolve()
+        root_relative = (ROOT / raw_path).resolve()
+        if not source_relative.is_file() and not root_relative.is_file():
+            missing.append(source_relative)
+            continue
+        if figure_manifest is not None and raw_path.startswith("docs/figures/ramp_v6/"):
+            image_path = root_relative if root_relative.is_file() else source_relative
+            expected = figure_manifest.get("files", {}).get(image_path.name)
+            if not isinstance(expected, str):
+                raise RuntimeError(f"V4R figure is not declared in the manifest: {image_path.name}")
+            actual = hashlib.sha256(image_path.read_bytes()).hexdigest()
+            if actual != expected:
+                raise RuntimeError(f"V4R figure hash mismatch: {image_path.name}")
     if missing:
         rendered = "\n".join(f"  - {path}" for path in missing)
         raise FileNotFoundError(f"Missing thesis image(s):\n{rendered}")
@@ -120,7 +185,11 @@ def _replace_indexed_id(
     )
 
 
-def normalize_docx_package(output: Path) -> None:
+def normalize_docx_package(
+    output: Path,
+    *,
+    frozen_v5_hyperlinks: bool,
+) -> None:
     """Normalize IDs, metadata, and ZIP timestamps for Word and reproducibility."""
     relationships_path = "word/_rels/document.xml.rels"
     document_path = "word/document.xml"
@@ -137,16 +206,23 @@ def normalize_docx_package(output: Path) -> None:
         rf'<Relationship Id="([^"]+)" Type="{re.escape(HYPERLINK_RELATIONSHIP_TYPE)}"',
         relationships,
     )
-    if len(current_ids) != len(WORD_SAFE_HYPERLINK_IDS):
-        raise RuntimeError(
-            "The frozen thesis expects exactly "
-            f"{len(WORD_SAFE_HYPERLINK_IDS)} external hyperlinks, found "
-            f"{len(current_ids)}. Update the compatibility ID pool and revalidate "
-            "with Microsoft Word before accepting a changed bibliography."
+    if frozen_v5_hyperlinks:
+        if len(current_ids) != len(WORD_SAFE_HYPERLINK_IDS):
+            raise RuntimeError(
+                "The frozen thesis expects exactly "
+                f"{len(WORD_SAFE_HYPERLINK_IDS)} external hyperlinks, found "
+                f"{len(current_ids)}. Update the compatibility ID pool and revalidate "
+                "with Microsoft Word before accepting a changed bibliography."
+            )
+        replacement_ids = WORD_SAFE_HYPERLINK_IDS
+    else:
+        replacement_ids = tuple(
+            f"rIdrampthesis{index:04d}"
+            for index in range(1, len(current_ids) + 1)
         )
     for current_id, safe_id in zip(
         current_ids,
-        WORD_SAFE_HYPERLINK_IDS,
+        replacement_ids,
         strict=True,
     ):
         relationships = relationships.replace(
@@ -226,7 +302,10 @@ def main() -> int:
         cwd=ROOT,
         check=True,
     )
-    normalize_docx_package(output)
+    normalize_docx_package(
+        output,
+        frozen_v5_hyperlinks=False,
+    )
     validate_docx(output)
 
     digest = hashlib.sha256(output.read_bytes()).hexdigest()

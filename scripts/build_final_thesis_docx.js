@@ -407,10 +407,11 @@ function pngDimensions(buffer) {
 }
 
 function imageBlock(rawPath, caption) {
+  const candidateFromRoot = path.resolve(ROOT, rawPath);
   const candidateFromSource = path.resolve(path.dirname(SOURCE), rawPath);
-  const imagePath = fs.existsSync(candidateFromSource)
-    ? candidateFromSource
-    : path.resolve(ROOT, rawPath);
+  const imagePath = fs.existsSync(candidateFromRoot)
+    ? candidateFromRoot
+    : candidateFromSource;
   if (!fs.existsSync(imagePath)) {
     throw new Error(`Missing image: ${rawPath}`);
   }

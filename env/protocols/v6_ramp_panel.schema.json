@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/dc-energy/ramp-v6-panel.schema.json",
+  "title": "Ramp v6 canonical hourly market row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "timestamp_utc",
+    "market_id",
+    "gross_demand_mw",
+    "net_load_mw",
+    "wind_mw",
+    "solar_mw",
+    "market_scale_mw",
+    "da_lmp_usd_per_mwh",
+    "forecast_issue_time_utc",
+    "forecast_vintage_id",
+    "quality_ok",
+    "forecast_gross_h1_mw",
+    "forecast_gross_h2_mw",
+    "forecast_gross_h3_mw",
+    "forecast_net_h1_mw",
+    "forecast_net_h2_mw",
+    "forecast_net_h3_mw"
+  ],
+  "properties": {
+    "timestamp_utc": {"type": "string", "format": "date-time"},
+    "market_id": {"type": "string", "minLength": 1},
+    "gross_demand_mw": {"type": "number"},
+    "net_load_mw": {"type": "number"},
+    "wind_mw": {"type": "number"},
+    "solar_mw": {"type": "number"},
+    "market_scale_mw": {"type": "number", "exclusiveMinimum": 0},
+    "da_lmp_usd_per_mwh": {"type": "number"},
+    "forecast_issue_time_utc": {"type": "string", "format": "date-time"},
+    "forecast_vintage_id": {"type": "string", "minLength": 1},
+    "quality_ok": {"type": "boolean", "const": true},
+    "forecast_gross_h1_mw": {"type": "number"},
+    "forecast_gross_h2_mw": {"type": "number"},
+    "forecast_gross_h3_mw": {"type": "number"},
+    "forecast_net_h1_mw": {"type": "number"},
+    "forecast_net_h2_mw": {"type": "number"},
+    "forecast_net_h3_mw": {"type": "number"}
+  },
+  "x-panel-constraints": {
+    "cadence": "contiguous hourly UTC",
+    "primary-key": ["timestamp_utc", "market_id"],
+    "completeness": "every market at every timestamp",
+    "causality": "forecast_issue_time_utc <= timestamp_utc"
+  }
+}

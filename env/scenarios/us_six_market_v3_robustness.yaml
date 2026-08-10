@@ -1,0 +1,16 @@
+schema_version: energy-model-v3
+name: us-six-market-v3-robustness-overlapping-non-oof
+protocol: env/protocols/independent_us_v3.yaml
+study_role: robustness_overlapping_non_oof
+mapping: robustness_overlapping_non_oof
+label: overlapping/non-OOF
+total_dc_power_mw: 1000.0
+max_penetration_fraction: 0.05
+penetration_override: false
+sites:
+  - {name: Northern California, market: CAISO_NP15, borg_cell: c, rated_power_mw: 166.6666666667}
+  - {name: North Texas, market: ERCOT_LZ_NORTH, borg_cell: d, rated_power_mw: 166.6666666667}
+  - {name: New York City, market: NYISO_NYC_J, borg_cell: e, rated_power_mw: 166.6666666667}
+  - {name: Minnesota, market: MISO_MINN_HUB, borg_cell: f, rated_power_mw: 166.6666666667}
+  - {name: SPP North, market: SPP_NORTH_HUB, borg_cell: g, rated_power_mw: 166.6666666667}
+  - {name: Boston NEMA, market: ISONE_NEMA, borg_cell: h, rated_power_mw: 166.6666666667}

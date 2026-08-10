@@ -1,0 +1,42 @@
+{
+  "schema_version": "energy-model-v3-coverage",
+  "observed_at_utc": "2026-08-09T00:53:41Z",
+  "candidate_start_utc": "2025-09-01T00:00:00Z",
+  "candidate_end_utc": "2026-05-01T00:00:00Z",
+  "verified_live_handoff": {
+    "acquisition_manifest": {
+      "path": "data/energy_model_v3/provenance/live-acquisition-manifest.json",
+      "sha256": "64fd78254dabefa8d525f3e43144b2a50bc12c3050bad21efcc8836e3d11b7e7"
+    },
+    "panel_manifest": {
+      "path": "output/energy_model_v3/live-panel/manifest.json",
+      "sha256": "489cb39c61c19952fe90b213c1ea20e4f5eb904563425ec8b751a15ceed446df"
+    }
+  },
+  "markets": {
+    "CAISO_NP15": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "ERCOT_LZ_NORTH": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "NYISO_NYC_J": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "MISO_MINN_HUB": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "SPP_NORTH_HUB": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    },
+    "ISONE_NEMA": {
+      "candidate_complete": true,
+      "reason": "Verified by the hash-bound live acquisition and exact-index panel manifests."
+    }
+  }
+}

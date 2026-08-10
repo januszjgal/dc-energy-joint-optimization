@@ -1,17 +1,47 @@
-# Active Data Contract
+# Data Contracts
 
-This directory contains the active, committed inputs for the final
-spatio-temporal energy-optimization study. The runtime combines:
+The repository preserves two additive data contracts:
 
-1. measured Google ClusterData 2019 workload shapes and priority-tier usage;
-2. power models calibrated from Google PowerData2019;
-3. one real May 2025 CAISO price/net-demand archetype; and
-4. explicit modeling assumptions for deadlines, site capacity, and geographic
-   time shifts.
+1. the legacy V2-V5 May 2025 CAISO-derived archetype documented below; and
+2. the final ramp-aware energy-model V3 six-market panel documented in
+   [`energy_model_v3/README.md`](energy_model_v3/README.md).
 
 The primary runtime never reads from `archive/`.
 
-## 1. Google Borg workload data
+## Final ramp-aware energy-model V3
+
+The final V4R result uses an hourly common UTC panel from September 2025 through
+April 2026 for CAISO NP15, ERCOT North, NYISO Zone J, MISO Minnesota Hub, SPP
+North Hub, and ISO-NE NEMA. Training is September-January, validation is
+February, and the sealed test is March-April. PJM DOM / Northern Virginia was
+credential-blocked and was not evaluated.
+
+Operator day-ahead LMP and physical products are retained with product,
+geography, cadence, revision, licensing, retrieval, and raw-hash provenance.
+Documented same-balancing-authority EIA bulk physical fallback is used only
+where a complete operator historical physical tuple is unavailable. No market
+series is interpolated or silently substituted. Restricted native files and the
+complete live panel remain in ignored local paths when licensing forbids
+redistribution; committed manifests and hashes bind the canonical evidence.
+
+Measured Borg cell a-f profiles support the primary six-site map. The c-h
+robustness map overlaps the primary workload population and is not an
+independent holdout. The present eight-month panel does not support prior-year
+or future-year claims. Extending it requires complete licensed all-six coverage,
+new causal forecast vintages, new split boundaries, and a separately frozen
+protocol; the March-April sealed test cannot be reused for development.
+
+Re-run the local live preflight from the repository root:
+
+```powershell
+python scripts\build_energy_model_v3.py preflight
+```
+
+The preserved canonical V4R evidence and permissible derived results are under
+`output\ramp_rl_v6\recovered_v4r\`; locally restricted acquisition inputs remain
+under the energy-model V3 paths described in its README.
+
+## Legacy V2-V5 Google Borg workload data
 
 ### Aggregate curves
 
