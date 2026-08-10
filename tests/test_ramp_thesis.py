@@ -225,6 +225,28 @@ class RampThesisContractTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "does not exactly match"):
                 validate_source(source)
 
+    def test_docx_build_rejects_modified_figure_manifest(self) -> None:
+        text = materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence)
+        with TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            source = base / "materialized.md"
+            source.write_text(text, encoding="utf-8")
+            manifest = base / "v4r_figure_manifest.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "canonical_evidence_sha256": EXPECTED_CANONICAL_SHA256,
+                        "files": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with (
+                patch("scripts.build_final_thesis.V4R_FIGURE_MANIFEST", manifest),
+                self.assertRaisesRegex(RuntimeError, "manifest hash mismatch"),
+            ):
+                validate_source(source)
+
 
 if __name__ == "__main__":
     unittest.main()

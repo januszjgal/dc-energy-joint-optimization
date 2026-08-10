@@ -1437,7 +1437,10 @@ def build_claim_ledger(evidence: AuditedEvidence) -> dict[str, Any]:
         },
         {
             "claim_id": "scale-workload-sensitivity",
-            "claim": "Post-selection scale and workload sensitivities retain safety, cost, and ramp gates.",
+            "claim": (
+                "Post-selection scale and workload sensitivities retain safety, "
+                "the cost threshold, and negative aggregate mean ramp impact."
+            ),
             "status": (
                 "confirmed"
                 if analysis.get("sensitivities")
