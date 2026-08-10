@@ -1,5 +1,21 @@
+* text=auto
+
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+*.log text eol=lf
+
+*.csv -text
+*.docx -text
+*.ipynb -text
+*.pkl -text
+*.zip -text
+
 output/ramp_rl_v6/recovered_v4r/*.json text eol=crlf
 output/ramp_rl_v6/recovered_v4r/**/*.json text eol=crlf
 output/ramp_rl_v6/recovered_v4r/thesis/*.json text eol=lf
-output/ramp_rl_v6/recovered_v4r/thesis/*.csv text eol=crlf
+output/ramp_rl_v6/recovered_v4r/thesis/*.csv -text
 docs/figures/ramp_v6/v4r_figure_manifest.json text eol=lf
