@@ -364,6 +364,14 @@ class CorrectedRampThesisTests(unittest.TestCase):
             "This comparator erratum requires no policy replay",
             normalized_text,
         )
+        for factual_phrase in (
+            "34,848 market-hours",
+            "114 training daily windows",
+            "186 scalar values",
+            "1,620 ensemble decisions",
+            "2, 1, 2, 3, 4, and 3 hours",
+        ):
+            self.assertIn(factual_phrase, normalized_text)
         tampered = text.replace(
             "-1.42587105143e-05",
             "0.5",
