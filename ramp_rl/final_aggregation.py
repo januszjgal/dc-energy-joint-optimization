@@ -253,6 +253,11 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
     _require(isinstance(gate, dict), f"{context} success gate is missing")
     checks = gate.get("checks")
     _require(isinstance(checks, dict), f"{context} success gate checks are missing")
+    native_relative_market_gate = (
+        "every_market_native_relative_incremental_ramp_improves"
+        if "every_market_native_relative_incremental_ramp_improves" in checks
+        else "every_market_ramp_improves"
+    )
     _require_keys(
         checks,
         (
@@ -262,7 +267,7 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
             "zero_terminal_work",
             "zero_certificate_violations",
             "mean_ramp_improves",
-            "every_market_ramp_improves",
+            native_relative_market_gate,
             "primary_energy_budget",
             "emergency_path_below_one_percent",
             "no_future_leakage",
@@ -307,7 +312,7 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
         "zero_terminal_work": float(payload["terminal_work"]) == 0.0,
         "zero_certificate_violations": int(payload["certificate_violations"]) == 0,
         "mean_ramp_improves": float(payload["mean_incremental_ramp_impact"]) < 0.0,
-        "every_market_ramp_improves": all(
+        native_relative_market_gate: all(
             float(value) < 0.0 for value in payload["per_market_macro"].values()
         ),
         "primary_energy_budget": float(payload["energy_cost_ratio"]) <= 1.02,
@@ -349,7 +354,7 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
         ),
         "cost": expected_checks["primary_energy_budget"],
         "ramp": expected_checks["mean_ramp_improves"]
-        and expected_checks["every_market_ramp_improves"],
+        and expected_checks[native_relative_market_gate],
         "behavior": expected_checks["behavior_pre_service"]
         and expected_checks["behavior_lower_ramp_power"],
         "passed": gate_passed,

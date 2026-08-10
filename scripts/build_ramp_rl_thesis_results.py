@@ -12,10 +12,16 @@ sys.path.insert(0, str(ROOT))
 
 from ramp_rl.final_aggregation import audit_manifest, generate_package  # noqa: E402
 from ramp_rl.v4r_thesis import (  # noqa: E402
-    DEFAULT_CANONICAL,
-    DEFAULT_OUTPUT,
-    load_verified_evidence,
-    write_publication_package,
+    DEFAULT_CANONICAL as SEALED_DEFAULT_CANONICAL,
+    DEFAULT_OUTPUT as SEALED_DEFAULT_OUTPUT,
+    load_verified_evidence as load_verified_sealed_evidence,
+    write_publication_package as write_sealed_publication_package,
+)
+from ramp_rl.v4r_corrected_thesis import (  # noqa: E402
+    DEFAULT_CANONICAL as CORRECTED_DEFAULT_CANONICAL,
+    DEFAULT_OUTPUT as CORRECTED_DEFAULT_OUTPUT,
+    load_verified_evidence as load_verified_corrected_evidence,
+    write_publication_package as write_corrected_publication_package,
 )
 
 
@@ -30,14 +36,64 @@ def main() -> None:
         help="Build the final V4R package from canonical recovered-policy evidence.",
     )
     parser.add_argument(
+        "--corrected",
+        action="store_true",
+        help=(
+            "Build the authoritative thesis package from the post-hoc "
+            "corrected V4R wrapper."
+        ),
+    )
+    parser.add_argument(
         "--audit-only",
         action="store_true",
         help="Validate the evidence package without writing report artifacts.",
     )
     args = parser.parse_args()
+    if args.v4r and args.corrected:
+        parser.error("--v4r and --corrected are mutually exclusive")
+    if args.corrected:
+        canonical = (
+            args.manifest or CORRECTED_DEFAULT_CANONICAL
+        ).resolve()
+        evidence = load_verified_corrected_evidence(canonical)
+        if args.audit_only:
+            print(
+                json.dumps(
+                    {
+                        "passed": True,
+                        "protocol_id": evidence["protocol_id"],
+                        "corrected_canonical_sha256": evidence[
+                            "_verified"
+                        ]["canonical_sha256"],
+                        "sealed_canonical_sha256": evidence[
+                            "_verified"
+                        ]["sealed_canonical_sha256"],
+                        "sealed_test_open_count": evidence[
+                            "sealed_test_open_count"
+                        ],
+                    },
+                    sort_keys=True,
+                )
+            )
+            return
+        print(
+            json.dumps(
+                write_corrected_publication_package(
+                    evidence,
+                    (
+                        args.output or CORRECTED_DEFAULT_OUTPUT
+                    ).resolve(),
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
     if args.v4r:
-        canonical = (args.manifest or DEFAULT_CANONICAL).resolve()
-        evidence = load_verified_evidence(canonical)
+        canonical = (
+            args.manifest or SEALED_DEFAULT_CANONICAL
+        ).resolve()
+        evidence = load_verified_sealed_evidence(canonical)
         if args.audit_only:
             print(
                 json.dumps(
@@ -55,9 +111,11 @@ def main() -> None:
             return
         print(
             json.dumps(
-                write_publication_package(
+                write_sealed_publication_package(
                     evidence,
-                    (args.output or DEFAULT_OUTPUT).resolve(),
+                    (
+                        args.output or SEALED_DEFAULT_OUTPUT
+                    ).resolve(),
                 ),
                 indent=2,
                 sort_keys=True,

@@ -18,13 +18,13 @@ from ramp_rl.provenance import (  # noqa: E402
     CANONICAL_JSON_REPRESENTATION,
     HASH_CONTRACT_ID,
 )
-from ramp_rl.v4r_thesis import (  # noqa: E402
+from ramp_rl.v4r_corrected_thesis import (  # noqa: E402
     DEFAULT_CANONICAL,
     EXPECTED_CANONICAL_SHA256,
+    EXPECTED_SEALED_CANONICAL_SHA256,
     EXPECTED_PROTOCOL_ID,
     EXPECTED_PROTOCOL_SHA256,
     EXPECTED_SOURCE_COMMIT,
-    build_claim_ledger,
     load_verified_evidence,
 )
 from scripts.validate_ramp_thesis import validate_text  # noqa: E402
@@ -33,7 +33,7 @@ from scripts.validate_ramp_thesis import validate_text  # noqa: E402
 DEFAULT_SOURCE = ROOT / "thesis_ramp_v6.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.md"
 EXPECTED_TEMPLATE_SHA256 = (
-    "49c4892a10e5d6bbd73608ef05b5768a6a1af3134d9b41fa06d9ee8e1ed44428"
+    "d09713fe7e9f8e08324788fb3c0f2012d9bbda194fb4e0ee0fac7d65fb72c4a6"
 )
 MARKET_LABELS = {
     "CAISO_NP15": "CAISO NP15",
@@ -53,64 +53,179 @@ def fmt(value: Any, digits: int = 10) -> str:
     return f"{value:.{digits}g}"
 
 
-def pct_change_from_ratio(value: float) -> str:
-    return f"{100 * (value - 1):+.3f}%"
-
-
 def render_split_table(evidence: dict[str, Any]) -> str:
     rows = [
-        "| Split | Episodes | Mean incremental ramp impact | DA cost ratio | Cost change | Every market negative | Strict gates |",
-        "|---|---:|---:|---:|---:|---|---|",
+        "| Split | Episodes | Mean native-relative incremental ramp impact | DA cost ratio | Every policy market negative vs native | Historical strict gates |",
+        "|---|---:|---:|---:|---|---|",
     ]
     for label, result in (
         ("February validation", evidence["validation"]["result"]),
         ("March-April sealed test", evidence["test"]["result"]),
     ):
         rows.append(
-            "| {label} | {episodes} | {impact} | {ratio} | {change} | true | true |".format(
+            "| {label} | {episodes} | {impact} | {ratio} | true | true |".format(
                 label=label,
                 episodes=result["episode_count"],
                 impact=fmt(result["mean_incremental_ramp_impact"], 12),
                 ratio=fmt(result["energy_cost_ratio"], 12),
-                change=pct_change_from_ratio(result["energy_cost_ratio"]),
             )
         )
     return "\n".join(rows)
 
 
 def render_market_table(evidence: dict[str, Any]) -> str:
-    validation = evidence["validation"]["result"]["per_market_macro"]
-    test = evidence["test"]["result"]["per_market_macro"]
+    validation = evidence["validation"]["result"][
+        "per_market_policy_native_relative_incremental_ramp_impact"
+    ]
+    test = evidence["test"]["result"][
+        "per_market_policy_native_relative_incremental_ramp_impact"
+    ]
     rows = [
-        "| Evaluated market | Validation impact | Sealed-test impact | Test interpretation |",
+        "| Evaluated market | Validation policy vs native | Sealed-test policy vs native | Historical native-relative gate |",
         "|---|---:|---:|---|",
     ]
     for market in MARKET_LABELS:
         rows.append(
             f"| {MARKET_LABELS[market]} | {fmt(validation[market], 11)} | "
-            f"{fmt(test[market], 11)} | reduced modeled data-center contribution "
-            "to squared normalized grid ramps |"
+            f"{fmt(test[market], 11)} | negative (pass) |"
         )
+    return "\n".join(rows)
+
+
+def render_status_quo_table(evidence: dict[str, Any]) -> str:
+    comparison = evidence["test"]["result"]["status_quo_comparison"]
+    rows = [
+        "| Trace-derived March-April market | Policy vs native | Status quo vs native | Policy - status quo | Policy better? |",
+        "|---|---:|---:|---:|---|",
+    ]
+    for market in MARKET_LABELS:
+        record = comparison["per_market"][market]
+        rows.append(
+            f"| {MARKET_LABELS[market]} | "
+            f"{fmt(record['policy_native_relative_incremental_ramp_impact'], 11)} | "
+            f"{fmt(record['status_quo_native_relative_incremental_ramp_impact'], 11)} | "
+            f"{fmt(record['policy_minus_status_quo_incremental_ramp_impact'], 11)} | "
+            f"{str(record['policy_outperforms_status_quo']).lower()} |"
+        )
+    rows.extend(
+        [
+            "",
+            (
+                "Source: persisted original policy/status-quo episode arrays; "
+                "no policy replay is required. "
+                f"Overall policy-minus-status-quo mean: "
+                f"{fmt(comparison['policy_minus_status_quo_mean_incremental_ramp_impact'], 12)}. "
+                f"Markets better: {comparison['markets_better_count']}/"
+                f"{comparison['market_count']} "
+                f"({100 * comparison['markets_better_share']:.1f}%). "
+                "Every market outperforms status quo: "
+                f"{str(comparison['every_market_outperforms_status_quo']).lower()}."
+            ),
+        ]
+    )
     return "\n".join(rows)
 
 
 def render_physical_table(evidence: dict[str, Any]) -> str:
     rows = [
-        "| Split | 1 h p95 | 1 h max | 3 h p95 | 3 h max |",
+        "| Post-hoc replay window | Absolute adjusted 1 h p95 | Absolute adjusted 1 h max | Absolute adjusted 3 h p95 | Absolute adjusted 3 h max |",
         "|---|---:|---:|---:|---:|",
+    ]
+    for label, result in (
+        ("February validation windows", evidence["validation"]["result"]),
+        (
+            "March-April original test windows (not a sealed test)",
+            evidence["test"]["result"],
+        ),
+    ):
+        rows.append(
+            "| {label} | {h1p95} | {h1max} | {h3p95} | {h3max} |".format(
+                label=label,
+                h1p95=fmt(
+                    result[
+                        "abs_adjusted_ramp_h1_fraction_s_per_hour_p95"
+                    ],
+                    8,
+                ),
+                h1max=fmt(
+                    result[
+                        "abs_adjusted_ramp_h1_fraction_s_per_hour_max"
+                    ],
+                    8,
+                ),
+                h3p95=fmt(
+                    result[
+                        "abs_adjusted_ramp_h3_fraction_s_per_hour_p95"
+                    ],
+                    8,
+                ),
+                h3max=fmt(
+                    result[
+                        "abs_adjusted_ramp_h3_fraction_s_per_hour_max"
+                    ],
+                    8,
+                ),
+            )
+        )
+    return "\n".join(rows)
+
+
+def render_decoder_table(evidence: dict[str, Any]) -> str:
+    rows = [
+        "| Post-hoc replay window | Mean L2 | p50 L2 | p95 L2 | Maximum L2 | Positive rate | Emergency rate |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for label, result in (
+        ("February validation windows", evidence["validation"]["result"]),
+        (
+            "March-April original test windows (not a sealed test)",
+            evidence["test"]["result"],
+        ),
+    ):
+        adjustment = result["semantic_adjustment"]
+        rows.append(
+            f"| {label} | {fmt(adjustment['mean_l2'], 8)} | "
+            f"{fmt(adjustment['p50_l2'], 8)} | "
+            f"{fmt(adjustment['p95_l2'], 8)} | "
+            f"{fmt(adjustment['max_l2'], 8)} | "
+            f"{100 * adjustment['adjustment_rate']:.3f}% | "
+            f"{100 * adjustment['emergency_fallback_rate']:.3f}% |"
+        )
+    rows.extend(
+        [
+            "",
+            (
+                "Coordinates: N decoded service work amounts + one decoded "
+                "total batch amount + N decoded batch-destination amounts. "
+                "Units: compute-work units per hourly decision."
+            ),
+        ]
+    )
+    return "\n".join(rows)
+
+
+def render_cost_table(evidence: dict[str, Any]) -> str:
+    rows = [
+        "| Split | Status-quo modeled DA cost | Policy modeled DA cost | Policy saving | Saving rate | Saving per episode |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for label, result in (
         ("Validation", evidence["validation"]["result"]),
         ("Sealed test", evidence["test"]["result"]),
     ):
+        policy_cost = sum(
+            float(episode["energy_cost"])
+            for episode in result["policy_episodes"]
+        )
+        status_cost = sum(
+            float(episode["energy_cost"])
+            for episode in result["status_quo_episodes"]
+        )
+        saving = status_cost - policy_cost
         rows.append(
-            "| {label} | {h1p95} | {h1max} | {h3p95} | {h3max} |".format(
-                label=label,
-                h1p95=fmt(result["ramp_h1_adjusted_p95"], 8),
-                h1max=fmt(result["ramp_h1_adjusted_max"], 8),
-                h3p95=fmt(result["ramp_h3_adjusted_p95"], 8),
-                h3max=fmt(result["ramp_h3_adjusted_max"], 8),
-            )
+            f"| {label} | ${status_cost:,.2f} | ${policy_cost:,.2f} | "
+            f"${saving:,.2f} | {100 * saving / status_cost:.3f}% | "
+            f"${saving / result['episode_count']:,.2f} |"
         )
     return "\n".join(rows)
 
@@ -140,7 +255,7 @@ def render_behavior_table(evidence: dict[str, Any]) -> str:
 
 def render_robustness_table(evidence: dict[str, Any]) -> str:
     rows = [
-        "| Post-selection analysis | Scope | Ramp impact | DA cost ratio | Every market negative | Strict gates |",
+        "| Post-selection analysis | Scope | Native-relative ramp impact | DA cost ratio | Every policy market negative vs native | Historical strict gates |",
         "|---|---|---:|---:|---|---|",
     ]
     for key, scope in (
@@ -158,20 +273,29 @@ def render_robustness_table(evidence: dict[str, Any]) -> str:
 def render_tokens(evidence: dict[str, Any]) -> dict[str, str]:
     validation = evidence["validation"]["result"]
     test = evidence["test"]["result"]
-    ledger = build_claim_ledger(evidence)
-    ledger_text = json.dumps(ledger, indent=2, sort_keys=True) + "\n"
-    ledger_sha = hashlib.sha256(ledger_text.encode("utf-8")).hexdigest()
     return {
         "PROTOCOL_ID": f"`{EXPECTED_PROTOCOL_ID}`",
         "PROTOCOL_SHA256": f"`{EXPECTED_PROTOCOL_SHA256}`",
         "SOURCE_COMMIT": f"`{EXPECTED_SOURCE_COMMIT}`",
         "HASH_CONTRACT_ID": f"`{HASH_CONTRACT_ID}`",
         "CANONICAL_REPRESENTATION": f"`{CANONICAL_JSON_REPRESENTATION}`",
+        "SEALED_CANONICAL_EVIDENCE_SHA256": (
+            f"`{EXPECTED_SEALED_CANONICAL_SHA256}`"
+        ),
+        "CHECKPOINT_RECOVERY_SHA256": (
+            f"`{evidence['posthoc_correction']['checkpoint_recovery']['sha256']}`"
+        ),
         "CANONICAL_EVIDENCE_SHA256": f"`{EXPECTED_CANONICAL_SHA256}`",
-        "CLAIM_LEDGER_SHA256": f"`{ledger_sha}`",
+        "CORRECTION_CLASSIFICATION": (
+            "`post_hoc_frozen_policy_metric_recomputation; "
+            "not_a_second_sealed_generalization_test`"
+        ),
         "SPLIT_RESULTS_TABLE": render_split_table(evidence),
         "PER_MARKET_TABLE": render_market_table(evidence),
+        "STATUS_QUO_COMPARISON_TABLE": render_status_quo_table(evidence),
         "PHYSICAL_RAMP_TABLE": render_physical_table(evidence),
+        "DECODER_ADJUSTMENT_TABLE": render_decoder_table(evidence),
+        "COST_COMPARISON_TABLE": render_cost_table(evidence),
         "BEHAVIOR_TABLE": render_behavior_table(evidence),
         "ROBUSTNESS_TABLE": render_robustness_table(evidence),
         "VALIDATION_DAY_BOOTSTRAP": (
@@ -192,7 +316,9 @@ def render_tokens(evidence: dict[str, Any]) -> dict[str, str]:
             f"{fmt(test['bootstrap_by_month']['upper_95'], 11)}] "
             f"from {test['bootstrap_by_month']['draws']} draws"
         ),
-        "FINAL_VERDICT": "`sealed_test_success`",
+        "FINAL_VERDICT": (
+            "`sealed_test_success_with_posthoc_telemetry_correction`"
+        ),
     }
 
 

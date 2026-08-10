@@ -41,7 +41,7 @@ FIXED_CORE_TIMESTAMP = "2026-08-07T00:00:00.000Z"
 FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 V4R_FIGURE_MANIFEST = ROOT / "docs" / "figures" / "ramp_v6" / "v4r_figure_manifest.json"
 EXPECTED_V4R_FIGURE_MANIFEST_SHA256 = (
-    "a906882bf0362a14279eaee3503c479dae49953b053afce8cec5e343fcc194d4"
+    "940d92e5120dd8876446c2794152d92ae4543e5e14b61d344fb9628d7d343d8d"
 )
 
 
@@ -59,7 +59,10 @@ def validate_source(source: Path) -> None:
         raise FileNotFoundError(f"Thesis source does not exist: {source}")
 
     text = source.read_text(encoding="utf-8")
-    from ramp_rl.v4r_thesis import EXPECTED_CANONICAL_SHA256, load_verified_evidence
+    from ramp_rl.v4r_corrected_thesis import (
+        EXPECTED_CANONICAL_SHA256,
+        load_verified_evidence,
+    )
     from scripts.materialize_ramp_thesis import DEFAULT_SOURCE as V4R_TEMPLATE
     from scripts.materialize_ramp_thesis import materialize_text
 

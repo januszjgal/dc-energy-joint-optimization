@@ -37,8 +37,11 @@ Re-run the local live preflight from the repository root:
 python scripts\build_energy_model_v3.py preflight
 ```
 
-The preserved canonical V4R evidence and permissible derived results are under
-`output\ramp_rl_v6\recovered_v4r\`; locally restricted acquisition inputs remain
+The immutable single-open V4R evidence remains under
+`output\ramp_rl_v6\recovered_v4r_resealed_v2\`. The authoritative additive
+physical-ramp/status-quo/decoder telemetry correction is under
+`output\ramp_rl_v6\recovered_v4r_posthoc_metrics_v1\`; it references rather
+than rewrites the sealed package. Locally restricted acquisition inputs remain
 under the energy-model V3 paths described in its README.
 
 ## Legacy V2-V5 Google Borg workload data

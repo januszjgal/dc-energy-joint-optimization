@@ -19,11 +19,16 @@ REQUIRED_PLACEHOLDERS = {
     "SOURCE_COMMIT",
     "HASH_CONTRACT_ID",
     "CANONICAL_REPRESENTATION",
+    "SEALED_CANONICAL_EVIDENCE_SHA256",
+    "CHECKPOINT_RECOVERY_SHA256",
     "CANONICAL_EVIDENCE_SHA256",
-    "CLAIM_LEDGER_SHA256",
+    "CORRECTION_CLASSIFICATION",
     "SPLIT_RESULTS_TABLE",
     "PER_MARKET_TABLE",
+    "STATUS_QUO_COMPARISON_TABLE",
     "PHYSICAL_RAMP_TABLE",
+    "DECODER_ADJUSTMENT_TABLE",
+    "COST_COMPARISON_TABLE",
     "BEHAVIOR_TABLE",
     "ROBUSTNESS_TABLE",
     "VALIDATION_DAY_BOOTSTRAP",
@@ -48,6 +53,22 @@ REQUIRED_SCOPE_PHRASES = {
     "Git-blob bytes": "Git-blob identity scope",
     "working-tree bytes": "working-tree identity scope",
     "price-taking scale sensitivity": "1 GW sensitivity scope",
+    "five of six markets": "status-quo comparison scope",
+    "MISO is the exception": "status-quo exception",
+    "not a second sealed generalization test": "post-hoc correction scope",
+    "Demand charges, retail tariffs, and facility bill savings are explicitly out of scope": "demand-charge scope",
+    "no untrained/random PPO comparator": "RL-necessity limitation",
+    "unavailable from the original sealed traces": "physical erratum boundary",
+    "literal-zero decoder field is invalid placeholder telemetry": "decoder erratum boundary",
+    "March-April row is not a sealed test": "replay naming boundary",
+    "This comparator erratum requires no policy replay": "trace-derived comparator boundary",
+    "34,848 market-hours": "market-hour count",
+    "114 training daily windows": "factory window count",
+    "186 scalar values": "observation dimension",
+    "1,620 ensemble decisions": "controller decision count",
+    "2, 1, 2, 3, 4, and 3 hours": "a-f deadline horizons",
+    "The `dede685` worktree executes only": "training/verifier context separation",
+    "original live_v3 training manifests": "stable verifier evidence context",
 }
 PROHIBITED_CLAIMS = (
     re.compile(r"\bc-h\b.{0,40}\b(?:(?<!non-)independent|holdout|out-of-fold)\b", re.I),
@@ -127,10 +148,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     evidence = None
-    if args.results:
-        from ramp_rl.v4r_thesis import load_verified_evidence
+    if not args.allow_placeholders or args.results:
+        from ramp_rl.v4r_corrected_thesis import (
+            DEFAULT_CANONICAL,
+            load_verified_evidence,
+        )
 
-        evidence = load_verified_evidence(args.results)
+        evidence = load_verified_evidence(
+            (args.results or DEFAULT_CANONICAL).resolve()
+        )
     text = args.source.read_text(encoding="utf-8")
     errors = validate_text(
         text,
