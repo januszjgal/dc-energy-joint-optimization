@@ -431,6 +431,11 @@ The locked calendar contains 5,808 hourly UTC rows from
 | Validation | 2026-02 | fixed model/protocol selection and test-opening decision |
 | Sealed test | 2026-03 and 2026-04 | one authorized generalization evaluation |
 
+The common index contains 5,808 timestamps per market and 34,848 market-hours
+across six markets. After the causal forecast warm-up, the frozen factory
+manifest exposes 114 training daily windows, 28 validation daily windows, and
+60 original test daily windows.
+
 Each market must cover the exact common index. Duplicate timestamps, missing
 hours, mixed interval conventions, or an incomplete source product fail
 closed. The builder does not shorten the period or drop a market to make the
@@ -687,6 +692,11 @@ Every hourly batch arrival receives that experimental horizon. Global EDF
 drains the earliest deadlines first. These deadlines are not Borg SLOs,
 customer commitments, or production queue policies.
 
+For primary cells a-f, the resulting horizons are respectively 2, 1, 2, 3, 4,
+and 3 hours. Those values are derived from the committed per-cell duration
+files; they are experimental flexibility assumptions rather than measured
+service guarantees.
+
 ## 6.7 Workload quality checks
 
 Quality checks cover:
@@ -747,7 +757,8 @@ objective, decoder, and safety metrics are included exactly once.
 
 ## 7.4 Observation space
 
-For every market, the observation contains:
+The six-site observation contains 186 scalar values. For every market, it
+contains:
 
 - current and three trailing normalized gross-demand levels;
 - current and three trailing normalized net-load levels;
@@ -862,6 +873,10 @@ observation:
 The evaluator records member invocation counts and hashes the observation and
 action chains. A repeatability probe requires exact action equality for the
 same raw observation.
+
+The original March-April controller audit records 1,620 ensemble decisions:
+27 decisions in each of 60 daily episodes. Every member was invoked exactly
+once per decision.
 
 # 8. Reinforcement Learning in Plain Language
 

@@ -62,6 +62,11 @@ REQUIRED_SCOPE_PHRASES = {
     "literal-zero decoder field is invalid placeholder telemetry": "decoder erratum boundary",
     "March-April row is not a sealed test": "replay naming boundary",
     "This comparator erratum requires no policy replay": "trace-derived comparator boundary",
+    "34,848 market-hours": "market-hour count",
+    "114 training daily windows": "factory window count",
+    "186 scalar values": "observation dimension",
+    "1,620 ensemble decisions": "controller decision count",
+    "2, 1, 2, 3, 4, and 3 hours": "a-f deadline horizons",
 }
 PROHIBITED_CLAIMS = (
     re.compile(r"\bc-h\b.{0,40}\b(?:(?<!non-)independent|holdout|out-of-fold)\b", re.I),
