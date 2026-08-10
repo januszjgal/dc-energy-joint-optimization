@@ -1,10 +1,22 @@
 {
-  "canonical_evidence_sha256": "b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30",
+  "canonical_evidence_representation": "canonical-json-utf8-sort-compact-v1",
+  "canonical_evidence_sha256": "f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b",
   "claims": [
     {
       "claim_id": "v4r-recovery-identity",
-      "evidence_pointer": "/recovery_binding_sha256",
+      "evidence_pointer": "/recovery_binding",
       "value": "new-binary-identity-weight-equivalent-recovered-pure-rl"
+    },
+    {
+      "claim_id": "provenance-hash-contract",
+      "evidence_pointer": "/hash_contract",
+      "representation": "canonical-json-utf8-sort-compact-v1",
+      "value": "dc-energy-provenance-sha256-v2"
+    },
+    {
+      "claim_id": "provenance-supersession-scope",
+      "evidence_pointer": "/supersession_scope",
+      "value": "provenance-hash-chain-only"
     },
     {
       "claim_id": "validation-mean-ramp-impact",
@@ -96,9 +108,11 @@
       "value": -1.1054886764306852e-06
     }
   ],
+  "hash_contract_id": "dc-energy-provenance-sha256-v2",
   "protocol_id": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r",
   "protocol_sha256": "57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd",
-  "recovery_binding_sha256": "2c125bce0de306aa6606942dba05d85f975153e33dffc41b5b6d8e4d258e98b4",
-  "schema_version": "ramp-v6-v4r-claim-ledger-v1",
+  "recovery_binding_sha256": "ecbeb41753627231a0d601eedb1a5b1906879dd80b5ccb248028cfc8256005e7",
+  "reseal_commit": "3097c9aeca248a12e7239b40a895c5cd5fcd037b",
+  "schema_version": "ramp-v6-v4r-claim-ledger-v2",
   "source_commit": "46329fe765f596f84eeac71f061dcbd191a90583"
 }
