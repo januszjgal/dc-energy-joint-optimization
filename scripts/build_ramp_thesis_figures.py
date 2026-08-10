@@ -412,7 +412,10 @@ def build_status_quo_comparison(evidence: dict[str, Any]) -> None:
     for axis in axes:
         axis.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
     fig.suptitle(
-        "Sealed-test baselines must remain distinct (more negative is better)",
+        (
+            "Persisted March-April traces: native and status-quo baselines "
+            "remain distinct"
+        ),
         fontsize=13,
         weight="bold",
     )
@@ -462,8 +465,12 @@ def build_ramp_period_power(evidence: dict[str, Any]) -> None:
 
 def build_physical_ramps(evidence: dict[str, Any]) -> None:
     records = [
-        ("Validation", evidence["validation"]["result"], COLORS["blue"]),
-        ("Sealed test", evidence["test"]["result"], COLORS["green"]),
+        ("February replay", evidence["validation"]["result"], COLORS["blue"]),
+        (
+            "March-April replay",
+            evidence["test"]["result"],
+            COLORS["green"],
+        ),
     ]
     metrics = [
         ("1 h p95", "abs_adjusted_ramp_h1_fraction_s_per_hour_p95"),
@@ -497,7 +504,10 @@ def build_physical_ramps(evidence: dict[str, Any]) -> None:
     axis.text(
         0.99,
         -0.16,
-        "Post-hoc telemetry; no signed cross-market averaging",
+        (
+            "Equivalence-bound post-hoc replay; original sealed traces cannot "
+            "supply these values"
+        ),
         transform=axis.transAxes,
         ha="right",
         fontsize=9,
@@ -558,7 +568,10 @@ def build_decoder_adjustment(evidence: dict[str, Any]) -> None:
             fontsize=9,
         )
     fig.suptitle(
-        "Normal constraint projection is distinct from emergency intervention",
+        (
+            "Post-hoc replay: normal constraint projection is distinct from "
+            "emergency intervention"
+        ),
         fontsize=13,
         weight="bold",
     )

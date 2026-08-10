@@ -33,6 +33,13 @@ The post-hoc frozen-policy replay corrects:
 - decoder adjustment as an actual Euclidean norm in decoded work-allocation
   coordinates, with distribution and positive-adjustment rate.
 
+The original sealed physical p95/max values are withdrawn and unavailable from
+the original traces because per-market horizon magnitudes were not retained.
+The original literal-zero decoder field is likewise withdrawn as unmeasured
+placeholder telemetry. The replacement physical and decoder summaries are
+equivalence-bound post-hoc replay only; the March-April replay is not called or
+treated as a sealed test.
+
 The primary per-market squared incremental objective remains unchanged.
 Decision-relevant objective, cost, behavior, safety, and ensemble action-chain
 identities must reproduce the immutable result before the wrapper is written.

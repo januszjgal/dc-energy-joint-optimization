@@ -58,6 +58,10 @@ REQUIRED_SCOPE_PHRASES = {
     "not a second sealed generalization test": "post-hoc correction scope",
     "Demand charges, retail tariffs, and facility bill savings are explicitly out of scope": "demand-charge scope",
     "no untrained/random PPO comparator": "RL-necessity limitation",
+    "unavailable from the original sealed traces": "physical erratum boundary",
+    "literal-zero decoder field is invalid placeholder telemetry": "decoder erratum boundary",
+    "March-April row is not a sealed test": "replay naming boundary",
+    "This comparator erratum requires no policy replay": "trace-derived comparator boundary",
 }
 PROHIBITED_CLAIMS = (
     re.compile(r"\bc-h\b.{0,40}\b(?:(?<!non-)independent|holdout|out-of-fold)\b", re.I),
