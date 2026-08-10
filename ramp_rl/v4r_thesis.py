@@ -56,6 +56,12 @@ EXPECTED_SEALED_TEST_CHAIN_SHA256 = (
 EXPECTED_ROBUSTNESS_CHAIN_SHA256 = (
     "3ae009ae74ee54b7f5ff41e675c1c4f283066f73b9a02c13bd8e332e03ec29b0"
 )
+EXPECTED_MIGRATION_MAP_SHA256 = (
+    "66e89036a30df393ad5cc050af0093bc2cd12bd6b3d073241731548752c070e8"
+)
+EXPECTED_SUPERSEDED_CANONICAL_SHA256 = (
+    "e6d141ba713f1512e8eaf400fcb0ae59dd5a423c5c917290d7bd4c51b6b8bbc3"
+)
 EXPECTED_MEMBER_SEEDS = (2801, 2802, 2803, 2804, 2805)
 EXPECTED_MODEL_SHA256 = {
     2801: "47e68ae430be484da860b6e1520f1868e5869ccbd49d86fe48920a253c861883",
@@ -263,6 +269,55 @@ def load_verified_evidence(path: Path = DEFAULT_CANONICAL) -> dict[str, Any]:
         label="hash contract",
     )
     _require(hash_contract.get("contract_id") == HASH_CONTRACT_ID, "wrong hash contract ID")
+    _, migration_map = _verify_reference(
+        canonical["migration_map"],
+        expected_sha256=EXPECTED_MIGRATION_MAP_SHA256,
+        label="migration map",
+    )
+    superseded_path, superseded = _verify_reference(
+        canonical["supersedes"],
+        expected_sha256=EXPECTED_SUPERSEDED_CANONICAL_SHA256,
+        label="superseded canonical evidence",
+    )
+    _require(
+        migration_map.get("schema_version")
+        == "ramp-pure-rl-recovered-v4r-hash-migration-v2",
+        "wrong migration map schema",
+    )
+    _require(migration_map.get("contract_id") == HASH_CONTRACT_ID, "wrong migration contract ID")
+    _require(migration_map.get("status") == "complete", "migration map is incomplete")
+    _require(
+        migration_map.get("experimental_results_changed") is False,
+        "migration changed experimental results",
+    )
+    legacy_terminal = migration_map.get("legacy_terminal_evidence", {})
+    _require(
+        legacy_terminal.get("artifact")
+        == superseded_path.relative_to(ROOT).as_posix(),
+        "migration map superseded artifact mismatch",
+    )
+    _require(
+        legacy_terminal.get("new_target")
+        == DEFAULT_CANONICAL.relative_to(ROOT).as_posix(),
+        "migration map corrected target mismatch",
+    )
+    _require(
+        superseded.get("schema_version")
+        == "ramp-pure-rl-recovered-v4r-canonical-evidence-v1",
+        "wrong superseded evidence schema",
+    )
+    _require(
+        superseded.get("protocol_id") == EXPECTED_PROTOCOL_ID,
+        "superseded evidence protocol mismatch",
+    )
+    _require(
+        superseded.get("sealed_test_open_count") == 1,
+        "superseded evidence has wrong test opening count",
+    )
+    _require(
+        superseded.get("blocked_original_v4_evaluated") is False,
+        "superseded evidence changed blocked V4 status",
+    )
 
     _, source_freeze = _verify_reference(
         canonical["source_freeze"],
@@ -288,6 +343,20 @@ def load_verified_evidence(path: Path = DEFAULT_CANONICAL) -> dict[str, Any]:
         canonical["robustness_chain"],
         expected_sha256=EXPECTED_ROBUSTNESS_CHAIN_SHA256,
         label="robustness chain",
+    )
+    _require(
+        migration_map.get("new_chain")
+        == {
+            key: canonical[key]
+            for key in (
+                "source_freeze",
+                "recovery_binding",
+                "validation_chain",
+                "sealed_test_chain",
+                "robustness_chain",
+            )
+        },
+        "migration map corrected chain mismatch",
     )
 
     preserved = source_freeze.get("preserved_identity", {})
@@ -411,6 +480,8 @@ def load_verified_evidence(path: Path = DEFAULT_CANONICAL) -> dict[str, Any]:
         "validation_chain_sha256": EXPECTED_VALIDATION_CHAIN_SHA256,
         "sealed_test_chain_sha256": EXPECTED_SEALED_TEST_CHAIN_SHA256,
         "robustness_chain_sha256": EXPECTED_ROBUSTNESS_CHAIN_SHA256,
+        "migration_map_sha256": EXPECTED_MIGRATION_MAP_SHA256,
+        "superseded_canonical_sha256": EXPECTED_SUPERSEDED_CANONICAL_SHA256,
     }
     return evidence
 
