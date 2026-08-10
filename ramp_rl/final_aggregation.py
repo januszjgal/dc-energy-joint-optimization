@@ -93,6 +93,11 @@ def _require(condition: bool, message: str) -> None:
         raise EvidenceError(message)
 
 
+def _require_bool(value: Any, context: str) -> bool:
+    _require(type(value) is bool, f"{context} must be a boolean")
+    return value
+
+
 def _require_keys(payload: dict[str, Any], keys: Iterable[str], context: str) -> None:
     missing = [key for key in keys if key not in payload]
     _require(not missing, f"{context} missing required fields: {', '.join(missing)}")
@@ -268,6 +273,11 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
     )
     behavior = payload.get("behavior_audit")
     _require(isinstance(behavior, dict), f"{context} behavior audit is missing")
+    _require_keys(
+        payload,
+        ("semantic_adjustment_l2",),
+        f"{context} decoder telemetry",
+    )
     numeric_values = {
         "service_unserved": payload["service_unserved"],
         "batch_unfinished": payload["batch_unfinished"],
@@ -277,6 +287,7 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
         "mean_incremental_ramp_impact": payload["mean_incremental_ramp_impact"],
         "energy_cost_ratio": payload["energy_cost_ratio"],
         "emergency_feasibility_rate": payload["emergency_feasibility_rate"],
+        "semantic_adjustment_l2": payload["semantic_adjustment_l2"],
         "deferrable_pre_service": behavior["deferrable_pre_service"],
         "policy_ramp_power": behavior["policy_ramp_power"],
         "status_quo_ramp_power": behavior["status_quo_ramp_power"],
@@ -310,12 +321,17 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
             < float(behavior["status_quo_ramp_power"])
         ),
     }
+    typed_checks = {
+        key: _require_bool(value, f"{context} success gate check {key}")
+        for key, value in checks.items()
+    }
     _require(
-        all(bool(checks[key]) == value for key, value in expected_checks.items()),
+        all(typed_checks[key] == value for key, value in expected_checks.items()),
         f"{context} success gate checks do not match raw telemetry",
     )
+    gate_passed = _require_bool(gate.get("passed"), f"{context} success gate passed")
     _require(
-        bool(gate["passed"]) == all(bool(value) for value in checks.values()),
+        gate_passed == all(typed_checks.values()),
         f"{context} success gate aggregate is internally inconsistent",
     )
     return {
@@ -336,7 +352,7 @@ def _raw_gate_outcome(payload: dict[str, Any], context: str) -> dict[str, bool]:
         and expected_checks["every_market_ramp_improves"],
         "behavior": expected_checks["behavior_pre_service"]
         and expected_checks["behavior_lower_ramp_power"],
-        "passed": bool(gate["passed"]),
+        "passed": gate_passed,
     }
 
 
@@ -368,11 +384,16 @@ def _validate_gates(
         outcome = _raw_gate_outcome(payload, f"seed {seed}")
         row = by_seed[seed]
         _require(
-            bool(row["safety_pass"]) == outcome["safety"],
+            _require_bool(row["safety_pass"], f"seed {seed} canonical safety_pass")
+            == outcome["safety"],
             f"seed {seed} safety gate mismatch",
         )
         _require(
-            bool(row["energy_budget_pass"]) == outcome["cost"],
+            _require_bool(
+                row["energy_budget_pass"],
+                f"seed {seed} canonical energy_budget_pass",
+            )
+            == outcome["cost"],
             f"seed {seed} cost gate mismatch",
         )
         _require(
@@ -407,7 +428,11 @@ def _validate_gates(
             f"seed {seed} behavior telemetry mismatch",
         )
         _require(
-            bool(row["success_gate_pass"]) == outcome["passed"],
+            _require_bool(
+                row["success_gate_pass"],
+                f"seed {seed} canonical success_gate_pass",
+            )
+            == outcome["passed"],
             f"seed {seed} aggregate gate mismatch",
         )
         all_safety &= outcome["safety"]
@@ -421,7 +446,11 @@ def _validate_gates(
         "behavior": all_behavior,
     }
     _require(
-        {key: bool(assertions[key]) for key in observed} == observed,
+        {
+            key: _require_bool(assertions[key], f"selection gate assertion {key}")
+            for key in observed
+        }
+        == observed,
         "selection gate assertions do not match evidence",
     )
     decision = canonical["confirmation"]["promotion_decision"]
@@ -431,7 +460,7 @@ def _validate_gates(
         "canonical promotion is not validation-only",
     )
     promoted = decision["promoted_algorithms"]
-    passed = bool(selection["passed"])
+    passed = _require_bool(selection["passed"], "selection passed")
     if manifest["result_status"] == "selected":
         _require(passed and all(observed.values()), "selected result failed a strict gate")
         _require(
@@ -798,7 +827,7 @@ def _validate_sealed_test(
         "sealed_test",
     )
     _require(sealed["used_for_selection"] is False, "sealed test was used for selection")
-    opened = bool(sealed["opened"])
+    opened = _require_bool(sealed["opened"], "sealed_test opened")
     if not opened:
         _require(sealed["opening_record"] is None, "unopened sealed test has an opening record")
         _require(sealed["result"] is None, "unopened sealed test has result evidence")
@@ -912,7 +941,10 @@ def _validate_sealed_test(
         )
         test_outcomes.append(_raw_gate_outcome(row, f"sealed-test seed {seed}"))
     _require(
-        bool(result.payload["success_gate"]["passed"])
+        _require_bool(
+            result.payload["success_gate"]["passed"],
+            "sealed-test aggregate success gate passed",
+        )
         == all(outcome["passed"] for outcome in test_outcomes),
         "sealed-test aggregate gate does not match seed rows",
     )
@@ -1192,8 +1224,11 @@ def _derived_rows(evidence: AuditedEvidence) -> dict[str, list[dict[str, Any]]]:
             "split": "validation",
             "energy_cost_ratio": float(row["energy_cost_ratio"]),
             "mean_incremental_ramp_impact": float(row["mean_incremental_ramp_impact"]),
-            "safety_pass": bool(row["safety_pass"]),
-            "cost_gate_pass": bool(row["energy_budget_pass"]),
+            "safety_pass": _require_bool(row["safety_pass"], "canonical safety_pass"),
+            "cost_gate_pass": _require_bool(
+                row["energy_budget_pass"],
+                "canonical energy_budget_pass",
+            ),
             "ramp_gate_pass": all(float(value) < 0.0 for value in row["per_market_macro"].values()),
         }
         for row in canonical_rows
@@ -1245,7 +1280,10 @@ def _derived_rows(evidence: AuditedEvidence) -> dict[str, list[dict[str, Any]]]:
             float(row["mean_incremental_ramp_impact"]) for row in canonical_rows
         ),
         "energy_cost_ratio": mean(float(row["energy_cost_ratio"]) for row in canonical_rows),
-        "sealed_test_opened": bool(evidence.manifest["sealed_test"]["opened"]),
+        "sealed_test_opened": _require_bool(
+            evidence.manifest["sealed_test"]["opened"],
+            "sealed_test opened",
+        ),
     }
     protocol_comparison = (
         [negative_row]
@@ -1445,7 +1483,7 @@ def build_claim_ledger(evidence: AuditedEvidence) -> dict[str, Any]:
                 "confirmed"
                 if analysis.get("sensitivities")
                 and all(
-                    bool(row["safety_pass"])
+                    _require_bool(row["safety_pass"], "sensitivity safety_pass")
                     and float(row["energy_cost_ratio"]) <= 1.02
                     and float(row["mean_incremental_ramp_impact"]) < 0.0
                     for row in analysis["sensitivities"]
@@ -1688,7 +1726,6 @@ def generate_package(evidence: AuditedEvidence, output_dir: Path) -> dict[str, A
                 "forecast_error_strata",
                 "dc_ramp_behavior",
                 "learning_curves",
-                "safety_decoder",
                 "sensitivities",
             )
         ],
