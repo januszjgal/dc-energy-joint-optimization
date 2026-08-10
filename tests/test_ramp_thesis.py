@@ -161,6 +161,25 @@ class RampThesisContractTests(unittest.TestCase):
             ):
                 load_verified_evidence(path)
 
+    def test_migration_and_supersession_sidecars_are_hash_verified(self) -> None:
+        payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
+        for key, label in (
+            ("migration_map", "migration map"),
+            ("supersedes", "superseded canonical evidence"),
+        ):
+            tampered = copy.deepcopy(payload)
+            tampered[key]["sha256"] = "0" * 64
+            with TemporaryDirectory() as temporary:
+                path = Path(temporary) / "canonical_evidence.json"
+                path.write_text(json.dumps(tampered), encoding="utf-8")
+                digest = canonical_json_sha256(tampered)
+                with (
+                    patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
+                    patch("ramp_rl.v4r_thesis._verify_git_identity"),
+                    self.assertRaisesRegex(ValueError, f"wrong {label} reference"),
+                ):
+                    load_verified_evidence(path)
+
     def test_claim_ledger_is_hash_bound_and_labels_overlap(self) -> None:
         ledger = build_claim_ledger(self.evidence)
         self.assertEqual(
