@@ -44,6 +44,18 @@ class CandidateCoverageTests(unittest.TestCase):
         ).hexdigest()
 
     def test_verified_live_handoff_clears_all_six_markets(self) -> None:
+        missing = [
+            reference["path"]
+            for reference in self.live_evidence[
+                "verified_live_handoff"
+            ].values()
+            if not (ROOT / reference["path"]).is_file()
+        ]
+        if missing:
+            self.skipTest(
+                "restricted local live handoff is not staged: "
+                + ", ".join(missing)
+            )
         assessment = assess_candidate_coverage(
             self.live_evidence,
             evidence_sha256=self.live_evidence_sha256,

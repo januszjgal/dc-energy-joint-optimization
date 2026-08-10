@@ -155,6 +155,48 @@ class EnvironmentTests(unittest.TestCase):
                 info["per_market"][market]["power_mw"], site_total
             )
 
+    def test_physical_ramps_are_absolute_and_per_market(self) -> None:
+        env = make_env()
+        env.reset()
+        _, _, _, _, info = env.step(np.zeros(env.action_space.shape))
+        self.assertEqual(
+            info["physical_ramp_market_order"],
+            list(env.panel.markets),
+        )
+        for index, market in enumerate(env.panel.markets):
+            for horizon in (1, 3):
+                window = info["per_market"][market]["windows"][
+                    f"{horizon}h"
+                ]
+                self.assertEqual(
+                    window["adjusted_abs_fraction_s_per_hour"],
+                    abs(window["adjusted_fraction_s_per_hour"]),
+                )
+                values = info[
+                    "abs_adjusted_ramp_"
+                    f"h{horizon}_fraction_s_per_hour_by_market"
+                ]
+                self.assertEqual(
+                    values[index],
+                    window["adjusted_abs_fraction_s_per_hour"],
+                )
+
+    def test_semantic_adjustment_uses_decoded_work_coordinates(self) -> None:
+        env = make_env()
+        env.reset()
+        _, _, _, _, info = env.step(
+            np.full(env.action_space.shape, 6.0)
+        )
+        self.assertGreaterEqual(info["semantic_adjustment_l2"], 0.0)
+        self.assertEqual(
+            info["semantic_adjustment_applied"],
+            info["semantic_adjustment_l2"] > env.protocol.tolerance,
+        )
+        self.assertEqual(
+            info["semantic_adjustment_units"],
+            "compute_work_units_per_hourly_decision",
+        )
+
     def test_six_markets_and_one_gw_total_scale(self) -> None:
         panel, _, workload, stats, protocol = load_fixture(FIXTURE_ROOT)
         source = panel.frame[panel.frame["market_id"] == "A"]

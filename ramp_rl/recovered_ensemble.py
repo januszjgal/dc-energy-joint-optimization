@@ -22,6 +22,7 @@ from ramp_rl.ensemble import (
 )
 from ramp_rl.evaluation import _aggregate, _episode
 from ramp_rl.evidence import sha256_file, verify_pure_rl_manifest
+from ramp_rl.provenance import historical_text_sha256_matches
 from ramp_rl.runner import model_hashes
 
 
@@ -43,14 +44,26 @@ def load_recovered_ensemble(
         model_path = root / str(binding["recovered_model_path"])
         normalization_path = root / str(binding["recovered_vecnormalize_path"])
         expected_hashes = {
-            manifest_path: str(binding["original_training_manifest_sha256"]),
+            manifest_path: str(
+                binding["original_training_manifest_sha256"]
+            ),
             model_path: str(binding["recovered_model_sha256"]),
-            normalization_path: str(binding["recovered_vecnormalize_sha256"]),
+            normalization_path: str(
+                binding["recovered_vecnormalize_sha256"]
+            ),
         }
-        for path, expected in expected_hashes.items():
+        for path in expected_hashes:
             if not path.is_file():
                 raise FileNotFoundError(f"missing V4R artifact: {path}")
-            if sha256_file(path) != expected:
+        if not historical_text_sha256_matches(
+            manifest_path,
+            expected_hashes[manifest_path],
+        ):
+            raise RuntimeError(
+                f"V4R training manifest hash mismatch: {manifest_path}"
+            )
+        for path in (model_path, normalization_path):
+            if sha256_file(path) != expected_hashes[path]:
                 raise RuntimeError(f"V4R artifact hash mismatch: {path}")
 
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

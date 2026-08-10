@@ -1,48 +1,78 @@
 # Anticipatory Grid-Ramp Smoothing for Geo-Distributed Data Centers
 
-The final ramp-aware thesis and reproducible DOCX are
-[`thesis_paper.md`](thesis_paper.md) and
-[`thesis_paper.docx`](thesis_paper.docx). The authoritative result is the
-hash-gated recovered-policy V4R package at
-[`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`](output/ramp_rl_v6/recovered_v4r/canonical_evidence.json).
-Its SHA-256 is
-`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`.
-Frozen v2-v5 behavior, models, reproduction commands, and evidence remain
+The final thesis is [`thesis_paper.md`](thesis_paper.md) with the reproducible
+Word deliverable [`thesis_paper.docx`](thesis_paper.docx).
+
+## Evidence authority
+
+The authoritative publication wrapper is
+[`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json`](output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json).
+Its canonical-JSON SHA-256 is
+`bd1e8a242ec93e389c9e7b9e13ae7f19b60a9445716206b6527938ffe639f842`.
+
+That wrapper **references rather than replaces** the immutable single-open
+sealed evidence at
+[`output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`](output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json),
+whose canonical-JSON SHA-256 remains
+`f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b`.
+The additive wrapper corrects only:
+
+- absolute per-market/per-timestep physical 1 h and 3 h ramp summaries;
+- explicit native-grid versus operational status-quo labels and deltas; and
+- real semantic decoder-adjustment telemetry.
+
+The replay occurred after unblinding and is not a second sealed generalization
+test. The primary squared incremental objective, policy, members, equal weights,
+normalizers, data, forecasts, constraints, and original chronology are
 unchanged.
 
-## Final ramp-aware V4R result
+## Final V4R result
 
-V4R is a new recovered-container identity for five independently random-init,
-reward-only V3 PPO members. Exact policy/critic weights, normalizers, and
-training provenance are recovery-bound; there was no new V4R training. Every
-decision invokes all five deterministic members and averages their environment
-actions with fixed weights of 0.2. There is no member selection, learned
-weighting, trainable combiner, teacher, behavior cloning, MPC, analytic policy,
-or optimizer action.
+V4R combines five reward-only V3 PPO members with a fixed equal environment-
+action mean. Every decision invokes all five deterministic members at weights
+of 0.2. There is no member selection, learned weighting, trainable combiner,
+teacher, behavior cloning, MPC, analytic policy, or optimizer action.
 
-| Split | Episodes | Ramp impact | DA cost ratio | Every market negative | Strict gates |
-|---|---:|---:|---:|---|---|
-| February validation | 28 | -1.4086907198e-05 | 0.9858280673 | yes | pass |
-| March-April sealed test | 60 | -1.4258710514e-05 | 0.9775584402 | yes | pass |
+| Split | Episodes | Policy native-relative ramp impact | DA cost ratio | Historical gates |
+|---|---:|---:|---:|---|
+| February validation | 28 | -1.4086907198e-05 | 0.9858280673 | pass |
+| March-April sealed test | 60 | -1.4258710514e-05 | 0.9775584402 | pass |
 
-The sealed test opened exactly once after validation freeze. The original V4
-remains blocked and unevaluated because its binaries were lost. The 1 GW-total
-and c-h overlapping analyses are post-selection robustness; c-h is not an
-independent holdout. PJM DOM / Northern Virginia was not evaluated.
+All six policy impacts are negative relative to native grid ramps. Direct
+comparison with operational status quo is favorable in **five of six** markets;
+MISO is the exception. Overall macro impact strongly favors policy. Secondary
+modeled day-ahead cost is $21,098,314 versus $21,582,662 for status quo, a
+$484,349 (2.244%) difference. Cost is not the primary objective, and demand
+charges and retail bills are out of scope.
 
-### Rebuild final thesis artifacts
+## Rebuild and verify
 
-Run from this repository worktree. Restricted raw market files and recovered
-model containers may remain local; committed hashes and canonical evidence are
-the publication boundary.
+Restricted raw market files and recovered model containers may remain local.
+Committed manifests, hashes, sealed evidence, and corrected metrics are the
+publication boundary.
 
 ```powershell
-python scripts\build_ramp_rl_thesis_results.py --v4r output\ramp_rl_v6\recovered_v4r\canonical_evidence.json --output output\ramp_rl_v6\recovered_v4r\thesis
+python scripts\recompute_v4r_posthoc_metrics.py verify
+python scripts\build_ramp_rl_thesis_results.py --corrected
 python scripts\build_ramp_thesis_figures.py
-python scripts\materialize_ramp_thesis.py --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json --output thesis_paper.md
-python scripts\validate_ramp_thesis.py --source thesis_paper.md --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json
+python scripts\materialize_ramp_thesis.py --output thesis_paper.md
+python scripts\validate_ramp_thesis.py --source thesis_paper.md
 python scripts\build_final_thesis.py --source thesis_paper.md --output thesis_paper.docx
 ```
+
+To reproduce the post-hoc metrics rather than only verify the committed
+package, first stage the exact hash-bound frozen model and normalizer binaries,
+then run `scripts\recompute_v4r_posthoc_metrics.py recompute` with an explicit
+UTC timestamp. The command performs no tuning, selection, or policy update.
+
+In the committed correction run, ignored V4R containers were unavailable, so
+the frozen V3 recipe was deterministically re-executed solely to reconstruct
+loadable checkpoints. The wrapper records this training computation, the new
+outer container hashes, exact policy/critic/normalizer equivalence, unchanged
+action chains, and the fact that the replay is not fresh test evidence.
+
+Frozen V2-V5 behavior, models, evidence, and reproduction commands below remain
+historical and unchanged.
 
 ## Legacy V5 study
 

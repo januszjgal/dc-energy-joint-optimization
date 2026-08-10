@@ -27,9 +27,18 @@ def ramp_rl_contract() -> dict:
     }
 ```
 
-`reset(options={"split": ..., "window_id": ...})` returns `episode_context` with the split/window, real three-hour warm history, three-hour no-arrival tail, forecast model/vintage, source hashes, and a future-feature leakage assertion. The hourly fixture has six arrival decisions plus three explicitly scored tail decisions. `step()` returns current per-market ramp/cost/safety arrays and macro fields. The terminal transition repeats the three tail hours in dedicated ramp/cost/safety arrays for evidence sealing and returns `terminated=True`, `truncated=False`, `tail_complete=True`, and `actual_terminal=True`; evaluators do not double count tail values already emitted stepwise.
+`reset(options={"split": ..., "window_id": ...})` returns `episode_context` with the split/window, real three-hour warm history, three-hour no-arrival tail, forecast model/vintage, source hashes, and a future-feature leakage assertion. The hourly fixture has six arrival decisions plus three explicitly scored tail decisions. `step()` returns current per-market ramp/cost/safety arrays and macro fields. Absolute adjusted 1 h and 3 h magnitudes are emitted per market; evaluators pool those market-timestep magnitudes directly, so opposite signs in different markets cannot cancel. The terminal transition repeats the three tail hours in dedicated ramp/cost/safety arrays for evidence sealing and returns `terminated=True`, `truncated=False`, `tail_complete=True`, and `actual_terminal=True`; evaluators do not double count tail values already emitted stepwise.
 
 For `N` sites the frozen action is the actual ramp-core `2N+1` bounded preference vector: `N` service-allocation scores, one optional batch-execution score, and `N` batch-destination scores, each in `[-6,6]`. These named semantic coordinates feed the frozen constraint-only capped-simplex/EDF/transport decoder. They are not replaced by the trainer's one-dimensional fixture action or reinterpreted as an unconstrained primitive dispatch vector.
+
+Decoder adjustment is measured only after those preferences are decoded into
+comparable work coordinates. The requested vector is N unconstrained service
+amounts, one requested total batch amount, and N requested batch-destination
+amounts. The projected vector contains the corresponding executed amounts.
+`semantic_adjustment_l2` is their Euclidean distance in compute-work units per
+hourly decision; it never mixes raw logits with allocations. The evaluator
+reports sum, mean, p50, p95, maximum, positive-adjustment rate, and a separate
+emergency fallback rate.
 
 ## Commands
 
@@ -94,7 +103,7 @@ reward, runner, or evidence implementations.
 
 Every training manifest records protocol/source/artifact hashes, random initialization, initial/final policy and critic hashes, interactions and updates, replay provenance, split and normalization statistics, forecast identity, semantic adjustments, emergency feasibility, and explicit false assertions for all prohibited teacher/expert/optimizer inputs. Validation/test normalization is loaded frozen. Status quo and future analytic/QP oracle bounds are reachable only through the evaluation adapter.
 
-The evidence helpers enforce validation-only selection and Lagrangian updates, epsilon sensitivities of 0/2/5%, day/month bootstrap intervals, optimizer-seed ranges, behavior audits, and named success-gate failures. A failed gate is retained as a valid scientific result and cannot authorize sealed-test tuning.
+The evidence helpers enforce validation-only selection and Lagrangian updates, epsilon sensitivities of 0/2/5%, day/month bootstrap intervals, optimizer-seed ranges, behavior audits, and named success-gate failures. The historical market gate is explicitly native-grid-relative. Policy-versus-status-quo superiority is a separate diagnostic with overall/per-market deltas and better-market count/share; it does not retroactively alter the preregistered gate. A failed gate is retained as a valid scientific result and cannot authorize sealed-test tuning.
 
 ## Immutable V1 campaign closeout
 
@@ -142,13 +151,16 @@ fixed equal environment-action mean; member selection, learned weighting,
 trainable combination, supervision, analytic policy actions, MPC, and optimizer
 actions are prohibited.
 
-The authoritative evidence is
+The immutable single-open evidence remains
 `output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`, with
 canonical-JSON SHA-256
 `f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b`
-under hash contract `dc-energy-provenance-sha256-v2`. The reseal supersedes
-only platform-dependent checkout hashes; protocol, chronology, models, data,
-metrics, and decisions are unchanged.
+under hash contract `dc-energy-provenance-sha256-v2`. The authoritative
+publication wrapper is
+`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json`.
+It corrects physical-ramp aggregation, native/status-quo labels, and decoder
+telemetry while preserving the original result and chronology. The replay is
+post-hoc and not a second sealed generalization test.
 V4R passed all 28 February validation episodes, then opened the March-April
 sealed test exactly once and passed all 60 test episodes. The 1 GW-total and
 c-h overlapping analyses are post-selection robustness; c-h is not an

@@ -1,342 +1,1167 @@
 ---
 title: "Anticipatory Grid-Ramp Smoothing with Pure Reinforcement Learning"
-subtitle: "A Causal Six-Market Study of Geo-Distributed Data-Center Flexibility"
+subtitle: "A Reproducible Six-Market Study of Spatial and Temporal Data-Center Flexibility"
 author: "Janusz Gal"
 date: "August 2026"
 repository: "https://github.com/januszjgal/dc-energy-joint-optimization"
 ---
 
-> **FINAL EVIDENCE-BOUND THESIS.** Result text inside the generated contract is
-> materialized only from the canonical V4R evidence whose SHA-256 is frozen below.
-> Validation and test remain separate. The March-April 2026 sealed test was
-> opened exactly once after validation freeze and was never used for selection,
-> tuning, tolerance changes, or retraining.
-
 # Abstract
 
-Geo-distributed computing can alter grid-facing demand by routing work among
-electricity markets and scheduling deferrable work before forecast ramps. This
-thesis asks whether a controller whose learned preferences originate entirely
-in reward-only reinforcement learning can reduce a fleet's incremental
-contribution to physical 1 h and 3 h net-load ramps while preserving exact
-workload service and a day-ahead energy-cost constraint. The study uses a common
-hourly UTC panel from September 2025 through April 2026 for six separately
-sourced market/balancing-authority series: CAISO NP15, ERCOT North, NYISO Zone J,
-MISO Minnesota Hub, SPP North Hub, and ISO New England NEMA. These are fixed
-market cases, not statistically independent samples or facility-level grids;
-hub/zonal price and physical-stress geographies can differ. September-January is training,
-February is validation, and March-April is sealed test. PJM DOM / Northern
-Virginia was not evaluated because the required credential was unavailable.
+> **Evidence and correction notice.** The March-April 2026 policy result below
+> remains the original single-open sealed evaluation. A later deterministic
+> replay of the frozen policy corrects physical-ramp aggregation, status-quo
+> labeling, and decoder telemetry only. It is explicitly post-hoc, occurred
+> after unblinding, and is not a second sealed generalization test. It changed
+> no policy, member, weight, model selection, data split, forecast, reward,
+> constraint, or primary objective.
 
-The final controller is a deterministic equal-action ensemble of five PPO
-members. Each member originated as an independently random-initialized,
-reward-only V3 policy. An operational loss of the original model containers
-blocked the first V4 ensemble before evaluation. V4R is therefore a new binary
-identity: recovered containers reproduce the exact V3 policy weights, critic
-weights, normalization state, and training provenance, but they do not reuse or
-impersonate the lost V3 containers or the blocked V4 identity. There was no new
-V4R training. At each decision all five deterministic member actions are
-invoked once and averaged with fixed weights of 0.2 in environment action
-space. There is no member selection, learned weighting, trainable combiner,
-teacher, behavior cloning, analytic policy, model-predictive controller, or
-optimizer action.
+Large data centers can change when and where they consume electricity. A
+geographically distributed operator can route immediate service work among
+sites and can execute some deferrable work before its deadline. This thesis
+asks whether those two forms of flexibility can reduce a modeled fleet's
+incremental contribution to rapid electricity-system net-load changes. The
+primary target is physical grid-ramp smoothing over one-hour and three-hour
+windows. Modeled wholesale cost is a guardrail and secondary byproduct, not the
+headline objective. Demand charges, retail tariffs, and facility bill savings
+are explicitly out of scope.
 
-V4R passed every strict February validation gate over 28 episodes, with mean
-incremental normalized squared-ramp impact -1.4086907198e-05 and modeled
-day-ahead cost ratio 0.9858280673. After source, recovery, and validation
-freeze, its single sealed-test opening produced 60 episodes with impact
--1.4258710514e-05 and cost ratio 0.9775584402. Every evaluated market had
-negative incremental impact. Service and batch completion were exact, there
-were zero expiry, terminal work, certificate violations, emergency feasibility
-events, and leakage detections, and ramp-period power fell from 313,167.23 to
-303,077.90 persisted audit units. Post-selection 1 GW-total and c-h
-overlapping/non-independent analyses also passed all gates. These are fixed
-period, price-taking simulation results, not universal grid-reliability or
-retail-bill claims.
+The experiment combines six price locations and six physical grid contexts:
+CAISO NP15, ERCOT North, NYISO Zone J, MISO Minnesota Hub, SPP North Hub, and
+ISO New England NEMA. All series share an exact hourly UTC index from September
+2025 through April 2026. September 2025 through January 2026 is training,
+February 2026 is validation, and March-April 2026 is the sealed test. The
+energy pipeline retains source product, geography, interval convention,
+timezone, raw hash, retrieval, revision, quality, and redistribution metadata.
+Where a complete operator physical history was unavailable, the study uses a
+documented same-balancing-authority EIA bulk fallback. No market series is
+interpolated or silently substituted. PJM DOM / Northern Virginia was not
+evaluated because its required API credential was unavailable.
 
-# 1. Introduction and Research Question
+The workload is not a 2011 trace. It is Google ClusterData2019: eight Borg
+cells measured during May 2019, with cells a-f mapped to the primary sites.
+Five-minute CPU use is classified into no-SLO batch work and immediate
+service/residual work using collection priority metadata, aggregated to hourly
+means, converted to proxy power through per-cell PowerData2019 affine models,
+and tiled over the later energy calendar. The original trace does not supply
+the experiment's deadlines, so deadlines are synthetic and disclosed. The
+cross-year alignment is a counterfactual modeling convention, not a
+contemporaneous operational replay.
 
-## 1.1 From electricity-cost scheduling to physical ramp response
+The final controller is a fixed equal-action ensemble of five independently
+initialized PPO members whose learned preferences came only from environment
+reward. A deterministic decoder enforces service conservation, capacity,
+earliest-deadline-first batch execution, destination capacity, and exact
+origin-destination transport. The ensemble invokes every member once per
+decision and averages the 13 environment-space actions with weights of 0.2.
+There is no teacher, behavior cloning, demonstration replay, model-predictive
+controller, optimizer action, member selection, learned weighting, or
+trainable combiner. The defensible attribution is therefore reward-only PPO
+member preferences plus fixed equal-action aggregation plus constraint-only
+execution.
 
-Prior geo-distributed scheduling work often minimizes electricity price,
-emissions, or renewable mismatch by moving workload to favorable places and
-times. Those objectives are useful, but an immediate price signal does not
-directly identify whether controllable demand anticipates a future physical
-ramp. A scheduler may save money while amplifying a balancing-area net-load
-change, or it may attenuate ramp magnitude without lowering a wholesale settlement proxy.
-This thesis therefore separates a physical ramp estimand from a wholesale
-day-ahead LMP cost constraint.
+The immutable sealed evaluation contains 60 daily episodes. Its primary mean
+incremental normalized squared-ramp impact is -1.4258710514e-05, with a
+day-block bootstrap interval of approximately [-1.492e-05, -1.352e-05].
+All six policy impacts are negative relative to their native grid ramps. A
+separate operational comparison shows that policy outperforms status quo in
+five of six markets; MISO is the exception. The overall macro difference
+strongly favors policy. Ramp-period power falls from about 313,167 to 303,078
+persisted audit units, a 3.22% reduction. Secondary modeled day-ahead cost
+falls from USD 21,582,662 to USD 21,098,314, about USD 484,349 or 2.244%, even though
+the prespecified gate allowed cost to rise by as much as 2%. All five training
+cost multipliers remained zero.
 
-The data-center contribution is evaluated against the native market trajectory,
-not against zero load. For market \(m\), time \(t\), and horizon \(h\), the
-question is whether adding modeled data-center power makes the squared,
-market-normalized net-load change larger or smaller than it would have been
-under native demand. Negative incremental impact means the modeled data-center
-load reduced squared normalized ramp magnitude; it does not by itself prove
-opposite-direction action or delivery of a balancing service. Positive impact
-means amplification.
+The result supports a narrow claim: in this simulator, fixed calendar, and
+price-taking scope, the frozen reward-only PPO ensemble reduced the modeled
+fleet's incremental squared-ramp contribution while satisfying modeled work
+constraints. It does not prove that reinforcement learning was necessary.
+There is no untrained/random PPO comparator, simple causal ramp heuristic,
+forecast-masked ablation, or equally resourced non-RL controller in the final
+protocol. It also does not establish feeder relief, reserve delivery,
+endogenous market response, retail savings, demand-charge savings, or
+future-year generalization.
 
-## 1.2 Why pure-RL attribution matters
+# 1. Introduction
 
-The repository's V5 result was safe and economically favorable, but its
-attribution was supervised-imitation dominated. Behavior cloning alone averaged
-6.288964% US and 14.017276% Global objective savings, while post-RL TD3+BC
-averaged 6.290226% and 14.000051%. The paired post-RL increment was only
-+0.001262 percentage points in US and -0.017224 points in Global. Actor and
-critic hashes changed and every seed completed reward updates, yet the absolute
-performance primarily belonged to a demonstration teacher plus deterministic
-feasibility. Frequent normal decoder adjustment further showed that the
-executed controller was a co-product of learned preferences and exact
-constraints.
+## 1.1 The operational problem
 
-That result is retained rather than relabeled. V6 removes supervision so that
-the origin of the learned preferences is identifiable. Constraint-only
-decoding remains because workload conservation, capacity, and deadlines are
-hard requirements; it does not contain price, ramp, forecast, or policy
-optimization logic.
+Electricity supply and demand must remain balanced continuously. Variable
+renewable generation can make net load - demand after selected renewable
+generation - change quickly even when gross demand is smooth. The familiar
+California "duck curve" illustrates a steep evening increase as solar output
+falls. Operators manage ramps with generation, storage, interchange, reserves,
+and flexible demand. A data-center fleet is potentially flexible demand
+because computational work can be routed among regions and some work can be
+shifted in time.
 
-## 1.3 Research question and contribution
+That potential should not be confused with a demonstrated grid service. A
+market-level simulation does not observe a feeder, transmission contingency,
+unit-commitment action, or reserve activation. The defensible question is
+smaller: conditional on fixed native grid trajectories, does modeled
+data-center power make one-hour and three-hour net-load changes larger or
+smaller?
 
-The central question is:
+Spatial and temporal control answer different parts of that question. Spatial
+control chooses which site serves immediate work or executes batch work.
+Temporal control chooses how much queued batch work to execute now, subject to
+deadlines. Spatial control can move power between markets within an hour.
+Temporal control can move power between hours. Joint control can therefore
+shape both the market distribution and time profile of fleet power.
 
-> Can reward-only PPO preferences, acting through a constraint-only semantic
-> decoder, anticipate and reduce a geo-distributed fleet's incremental
-> contribution to future 1 h and 3 h market-scale net-load ramps across six
-> evaluated US markets, without violating service, deadline, leakage, emergency,
-> or modeled day-ahead cost gates?
+## 1.2 Research question
 
-The contributions are:
+The central research question is:
 
-1. six separately sourced market/BA series with explicit price-versus-physical
-   geography, licensing, missing-data, and causal-forecast contracts;
-2. an incremental squared-ramp objective with interpretable 1 h/3 h p95 and
-   maximum adjusted-ramp reporting;
-3. a pure-RL attribution boundary that excludes demonstrations, imitation,
-   analytic policy actions, MPC, optimizer actions, and test-driven iteration;
-4. a transparent sequence of failed V1-V3 protocols, the operationally blocked
-   original V4, and the recovered-container V4R success;
-5. a single-open sealed-test protocol with hash-bound recovery provenance and
-   fail-closed publication tooling; and
-6. post-selection scale and workload-map analyses that remain explicitly
-   separate from the primary sealed result.
+> Can reward-only PPO preferences, combined by a fixed equal-action ensemble
+> and executed through a constraint-only decoder, reduce a geo-distributed
+> fleet's incremental contribution to one-hour and three-hour market-scale
+> net-load ramps while preserving exact modeled workload service and a
+> day-ahead energy-cost guardrail?
 
-# 2. Prior Evidence and Diagnostic Lineage
+The phrase *incremental contribution* is important. The controller is not
+credited for a native grid ramp that would have occurred without the modeled
+fleet. It is scored on the difference between the squared adjusted ramp and
+the squared native ramp. Negative impact means adding the modeled fleet made
+the squared ramp smaller; positive impact means it made the squared ramp
+larger.
 
-## 2.1 Frozen V1-V5 lineage
+## 1.3 Scope and non-claims
 
-Repository versions are design history, not a sequence of rewritten final
-claims. V1-V4 built the workload, energy, action, and safety machinery. V5
-combined a supervised demonstration teacher, TD3+BC, and a deterministic
-feasibility decoder in a four-site CAISO-derived archetype. Its exact safety and
-absolute savings remain valid within that scope. Its incremental RL effect was
-approximately zero, so it cannot support a pure-RL headline.
+The primary scope is spatial plus temporal workload control for grid-ramp
+smoothing. The study does not optimize demand charges. It does not model
+15-minute billing peaks, ratchets, coincident peaks, customer-specific tariffs,
+capacity charges, transmission charges, taxes, power-purchase agreements,
+hedges, or ancillary-service revenue. The modeled cost is wholesale day-ahead
+LMP multiplied by modeled power and one hour. It is not a retail electricity
+bill.
 
-Deterministic audits and ablations motivated the ramp reformulation. Exact
-KKT/water-filling allocation was stronger than a softmax teacher
-approximation. Spatial price response had substantial immediate headroom, while
-incremental temporal headroom under the modeled deadlines was small. Random-init
-PPO and SAC could learn simpler immediate spatial tasks, indicating that the
-training stack worked, but the earlier joint objective mixed delayed credit,
-constrained geometry, and weak temporal signal.
+The market cases are fixed observations, not iid samples of all US power
+systems. Physical context is generally balancing-authority or system scale;
+price is a hub or zone. Those geographies are not always identical. The model
+is price-taking: fleet action does not change price, generation dispatch,
+commitment, transmission flows, or reserve procurement. The primary 600 MW
+fleet is therefore an accounting experiment, not a claim that a deployed
+fleet could move the same amount without market feedback.
 
-## 2.2 V6 protocol learning
+## 1.4 Contributions
 
-V6 preserved every failure as evidence:
+This thesis makes seven concrete contributions:
 
-| Protocol | Frozen outcome | Scientific interpretation |
+1. It documents a six-market hourly energy pipeline with product-level source,
+   timestamp, quality, licensing, retrieval, and hash provenance.
+2. It documents a measured ClusterData2019 workload transformation from
+   five-minute CPU usage and collection priorities to hourly service and
+   deferrable arrivals, including synthetic deadline semantics.
+3. It implements an N-site ramp-aware Gymnasium environment with causal
+   observations, exact warm history, an explicitly scored terminal tail, and a
+   constraint-only semantic action decoder.
+4. It trains genuine reward-only PPO members and records actor, critic,
+   normalizer, interaction, update, and data-provenance identities.
+5. It preserves failed V1-V3 protocols and the blocked original V4 rather than
+   rewriting them after the final result.
+6. It separates the preregistered native-grid-relative gate from a new,
+   first-class policy-versus-status-quo diagnostic.
+7. It corrects physical-ramp and decoder telemetry in a post-hoc frozen-policy
+   replay without altering the original sealed evidence or claiming a second
+   test.
+
+# 2. Relationship to the Earlier V5 Study
+
+## 2.1 What V5 established
+
+The repository's V5 study combined behavior cloning, a short TD3+BC reward
+phase, and a deterministic safety decoder. It produced exact modeled workload
+completion and favorable objective values in a four-site CAISO-derived
+archetype. Those results remain part of the repository history.
+
+The important limitation was attribution. Behavior cloning alone produced
+almost all of the reported performance. Post-RL changes were approximately
+zero relative to the cloned policy. The V5 result was therefore best described
+as teacher imitation preserved by reward training, not performance caused
+primarily by reinforcement learning. That conclusion is not a defect to hide;
+it motivated a new study.
+
+## 2.2 How V4R supersedes V5 scientifically
+
+V4R does not erase V5 or reuse its final controller. It changes the scientific
+question and experimental boundary:
+
+| Dimension | V5 | V4R |
 |---|---|---|
-| V1 100k screen | aggregate validation screen passed | promotion signal only |
-| V1 500k confirmation | failed strict per-seed/per-market/behavior rules | no selection; test stayed closed |
-| V2-A | all three fresh seeds failed at least one strict gate | shaped retry rejected |
-| V2-B | reporting mean remained weak and strict gates failed | retry rejected |
-| V3 | four of five seeds passed; seed 2805 harmed MISO slightly | conjunctive validation failure; test stayed closed |
-| Original V4 | N/A: lost binaries prevented trustworthy evaluation | blocked and explicitly not evaluated |
-| V4R | recovered-policy equal-action ensemble passed validation | new recovered-container identity authorized one test opening |
+| Main objective | mixed energy/grid-stress objective | incremental squared 1 h/3 h ramp impact |
+| Learned origin | behavior cloning plus TD3+BC | random initialization plus PPO reward only |
+| Geography | CAISO-derived slot archetypes | six separately sourced market/BA cases |
+| Data cadence | five minutes | one hour |
+| Final aggregation | individual trained networks | fixed equal-action mean of five members |
+| Cost role | central objective component | separate 2% guardrail and secondary outcome |
+| Demand charges | secondary sensitivity existed | explicitly out of scope |
+| Test discipline | frozen confirmation and transfer scopes | validation freeze then one sealed opening |
 
-![Figure 1. Protocol progression with failures, operational block, and V4R validation success.](docs/figures/ramp_v6/protocol_progression.png)
+The continuity is the deterministic feasibility principle. Both studies refuse
+to let a neural policy violate conservation, capacity, or deadlines. The
+change is that V4R removes the demonstration teacher and makes ramp impact the
+primary estimand.
 
-V1 confirmation averaged -1.09572077294e-05 at cost ratio 0.9783949019, but
-three seeds violated strict market or behavior gates. V2-A averaged
--4.98371781802e-07 at cost ratio 1.0091997163 and stopped after three failed
-seeds. V3 reproduced the stronger original PPO recipe on fresh seeds 2801-2805:
-the reporting-only mean was -1.37109198609e-05 at cost ratio 0.9863649332, but
-seed 2805's MISO impact was +1.29400801418e-07. The all-five decision was
-therefore false. No aggregate override or tolerance was introduced.
+## 2.3 What V4R still does not prove
 
-# 3. Data, Geography, and Causal Information
+Removing behavior cloning establishes a reward-only origin for the learned
+preferences. It does not establish the necessity of RL. The fixed decoder may
+make simple heuristics effective, and the forecasts may provide enough
+structure for a causal hand-designed policy. A convincing RL-necessity claim
+would require at least:
 
-## 3.1 Six evaluated markets
+- an untrained or random-network PPO action comparator;
+- a simple forecast-aware ramp heuristic with the same decoder;
+- a no-forecast or forecast-masked PPO ablation;
+- an equally resourced optimization or model-predictive benchmark; and
+- repeated end-to-end ensemble training to estimate training variability.
 
-The energy-model V3 panel contains six separate price and physical-market
-observations on one exact hourly UTC index:
+Those experiments are absent. The thesis reports that gap rather than
+inferring necessity from the success of one trained controller.
 
-| Site proxy | Day-ahead price | Physical stress geography | Workload cell |
+# 3. Related Work
+
+## 3.1 Electricity-aware geographical load balancing
+
+Qureshi et al. quantified electricity-price variation across geographically
+distributed Internet systems and showed that routing can exploit it [4]. Rao
+et al. formalized distributed data-center scheduling in multiple electricity
+markets under service constraints [5]. Liu et al. extended geographical load
+balancing to energy and environmental objectives [6]. These papers establish
+that location is a control variable, but their primary targets are not the
+incremental physical ramp measure used here.
+
+This thesis retains their central systems idea - computational demand can move
+among sites - while separating market price from physical grid context.
+Hub/zonal LMP supplies an economic guardrail. Balancing-area or system net load
+supplies the physical ramp objective. The separation matters because low price
+does not necessarily imply low or falling physical net load.
+
+## 3.2 Temporal workload shifting
+
+GreenSlot scheduled batch work to align with renewable availability [7].
+Related green data-center systems use forecasts, batteries, or deferrable jobs
+to shift power through time. V4R adopts the broad temporal-flexibility concept
+but uses global earliest-deadline-first accounting and a one-hour control
+interval. It does not claim to reproduce Borg's production scheduler or
+application-level SLOs.
+
+## 3.3 Data-center demand response and grid interaction
+
+Demand response treats controllable load as a balancing resource. Flexible
+data centers are attractive because software can alter work placement faster
+than many physical industrial processes. Nevertheless, a simulated reduction
+in market-scale ramp magnitude is not equivalent to qualification for a
+wholesale demand-response product. FERC Order 745 provides regulatory context
+for compensating demand response at LMP [10], but this study models neither
+market participation nor settlement.
+
+The closest defensible interpretation is grid-interactive scheduling:
+forecasts inform when flexible compute is executed, and resulting power is
+audited against native net-load changes. Reliability, telemetry, baselines,
+dispatch instructions, and performance penalties would be required for a
+real product.
+
+Production and research systems provide evidence that temporal shifting is
+technically plausible even though they optimize different signals.
+Radovanovic et al. describe Google's carbon-aware compute management, which
+uses day-ahead capacity curves to defer flexible workloads while preserving
+daily capacity [26]. Wiesner et al. analyze intra-region temporal workload
+shifting under changing grid carbon intensity [27]. These studies support the
+availability of temporal flexibility; neither validates V4R's specific ramp
+metric or its six-market result.
+
+## 3.4 Ramp flexibility
+
+CAISO's duck-curve materials explain why increasing solar can create a steep
+late-day net-load ramp [11]. The engineering issue is not renewable generation
+itself; it is the need for sufficient flexibility as net load changes. V4R
+uses one-hour and three-hour windows because they are long enough to interact
+with hourly workload scheduling and short enough to represent operationally
+meaningful change. It does not claim that those windows are the only relevant
+ones or that its metric is a reliability standard.
+
+Haider et al. formulate coordinated distributed flexible loads, batteries, and
+solar as a duck-curve ramp-support problem and report reduced bulk-system
+ramping in an IEEE-34-node case study [28]. That work supplies a power-systems
+control precedent for using flexible demand to reduce ramp burden. V4R differs
+by treating computation as the controllable load and by evaluating historical
+market-scale trajectories rather than a distribution-network optimal power
+flow.
+
+## 3.5 Reinforcement learning and constrained control
+
+PPO alternates environment interaction with multiple minibatch updates to a
+clipped policy-gradient objective [8]. The actor produces an action
+distribution; the critic estimates expected return and reduces gradient
+variance. Stable-Baselines3 supplies the tested implementation used here [9].
+
+Constrained Markov decision processes formalize reward optimization subject to
+expected costs [12]. Constrained Policy Optimization is one safe-RL approach
+[13]. V4R takes a structurally different route. Hard workload constraints are
+not learned and are not enforced only in expectation. A deterministic decoder
+maps preferences to feasible allocations on every step. A scalar Lagrangian
+term exists for the soft day-ahead cost guardrail, but all five frozen training
+runs kept the multiplier at exactly zero because the measured training cost
+never required a positive penalty.
+
+## 3.6 Ensembles
+
+Deep ensembles commonly average independently initialized networks [14]. V4R
+uses equal action averaging for a narrower purpose: to combine five frozen PPO
+members without learning or selecting weights. It does not use the ensemble as
+a calibrated uncertainty estimate. All members are invoked, no member is
+dropped, and the weights remain [0.2, 0.2, 0.2, 0.2, 0.2].
+
+## 3.7 Workload traces
+
+Borg is Google's large-scale cluster manager [1,2]. Google ClusterData2019
+contains eight Borg-cell traces from May 2019 and adds five-minute CPU
+histograms, allocation sets, and other structure not present in the older
+2011 trace [15]. PowerData2019 provides related power-domain observations
+[16]. Both are distributed under CC-BY 4.0 according to their repository
+documentation.
+
+Earlier project descriptions can conflate this workload with Google's 2011
+trace. That would be inaccurate for this study. ClusterData2011 is a different
+single-cell, 29-day trace [17]. The implemented workload uses ClusterData2019
+cells a-f for the primary study. This distinction matters because trace
+generation, schema, cell count, and priority semantics differ.
+
+# 4. Protocol Lineage and Experimental Governance
+
+## 4.1 Why protocol history matters
+
+The final result followed several failures. Reporting only V4R would conceal
+the amount of iteration and invite hindsight bias. The repository therefore
+keeps frozen protocol documents, source hashes, validation decisions, and
+failure reports for each stage.
+
+![Figure 1. Experiment lineage from V1 through V4R and the post-hoc telemetry correction; failed and blocked stages remain visible.](docs/figures/ramp_v6/experiment_lineage.png)
+
+## 4.2 V1
+
+V1 used the original pure-RL ramp formulation. A 100k screen looked promising,
+but the longer confirmation did not satisfy every per-seed, per-market, and
+behavior gate. The result was published as a failure. The sealed test stayed
+closed.
+
+## 4.3 V2
+
+V2 introduced predeclared learning-rate, epoch, KL, and reward-shaping changes.
+Both candidates failed validation gates. No tolerance was added after seeing
+the failures, no aggregate mean overrode a failed conjunctive gate, and the
+test remained closed.
+
+## 4.4 V3
+
+V3 returned to the stronger original PPO recipe using fresh seeds 2801-2805.
+Four members passed all strict checks. Seed 2805 produced a small positive MISO
+native-relative impact, so the all-five validation decision was false. The
+V3 test remained closed.
+
+## 4.5 Original V4
+
+Original V4 proposed a deterministic equal-action ensemble of the five V3
+members. The required model containers were lost before trustworthy
+evaluation. The correct record is "blocked and not evaluated," not a score of
+zero and not a failed performance result.
+
+## 4.6 V4R recovery
+
+V4R is a new binary identity for recovered containers that reproduce the exact
+V3 policy tensors, critic tensors, normalizer state, and training provenance.
+The outer Stable-Baselines3 ZIP containers differ because runtime and ZIP
+metadata are not content-addressed policy identities. Recovery evidence binds
+both the new container hashes and the exact internal policy/critic hashes.
+
+There was no new V4R training. Validation evaluated the fixed ensemble over 28
+February episodes. Passing validation authorized one March-April opening. The
+sealed test then ran once over 60 daily episodes. Test data did not change
+membership, weights, source, forecast, decoder, cost budget, or gates.
+This is the March-April 2026 sealed test referenced throughout the thesis.
+
+## 4.7 Post-hoc metric correction
+
+The original environment correctly computed per-market signed adjusted ramps
+and the primary squared incremental objective. The telemetry bug occurred
+after those calculations: it exposed a signed cross-market mean, and the
+evaluator took p95 and maximum without absolute values. Opposite market signs
+could therefore cancel before the physical summary. In addition, the
+`semantic_adjustment_l2` field was a literal zero, and the historical gate name
+could be misread as a status-quo comparison.
+
+The correction replays the frozen policy with unchanged dynamics and action
+execution. It pools absolute adjusted ramp magnitudes at the
+market-timestep level, computes decoder adjustment in comparable decoded work
+coordinates, and adds explicit status-quo deltas. It reproduces decision-
+relevant objective, cost, safety, behavior, and action-chain identities. It is
+post-hoc descriptive evidence, not a fresh test.
+
+The exact ignored V4R containers were no longer available in this clean
+worktree. Before replay, an isolated deterministic checkpoint reconstruction
+therefore re-executed the already frozen V3 recipe. This did execute training
+code after unblinding and is disclosed in the wrapper; it cannot create fresh
+test evidence. The reconstructed outer ZIP hashes differ, but every policy
+tensor hash, critic tensor hash, normalizer hash, and ensemble action chain
+matches the frozen identities. No tuning, selection, weighting, or policy
+change occurred. The metric replay itself performed no training.
+
+# 5. Energy Data
+
+## 5.1 Calendar and common index
+
+The locked calendar contains 5,808 hourly UTC rows from
+2025-09-01T00:00:00Z through 2026-05-01T00:00:00Z exclusive:
+
+| Split | Months | Purpose |
+|---|---|---|
+| Train | 2025-09 through 2026-01 | policy learning, normalizers, scales, thresholds, forecast fitting |
+| Validation | 2026-02 | fixed model/protocol selection and test-opening decision |
+| Sealed test | 2026-03 and 2026-04 | one authorized generalization evaluation |
+
+Each market must cover the exact common index. Duplicate timestamps, missing
+hours, mixed interval conventions, or an incomplete source product fail
+closed. The builder does not shorten the period or drop a market to make the
+intersection pass.
+
+## 5.2 Source matrix
+
+| Market case | Day-ahead price | Physical demand/renewables | Important geography or terms caveat |
 |---|---|---|---|
-| Northern California | CAISO NP15 | CAISO BA gross demand and renewables via EIA-930 fallback | a |
-| North Texas | ERCOT LZ North | ERCOT native load plus hourly wind/solar | b |
-| New York City | NYISO Zone J | Zone J load with NYCA renewable context | c |
-| Minnesota | MISO Minnesota Hub | MISO BA gross demand and renewables via EIA-930 fallback | d |
-| SPP North | SPP North Hub | SPP BA gross demand and renewables via EIA-930 fallback | e |
-| Boston/NEMA | ISO-NE location 4008 | ISO-NE BA gross demand and renewables via EIA-930 fallback | f |
+| CAISO NP15 | OASIS PRC_LMP v12, TH_NP15_GEN-APND | EIA CAISO balancing-authority demand/wind/solar fallback | price hub differs from BA physical context; CAISO attribution/OASIS terms |
+| ERCOT North | MIS report 13060, LZ_NORTH | native-load archives plus report 13052 WGR/PVGR reconstruction | load-zone price versus ERCOT-system physical tuple; public reuse with notices |
+| NYISO Zone J | damlbmp monthly archive, PTID 61761 | Zone J PAL load plus NYCA renewable context | renewable geography is systemwide; archive correction hashes retained |
+| MISO Minnesota Hub | daily DA ex-post LMP, MINN.HUB | EIA MISO balancing-authority fallback | restrictive MISO redistribution; derived metrics only |
+| SPP North Hub | DA-LMP by settlement location, SPPNORTH_HUB | EIA SPP balancing-authority fallback | no clear bulk redistribution license; derived metrics only |
+| ISO-NE NEMA | WW_DALMP_ISO daily final report, location 4008 | EIA ISO-NE balancing-authority fallback | ISO-NE data-use terms; metadata/hashes/derived metrics only |
 
-![Figure 2. Six-market study design and fixed calendar split.](docs/figures/ramp_v6/six_market_study_design.png)
+CAISO OASIS, ERCOT MIS, NYISO archives, MISO market reports, SPP Marketplace
+Public Data, and ISO-NE reports are cited in [18-23]. EIA Form 930 / Hourly
+Electric Grid Monitor and the EBA.zip archive are cited in [24].
 
-These are separately sourced market/BA series, not wall-time shifts of one CAISO
-trace. They are fixed cases rather than statistically independent or iid draws
-from all US grids. Their wholesale price products are hub/zonal series, while
-physical stress can be balancing-authority or system scale; neither represents a
-facility feeder, utility territory, or local reliability zone. PJM DOM /
-Northern Virginia was not evaluated and has no result in any aggregate.
+## 5.3 Download and raw-field contracts
 
-## 3.2 Source and licensing boundaries
+The source descriptors in
+`data/energy_model_v3/provenance/source_contract.json` record authentication,
+query parameters, feed version, location, native cadence, interval beginning
+or ending, timezone, DST rule, units, revision policy, retrieval status,
+licensing, redistribution, and quality flags.
 
-Day-ahead price comes from operator products at the stated hub or zone.
-Physical demand and renewable components use operator products where complete
-and defensible. ERCOT and NYISO use the selected operator physical products;
-CAISO, MISO, SPP, and ISO-NE use a documented same-balancing-authority EIA bulk fallback
-because complete, timestamp-defensible operator history was unavailable. In
-particular, CAISO Today's Outlook lacked an authoritative UTC field and SPP
-GenMix365 had 67 incomplete five-minute hours, which could not be interpolated.
-Each source
-descriptor records product, geography, cadence, units, timezone, revision
-status, authentication, retrieval query/time, raw hash, quality flags, and
-redistribution policy. Restricted raw/native/panel files remain local and
-ignored where licensing prohibits redistribution; permissible manifests,
-hashes, and derived evidence are committed.
+The locked product selectors are:
 
-No market series is interpolated, forward-filled, shortened, silently replaced,
-or dropped to make the common calendar pass. Negative renewable adjustments in
-the EIA bulk product are explicitly clipped to zero before net-load derivation,
-with affected-hour diagnostics retained. This is disclosed normalization, not
-missing-data interpolation.
+- CAISO price: OASIS `PRC_LMP` version 12 with
+  `market_run_id=DAM`, `lmp_type=LMP`, and
+  `node=TH_NP15_GEN-APND`;
+- ERCOT price: MIS report 13060 at `LZ_NORTH`; native physical load from
+  `Native_Load_2025.zip` and `Native_Load_2026.zip`; renewable reconstruction
+  from report 13052 fields including SCED timestamp, repeated-hour flag,
+  resource name/type, and telemetered net output;
+- NYISO price: monthly `damlbmp` archives at Zone J PTID 61761; physical load
+  from `pal`, with NYCA fuel-mix wind and behind-the-meter solar retained as
+  broader renewable context;
+- MISO price: `YYYYMMDD_da_expost_lmp.csv`, row
+  `MINN.HUB / Hub / LMP`;
+- SPP price: hourly
+  `/YYYY/MM/By_Day/DA-LMP-SL-YYYYMMDDHH00.csv` rows at
+  `SPPNORTH_HUB`;
+- ISO-NE price: final daily `WW_DALMP_ISO_YYYYMMDD.csv` at location
+  4008 (`.Z.NEMASSBOST`); and
+- EIA physical fallback: hourly balancing-authority series of the form
+  `EBA.<BA>-ALL.D.H`, `EBA.<BA>-ALL.NG.WND.H`, and
+  `EBA.<BA>-ALL.NG.SUN.H` for demand, wind, and solar.
 
-## 3.3 Calendar, split, and forecasts
+Examples illustrate why that detail matters:
 
-The exact panel runs from 2025-09-01T00:00:00Z through
-2026-05-01T00:00:00Z exclusive:
+- CAISO price uses `INTERVALSTARTTIME_GMT`; the GMT field is authoritative.
+- ERCOT local delivery date, hour, interval, and `DSTFlag` must be parsed
+  together.
+- MISO reports fixed EST hour ending; civil-time inference is prohibited.
+- NYISO archives are corrected over time, so each archive hash is retained.
+- SPP physical files have rolling retention; collection time is part of
+  reproducibility.
+- ISO-NE repeated hour-ending values are resolved using report order.
 
-| Period | Use |
+Raw restricted files are not committed when terms prohibit redistribution.
+Instead, permissible manifests retain file size, SHA-256, query, and derived
+coverage evidence. The canonical results are therefore auditable without
+publishing raw data that the repository is not authorized to redistribute.
+
+## 5.4 Cleaning and alignment
+
+Native records are normalized to UTC interval start. Subhourly physical
+products require every contributing interval before hourly aggregation. A
+five-minute or fifteen-minute hour with a missing interval is rejected rather
+than forward-filled. Price remains hourly. Physical demand, wind, solar, and
+price remain separate columns until the canonical join.
+
+Net load is either a defensible source field or is derived exactly once:
+
+```text
+net_load_mw = gross_demand_mw - wind_mw - solar_mw
+```
+
+CAISO published net demand and NYISO PAL are not double-subtracted. EIA bulk
+occasionally contains negative renewable adjustments; those values are
+explicitly clipped to zero before derivation, and affected-hour counts and raw
+minima remain in the acquisition manifest. This is a disclosed non-negativity
+normalization, not interpolation.
+
+The builder validates:
+
+- one row per market-hour;
+- a common ordered market set;
+- finite demand, renewable, price, and forecast values;
+- positive market scales;
+- causal forecast issue time;
+- consistent source and revision identity;
+- no missing active hour, three-hour warm history, or three-hour terminal
+  tail; and
+- exact declared file hashes.
+
+## 5.5 Normalization
+
+For each market, the training-only Q95 gross demand is the physical scale
+`S_m`. Training-only means and standard deviations normalize gross and net
+levels in the observation. Training-only Q90 native absolute ramp thresholds
+support the smaller residual-tail reward term. February, March, and April do
+not influence these quantities.
+
+Normalization makes market cases comparable without pretending they have the
+same MW scale. A normalized ramp value of 0.05 means a change equal to five
+percent of that market's training Q95 gross demand per hour. It is not a
+cross-market MW total.
+
+## 5.6 Forecast construction and leakage control
+
+The policy does not receive realized future load, renewable generation, or
+real-time price. It receives reconstructed causal gross and net forecasts for
+one, two, and three hours ahead. The model is an expanding-window ridge
+regression using only observations whose target time strictly precedes the
+vintage. Features include observed lags, trailing means, target hour, and day
+of week.
+
+Daily expanding vintages are fit during training. At the February boundary,
+the first-five-month model is frozen for validation and test. Every forecast
+row records target, value, issue time, vintage, horizon, model identifier, and
+quality. The environment rejects any issue time after the controller
+timestamp.
+
+These are reconstructed research forecasts, not archived operator forecast
+products. Their errors are reported by split, but no test error is used to
+change the policy or model.
+In short, they are reconstructed causal forecasts with explicit issue and
+vintage identities.
+
+## 5.7 Data hashes and manifests
+
+The principal data identities are retained in:
+
+| Artifact | Role |
 |---|---|
-| September 2025-January 2026 | training, scales, thresholds, normalization, forecast fitting |
-| February 2026 | validation-only selection and freeze |
-| March-April 2026 | sealed test, opened once |
+| `data/energy_model_v3/manifest.json` | inventory of native, panel, diagnostic, and protocol artifacts |
+| `data/energy_model_v3/provenance/source_contract.json` | product/geography/timezone/licensing contract |
+| `data/energy_model_v3/provenance/live-acquisition-manifest.json` | actual acquisition, raw hashes, cleaning diagnostics |
+| `data/energy_model_v3/provenance/workload-power-manifest.json` | cell mapping and power-fit hashes |
+| `data/energy_model_v3/forecasts/manifest.json` | forecast vintages, coefficients, errors, and hashes |
+| `output/energy_model_v3/ramp_v6/factory_manifest.json` | per-window panel/fixture hashes consumed by RL |
 
-Forecast features are reconstructed causal forecasts, not hindsight values and
-not claims about archived operator forecast products. Training uses
-expanding-window vintages whose observations strictly precede issue time. The
-model fitted at the February boundary is frozen for validation and test.
-Validation/test data cannot influence scales, thresholds, normalization,
-forecast fitting, reward calibration, member weights, or selection.
+The factory manifest binds every daily window to its `canonical_panel.csv`,
+`fixture.json`, forecast vintage, period, split, and source hashes.
 
-## 3.4 Workload and scale
+# 6. Workload Trace and Transformation
 
-Measured Google ClusterData 2019 cell a-f profiles are converted through
-committed per-cell power models and tiled over the later energy calendar.
-Synthetic EDF deadlines are experimental constraints, not production Borg
-SLOs. The primary fleet is six 100 MW proxy sites, 600 MW total. The 1 GW-total
-case assigns 166.6667 MW per site and is a post-selection scale sensitivity.
-The c-h mapping reuses part of the primary workload population; it is
-c-h overlapping/non-independent robustness, not an independent workload
-holdout. A 6 GW stress exists outside the primary price-taking claim.
+## 6.1 Source
 
-# 4. Ramp-Aware Control Problem
+The primary workload comes from Google's public BigQuery datasets
+`google.com:google-cluster-data.clusterdata_2019_{cell}` for cells a-f.
+ClusterData2019 covers eight Borg cells during May 2019 and is approximately
+2.4 TiB compressed in its hosted representation [15]. The repository retains
+derived curves and hashes, not the full BigQuery tables.
 
-## 4.1 State, action, and exact feasibility
+PowerData2019 provides measurements from power domains associated with those
+cells [16]. Per-cell affine fits transform normalized CPU use into proxy
+facility power.
 
-The causal state includes current service and batch arrivals, EDF queue/deadline
-structure, current market levels, prior modeled market power, training-only
-scales and thresholds, reconstructed forecast values with issue/vintage
-metadata, site capacities, and episode position. Future realized net load,
-renewables, price, and workload do not enter the observation.
+## 6.2 Extraction from usage and collection events
 
-For six sites, the semantic action has \(2N+1=13\) preferences: six service
-allocation preferences, one total batch-drain preference, and six batch
-destination preferences. A deterministic capped-simplex allocation conserves
-service within capacity. Global EDF enforces cumulative deadline prefixes.
-Residual capacity places drained batch work, and exact transport matches origin
-drains to destination execution. The decoder contains no economic or ramp
-objective. Safety is therefore attributed to constraint-only execution; ramp
-preference is attributed to the learned policy ensemble.
+The extraction uses `instance_usage` as the measured CPU-use source and joins
+collection metadata from `collection_events`. The no-SLO class is matched
+priority <=115, covering free and best-effort batch tiers under the trace's
+documented convention. Five-minute classified batch CPU is summed. The
+service/residual curve is:
 
-## 4.2 Incremental squared-ramp objective
+```text
+service_cpu = aggregate_cpu - classified_no_slo_batch_cpu
+```
 
-For market \(m\), hour \(t\), horizon \(h \in \{1,3\}\), native net load
-\(N\), modeled data-center power \(P\), and the training-only Q95 gross-demand
-scale \(S_m\):
+The residual includes matched production priorities and any usage without a
+matched priority record. The repository does not claim that every residual
+sample has an observed production priority. At every timestep it verifies:
+
+```text
+service_demand_norm + batch_demand_norm = cpu_demand_norm
+```
+
+The active trace has 8,929 boundary samples; the final boundary is excluded,
+leaving 8,928 five-minute intervals, or 744 complete hours.
+
+## 6.3 Hourly transformation and tiling
+
+Each group of twelve five-minute intervals is averaged into one hourly service
+value and one hourly batch value. The resulting 744-hour profile is repeated
+to cover the 5,808-hour energy calendar. The repetition count and every source
+and derived artifact hash are recorded by market.
+
+This transformation preserves the measured intramonth shape but destroys a
+contemporaneous relationship between workload and 2025-2026 energy conditions.
+The original May 2019 absolute timestamps were not used for the later market
+alignment. Any apparent coordination is created by the controller, not by a
+historical correlation between the two datasets.
+
+## 6.4 Workload archetypes and scaling
+
+Cells map to sites as follows:
+
+| Market case | Borg cell | Proxy rated power | Compute capacity |
+|---|---:|---:|---:|
+| CAISO NP15 | a | 100 MW | 1.0 |
+| ERCOT North | b | 100 MW | 1.0 |
+| NYISO Zone J | c | 100 MW | 1.0 |
+| MISO Minnesota Hub | d | 100 MW | 1.0 |
+| SPP North Hub | e | 100 MW | 1.0 |
+| ISO-NE NEMA | f | 100 MW | 1.0 |
+
+The primary fleet is 600 MW total. A post-selection 1 GW-total sensitivity
+scales rated power, compute capacity, arrivals, and warm power together to
+166.6667 MW per site. A larger 1 GW-per-site case is a stress configuration,
+not the primary result.
+
+For each cell, proxy power is:
+
+```text
+power_fraction = idle_fraction + slope * cpu_utilization
+power_mw = rated_power_mw * power_fraction
+```
+
+The affine coefficients are fitted from PowerData2019. The model omits cooling
+control, PUE variation, UPS losses, storage, generators, and network equipment.
+
+## 6.5 Admission envelope and conservation
+
+The hourly environment reserves at least 25% of fleet compute capacity for
+carried batch work. Immediate service is limited to 75%, and newly admitted
+batch is limited to 10%. If measured batch would exceed the batch-arrival
+envelope, the excess is conserved by reclassifying it as immediate service. It
+is not dropped. Both service and admitted batch must stay within their frozen
+causal envelopes.
+
+The environment tracks cumulative batch arrival, completion, and queue mass.
+The conservation identity is checked after every decision:
+
+```text
+arrived_batch - completed_batch - queued_batch = 0
+```
+
+## 6.6 Deadline semantics
+
+The trace supplies measured no-SLO job durations but not the deadlines used in
+this control experiment. For each cell, the deadline horizon is:
+
+```text
+deadline_hours = ceil(2 * measured_mean_completed_no_slo_duration / 1 hour)
+```
+
+Every hourly batch arrival receives that experimental horizon. Global EDF
+drains the earliest deadlines first. These deadlines are not Borg SLOs,
+customer commitments, or production queue policies.
+
+## 6.7 Workload quality checks
+
+Quality checks cover:
+
+- exact service-plus-batch conservation in the extracted curves;
+- complete groups of twelve five-minute intervals;
+- finite nonnegative workload values;
+- source and power-model hashes;
+- per-cell hourly row counts and repetition counts;
+- fleet service and batch envelope compliance;
+- zero new arrivals in the terminal tail;
+- exact queue conservation;
+- zero expired work and zero terminal work in accepted results; and
+- consistent scaling of work, capacity, and power.
+
+## 6.8 External-validity limitations
+
+ClusterData2019 is a Google production trace, but it is still one company's
+2019 workload. The primary map uses six cells and reuses the same 744-hour
+profile across eight months. It omits application latency, data locality,
+residency, wide-area bandwidth, migration energy, replication, failures, and
+customer-specific SLOs. The c-h robustness map overlaps the primary workload population; it is
+c-h overlapping/non-independent robustness and reuses primary-population
+cells.
+
+# 7. System Architecture and Code
+
+![Figure 2. End-to-end architecture from source acquisition through causal panel construction, PPO preferences, constraint decoding, and hash-bound evaluation.](docs/figures/ramp_v6/system_architecture.png)
+
+## 7.1 Data pipeline
+
+`energy_model_v3` acquires and parses native products, validates coverage,
+normalizes timestamp semantics, constructs the common panel, derives or
+retains net load, reconstructs forecasts, and writes provenance manifests.
+`energy_model_v3/ramp_factory.py` joins market rows with workload and power
+models, fits training-only statistics, and writes one daily environment
+artifact per split.
+
+## 7.2 Environment factory
+
+`env/ramp_v6/factory.py` accepts an `EnvRequest` containing split, seed, rank,
+window, training flag, cost epsilon, and Lagrangian multiplier. It verifies the
+factory manifest and each daily panel/fixture hash before creating an
+environment. Training resets cycle through a seeded randomized ordering of
+training windows. Validation and test request fixed windows.
+
+## 7.3 Episode structure
+
+Each daily window contains:
+
+- three warm-history hours;
+- 24 active controller hours; and
+- three no-arrival terminal-tail hours.
+
+The first scored three-hour ramp therefore has real antecedent power and load.
+The tail closes ramp windows and lets queued work finish. Tail power, cost,
+objective, decoder, and safety metrics are included exactly once.
+
+## 7.4 Observation space
+
+For every market, the observation contains:
+
+- current and three trailing normalized gross-demand levels;
+- current and three trailing normalized net-load levels;
+- closed native one-hour and three-hour ramps;
+- causal gross and net forecast endpoints for h+1, h+2, and h+3;
+- maximum upward forecast movement over the next three hours;
+- day-ahead LMP, forecast-vintage age, and quality;
+- prior modeled power; and
+- market and site scale information.
+
+For every site and the global queue, it contains current service and batch
+arrivals, queued work, capacity, affine power parameters, EDF deadline buckets,
+episode progress, tail state, hour, and day of week. Realized future market or
+workload values are excluded.
+
+## 7.5 Action space
+
+With N sites the bounded action has `2N+1` coordinates:
+
+1. N service destination preferences;
+2. one total optional batch-execution preference; and
+3. N batch destination preferences.
+
+For six sites, the action dimension is 13 and every coordinate lies in
+[-6, 6]. The coordinates are preferences, not MW dispatch instructions.
+Softmax converts the destination preferences into unconstrained requested work
+shares. The scalar maps linearly from [-6, 6] to [0, 1] of queued batch.
+
+## 7.6 Status quo
+
+The operational status quo is an evaluation-only controller. It executes
+immediate service and uses a fixed local/no-deferral-style batch rule through
+the same environment and feasibility machinery. It has an independent shadow
+queue for cost calculation so the learned policy cannot influence its
+baseline. Status quo and policy are evaluated on identical market, workload,
+and forecast windows.
+
+Status quo is not the same as the native grid baseline. Native grid means net
+load without any modeled data-center power. Status quo includes modeled
+data-center power under the baseline operating policy. This distinction is
+central to the corrected results.
+
+## 7.7 Constraint-only decoder
+
+The decoder applies four deterministic operations:
+
+1. **Service projection.** Softmax service preferences are projected onto the
+   capped simplex with exact service total and per-site capacity.
+2. **Batch total.** The requested total is clipped between the causal
+   deadline-mandatory minimum and available residual capacity.
+3. **Batch destination projection.** Destination preferences are projected
+   onto residual capacity with the selected exact total.
+4. **Transport.** Deterministic northwest-corner transport matches EDF origin
+   drainage to destination execution exactly.
+
+The decoder does not inspect price, ramp reward, forecast direction, or policy
+value. Its role is feasibility, not optimization. An infeasible causal envelope
+raises an inspectable error. The emergency fallback is separate telemetry and
+was never used in the accepted V4R evaluations.
+
+## 7.8 Semantic decoder adjustment
+
+The corrected adjustment metric does not subtract allocations from logits.
+Both vectors use decoded work coordinates:
+
+```text
+requested = [N requested service amounts,
+             1 requested total batch amount,
+             N requested batch-destination amounts]
+
+executed  = [N projected service amounts,
+             1 executed total batch amount,
+             N projected batch-destination amounts]
+
+semantic_adjustment_l2 = norm(executed - requested, 2)
+```
+
+The units are compute-work units per hourly decision. Zero means the decoded
+request already satisfied the hard constraints. Positive values mean ordinary
+capacity or deadline projection changed the request. This is normal
+constraint enforcement, not emergency intervention.
+
+## 7.9 Training and model artifacts
+
+`ramp_rl/runner.py` creates four vectorized environments, wraps them with
+train-only `VecNormalize`, seeds Python, NumPy, and PyTorch, and trains the
+Stable-Baselines3 model on CPU. Each checkpoint stores:
+
+- `model.zip`;
+- `vecnormalize.pkl`;
+- initial and final actor hashes;
+- initial and final critic hashes;
+- interaction and update counts;
+- protocol and source bundle hashes;
+- training-window source and forecast identities;
+- Lagrangian updates;
+- semantic adjustment and emergency telemetry; and
+- explicit false values for prohibited teacher, demonstration, optimizer, and
+  warm-start inputs.
+
+## 7.10 Equal-action ensemble
+
+Each V4R member loads its own persisted observation normalizer. For every raw
+observation:
+
+1. each member normalizes the observation with its own frozen statistics;
+2. each PPO actor predicts one deterministic 13-dimensional action;
+3. all five actions are checked against the environment bounds;
+4. actions are averaged with exact weights 0.2; and
+5. the average is passed once to the shared environment decoder.
+
+The evaluator records member invocation counts and hashes the observation and
+action chains. A repeatability probe requires exact action equality for the
+same raw observation.
+
+# 8. Reinforcement Learning in Plain Language
+
+![Figure 3. One PPO learning loop: observe the causal state, propose preferences, project them to feasible work, receive ramp reward, and update actor and critic only during training.](docs/figures/ramp_v6/rl_loop.png)
+
+## 8.1 Agent, state, action, transition, and reward
+
+The *agent* is the PPO policy. The *state* is the observation described above.
+The *action* is a vector of routing and batch preferences. A *transition*
+occurs when the decoder executes feasible work, the queue and power histories
+advance one hour, and new market/workload information becomes current. The
+*reward* is higher when the policy reduces the incremental ramp objective and
+lower when it increases that objective or violates the soft cost budget.
+
+An *episode* is one day plus warm history and tail. The agent cannot change the
+historical grid trajectory. It can only change modeled data-center power.
+
+## 8.2 Actor and critic
+
+The actor maps the observation to an action distribution. During training,
+actions sampled from that distribution create experience. The critic estimates
+the expected future return from a state. The critic is not an optimizer that
+chooses the executed work; it helps estimate whether sampled actions performed
+better or worse than expected.
+
+## 8.3 PPO updates
+
+After a rollout, PPO estimates advantages using the realized rewards and
+critic values. It then performs multiple minibatch epochs. The clipped PPO
+surrogate limits how far the new policy can move from the behavior policy in
+one update. V3 used:
+
+| Setting | Value |
+|---|---:|
+| Random seeds | 2801-2805 |
+| Vector environments | 4 |
+| Nominal interactions | 100,000 |
+| Complete-boundary interactions | 110,592 |
+| PPO updates | 540 |
+| Rollout steps per environment | 512 |
+| Batch size | 256 |
+| Epochs per rollout | 10 |
+| Learning rate | 0.0003 |
+| Discount factor | 1.0 |
+| GAE lambda | 0.95 |
+| Hidden layers | 256, 256 |
+
+Training stops at the first complete rollout and vector-episode boundary at or
+after the nominal target. It never saves a partial daily trajectory.
+
+## 8.4 Training versus inference
+
+During training, the actor and critic parameters change and observation/reward
+normalizers accumulate training statistics. During validation and test,
+parameters are frozen, observation normalization is loaded but no longer
+updated, reward normalization is disabled, and actions are deterministic.
+
+The final V4R controller performs inference only. It loads the five previously
+trained V3 member weights, invokes them, averages actions, and decodes the
+result. Validation/test data cannot update a network or normalizer.
+
+## 8.5 Why the policy origin is genuine reward-only RL
+
+The evidence records random actor and critic initialization, changed
+initial/final parameter hashes, positive interaction counts, and 540 PPO
+updates. Replay provenance permits only randomly initialized policy behavior.
+It records zero external, teacher, demonstration, optimizer, and expert rows.
+The action path at training time must be `agent_semantic`.
+
+That establishes genuine reward-driven policy learning. It does not determine
+how much of final performance is due to the policy versus the decoder. Hard
+safety belongs to the decoder. Ramp preference belongs to the learned actions,
+subject to the decoder's projection.
+
+## 8.6 Cost Lagrangian
+
+The primary cost budget permits modeled policy cost up to 2% above status quo.
+For a completed training episode:
+
+```text
+budget = status_quo_cost + 0.02 * abs(status_quo_cost)
+lambda_next = clip(lambda + 0.01 * (policy_cost - budget), 0, 100)
+```
+
+The reward subtracts `lambda * (policy_cost - budget)`. All five final V3
+training manifests contain 1,024 recorded dual updates and a multiplier that
+stayed exactly 0.0 throughout. The observed policy therefore learned from the
+ramp reward without an active cost penalty in those runs. The cost gate still
+applies at evaluation.
+
+# 9. Metrics and Statistical Design
+
+## 9.1 Primary incremental squared-ramp objective
+
+For market `m`, hour `t`, horizon `h` in {1,3}, native net load `N`, modeled
+data-center power `P`, and training-only scale `S_m`:
 
 ```text
 b[m,t,h] = (N[m,t] - N[m,t-h]) / (S[m] * h)
-a[m,t,h] = ((N[m,t] + P[m,t]) - (N[m,t-h] + P[m,t-h])) / (S[m] * h)
+a[m,t,h] = ((N[m,t] + P[m,t]) -
+            (N[m,t-h] + P[m,t-h])) / (S[m] * h)
 I[m,t,h] = a[m,t,h]^2 - b[m,t,h]^2
 ```
 
-The primary incremental objective is \(0.40 I_{1h} + 0.60 I_{3h}\).
-Negative \(I\) means the fleet reduces the native squared ramp; positive \(I\)
-means amplification. Squaring treats upward and downward ramps symmetrically.
-Power is aggregated once within each market before scoring.
+The primary per-market step value is:
 
-The objective's units are squared fractions of training Q95 gross-demand scale
-per hour squared. It is dimensionless after normalization and is not MW, MWh,
-USD, reserve need, or reliability probability. To retain physical
-interpretability, the evaluator also persists adjusted absolute 1 h and 3 h
-ramp p95/max as fractions of \(S_m\) per hour. For example, a value 0.067 means
-an adjusted ramp equal to 6.7% of that market's training Q95 gross-demand scale
-per hour. Because the aggregate evidence pools market-normalized windows, it
-does not invent a single cross-market MW conversion.
+```text
+I[m,t] = 0.40 * I[m,t,1] + 0.60 * I[m,t,3]
+```
 
-## 4.3 Cost and anti-gaming rules
+The scalar objective is the equal-market mean plus a smaller 0.15 residual-tail
+term above the training Q90 native absolute ramp. The primary reported
+incremental impact excludes that tail shaping term and remains unchanged by
+the telemetry correction.
 
-Modeled hourly cost is day-ahead LMP times modeled MWh. The primary gate requires
-policy cost no more than 2% above status quo. It is reported separately from
-physical ramp impact. This wholesale day-ahead LMP proxy excludes delivery,
-capacity, demand charges, hedges, PPAs, taxes, ancillary-service revenue, and
-endogenous market clearing. It is not a retail electricity bill or business
-case.
+Negative `I` means the fleet reduced the native squared ramp. This is a
+native-grid-relative statement. It does not yet compare policy with status quo.
 
-Every episode starts with three real warm-history hours so the first scored
-3 h window has authentic antecedents. Three no-arrival tail hours remain after
-the final active decision. Tail power, cost, ramp windows, safety, and queue
-state are scored. Circular wrap is forbidden, and all work must be complete at
-the actual terminal.
+## 9.2 Corrected physical p95 and maximum
 
-# 5. Pure-RL and Recovery Attribution
+Physical summaries use `abs(a[m,t,h])`, not a signed cross-market average.
+For each split and horizon, the evaluator pools every scored market-timestep
+magnitude with equal weight, then computes p95 and maximum. There are six
+market values per scored timestep. Upward and downward ramps enter with equal
+magnitude, so cross-market sign cancellation is impossible.
 
-## 5.1 Reward-only origin
+The unit is fraction of the corresponding market's training Q95 gross demand
+per hour. Because each market has its own scale, the pooled statistic is not
+converted into one fictitious cross-market MW value.
 
-The five V3 members used distinct seeds 2801-2805, independent random actor and
-critic initialization, 110,592 training interactions, and 540 PPO updates.
-Their training used environment reward only. Manifests prohibit and audit:
+## 9.3 Native grid versus operational status quo
 
-- demonstrations and behavior cloning;
-- expert replay or warm-start checkpoints;
-- analytic economic base actions;
-- MPC or optimizer actions;
-- oracle reward shaping and future-realized features; and
-- learned or evaluation-tuned feasibility logic.
+Three quantities must remain separate:
 
-## 5.2 Original V4 block and V4R recovery
+1. **Native grid:** physical net load without modeled data-center power.
+2. **Policy:** native grid plus power under the V4R controller.
+3. **Status quo:** native grid plus power under the operational baseline.
 
-Original V4 proposed a deterministic equal-action ensemble of the V3 members,
-but its required model binaries were lost before a trustworthy evaluation.
-That protocol stayed blocked and unevaluated. The error is an operational
-recovery failure, not a negative performance result, and it is not hidden.
+The historical gate requires every policy market's `policy - native` squared
+ramp impact to be negative. That requirement was preregistered and is not
+rewritten. The corrected package adds:
 
-V4R was frozen as a new binary identity. Each recovered container has a new
-container hash while reproducing the exact internal policy and critic tensors,
-byte-equivalent normalization state, training-manifest provenance, and
-deterministic action behavior of its V3 source member. The recovery binding
-permits only the enumerated outer-container divergences. It asserts no
-performance claim and records that original V3 artifacts were not reused.
+```text
+policy_minus_status_quo =
+    policy_native_relative_impact -
+    status_quo_native_relative_impact
+```
 
-At inference, all five deterministic environment-space actions are averaged
-with weights \([0.2,0.2,0.2,0.2,0.2]\). There is no member exclusion,
-selection, performance weighting, trainable combiner, teacher, BC, MPC, or
-optimizer. This distinction is essential: the policies have pure-RL origin,
-while there was no new V4R training.
+More negative is better. The package reports the overall delta, every
+per-market delta, count and share of markets better, and
+`every_market_outperforms_status_quo` as a diagnostic. That diagnostic is not
+a retroactive success gate.
 
-# 6. Frozen Protocol and Results
+## 9.4 Cost
 
-## 6.1 Evidence identities
+Modeled hourly cost is:
+
+```text
+cost_usd = da_lmp_usd_per_mwh * modeled_power_mw * 1 hour
+```
+
+Negative LMP is retained. The cost ratio is total policy cost divided by total
+status-quo cost on the same episodes. It excludes retail and contractual
+charges and must be interpreted only as the modeled wholesale proxy.
+
+## 9.5 Behavior and safety
+
+The behavior audit records deferrable work executed before a forecast upward
+ramp and sums modeled data-center power during realized positive native
+one-hour ramps. The latter is a persisted comparison in repeated
+market-hour audit units; it is not the physical ramp metric itself.
+
+Safety checks require exact service, exact batch completion, zero expiry, zero
+terminal work, zero decoder certificates, emergency rate below 1%, no future
+leakage, positive pre-service behavior, and lower policy ramp-period power than
+status quo.
+
+## 9.6 Uncertainty
+
+Each episode is a daily window. Day-block bootstrap resamples days with
+replacement. Month-block bootstrap resamples months. Both use 500 deterministic
+draws with a fixed seed. The intervals describe variability within the fixed
+calendar; they do not estimate uncertainty across future years or a
+superpopulation of markets.
+
+The six markets are not bootstrapped as iid observations. Per-market effects
+are shown individually, and the historical gate is conjunctive. The final
+ensemble is one fixed controller, so the sealed result does not estimate the
+training variability of newly trained ensembles.
+
+# 10. Reproducibility and Provenance
+
+![Figure 4. Reproducibility flow from licensed or public source products to manifests, daily windows, frozen models, immutable sealed evidence, and the additive post-hoc correction wrapper.](docs/figures/ramp_v6/provenance_flow.png)
+
+## 10.1 Software dependencies
+
+The tested stack includes Python, NumPy, pandas, PyTorch, Gymnasium,
+Stable-Baselines3 2.9.0, PyYAML, SciPy, matplotlib, Node.js, and `docx` 9.7.1.
+Install from a clean checkout:
+
+```powershell
+python -m pip install -r requirements.txt
+npm install
+```
+
+Training and evaluation use CPU. Exact recovery assumes compatible numerical
+libraries and single-thread settings where recorded. Reproducing all five
+110,592-interaction members is substantially slower than rebuilding the
+publication from committed evidence. Running five seeds concurrently also
+requires enough RAM for five PyTorch/SB3 processes; a smaller machine should
+run seeds sequentially. Hardware, BLAS, PyTorch, or SB3 changes can alter
+floating-point trajectories, so internal tensor and normalizer hashes, not
+merely successful process exit, determine whether a recovery is acceptable.
+
+## 10.2 Verify the immutable sealed evidence
+
+```powershell
+python scripts\build_ramp_rl_thesis_results.py --v4r --audit-only
+```
+
+The original sealed package remains under
+`output/ramp_rl_v6/recovered_v4r_resealed_v2/`. It records one test opening and
+uses canonical JSON representation
+`canonical-json-utf8-sort-compact-v1`. Tracked source identities use Git-blob
+bytes at explicit commits rather than platform-dependent working-tree bytes.
+Binary identities use raw bytes.
+
+Some historically generated panel manifests recorded Windows CRLF text hashes.
+The corrected factory verifier accepts only an exact match to the recorded raw
+hash, the same content normalized to LF, or the same content normalized to
+CRLF. This makes a clean checkout portable without weakening binary hashes or
+permitting content changes.
+
+The resealed package has `provenance-hash-chain-only` supersession scope over
+an earlier wrapper. It did not change numerical results.
+
+## 10.3 Verify the post-hoc correction
+
+The authoritative corrected wrapper is verified without model binaries:
+
+```powershell
+python scripts\recompute_v4r_posthoc_metrics.py verify
+```
+
+The command checks the original sealed canonical hash, corrected validation
+and test result hashes, correction declarations, absolute per-market physical
+metric contract, status-quo comparison, and decoder distribution.
+
+## 10.4 Recompute corrected telemetry with local frozen binaries
+
+Raw recovered model containers may be absent from a fresh clone because they
+are large ignored artifacts. If the exact protocol-bound binaries are staged
+at their declared paths, rerun:
+
+```powershell
+python scripts\recompute_v4r_posthoc_metrics.py recompute `
+  --recomputed-at-utc 2026-08-10T02:55:50Z
+```
+
+The replay fails if a model, normalizer, protocol, panel, forecast, or source
+hash differs. It verifies that the primary objective, cost, safety, behavior,
+and ensemble action-chain identities equal the immutable result before writing
+corrected telemetry. It performs no learning.
+
+If the ignored containers are unavailable, reproduce the checkpoints from the
+frozen historical V3 source and pass their `<seed>/model.zip` and
+`vecnormalize.pkl` root with `--recovered-binary-root`. The loader still
+requires exact policy, critic, and normalizer identities. The resulting
+wrapper explicitly records that deterministic reconstruction training
+occurred, that outer container hashes differ, and that the replay is not fresh
+generalization evidence.
+
+Reconstruction can reproduce internal tensors, normalizers, actions, and
+metrics exactly while producing a different outer ZIP hash because SB3 stores
+runtime/ZIP metadata. Therefore the committed wrapper hash is verified rather
+than promised as the byte identity of every later reconstruction.
+
+## 10.5 Rebuild tables, figures, Markdown, and DOCX
+
+```powershell
+python scripts\build_ramp_rl_thesis_results.py --corrected
+python scripts\build_ramp_thesis_figures.py
+python scripts\materialize_ramp_thesis.py --output thesis_paper.md
+python scripts\validate_ramp_thesis.py --source thesis_paper.md
+python scripts\build_final_thesis.py `
+  --source thesis_paper.md `
+  --output thesis_paper.docx
+```
+
+The Markdown source is materialized from a hash-pinned template. The DOCX
+builder normalizes core timestamps, relationship IDs, drawing IDs, and ZIP
+timestamps. It validates package structure and XML. The figure manifest binds
+every included PNG to the corrected evidence package.
+
+## 10.6 Audit trail
+
+A reviewer can audit from result to source:
+
+1. verify the corrected canonical wrapper hash;
+2. follow its reference to the immutable sealed canonical evidence;
+3. verify validation, test, recovery, source-freeze, and model bindings;
+4. inspect the corrected result's invariant audit;
+5. recompute per-market policy/status deltas from persisted episodes;
+6. inspect daily panel and fixture hashes in the factory manifest;
+7. inspect source products and cleaning in the acquisition manifest; and
+8. rebuild figures and the DOCX from the same evidence.
+
+# 11. Results
+
+## 11.1 Evidence identities and correction scope
 
 <!-- data-result-contract-begin -->
 
@@ -344,17 +1169,19 @@ while there was no new V4R training.
 
 **Protocol SHA-256:** {{CANONICAL_V4R:PROTOCOL_SHA256}}
 
-**Frozen V4R source commit:** {{CANONICAL_V4R:SOURCE_COMMIT}}
+**Frozen experimental source commit:** {{CANONICAL_V4R:SOURCE_COMMIT}}
 
 **Provenance hash contract:** {{CANONICAL_V4R:HASH_CONTRACT_ID}}
 
 **Canonical JSON representation:** {{CANONICAL_V4R:CANONICAL_REPRESENTATION}}
 
-**Canonical evidence SHA-256 under that representation:** {{CANONICAL_V4R:CANONICAL_EVIDENCE_SHA256}}
+**Immutable sealed canonical SHA-256:** {{CANONICAL_V4R:SEALED_CANONICAL_EVIDENCE_SHA256}}
 
-**Generated claim-ledger SHA-256:** {{CANONICAL_V4R:CLAIM_LEDGER_SHA256}}
+**Authoritative post-hoc correction SHA-256:** {{CANONICAL_V4R:CANONICAL_EVIDENCE_SHA256}}
 
-## 6.2 Validation and sealed test
+**Correction classification:** {{CANONICAL_V4R:CORRECTION_CLASSIFICATION}}
+
+## 11.2 Primary validation and test results
 
 {{CANONICAL_V4R:SPLIT_RESULTS_TABLE}}
 
@@ -365,230 +1192,434 @@ Test uncertainty: {{CANONICAL_V4R:TEST_DAY_BOOTSTRAP}} and
 
 **Final verdict code:** {{CANONICAL_V4R:FINAL_VERDICT}}
 
-![Figure 3. Validation and sealed test are displayed in separate panels and are never pooled.](docs/figures/ramp_v6/v4r_validation_and_test_separate.png)
+![Figure 5. Primary incremental squared-ramp effect with the day-block 95% interval; validation and sealed test remain separate.](docs/figures/ramp_v6/primary_effect_ci.png)
 
-## 6.3 Per-market effects
+The primary result is negative and its fixed-calendar day-block interval
+remains below zero. This supports reduced incremental squared-ramp impact in
+the modeled test period. It is the headline result.
+
+## 11.3 Native-grid-relative market impacts
 
 {{CANONICAL_V4R:PER_MARKET_TABLE}}
 
-![Figure 4. Sealed-test incremental ramp impact by evaluated market.](docs/figures/ramp_v6/v4r_per_market_test.png)
+All six policy values are negative relative to native grid ramps. That is the
+meaning of the historical market gate.
 
-## 6.4 Adjusted 1 h and 3 h ramp extrema
+## 11.4 Policy versus status quo
 
-Values are fractions of the corresponding market's training Q95 gross-demand
-scale per hour. They are physical adjusted-ramp magnitudes, not the squared
-incremental objective:
+{{CANONICAL_V4R:STATUS_QUO_COMPARISON_TABLE}}
 
-{{CANONICAL_V4R:PHYSICAL_RAMP_TABLE}}
+![Figure 6. Separate sealed-test views of policy native-grid-relative impact and policy-minus-status-quo impact; five of six markets favor policy and MISO is the exception.](docs/figures/ramp_v6/status_quo_comparison.png)
 
-![Figure 5. Adjusted 1 h/3 h p95 and maximum ramp magnitudes.](docs/figures/ramp_v6/v4r_physical_ramps.png)
+Policy outperforms status quo in five of six markets. MISO is worse: policy is
+about -5.65e-07 relative to native, while status quo is about -1.14e-06; because
+more negative is better, the baseline reduces the squared ramp more in MISO.
+The overall macro policy-minus-status-quo effect nevertheless strongly favors
+policy.
 
-## 6.5 Behavior and safety
+CAISO, ISO-NE, and NYISO contribute much larger favorable values than ERCOT,
+MISO, or SPP. The experiment did not isolate a causal reason for that
+concentration. Plausible hypotheses include market scale, workload shape,
+power-model coefficients, forecasts, native ramps, prices, and decoder
+binding, but testing those explanations requires ablations. MISO and SPP must
+not be described as large wins.
+
+## 11.5 Ramp-period power
 
 {{CANONICAL_V4R:BEHAVIOR_TABLE}}
 
-![Figure 6. Persisted ramp-period power audit for status quo and V4R.](docs/figures/ramp_v6/v4r_behavior.png)
+![Figure 7. Persisted ramp-period power audit falls from status quo to V4R; units are repeated market-hour audit sums, not a single MW ramp.](docs/figures/ramp_v6/ramp_period_power.png)
 
-Both splits had exact service and batch completion, zero expiry, zero terminal
-work, zero infeasibility certificates, zero emergency feasibility use, zero
-future-feature leakage, and deterministic repeated-action equality. All five
-members were invoked once per decision.
+The test audit falls from about 313,167 to 303,078 units, a 3.22% reduction.
+This is behavior evidence consistent with pre-serving work, not a conversion
+of the primary normalized squared-ramp metric into MW.
 
-## 6.6 Post-selection robustness
+## 11.6 Physical adjusted-ramp magnitudes
+
+{{CANONICAL_V4R:PHYSICAL_RAMP_TABLE}}
+
+![Figure 8. Corrected absolute adjusted 1 h and 3 h p95 and maximum values pool all market-timestep magnitudes without signed cancellation.](docs/figures/ramp_v6/physical_ramp_magnitudes.png)
+
+These are post-hoc corrected physical summaries. They describe the magnitude
+of adjusted market-normalized ramps, not incremental improvement and not a new
+generalization result.
+
+## 11.7 Decoder adjustment and emergency path
+
+{{CANONICAL_V4R:DECODER_ADJUSTMENT_TABLE}}
+
+![Figure 9. Distribution of ordinary decoder adjustment in decoded work-allocation coordinates, shown separately from the zero emergency fallback rate.](docs/figures/ramp_v6/decoder_adjustment.png)
+
+Positive adjustment is ordinary constraint projection. It shows how often and
+how much the unconstrained decoded request differs from executed work. It does
+not imply a safety failure. Emergency fallback is a separate mechanism and
+remained zero.
+
+## 11.8 Secondary modeled cost
+
+{{CANONICAL_V4R:COST_COMPARISON_TABLE}}
+
+![Figure 10. Secondary modeled wholesale day-ahead cost comparison; the primary study objective is ramp smoothing, not cost saving.](docs/figures/ramp_v6/cost_secondary.png)
+
+The approximately $484,349, 2.244% modeled saving is favorable but secondary.
+The gate would have accepted a cost increase up to 2%, and the training
+Lagrangian multipliers stayed zero. The result is not a retail electricity
+bill, demand-charge analysis, tariff forecast, or investment return.
+
+## 11.9 Post-selection robustness
 
 {{CANONICAL_V4R:ROBUSTNESS_TABLE}}
 
-![Figure 7. Ramp-cost relationship across validation, sealed test, and post-selection analyses.](docs/figures/ramp_v6/v4r_cost_ramp_relationship.png)
-
-![Figure 8. Post-selection robustness; c-h remains explicitly overlapping.](docs/figures/ramp_v6/v4r_robustness.png)
+The 1 GW-total case is a price-taking scale sensitivity. The c-h case is
+overlapping/non-independent robustness because it shares cells with the
+primary workload population. Neither is a second sealed holdout, and neither
+changes the primary result.
 
 <!-- data-result-contract-end -->
 
-# 7. Statistical Interpretation
+# 12. Discussion
 
-The 28 validation episodes are February daily windows. The 60 test episodes are
-March-April daily windows. Day-block bootstrap intervals use 500 draws. A
-validation month interval cannot identify multi-month generalization because
-February supplies one month. The two-month test month-block interval describes
-variation within those two fixed months, not future-year uncertainty.
+## 12.1 What can be attributed to the learned controller
 
-The six markets are reported individually and as a macro mean. They are not
-treated as iid samples from a superpopulation of US markets. Market-specific
-success is a conjunctive gate. The ensemble result also does not estimate
-training variability of a newly trained ensemble: V4R has one frozen recovered
-ensemble composed from the five already trained V3 origins.
+The policy members originated from reward-only PPO. Their deterministic action
+preferences are combined without selection or learned weighting. The decoder
+then enforces feasibility. Therefore:
 
-Validation selected the frozen identity and authorized one sealed opening.
-Test results were not used to alter policy membership, member weights, source
-code, forecasts, thresholds, normalization, decoder, cost limit, or success
-criteria. The 1 GW-total and c-h analyses occurred post-selection and cannot
-strengthen the primary test's nominal independence.
+- ramp-directed preference can be attributed to PPO member actions and fixed
+  aggregation;
+- exact service, deadlines, and capacity belong to the decoder;
+- the executed schedule belongs to both components; and
+- the equal-action mean is part of the controller, not a reporting trick.
 
-# 8. Limitations and Threats to Validity
+The post-hoc adjustment distribution makes this joint attribution more
+transparent. A policy can ask for a preference that binds a capacity or
+deadline. The decoder changes it without consulting the ramp objective.
 
-## 8.1 Geography and market structure
+## 12.2 Why the macro result can coexist with one worse market
 
-Hub and zonal prices may differ from a facility settlement node. Balancing-area
-load and renewable context differ from utility, feeder, and transmission
-constraints. The result is market-level ramp accounting, not a local
-reliability claim. PJM and Northern Virginia remain absent.
+The primary macro is an equal-market mean. Five favorable policy-minus-status
+quo deltas can outweigh one unfavorable MISO delta. The native-relative gate
+also asks a different question: policy can improve on native in MISO while
+still improving less than status quo. Both statements are simultaneously
+true.
 
-The controller is price-taking: data-center action does not change LMP, unit
-commitment, reserves, or network constraints. This is most plausible for the
-600 MW primary case. The 1 GW-total case is a price-taking scale sensitivity, not evidence that price
-or network response would remain exogenous at that penetration; larger
-penetration overrides are stress tests.
+This distinction is not semantic bookkeeping. It changes the operational
+interpretation. "All markets negative relative to native" supports a
+non-amplification claim under the historical objective. "Five of six better
+than status quo" is the direct baseline result. A deployment decision would
+care about the latter and would likely require site-specific safeguards.
 
-## 8.2 Data and forecast horizon
+## 12.3 Why coastal markets dominate
 
-The panel covers eight months, not prior years. It does not establish
-robustness to future weather, fuel, transmission, policy, generation buildout,
-or data-center growth. Operator and EIA products differ in revision status,
-cadence, location, and licensing. Reconstructed forecasts omit many variables
-available to production grid and workload forecasters.
+CAISO, ISO-NE, and NYISO show much larger favorable native-relative effects.
+The design does not identify a cause. Those cases differ in physical scale,
+price location, workload cell, power-fit coefficients, forecast errors, and
+native ramp distribution. Because all factors change together across fixed
+cases, assigning the difference to renewable penetration, geography, coastal
+location, or market design would be speculation.
 
-The requested prior-year and future-year extension cannot be claimed from the
-present evidence. It would require complete all-six licensed source coverage,
-new train/validation/test boundaries, newly frozen forecast vintages, and a
-fresh protocol. Reusing the present sealed months for development would violate
-the study.
+Follow-up work should hold policy and workload constant while changing one
+factor at a time, and should examine decoder-binding and forecast-masked
+strata. Until then, uneven concentration is an empirical observation only.
 
-## 8.3 Workload and infrastructure
+## 12.4 Economic interpretation
 
-Google 2019 workload is tiled over a later energy calendar. Proxy sites omit
-latency, data residency, bandwidth, migration energy, cooling, PUE variation,
-batteries, generators, reliability domains, and application affinity.
-Unrestricted routing is optimistic. Exact safety is exact within the simulator,
-not a deployment certificate.
+Lower modeled wholesale cost is compatible with ramp smoothing because the
+agent observes day-ahead price and because the two objectives may align in this
+period. Yet the cost multiplier was inactive. The result does not show that
+the policy optimized a business bill or that wholesale price is a complete
+signal for physical need.
 
-## 8.4 Attribution and optimality
+An operator would need nodal settlement, delivery charges, demand charges,
+contract terms, and market feedback. A grid operator would need telemetry,
+baseline rules, dispatchability, and performance verification. The simulation
+is an upstream technical experiment, not either final product.
 
-The deterministic decoder, not PPO, guarantees feasibility. The correct
-attribution is reward-only PPO preferences plus constraint-only execution and
-fixed equal-action aggregation. Recovery equivalence establishes internal
-identity and provenance; it does not establish that the recovered ensemble is
-globally optimal. A different valid formulation or seed population may produce
-different results.
+## 12.5 Scientific value of the negative lineage
 
-# 9. Reproduction and Audit
+The failed V1-V3 stages and blocked original V4 constrain interpretation.
+They show that the result was not automatic, that individual seeds could harm
+a market, and that operational provenance failures can invalidate an otherwise
+interesting controller. V4R succeeded only after exact recovery and a fixed
+ensemble rule. Preserving those failures makes the final result more
+auditable, not weaker.
 
-## 9.1 Committed and local evidence
+# 13. Limitations and Threats to Validity
 
-The final publication path is
-`output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`. Its
-hash contract is `dc-energy-provenance-sha256-v2`. JSON evidence identities use
-`canonical-json-utf8-sort-compact-v1`; tracked non-JSON source text uses
-Git-blob bytes at an explicit commit and path, never platform-dependent
-working-tree bytes. Binary and model-container identities use raw bytes.
-Recovery binding, source freeze, validation/test chains, single-open records,
-and post-selection robustness chains reside beside it. The generated claim
-ledger and CSV tables are under
-`output/ramp_rl_v6/recovered_v4r_resealed_v2/thesis/`.
+## 13.1 No proof that RL is necessary
 
-The reseal has `provenance-hash-chain-only` supersession scope. It supersedes
-only platform-dependent checkout hashes in the original evidence chain; the
-protocol, chronology, controller, trained models, data, forecasts, numerical
-metrics, strict decisions, and sealed-test opening are unchanged. The original
-evidence remains append-only historical provenance rather than the publication
-hash authority.
+This is the most important algorithmic limitation. No simple causal
+forecast-ramp heuristic, random PPO network, forecast-masked policy, or
+untrained ensemble is evaluated under the same decoder. The result establishes
+that a reward-only PPO ensemble works in the frozen setting. It does not
+establish that PPO is the simplest, best, or necessary method.
 
-Recovered model binaries may be intentionally local or unavailable in a fresh
-clone because of size or licensing constraints. Their required SHA-256 values,
-V3 training-manifest hashes, policy/critic tensor hashes, normalizer hashes,
-and recovery equivalence are committed in the binding and canonical evidence.
-The publication build validates those recorded identities; it does not retrain,
-retune, substitute, or download models.
+## 13.2 Forecast ablation gap
 
-## 9.2 Exact build commands
+The observation includes reconstructed forecasts. There is no final ablation
+that masks them while holding every other feature and policy-training budget
+constant. The behavior audit is consistent with anticipatory scheduling, but
+the study cannot quantify how much value comes from forecasts versus current
+and lagged state.
 
-Run from the repository root in this worktree:
+## 13.3 Market and calendar scope
 
-```powershell
-python scripts\build_ramp_rl_thesis_results.py --v4r `
-  output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json `
-  --output output\ramp_rl_v6\recovered_v4r_resealed_v2\thesis
+Eight months is a narrow sample of weather, fuel, outages, renewable output,
+and market conditions. The test contains only March and April 2026. It does
+not support prior-year, future-year, extreme-event, or climate-regime claims.
+A new time period would require newly acquired sources, new forecast vintages,
+new train-only statistics, a new protocol, and a new sealed split.
 
-python scripts\build_ramp_thesis_figures.py
+PJM and Northern Virginia are absent. The six fixed cases do not represent all
+US data-center regions or all balancing authorities.
 
-python scripts\materialize_ramp_thesis.py `
-  --results output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json `
-  --output thesis_paper.md
+## 13.4 Price and physical geography
 
-python scripts\validate_ramp_thesis.py `
-  --source thesis_paper.md `
-  --results output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json
+Price products are hubs or zones; physical products may be system or
+balancing-authority totals. A facility could face a different node, utility,
+feeder, and congestion pattern. Market-level ramp reduction cannot be
+translated directly to local infrastructure relief.
 
-python scripts\build_final_thesis.py `
-  --source thesis_paper.md `
-  --output thesis_paper.docx
-```
+## 13.5 Price-taking assumption
 
-The builder rejects wrong canonical, protocol, source, recovery, model, and
-sidecar hashes; a missing market or member seed; unresolved placeholders;
-more than one test opening; test-driven selection/tuning; missing recovery
-equivalence; failed strict gates; and unsupported scope claims. The DOCX build
-normalizes package IDs, core timestamps, relationship IDs, and ZIP timestamps
-before schema/package validation and SHA-256 reporting.
+The policy does not change price or grid dispatch. At larger deployment scale,
+that assumption weakens. The 1 GW-total result is descriptive under unchanged
+prices and grid trajectories. It does not model endogenous response.
 
-## 9.3 Preserved earlier reproduction
+## 13.6 Workload age and representativeness
 
-Legacy V2-V5 commands, data, models, and evidence remain in their original
-paths. The V4R publication tooling is additive. It does not rewrite frozen
-energy-model V2 artifacts, V5 canonical evidence, V6 V1-V3 decisions, or the
-blocked original V4 record.
+ClusterData2019 is measured, but it is older than the 2025-2026 energy panel
+and may not represent current AI training, inference, accelerator, storage,
+and network workloads. Tiling one month suppresses seasonality and long-term
+growth. Six cells from one company are not the industry.
 
-# 10. Conclusion
+## 13.7 Synthetic deadlines
 
-The thesis began with a negative attribution result: the earlier V5 controller
-was safe and effective within its controlled archetype, but supervised
-imitation explained almost all absolute performance. V6 therefore replaced the
-headline objective and removed the teacher. Its protocol history was not
-linear success. V1 confirmation, V2 retries, and V3 all failed strict
-validation; original V4 could not be evaluated after an operational model-loss
-error.
+The control deadlines are derived from mean completed no-SLO duration and an
+experimental factor. They are not observed production deadlines. Different
+deadline distributions could change temporal flexibility materially.
 
-V4R resolves only the recovery problem, not by hiding it. Five independently
-random-init, reward-only V3 PPO policies were repackaged into new containers
-with exact internal weight, normalizer, and provenance equivalence, then
-combined by a fixed deterministic equal-action mean. This recovered ensemble
-passed all February gates and, after a single authorized opening, all
-March-April sealed-test gates. It reduced normalized incremental squared-ramp
-impact in every evaluated market, lowered modeled wholesale cost, preserved
-exact simulated service and deadlines, and required no emergency action.
+## 13.8 Infrastructure omissions
 
-The result supports a narrow conclusion: under the frozen six-market,
-price-taking simulator and fixed 2025-2026 panel, pure-RL-origin preferences
-with constraint-only decoding reduced the modeled data-center contribution to
-squared normalized grid ramps. It does not establish opposite-direction action,
-balancing-service delivery, feeder relief, endogenous market effects, retail
-savings, universal US-grid generalization, or future-year performance.
+The model omits network latency, bandwidth, data transfer energy, data
+residency, replication, cooling, PUE, batteries, generators, minimum server
+states, startup costs, and reliability domains. Unrestricted routing is an
+optimistic upper bound.
+
+## 13.9 Metric interpretation
+
+The primary objective is normalized squared ramp impact. Squaring emphasizes
+larger changes and removes sign. It is not reserve MW, ramping capability,
+reliability probability, emissions, or social cost. The physical p95 and
+maximum are normalized market magnitudes, not a fleet-wide MW ramp.
+
+## 13.10 Post-hoc telemetry
+
+The corrected physical, decoder, and status-quo summaries were computed after
+the sealed result was known. The policy and primary result are unchanged, but
+those corrected summaries must be labeled post-hoc. They are useful for honest
+interpretation, not for claiming a second confirmatory test.
+
+## 13.11 Demand charges and retail economics
+
+Demand charges are out of scope. No demand-charge saving or retail bill claim
+can be inferred. The V5 repository history showed that a controller can lower
+one objective while increasing site peaks. That warning reinforces the need
+for a tariff-specific follow-up rather than a casual extrapolation.
+
+# 14. Future Work
+
+The highest-priority follow-up is a preregistered comparator study. It should
+freeze:
+
+1. a simple causal ramp heuristic;
+2. a forecast-masked PPO;
+3. an untrained/random PPO ensemble;
+4. a small model-predictive or convex look-ahead controller;
+5. the same decoder, workload, and data splits for every method; and
+6. a new sealed calendar that has not been used in this study.
+
+Additional work should acquire PJM with proper credentials, extend the
+calendar across multiple years, model nodal price and local grid constraints,
+add transfer costs and latency, use workload-specific deadlines, and evaluate
+tariff and demand-charge outcomes separately.
+
+Mechanism studies should decompose market concentration by forecast quality,
+native ramp regime, power-model slope, workload cell, scale, and decoder
+binding. Those studies should be described as explanation tests rather than
+retrospective stories.
+
+# 15. Conclusion
+
+This study began with an attribution problem. The earlier V5 controller was
+safe and effective in its own scope, but supervised imitation explained almost
+all of its performance. V4R therefore changed the question: can preferences
+learned only from reward reduce a physical ramp objective across separately
+sourced market cases?
+
+The answer in the frozen simulator is yes, with important qualifications. A
+five-member PPO equal-action ensemble produced a negative primary incremental
+squared-ramp impact on the single March-April sealed test, exact simulated work
+completion, zero emergency fallback, lower ramp-period power, and favorable
+secondary modeled wholesale cost. Every policy market was negative relative
+to native grid ramps. Direct comparison with status quo was favorable in five
+of six markets, with MISO as the honest exception.
+
+The later correction improves rather than enlarges the claim. Physical p95 and
+maximum now use absolute per-market per-timestep magnitudes, decoder adjustment
+is real and unit-defined, and native versus status-quo baselines are explicit.
+The immutable sealed result remains untouched and the replay is not presented
+as new test evidence.
+
+The defensible conclusion is narrow: reward-only PPO preferences, fixed equal
+action aggregation, and constraint-only execution reduced the modeled fleet's
+incremental squared-ramp contribution in this six-case, eight-month,
+price-taking experiment. Whether RL was necessary, whether the effect persists
+on new years and markets, and whether it creates deployable grid or retail
+value remain open questions.
+
+# Appendix A. Artifact Map
+
+| Layer | Authoritative artifact |
+|---|---|
+| Energy source contract | `data/energy_model_v3/provenance/source_contract.json` |
+| Actual acquisition | `data/energy_model_v3/provenance/live-acquisition-manifest.json` |
+| Workload and power mapping | `data/energy_model_v3/provenance/workload-power-manifest.json` |
+| Forecasts | `data/energy_model_v3/forecasts/manifest.json` |
+| Daily environment windows | `output/energy_model_v3/ramp_v6/factory_manifest.json` |
+| V3 member training | `models/ramp_rl_v6/live_v3/confirmation/ppo/<seed>/training_manifest.json` |
+| V4R protocol | `env/protocols/v6_pure_ramp_rl_v4r.yaml` |
+| Immutable sealed evidence | `output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json` |
+| Corrected telemetry wrapper | `output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json` |
+| Publication tables | `output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/thesis/` |
+| Figure manifest | `docs/figures/ramp_v6/v4r_figure_manifest.json` |
+| Markdown thesis | `thesis_paper.md` |
+| DOCX thesis | `thesis_paper.docx` |
+
+# Appendix B. Metric Glossary
+
+| Term | Meaning |
+|---|---|
+| Native ramp | net-load change without modeled data-center power |
+| Adjusted ramp | net-load change after adding modeled data-center power |
+| Native-relative incremental impact | adjusted squared ramp minus native squared ramp |
+| Policy-minus-status-quo | policy native-relative impact minus status-quo native-relative impact |
+| Physical p95/max | quantile/maximum of absolute adjusted market-timestep ramp magnitudes |
+| Ramp-period power | persisted repeated market-hour behavior audit during positive native 1 h ramps |
+| Semantic adjustment | L2 distance between requested and executed decoded work vectors |
+| Emergency fallback | separate exceptional feasibility path; zero in accepted V4R evaluations |
 
 # References
 
-[1] A. Verma et al., "Large-scale cluster management at Google with Borg,"
-*EuroSys*, 2015. DOI: 10.1145/2741948.2741964.
+[1] A. Verma, L. Pedrosa, M. Korupolu, D. Oppenheimer, E. Tune, and
+J. Wilkes, "Large-scale cluster management at Google with Borg," *EuroSys*,
+2015. DOI: https://doi.org/10.1145/2741948.2741964.
 
-[2] A. Tirmazi et al., "Borg: the Next Generation," *EuroSys*, 2020.
-DOI: 10.1145/3342195.3387517.
+[2] M. Tirmazi, A. Barker, N. Deng, M. E. Haque, Z. G. Qin, S. Hand,
+M. Harchol-Balter, and J. Wilkes, "Borg: the Next Generation," *EuroSys*,
+2020. DOI: https://doi.org/10.1145/3342195.3387517.
 
-[3] X. Fan, W.-D. Weber, and L. Barroso, "Power Provisioning for a
-Warehouse-sized Computer," *ISCA*, 2007. DOI: 10.1145/1250662.1250665.
+[3] X. Fan, W.-D. Weber, and L. A. Barroso, "Power Provisioning for a
+Warehouse-sized Computer," *ISCA*, 2007.
+DOI: https://doi.org/10.1145/1250662.1250665.
 
-[4] A. Qureshi et al., "Cutting the Electric Bill for Internet-Scale Systems,"
-*SIGCOMM*, 2009. DOI: 10.1145/1592568.1592584.
+[4] A. Qureshi, R. Weber, H. Balakrishnan, J. V. Guttag, and B. M. Maggs,
+"Cutting the Electric Bill for Internet-Scale Systems," *SIGCOMM*, 2009.
+DOI: https://doi.org/10.1145/1592568.1592584.
 
-[5] L. Rao et al., "Minimizing Electricity Cost: Optimization of Distributed
-Internet Data Centers in a Multi-Electricity-Market Environment," *INFOCOM*,
-2010. DOI: 10.1109/INFCOM.2010.5461933.
+[5] L. Rao, X. Liu, L. Xie, and W. Liu, "Minimizing Electricity Cost:
+Optimization of Distributed Internet Data Centers in a Multi-Electricity-
+Market Environment," *IEEE INFOCOM*, 2010.
+DOI: https://doi.org/10.1109/INFCOM.2010.5461933.
 
-[6] Z. Liu et al., "Greening Geographical Load Balancing," *SIGMETRICS*, 2011.
-DOI: 10.1145/1993744.1993767.
+[6] Z. Liu, M. Lin, A. Wierman, S. H. Low, and L. L. H. Andrew, "Greening
+Geographical Load Balancing," *ACM SIGMETRICS*, 2011.
+DOI: https://doi.org/10.1145/1993744.1993767.
 
-[7] I. Goiri et al., "GreenSlot: Scheduling Energy Consumption in Green
-Datacenters," 2011. DOI: 10.1145/2063384.2063411.
+[7] I. Goiri, R. Beauchea, K. Le, T. D. Nguyen, M. E. Haque, J. Guitart,
+J. Torres, and R. Bianchini, "GreenSlot: Scheduling Energy Consumption in
+Green Datacenters," *SC '11*, 2011.
+DOI: https://doi.org/10.1145/2063384.2063411.
 
-[8] J. Schulman et al., "Proximal Policy Optimization Algorithms,"
-arXiv:1707.06347, 2017.
+[8] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov,
+"Proximal Policy Optimization Algorithms," arXiv:1707.06347, 2017.
+https://arxiv.org/abs/1707.06347.
 
-[9] A. Raffin et al., "Stable-Baselines3: Reliable Reinforcement Learning
-Implementations," *JMLR*, 22(268), 2021.
+[9] A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and
+N. Dormann, "Stable-Baselines3: Reliable Reinforcement Learning
+Implementations," *Journal of Machine Learning Research*, 22(268), 2021.
+https://jmlr.org/papers/v22/20-1364.html.
+
+[10] U.S. Federal Energy Regulatory Commission, "Order No. 745: Demand
+Response Compensation in Organized Wholesale Energy Markets," 134 FERC
+61,187, 2011. https://www.ferc.gov/sites/default/files/2020-04/order-745.pdf.
+
+[11] California ISO, "What the Duck Curve Tells Us About Managing a Green
+Grid," Fast Facts, 2016.
+https://www.caiso.com/documents/flexibleresourceshelprenewables_fastfacts.pdf.
+
+[12] E. Altman, *Constrained Markov Decision Processes*, CRC Press, 1999.
+DOI: https://doi.org/10.1201/9781315140223.
+
+[13] J. Achiam, D. Held, A. Tamar, and P. Abbeel, "Constrained Policy
+Optimization," *ICML*, 2017. https://arxiv.org/abs/1705.10528.
+
+[14] B. Lakshminarayanan, A. Pritzel, and C. Blundell, "Simple and Scalable
+Predictive Uncertainty Estimation using Deep Ensembles," *NeurIPS*, 2017.
+https://arxiv.org/abs/1612.01474.
+
+[15] Google, "Google ClusterData2019: Cluster-Usage Traces v3," CC-BY 4.0.
+https://github.com/google/cluster-data/blob/master/ClusterData2019.md.
+
+[16] Google, "PowerData2019: Power Domain Traces," CC-BY 4.0.
+https://github.com/google/cluster-data/blob/master/PowerData2019.md.
+
+[17] J. Wilkes and C. Reiss, "Google ClusterData2011-2: Cluster-Usage Traces
+v2.1," CC-BY 4.0.
+https://github.com/google/cluster-data/blob/master/ClusterData2011_2.md.
+
+[18] California ISO, "Open Access Same-time Information System (OASIS),"
+PRC_LMP v12, TH_NP15_GEN-APND. https://oasis.caiso.com.
+
+[19] Electric Reliability Council of Texas, "Market Information System and
+Historical Load Archives," reports 13060 and 13052.
+https://www.ercot.com/mktinfo/prices and
+https://www.ercot.com/gridinfo/load/load_hist.
+
+[20] New York Independent System Operator, "Market Information System Custom
+Reports," day-ahead LBMP and PAL archives.
+https://www.nyiso.com/custom-reports.
+
+[21] Midcontinent Independent System Operator, "Market Reports," DA ex-post
+LMP, MINN.HUB.
+https://www.misoenergy.org/markets-and-operations/real-time--market-data/market-reports/.
+
+[22] ISO New England, "Day-Ahead Hourly LMP Reports," WW_DALMP_ISO,
+location 4008. https://www.iso-ne.com/isoexpress/web/reports/pricing.
+
+[23] Southwest Power Pool, "Marketplace Public Data: DA-LMP by Settlement
+Location," SPPNORTH_HUB.
+https://portal.spp.org/pages/da-lmp-by-settlement-location.
+
+[24] U.S. Energy Information Administration, "Hourly Electric Grid Monitor
+(Form EIA-930)," including the EBA.zip bulk archive.
+https://www.eia.gov/electricity/gridmonitor/.
+
+[25] PJM Interconnection, "Data Miner 2." The source is listed for
+reproducibility context; PJM was credential-blocked and not evaluated.
+https://dataminer2.pjm.com/list/pubsData.
+
+[26] A. Radovanovic, R. Koningstein, I. Schneider, B. Chen, A. Duarte,
+B. Roy, D. Xiao, M. Haridasan, P. Hung, N. Care, S. Talukdar, E. Mullen,
+K. Smith, M. Cottman, and W. Cirne, "Carbon-Aware Computing for
+Datacenters," arXiv:2106.11750, 2021.
+https://arxiv.org/abs/2106.11750.
+
+[27] P. Wiesner, I. Behnke, D. Scheinert, K. Gontarska, and L. Thamsen,
+"Let's Wait Awhile: How Temporal Workload Shifting Can Reduce Carbon
+Emissions in the Cloud," arXiv:2110.13234, 2021.
+https://arxiv.org/abs/2110.13234.
+
+[28] R. Haider, G. Ferro, M. Robba, and A. M. Annaswamy, "Flattening the
+Duck Curve: A Case for Distributed Decision Making," arXiv:2111.06361,
+2021. https://arxiv.org/abs/2111.06361.
