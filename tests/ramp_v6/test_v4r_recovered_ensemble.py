@@ -120,13 +120,19 @@ class RecoveredV4RLoaderTests(unittest.TestCase):
             action_space = spaces.Box(
                 low=-6.0, high=6.0, shape=(13,), dtype=np.float32
             )
-            with patch(
-                "ramp_rl.recovered_ensemble.sha256_file",
-                side_effect=lambda path: {
-                    manifest: "1" * 64,
-                    model: "f" * 64,
-                    normalization: "3" * 64,
-                }[path],
+            with (
+                patch(
+                    "ramp_rl.recovered_ensemble.sha256_file",
+                    side_effect=lambda path: {
+                        model: "f" * 64,
+                        normalization: "3" * 64,
+                    }[path],
+                ),
+                patch(
+                    "ramp_rl.recovered_ensemble."
+                    "historical_text_sha256_matches",
+                    return_value=True,
+                ),
             ):
                 with self.assertRaisesRegex(
                     RuntimeError, "V4R artifact hash mismatch"

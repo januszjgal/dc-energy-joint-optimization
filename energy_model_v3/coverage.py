@@ -14,6 +14,16 @@ import numpy as np
 
 from .builder import MARKETS
 from .contract import ContractError
+from ramp_rl.provenance import historical_text_sha256_matches
+
+CANONICAL_TEXT_SUFFIXES = {
+    ".csv",
+    ".json",
+    ".md",
+    ".py",
+    ".yaml",
+    ".yml",
+}
 
 TRUSTED_PRODUCT_CONTRACTS: dict[str, dict[str, dict[str, Any]]] = {
     "PJM_DOM": {
@@ -285,11 +295,13 @@ def _assess_verified_live_handoff(
         ):
             raise ContractError(f"verified live {name} reference is invalid")
         path = repository_root / relative
-        digest = _sha256(path)
-        if digest != reference["sha256"]:
+        if (
+            not path.is_file()
+            or not _sha256_matches(path, reference["sha256"])
+        ):
             raise ContractError(f"verified live {name} is missing or stale")
         loaded[name] = json.loads(path.read_text(encoding="utf-8"))
-        validated_files[relative] = digest
+        validated_files[relative] = reference["sha256"]
     acquisition = loaded["acquisition_manifest"]
     panel = loaded["panel_manifest"]
     if acquisition.get("schema_version") != "energy-model-v3":
@@ -332,19 +344,24 @@ def _assess_verified_live_handoff(
                 raise ContractError(f"{market} {kind} provenance is missing")
             relative = f"data/energy_model_v3/native/{market}/{kind}.csv"
             path = repository_root / relative
-            digest = _sha256(path)
-            if digest != record.get("sha256"):
+            if (
+                not path.is_file()
+                or not _sha256_matches(path, str(record.get("sha256")))
+            ):
                 raise ContractError(f"{market} {kind} is missing or stale")
-            validated_files[relative] = digest
+            validated_files[relative] = str(record["sha256"])
     outputs = panel.get("outputs")
     if not isinstance(outputs, dict) or len(outputs) != len(MARKETS):
         raise ContractError("verified live panel output manifest is invalid")
     for name, expected_hash in outputs.items():
         relative = f"output/energy_model_v3/live-panel/{name}"
-        digest = _sha256(repository_root / relative)
-        if digest != expected_hash:
+        artifact_path = repository_root / relative
+        if (
+            not artifact_path.is_file()
+            or not _sha256_matches(artifact_path, expected_hash)
+        ):
             raise ContractError(f"verified live panel artifact is missing or stale: {name}")
-        validated_files[relative] = digest
+        validated_files[relative] = expected_hash
     results = {
         market: {
             "status": "CANDIDATE_COVERAGE_VERIFIED",
@@ -368,11 +385,20 @@ def _assess_verified_live_handoff(
 
 
 def _sha256(path: Path) -> str:
+    if path.suffix.lower() in CANONICAL_TEXT_SUFFIXES:
+        payload = path.read_bytes().replace(b"\r\n", b"\n")
+        return hashlib.sha256(payload).hexdigest()
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _sha256_matches(path: Path, expected: str) -> bool:
+    if path.suffix.lower() in CANONICAL_TEXT_SUFFIXES:
+        return historical_text_sha256_matches(path, expected)
+    return _sha256(path) == expected
 
 
 def _validate_raw_hash_manifest(
@@ -405,7 +431,10 @@ def _validate_raw_hash_manifest(
         and expected_manifest_parent not in manifest_path.parents
     ):
         raise ContractError(f"{product_name} raw hash manifest path is invalid")
-    if not manifest_path.is_file() or _sha256(manifest_path) != expected_manifest_hash:
+    if not manifest_path.is_file() or not _sha256_matches(
+        manifest_path,
+        expected_manifest_hash,
+    ):
         raise ContractError(f"{product_name} raw hash manifest is missing or stale")
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     if payload.get("schema_version") != "energy-model-v3-raw-hash-manifest":
@@ -443,7 +472,10 @@ def _validate_raw_hash_manifest(
             and expected_raw_parent not in source_path.parents
         ):
             raise ContractError(f"{product_name} raw file path is invalid")
-        if not source_path.is_file() or _sha256(source_path) != expected_hash:
+        if not source_path.is_file() or not _sha256_matches(
+            source_path,
+            expected_hash,
+        ):
             raise ContractError(f"{product_name} raw file is missing or stale")
         validated[
             str(source_path.relative_to(root)).replace("\\", "/")
@@ -490,7 +522,7 @@ def _validate_canonical_coverage_file(
         raise ContractError(
             f"{product['name']} canonical coverage file is outside its market"
         )
-    if not path.is_file() or _sha256(path) != expected_hash:
+    if not path.is_file() or not _sha256_matches(path, expected_hash):
         raise ContractError(
             f"{product['name']} canonical coverage file is missing or stale"
         )

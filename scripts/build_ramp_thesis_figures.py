@@ -1,359 +1,668 @@
-"""Generate thesis figures from frozen design evidence and verified V4R results."""
+"""Generate deterministic publication figures from corrected V4R evidence."""
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from ramp_rl.v4r_thesis import load_verified_evidence  # noqa: E402
 from ramp_rl.provenance import (  # noqa: E402
     CANONICAL_JSON_REPRESENTATION,
     HASH_CONTRACT_ID,
 )
+from ramp_rl.v4r_corrected_thesis import (  # noqa: E402
+    EXPECTED_CANONICAL_SHA256,
+    EXPECTED_SEALED_CANONICAL_SHA256,
+    load_verified_evidence,
+)
 
 
 OUTPUT = ROOT / "docs" / "figures" / "ramp_v6"
-V1_RESULTS = ROOT / "output" / "ramp_rl_v6" / "live" / "final_results.json"
-LIVE_ACQUISITION_MANIFEST = (
-    ROOT
-    / "data"
-    / "energy_model_v3"
-    / "provenance"
-    / "live-acquisition-manifest.json"
+MARKET_ORDER = (
+    "CAISO_NP15",
+    "ERCOT_LZ_NORTH",
+    "ISONE_NEMA",
+    "MISO_MINN_HUB",
+    "NYISO_NYC_J",
+    "SPP_NORTH_HUB",
 )
-PRICE_LABELS = {
-    "CAISO_NP15": "CAISO OASIS NP15 DAM LMP",
-    "ERCOT_LZ_NORTH": "ERCOT North DAM load-zone price",
-    "NYISO_NYC_J": "NYISO Zone J DAM LBMP",
-    "MISO_MINN_HUB": "MISO Minnesota Hub DA ex-post LMP",
-    "SPP_NORTH_HUB": "SPP North Hub DA LMP",
-    "ISONE_NEMA": "ISO-NE NEMA DA LMP",
+MARKET_LABELS = ("CAISO", "ERCOT", "ISO-NE", "MISO", "NYISO", "SPP")
+COLORS = {
+    "blue": "#2F6690",
+    "green": "#2A7F62",
+    "orange": "#D28C28",
+    "red": "#B34A4A",
+    "gray": "#707070",
+    "light_blue": "#D9EAF7",
+    "light_green": "#DDEFE7",
+    "light_orange": "#F6E8CD",
+    "light_gray": "#ECECEC",
 }
-DIRECT_PHYSICAL_LABELS = {
-    "ERCOT_LZ_NORTH": "ERCOT native load + hourly wind/solar",
-    "NYISO_NYC_J": "NYISO Zone J load + NYCA renewable context",
-}
-EIA_FALLBACK_LABELS = {
-    "CAISO_NP15": "EIA-930 CAISO BA fallback",
-    "MISO_MINN_HUB": "EIA-930 MISO BA fallback",
-    "SPP_NORTH_HUB": "EIA-930 SPP BA fallback",
-    "ISONE_NEMA": "EIA-930 ISO-NE BA fallback",
+PNG_METADATA = {
+    "Software": "dc-energy-joint-optimization deterministic thesis builder"
 }
 
 
-def build_v1_closeout() -> None:
-    payload = json.loads(V1_RESULTS.read_text(encoding="utf-8"))
-    stages = ["100k screen", "500k confirmation"]
-    impacts = [
-        payload["screen"]["aggregate"]["mean_incremental_ramp_impact"],
-        payload["confirmation"]["aggregate"]["mean_incremental_ramp_impact"],
+def _style() -> None:
+    plt.rcParams.update(
+        {
+            "font.family": "DejaVu Sans",
+            "font.size": 10,
+            "axes.titlesize": 12,
+            "axes.labelsize": 10,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+        }
+    )
+
+
+def _save(fig: plt.Figure, name: str) -> None:
+    fig.tight_layout()
+    fig.savefig(
+        OUTPUT / name,
+        dpi=200,
+        bbox_inches="tight",
+        metadata=PNG_METADATA,
+    )
+    plt.close(fig)
+
+
+def _box(
+    axis: plt.Axes,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    text: str,
+    *,
+    fill: str,
+    edge: str = "#4A4A4A",
+    fontsize: float = 9,
+) -> None:
+    axis.add_patch(
+        plt.Rectangle(
+            (x, y),
+            width,
+            height,
+            facecolor=fill,
+            edgecolor=edge,
+            linewidth=1.2,
+            zorder=2,
+        )
+    )
+    axis.text(
+        x + width / 2,
+        y + height / 2,
+        text,
+        ha="center",
+        va="center",
+        fontsize=fontsize,
+        zorder=3,
+        wrap=True,
+    )
+
+
+def _arrow(
+    axis: plt.Axes,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    *,
+    label: str | None = None,
+) -> None:
+    axis.annotate(
+        "",
+        xy=end,
+        xytext=start,
+        arrowprops={"arrowstyle": "->", "color": "#4A4A4A", "lw": 1.3},
+        zorder=1,
+    )
+    if label:
+        axis.text(
+            (start[0] + end[0]) / 2,
+            (start[1] + end[1]) / 2 + 0.12,
+            label,
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            color="#4A4A4A",
+        )
+
+
+def build_experiment_lineage(evidence: dict[str, Any]) -> None:
+    stages = [
+        ("V1", "screen promising;\nconfirmation failed", "failed"),
+        ("V2", "two preregistered\nretries failed", "failed"),
+        ("V3", "4/5 seeds pass;\nMISO non-harm fails", "failed"),
+        ("V4", "model containers lost;\nnot evaluated", "blocked"),
+        ("V4R", "recovered fixed ensemble;\nvalidation + one test", "passed"),
+        (
+            "Post-hoc",
+            "frozen-policy telemetry\ncorrection; not new test",
+            "posthoc",
+        ),
     ]
-    costs = [
-        payload["screen"]["aggregate"]["mean_energy_cost_ratio"],
-        payload["confirmation"]["aggregate"]["mean_energy_cost_ratio"],
+    fill = {
+        "failed": "#F4DADA",
+        "blocked": COLORS["light_gray"],
+        "passed": COLORS["light_green"],
+        "posthoc": COLORS["light_orange"],
+    }
+    fig, axis = plt.subplots(figsize=(12, 3.8))
+    axis.set_xlim(0, 12)
+    axis.set_ylim(0, 4)
+    axis.axis("off")
+    x_positions = np.linspace(0.25, 10.25, len(stages))
+    for index, (name, detail, status) in enumerate(stages):
+        x = float(x_positions[index])
+        _box(
+            axis,
+            x,
+            1.25,
+            1.5,
+            1.5,
+            f"{name}\n{detail}",
+            fill=fill[status],
+            fontsize=8.3,
+        )
+        if index < len(stages) - 1:
+            _arrow(axis, (x + 1.5, 2.0), (x_positions[index + 1], 2.0))
+    axis.text(
+        6,
+        3.45,
+        "Protocol lineage: failures and the operational block remain part of the evidence",
+        ha="center",
+        va="center",
+        fontsize=13,
+        weight="bold",
+    )
+    axis.text(
+        6,
+        0.55,
+        (
+            "March-April sealed test opened once. The later replay changes "
+            "telemetry only and preserves the original result."
+        ),
+        ha="center",
+        va="center",
+        fontsize=9,
+        color="#444444",
+    )
+    _save(fig, "experiment_lineage.png")
+
+
+def build_system_architecture() -> None:
+    fig, axis = plt.subplots(figsize=(12, 6.5))
+    axis.set_xlim(0, 12)
+    axis.set_ylim(0, 7)
+    axis.axis("off")
+    boxes = [
+        (0.2, 5.3, 2.2, 1.0, "Market products\nprice, demand, wind, solar", COLORS["light_blue"]),
+        (0.2, 3.7, 2.2, 1.0, "ClusterData2019\nservice + no-SLO batch", COLORS["light_blue"]),
+        (0.2, 2.1, 2.2, 1.0, "PowerData2019\naffine site models", COLORS["light_blue"]),
+        (3.0, 4.4, 2.2, 1.2, "Energy-v3 pipeline\nUTC alignment, hashes,\ncausal forecasts", COLORS["light_green"]),
+        (5.8, 4.4, 2.2, 1.2, "Daily ramp environment\nstate, queue, reward,\nstatus quo", COLORS["light_green"]),
+        (8.6, 5.2, 2.5, 1.0, "Five frozen PPO actors\nown normalizers", COLORS["light_orange"]),
+        (8.6, 3.7, 2.5, 1.0, "Fixed equal-action mean\nweights = 0.2", COLORS["light_orange"]),
+        (8.6, 2.2, 2.5, 1.0, "Constraint-only decoder\nsimplex + EDF + transport", COLORS["light_orange"]),
+        (5.8, 1.0, 2.2, 1.0, "Executed work and power\nnext state + reward", COLORS["light_green"]),
+        (3.0, 1.0, 2.2, 1.0, "Evaluation and provenance\nmetrics, hashes, gates", COLORS["light_green"]),
     ]
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
-    colors = ["#2f6f9f", "#b44d4d"]
-    axes[0].bar(stages, impacts, color=colors)
-    axes[0].axhline(0, color="black", linewidth=0.8)
-    axes[0].set_ylabel("Mean incremental ramp impact")
-    axes[0].set_title("Validation ramp metric (lower is better)")
-    axes[0].tick_params(axis="x", rotation=12)
-    axes[1].bar(stages, costs, color=colors)
-    axes[1].axhline(1.0, color="black", linewidth=0.8, linestyle="--")
-    axes[1].set_ylabel("DA energy cost / status quo")
-    axes[1].set_title("Validation cost ratio")
-    axes[1].tick_params(axis="x", rotation=12)
-    fig.suptitle("Immutable v1 validation-only campaign closeout")
-    fig.text(
-        0.5,
-        0.01,
-        "Confirmation failed strict per-seed/per-market gates; sealed test unopened.",
+    for x, y, width, height, text, color in boxes:
+        _box(axis, x, y, width, height, text, fill=color)
+    _arrow(axis, (2.4, 5.8), (3.0, 5.0))
+    _arrow(axis, (2.4, 4.2), (3.0, 4.8))
+    _arrow(axis, (2.4, 2.6), (3.0, 4.55))
+    _arrow(axis, (5.2, 5.0), (5.8, 5.0))
+    _arrow(axis, (8.0, 5.0), (8.6, 5.7))
+    _arrow(axis, (9.85, 5.2), (9.85, 4.7))
+    _arrow(axis, (9.85, 3.7), (9.85, 3.2))
+    _arrow(axis, (8.6, 2.7), (8.0, 1.5))
+    _arrow(axis, (5.8, 1.5), (5.2, 1.5))
+    _arrow(axis, (6.9, 2.0), (6.9, 4.4))
+    axis.set_title(
+        "V4R system architecture: learned preferences are separated from hard feasibility",
+        fontsize=13,
+        weight="bold",
+    )
+    _save(fig, "system_architecture.png")
+
+
+def build_rl_loop() -> None:
+    fig, axis = plt.subplots(figsize=(10.5, 6))
+    axis.set_xlim(0, 10)
+    axis.set_ylim(0, 7)
+    axis.axis("off")
+    _box(axis, 0.5, 4.7, 2.1, 1.1, "Causal state\nmarket + workload + queue", fill=COLORS["light_blue"])
+    _box(axis, 3.2, 4.7, 2.1, 1.1, "PPO actor\n13 bounded preferences", fill=COLORS["light_orange"])
+    _box(axis, 6.0, 4.7, 2.1, 1.1, "Constraint decoder\nfeasible allocations", fill=COLORS["light_green"])
+    _box(axis, 6.0, 2.6, 2.1, 1.1, "Environment transition\npower, queue, next hour", fill=COLORS["light_green"])
+    _box(axis, 3.2, 2.6, 2.1, 1.1, "Ramp reward\n+ soft cost penalty", fill=COLORS["light_blue"])
+    _box(axis, 0.5, 2.6, 2.1, 1.1, "PPO critic\nexpected future return", fill=COLORS["light_orange"])
+    _box(axis, 3.2, 0.5, 2.1, 1.0, "Training only:\nclipped actor/critic update", fill=COLORS["light_orange"])
+    _arrow(axis, (2.6, 5.25), (3.2, 5.25))
+    _arrow(axis, (5.3, 5.25), (6.0, 5.25))
+    _arrow(axis, (7.05, 4.7), (7.05, 3.7))
+    _arrow(axis, (6.0, 3.15), (5.3, 3.15))
+    _arrow(axis, (3.2, 3.15), (2.6, 3.15))
+    _arrow(axis, (1.55, 2.6), (1.55, 1.75))
+    _arrow(axis, (2.6, 1.0), (3.2, 1.0))
+    _arrow(axis, (5.3, 1.0), (7.9, 4.7), label="updated parameters")
+    _arrow(axis, (6.0, 2.85), (2.6, 5.0), label="next state")
+    axis.text(
+        5,
+        6.55,
+        "Reward-only PPO learning loop",
+        ha="center",
+        va="center",
+        fontsize=13,
+        weight="bold",
+    )
+    axis.text(
+        5,
+        0.05,
+        "At inference, actor and normalizer are frozen; the update box is inactive.",
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        color="#444444",
+    )
+    _save(fig, "rl_loop.png")
+
+
+def build_provenance_flow() -> None:
+    fig, axis = plt.subplots(figsize=(12, 5.2))
+    axis.set_xlim(0, 12)
+    axis.set_ylim(0, 5.5)
+    axis.axis("off")
+    labels = [
+        ("Native/restricted\nsource files", COLORS["light_blue"]),
+        ("Source contracts +\nraw SHA-256", COLORS["light_blue"]),
+        ("Canonical panel +\nforecast manifest", COLORS["light_green"]),
+        ("Daily factory windows +\ntraining-only stats", COLORS["light_green"]),
+        (
+            "Frozen identity +\ncheckpoint recovery verification",
+            COLORS["light_orange"],
+        ),
+        ("Single-open sealed\nevidence chain", COLORS["light_orange"]),
+        ("Post-hoc corrected\ntelemetry wrapper", COLORS["light_orange"]),
+    ]
+    x_positions = np.linspace(0.1, 10.35, len(labels))
+    for index, ((label, color), x) in enumerate(zip(labels, x_positions, strict=True)):
+        _box(axis, float(x), 2.15, 1.45, 1.15, label, fill=color, fontsize=8)
+        if index < len(labels) - 1:
+            _arrow(axis, (x + 1.45, 2.72), (x_positions[index + 1], 2.72))
+    axis.text(
+        6,
+        4.65,
+        "Backward provenance: every published metric points to immutable inputs",
+        ha="center",
+        fontsize=13,
+        weight="bold",
+    )
+    axis.text(
+        6,
+        1.05,
+        (
+            "Raw redistribution follows operator terms. Committed manifests "
+            "retain queries, coverage, hashes, and permissible derived metrics."
+        ),
         ha="center",
         fontsize=9,
     )
-    fig.tight_layout(rect=(0, 0.05, 1, 0.93))
-    fig.savefig(OUTPUT / "v1_validation_closeout.png", dpi=180)
-    plt.close(fig)
-
-
-def build_six_market_design() -> None:
-    manifest = json.loads(LIVE_ACQUISITION_MANIFEST.read_text(encoding="utf-8"))
-    physical_sources = manifest["physical_sources"]
-    ordered = [
-        ("CAISO_NP15", "CAISO NP15", "cell a"),
-        ("ERCOT_LZ_NORTH", "ERCOT North", "cell b"),
-        ("NYISO_NYC_J", "NYISO Zone J", "cell c"),
-        ("MISO_MINN_HUB", "MISO Minnesota", "cell d"),
-        ("SPP_NORTH_HUB", "SPP North", "cell e"),
-        ("ISONE_NEMA", "ISO-NE NEMA", "cell f"),
-    ]
-    fig, ax = plt.subplots(figsize=(11, 5.4))
-    ax.set_xlim(0, 12)
-    ax.set_ylim(0, 7)
-    ax.axis("off")
-    for index, (market, label, cell) in enumerate(ordered):
-        y = 6.25 - index * 0.85
-        price = PRICE_LABELS[market]
-        physical_record = physical_sources[market]
-        if isinstance(physical_record, dict) and physical_record.get("source_role") == (
-            "same_balancing_authority_EIA_bulk_fallback"
-        ):
-            physical = EIA_FALLBACK_LABELS[market]
-        else:
-            physical = DIRECT_PHYSICAL_LABELS[market]
-        ax.add_patch(
-            plt.Rectangle((0.2, y - 0.28), 2.4, 0.56, color="#d9eaf7", ec="#376996")
-        )
-        ax.text(1.4, y, f"{label}\n{cell}", ha="center", va="center", fontsize=9)
-        ax.annotate("", xy=(3.1, y), xytext=(2.6, y), arrowprops={"arrowstyle": "->"})
-        ax.text(3.2, y + 0.12, f"Price: {price}", fontsize=7.5, va="center")
-        ax.text(3.2, y - 0.12, f"Physical: {physical}", fontsize=7.5, va="center")
-    ax.add_patch(
-        plt.Rectangle((8.7, 1.2), 2.8, 4.9, color="#f2f2f2", ec="#555555")
-    )
-    ax.text(10.1, 5.65, "Common UTC hourly panel", ha="center", weight="bold")
-    ax.text(10.1, 4.85, "Sep 2025-Jan 2026\nTRAIN", ha="center", va="center")
-    ax.text(10.1, 3.55, "Feb 2026\nVALIDATION", ha="center", va="center")
-    ax.text(10.1, 2.25, "Mar-Apr 2026\nSEALED TEST", ha="center", va="center")
-    ax.text(
-        6.0,
-        0.45,
-        "PJM DOM / Northern Virginia: credential-blocked, excluded, not evaluated",
+    axis.text(
+        6,
+        0.35,
+        (
+            "The correction wrapper references rather than replaces the "
+            "original sealed evidence and records that it is not a second test."
+        ),
         ha="center",
-        color="#9b2c2c",
+        fontsize=9,
+        color="#8A4F13",
+    )
+    _save(fig, "provenance_flow.png")
+
+
+def build_primary_effect(evidence: dict[str, Any]) -> None:
+    records = [
+        ("February\nvalidation", evidence["validation"]["result"], COLORS["blue"]),
+        ("March-April\nsealed test", evidence["test"]["result"], COLORS["green"]),
+    ]
+    means = [record[1]["mean_incremental_ramp_impact"] for record in records]
+    lowers = [record[1]["bootstrap_by_day"]["lower_95"] for record in records]
+    uppers = [record[1]["bootstrap_by_day"]["upper_95"] for record in records]
+    errors = np.asarray(
+        [
+            [mean - lower for mean, lower in zip(means, lowers, strict=True)],
+            [upper - mean for mean, upper in zip(means, uppers, strict=True)],
+        ]
+    )
+    fig, axis = plt.subplots(figsize=(8.4, 4.8))
+    for index, (_, _, color) in enumerate(records):
+        axis.errorbar(
+            index,
+            means[index],
+            yerr=errors[:, index : index + 1],
+            fmt="o",
+            markersize=8,
+            capsize=6,
+            color=color,
+            linewidth=2,
+        )
+    axis.axhline(0.0, color="#333333", linewidth=1)
+    axis.set_xticks(range(len(records)), [record[0] for record in records])
+    axis.set_ylabel("Mean native-relative incremental squared-ramp impact")
+    axis.set_title("Primary effect with deterministic day-block 95% intervals")
+    axis.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    axis.text(
+        0.99,
+        0.03,
+        "Lower (more negative) is better",
+        transform=axis.transAxes,
+        ha="right",
+        fontsize=9,
+        color="#444444",
+    )
+    _save(fig, "primary_effect_ci.png")
+
+
+def build_status_quo_comparison(evidence: dict[str, Any]) -> None:
+    result = evidence["test"]["result"]
+    native = result[
+        "per_market_policy_native_relative_incremental_ramp_impact"
+    ]
+    comparison = result["status_quo_comparison"]["per_market"]
+    deltas = [
+        comparison[market][
+            "policy_minus_status_quo_incremental_ramp_impact"
+        ]
+        for market in MARKET_ORDER
+    ]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5.2), sharey=True)
+    axes[0].barh(
+        MARKET_LABELS,
+        [native[market] for market in MARKET_ORDER],
+        color=COLORS["green"],
+    )
+    axes[0].axvline(0.0, color="#333333", linewidth=0.9)
+    axes[0].set_xlabel("Policy impact relative to native grid")
+    axes[0].set_title("All six policy impacts are negative vs native")
+    delta_colors = [
+        COLORS["green"] if value < 0 else COLORS["red"] for value in deltas
+    ]
+    axes[1].barh(MARKET_LABELS, deltas, color=delta_colors)
+    axes[1].axvline(0.0, color="#333333", linewidth=0.9)
+    axes[1].set_xlabel("Policy minus status-quo impact")
+    axes[1].set_title("Policy beats status quo in 5/6; MISO is worse")
+    for axis in axes:
+        axis.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+    fig.suptitle(
+        (
+            "Persisted March-April traces: native and status-quo baselines "
+            "remain distinct"
+        ),
+        fontsize=13,
         weight="bold",
     )
-    ax.set_title("Energy model v3: six separately sourced market/BA series and fixed split")
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "six_market_study_design.png", dpi=180)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(
+        OUTPUT / "status_quo_comparison.png",
+        dpi=200,
+        bbox_inches="tight",
+        metadata=PNG_METADATA,
+    )
     plt.close(fig)
 
 
-def build_protocol_progression(evidence: dict) -> None:
-    labels = ["V1 screen", "V1 confirm", "V2-A", "V2-B", "V3", "V4", "V4R"]
-    impacts: list[float | None] = [
-        -1.3349297807182322e-05,
-        -1.09572077294e-05,
-        -4.983717818021212e-07,
-        -1.412252682718701e-06,
-        -1.371091986086174e-05,
-        None,
-        evidence["validation"]["result"]["mean_incremental_ramp_impact"],
-    ]
-    colors = ["#567c9e", "#a64b4b", "#a64b4b", "#a64b4b", "#a64b4b", "#777777", "#2f7d4a"]
-    fig, ax = plt.subplots(figsize=(10.5, 4.8))
-    bars: dict[int, object] = {}
-    for index, (impact, color) in enumerate(zip(impacts, colors, strict=True)):
-        if impact is not None:
-            bars[index] = ax.bar(index, impact, color=color)[0]
-    ax.set_xticks(range(len(labels)), labels)
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.set_ylabel("Validation mean incremental ramp impact")
-    ax.set_title("Protocol progression: failures remain visible; V4R is the first strict pass")
-    ax.tick_params(axis="x", rotation=18)
-    annotations = [
-        "screen pass",
-        "failed seeds/markets",
-        "failed",
-        "failed",
-        "1 seed harmed MISO",
-        "blocked\n(no evaluation)",
-        "all gates pass",
-    ]
-    for index, note in enumerate(annotations):
-        if impacts[index] is None:
-            ax.scatter(index, 8e-7, marker="x", s=70, color="#777777", linewidths=2)
-            ax.text(index, 1.4e-6, "N/A\nblocked; not evaluated", ha="center", va="bottom", fontsize=8)
-            continue
-        bar = bars[index]
-        y = bar.get_height()
-        ax.text(
+def build_ramp_period_power(evidence: dict[str, Any]) -> None:
+    audit = evidence["test"]["result"]["behavior_audit"]
+    values = [audit["status_quo_ramp_power"], audit["policy_ramp_power"]]
+    reduction = 100 * (1 - values[1] / values[0])
+    fig, axis = plt.subplots(figsize=(7.5, 4.8))
+    bars = axis.bar(
+        ["Status quo", "V4R policy"],
+        values,
+        color=[COLORS["gray"], COLORS["green"]],
+        width=0.6,
+    )
+    axis.set_ylabel("Persisted ramp-period power audit units")
+    axis.set_title(f"Ramp-period power falls {reduction:.2f}% on sealed test")
+    for bar, value in zip(bars, values, strict=True):
+        axis.text(
             bar.get_x() + bar.get_width() / 2,
-            y - 7e-7 if y < 0 else y + 4e-7,
-            note,
+            value,
+            f"{value:,.0f}",
             ha="center",
-            va="top" if y < 0 else "bottom",
-            fontsize=8,
+            va="bottom",
+            fontsize=10,
         )
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "protocol_progression.png", dpi=180)
-    plt.close(fig)
+    axis.text(
+        0.5,
+        -0.18,
+        "Repeated market-hour audit sum; not a single MW ramp.",
+        transform=axis.transAxes,
+        ha="center",
+        fontsize=9,
+        color="#444444",
+    )
+    _save(fig, "ramp_period_power.png")
 
 
-def build_validation_test(evidence: dict) -> None:
-    validation = evidence["validation"]["result"]
-    test = evidence["test"]["result"]
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4.3))
-    for ax, label, result, color in (
-        (axes[0], "February validation\n28 episodes", validation, "#376996"),
-        (axes[1], "March-April sealed test\n60 episodes, one opening", test, "#2f7d4a"),
-    ):
-        ax.bar(
-            ["Ramp impact", "Cost ratio - 1"],
-            [result["mean_incremental_ramp_impact"], result["energy_cost_ratio"] - 1],
-            color=[color, "#d49a32"],
-        )
-        ax.axhline(0, color="black", linewidth=0.8)
-        ax.set_title(label)
-        ax.tick_params(axis="x", rotation=12)
-    axes[0].set_ylabel("Raw value (separate units; lower is favorable)")
-    fig.suptitle("Validation and sealed test shown in separate panels, never pooled")
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
-    fig.savefig(OUTPUT / "v4r_validation_and_test_separate.png", dpi=180)
-    plt.close(fig)
-
-
-def build_per_market_test(evidence: dict) -> None:
-    values = evidence["test"]["result"]["per_market_macro"]
-    order = ["CAISO_NP15", "ERCOT_LZ_NORTH", "ISONE_NEMA", "MISO_MINN_HUB", "NYISO_NYC_J", "SPP_NORTH_HUB"]
-    labels = ["CAISO", "ERCOT", "ISO-NE", "MISO", "NYISO", "SPP"]
-    fig, ax = plt.subplots(figsize=(8.8, 4.8))
-    ax.barh(labels, [values[key] for key in order], color="#2f7d4a")
-    ax.axvline(0, color="black", linewidth=0.8)
-    ax.set_xlabel("Mean incremental normalized squared-ramp impact")
-    ax.set_title("Sealed-test ramp impact is negative in every evaluated market")
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "v4r_per_market_test.png", dpi=180)
-    plt.close(fig)
-
-
-def build_cost_ramp_and_robustness(evidence: dict) -> None:
+def build_physical_ramps(evidence: dict[str, Any]) -> None:
     records = [
-        ("Validation", evidence["validation"]["result"], "#376996"),
-        ("Sealed test", evidence["test"]["result"], "#2f7d4a"),
-        ("1 GW total", evidence["robustness"]["one_gw_total"]["result"], "#7b4aa0"),
-        ("c-h overlapping", evidence["robustness"]["c_h_overlapping"]["result"], "#c87533"),
+        ("February replay", evidence["validation"]["result"], COLORS["blue"]),
+        (
+            "March-April replay",
+            evidence["test"]["result"],
+            COLORS["green"],
+        ),
     ]
-    fig, ax = plt.subplots(figsize=(8, 5.2))
-    for label, result, color in records:
-        ax.scatter(
-            100 * (result["energy_cost_ratio"] - 1),
-            result["mean_incremental_ramp_impact"],
-            s=90,
+    metrics = [
+        ("1 h p95", "abs_adjusted_ramp_h1_fraction_s_per_hour_p95"),
+        ("1 h max", "abs_adjusted_ramp_h1_fraction_s_per_hour_max"),
+        ("3 h p95", "abs_adjusted_ramp_h3_fraction_s_per_hour_p95"),
+        ("3 h max", "abs_adjusted_ramp_h3_fraction_s_per_hour_max"),
+    ]
+    positions = np.arange(len(metrics), dtype=float)
+    width = 0.36
+    fig, axis = plt.subplots(figsize=(10, 5))
+    for offset, (label, result, color) in zip(
+        (-width / 2, width / 2),
+        records,
+        strict=True,
+    ):
+        axis.bar(
+            positions + offset,
+            [result[key] for _, key in metrics],
+            width,
             label=label,
             color=color,
         )
-    ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.set_xlabel("Day-ahead modeled energy-cost change vs status quo (%)")
-    ax.set_ylabel("Mean incremental normalized squared-ramp impact")
-    ax.set_title("Ramp-cost relationship across prespecified and post-selection views")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "v4r_cost_ramp_relationship.png", dpi=180)
-    plt.close(fig)
+    axis.set_xticks(positions, [label for label, _ in metrics])
+    axis.set_ylabel(
+        "Absolute adjusted ramp\n(fraction of market training Q95 per hour)"
+    )
+    axis.set_title(
+        "Corrected physical magnitudes pool every market-timestep absolute value"
+    )
+    axis.legend(frameon=False)
+    axis.text(
+        0.99,
+        -0.16,
+        (
+            "Equivalence-bound post-hoc replay; original sealed traces cannot "
+            "supply these values"
+        ),
+        transform=axis.transAxes,
+        ha="right",
+        fontsize=9,
+        color="#8A4F13",
+    )
+    _save(fig, "physical_ramp_magnitudes.png")
 
-    fig, ax = plt.subplots(figsize=(8.5, 4.6))
-    labels = [item[0] for item in records[1:]]
-    values = [item[1]["mean_incremental_ramp_impact"] for item in records[1:]]
-    ax.bar(labels, values, color=[item[2] for item in records[1:]])
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.set_ylabel("Mean incremental normalized squared-ramp impact")
-    ax.set_title("Post-selection robustness (c-h is overlapping, not independent)")
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "v4r_robustness.png", dpi=180)
-    plt.close(fig)
 
-
-def build_behavior_and_physical_ramps(evidence: dict) -> None:
-    records = [
-        ("Validation", evidence["validation"]["result"]),
-        ("Sealed test", evidence["test"]["result"]),
+def build_decoder_adjustment(evidence: dict[str, Any]) -> None:
+    result = evidence["test"]["result"]
+    values = np.asarray(
+        [
+            value
+            for episode in result["policy_episodes"]
+            for value in episode["semantic_adjustment_l2_values"]
+        ],
+        dtype=float,
+    )
+    adjustment = result["semantic_adjustment"]
+    positive = values[values > 1e-12]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.8))
+    if positive.size:
+        axes[0].hist(
+            positive,
+            bins=min(30, max(8, int(np.sqrt(positive.size)))),
+            color=COLORS["blue"],
+            edgecolor="white",
+        )
+    else:
+        axes[0].text(0.5, 0.5, "No positive adjustments", ha="center")
+    axes[0].set_xlabel("Semantic adjustment L2")
+    axes[0].set_ylabel("Decision count")
+    axes[0].set_title(
+        f"Positive adjustments ({adjustment['adjustment_rate']:.1%} of decisions)"
+    )
+    statistic_labels = ["Mean", "p95", "Maximum"]
+    statistic_values = [
+        adjustment["mean_l2"],
+        adjustment["p95_l2"],
+        adjustment["max_l2"],
     ]
-    x = range(len(records))
-    fig, ax = plt.subplots(figsize=(8, 4.8))
-    width = 0.35
-    ax.bar(
-        [value - width / 2 for value in x],
-        [result["behavior_audit"]["status_quo_ramp_power"] for _, result in records],
-        width,
-        label="Status quo",
-        color="#999999",
+    bars = axes[1].bar(
+        statistic_labels,
+        statistic_values,
+        color=[COLORS["green"], COLORS["orange"], COLORS["red"]],
     )
-    ax.bar(
-        [value + width / 2 for value in x],
-        [result["behavior_audit"]["policy_ramp_power"] for _, result in records],
-        width,
-        label="V4R policy",
-        color="#2f7d4a",
+    axes[1].set_ylabel("L2 in decoded compute-work coordinates")
+    axes[1].set_title(
+        f"Emergency fallback rate = {adjustment['emergency_fallback_rate']:.3%}"
     )
-    ax.set_xticks(list(x), [label for label, _ in records])
-    ax.set_ylabel("Ramp-period power audit (persisted aggregate units)")
-    ax.set_title("V4R lowers ramp-period power while serving work before demand")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "v4r_behavior.png", dpi=180)
+    for bar, value in zip(bars, statistic_values, strict=True):
+        axes[1].text(
+            bar.get_x() + bar.get_width() / 2,
+            value,
+            f"{value:.3g}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+    fig.suptitle(
+        (
+            "Post-hoc replay: normal constraint projection is distinct from "
+            "emergency intervention"
+        ),
+        fontsize=13,
+        weight="bold",
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(
+        OUTPUT / "decoder_adjustment.png",
+        dpi=200,
+        bbox_inches="tight",
+        metadata=PNG_METADATA,
+    )
     plt.close(fig)
 
-    metrics = [
-        ("1 h p95", "ramp_h1_adjusted_p95"),
-        ("1 h max", "ramp_h1_adjusted_max"),
-        ("3 h p95", "ramp_h3_adjusted_p95"),
-        ("3 h max", "ramp_h3_adjusted_max"),
-    ]
-    fig, ax = plt.subplots(figsize=(9.2, 4.8))
-    width = 0.35
-    positions = list(range(len(metrics)))
-    ax.bar(
-        [value - width / 2 for value in positions],
-        [records[0][1][key] for _, key in metrics],
-        width,
-        label="Validation",
-        color="#376996",
+
+def build_cost_secondary(evidence: dict[str, Any]) -> None:
+    result = evidence["test"]["result"]
+    policy_cost = sum(
+        float(episode["energy_cost"])
+        for episode in result["policy_episodes"]
     )
-    ax.bar(
-        [value + width / 2 for value in positions],
-        [records[1][1][key] for _, key in metrics],
-        width,
-        label="Sealed test",
-        color="#2f7d4a",
+    status_cost = sum(
+        float(episode["energy_cost"])
+        for episode in result["status_quo_episodes"]
     )
-    ax.set_xticks(positions, [label for label, _ in metrics])
-    ax.set_ylabel("Adjusted ramp (fraction of training Q95 gross-demand scale per hour)")
-    ax.set_title("Interpretable 1 h and 3 h adjusted ramp extrema")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(OUTPUT / "v4r_physical_ramps.png", dpi=180)
-    plt.close(fig)
+    saving = status_cost - policy_cost
+    saving_pct = 100 * saving / status_cost
+    fig, axis = plt.subplots(figsize=(8, 4.8))
+    bars = axis.bar(
+        ["Status quo", "V4R policy"],
+        [status_cost / 1e6, policy_cost / 1e6],
+        color=[COLORS["gray"], COLORS["green"]],
+        width=0.6,
+    )
+    axis.set_ylabel("Modeled day-ahead cost (USD millions)")
+    axis.set_title(
+        "Secondary outcome: modeled wholesale cost, not the primary objective"
+    )
+    for bar, value in zip(bars, (status_cost, policy_cost), strict=True):
+        axis.text(
+            bar.get_x() + bar.get_width() / 2,
+            value / 1e6,
+            f"${value / 1e6:.3f}M",
+            ha="center",
+            va="bottom",
+        )
+    axis.text(
+        0.5,
+        0.04,
+        f"Difference: -USD {saving:,.0f} ({saving_pct:.3f}%), about "
+        f"USD {saving / result['episode_count']:,.0f} per episode",
+        transform=axis.transAxes,
+        ha="center",
+        fontsize=9,
+    )
+    _save(fig, "cost_secondary.png")
 
 
 def main() -> None:
+    _style()
     OUTPUT.mkdir(parents=True, exist_ok=True)
     evidence = load_verified_evidence()
-    build_v1_closeout()
-    build_six_market_design()
-    build_protocol_progression(evidence)
-    build_validation_test(evidence)
-    build_per_market_test(evidence)
-    build_cost_ramp_and_robustness(evidence)
-    build_behavior_and_physical_ramps(evidence)
+    build_experiment_lineage(evidence)
+    build_system_architecture()
+    build_rl_loop()
+    build_provenance_flow()
+    build_primary_effect(evidence)
+    build_status_quo_comparison(evidence)
+    build_ramp_period_power(evidence)
+    build_physical_ramps(evidence)
+    build_decoder_adjustment(evidence)
+    build_cost_secondary(evidence)
     figure_names = [
-        "protocol_progression.png",
-        "six_market_study_design.png",
-        "v1_validation_closeout.png",
-        "v4r_behavior.png",
-        "v4r_cost_ramp_relationship.png",
-        "v4r_per_market_test.png",
-        "v4r_physical_ramps.png",
-        "v4r_robustness.png",
-        "v4r_validation_and_test_separate.png",
+        "cost_secondary.png",
+        "decoder_adjustment.png",
+        "experiment_lineage.png",
+        "physical_ramp_magnitudes.png",
+        "primary_effect_ci.png",
+        "provenance_flow.png",
+        "ramp_period_power.png",
+        "rl_loop.png",
+        "status_quo_comparison.png",
+        "system_architecture.png",
     ]
     manifest = {
-        "schema_version": "ramp-v6-v4r-thesis-figures-v2",
-        "canonical_evidence_sha256": evidence["_verified"]["canonical_sha256"],
-        "canonical_evidence_representation": CANONICAL_JSON_REPRESENTATION,
+        "schema_version": "ramp-v6-v4r-thesis-figures-v3",
+        "canonical_evidence_sha256": EXPECTED_CANONICAL_SHA256,
+        "sealed_canonical_evidence_sha256": (
+            EXPECTED_SEALED_CANONICAL_SHA256
+        ),
+        "canonical_evidence_representation": (
+            CANONICAL_JSON_REPRESENTATION
+        ),
         "hash_contract_id": HASH_CONTRACT_ID,
         "files": {
             name: hashlib.sha256((OUTPUT / name).read_bytes()).hexdigest()
@@ -365,7 +674,7 @@ def main() -> None:
         encoding="utf-8",
         newline="\n",
     )
-    print(f"Wrote figures under {OUTPUT}")
+    print(f"Wrote {len(figure_names)} figures under {OUTPUT}")
 
 
 if __name__ == "__main__":

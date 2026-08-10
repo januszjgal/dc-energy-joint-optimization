@@ -1,0 +1,98 @@
+{
+  "checkpoint_recovery_sha256": "26e9c77a1d932ff7edb66fe8b7d55b6f769a2e2029a49c95411b62465b14f064",
+  "claims": {
+    "test_behavior": {
+      "deferrable_pre_service": 692.5858193600047,
+      "policy_ramp_power": 303077.9035596151,
+      "status_quo_ramp_power": 313167.22669593635
+    },
+    "test_cost": {
+      "policy_energy_cost_usd": 21098313.786029983,
+      "policy_saving_percent": 2.24415597510657,
+      "policy_saving_usd": 484348.60769587755,
+      "policy_saving_usd_per_episode": 8072.476794931293,
+      "split": "sealed_test",
+      "status_quo_energy_cost_usd": 21582662.39372586
+    },
+    "test_day_bootstrap": {
+      "draws": 500,
+      "lower_95": -1.4922706380880133e-05,
+      "mean": -1.4258710514255097e-05,
+      "unit": "day_or_month",
+      "upper_95": -1.3524515742754826e-05
+    },
+    "test_physical_ramp_contract": {
+      "cross_market_signed_averaging": false,
+      "input": "absolute adjusted ramp magnitude",
+      "pooling": "all market-timestep values with equal weight",
+      "units": "fraction_of_market_training_q95_gross_demand_per_hour"
+    },
+    "test_primary_mean": -1.4258710514255097e-05,
+    "test_semantic_adjustment": {
+      "adjustment_rate": 0.7654320987654321,
+      "coordinate_id": "decoded-work-allocation-service-batch-total-destination-2n-plus-1-v1",
+      "decision_count": 1620,
+      "emergency_fallback_rate": 0.0,
+      "max_l2": 1.5045150122457676,
+      "mean_l2": 0.40433576797735266,
+      "p50_l2": 0.26530134648253756,
+      "p95_l2": 1.1756255547441794,
+      "positive_adjustment_count": 1240,
+      "sum_l2": 655.0239441233113,
+      "units": "compute_work_units_per_hourly_decision"
+    },
+    "test_status_quo_comparison": {
+      "every_market_outperforms_status_quo": false,
+      "market_count": 6,
+      "markets_better_count": 5,
+      "markets_better_share": 0.8333333333333334,
+      "per_market": {
+        "CAISO_NP15": {
+          "policy_minus_status_quo_incremental_ramp_impact": -1.9504140369115896e-05,
+          "policy_native_relative_incremental_ramp_impact": -2.106596962375112e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -1.5618292546352233e-06
+        },
+        "ERCOT_LZ_NORTH": {
+          "policy_minus_status_quo_incremental_ramp_impact": -8.041037827720477e-07,
+          "policy_native_relative_incremental_ramp_impact": -2.3454355897116744e-06,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -1.5413318069396267e-06
+        },
+        "ISONE_NEMA": {
+          "policy_minus_status_quo_incremental_ramp_impact": -2.3910052885272682e-05,
+          "policy_native_relative_incremental_ramp_impact": -2.7491577052292107e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -3.581524167019426e-06
+        },
+        "MISO_MINN_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": 5.751857421188776e-07,
+          "policy_native_relative_incremental_ramp_impact": -5.652448501033376e-07,
+          "policy_outperforms_status_quo": false,
+          "status_quo_native_relative_incremental_ramp_impact": -1.1404305922222152e-06
+        },
+        "NYISO_NYC_J": {
+          "policy_minus_status_quo_incremental_ramp_impact": -3.7334921051929684e-05,
+          "policy_native_relative_incremental_ramp_impact": -3.297854729324165e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": 4.356373758688029e-06
+        },
+        "SPP_NORTH_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": -7.071699473414131e-07,
+          "policy_native_relative_incremental_ramp_impact": -1.1054886764306852e-06,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -3.9831872908927206e-07
+        }
+      },
+      "policy_minus_status_quo_mean_incremental_ramp_impact": -1.3614200382385474e-05,
+      "policy_native_relative_mean_incremental_ramp_impact": -1.4258710514255097e-05,
+      "status_quo_native_relative_mean_incremental_ramp_impact": -6.445101318696225e-07
+    }
+  },
+  "classification": "post_hoc_frozen_policy_metric_recomputation",
+  "corrected_canonical_sha256": "42bbcf4c4cd2cca58cfce0e07319d5280145e0fac948a7fe66d2a6582e379d4b",
+  "not_a_second_sealed_generalization_test": true,
+  "protocol_id": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r",
+  "schema_version": "v4r-corrected-thesis-claim-ledger-v1",
+  "sealed_canonical_sha256": "f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b"
+}

@@ -4,6 +4,14 @@ Review date: 2026-08-09
 Reviewed evidence commit: `7ebd9b25e3c830076be4687d73d0cea14ef1e55d`  
 Canonical evidence: `output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`
 
+> **Superseded interpretation notice (2026-08-10).** The quoted headline below
+> incorrectly says "relative to status quo in every evaluated market." The
+> historical gate was relative to native grid ramps. Direct sealed-test
+> comparison shows policy better than operational status quo in five of six
+> markets, with MISO worse. This review is retained as historical audit
+> chronology; current authority is the additive
+> `recovered_v4r_posthoc_metrics_v1` wrapper and rebuilt thesis.
+
 ## Publication decision
 
 **The headline is supported. Before final release, make one non-scientific

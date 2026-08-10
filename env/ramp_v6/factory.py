@@ -15,6 +15,7 @@ import numpy as np
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.fixture import load_fixture, load_six_market_fixture
 from ramp_rl.contract import EnvRequest
+from ramp_rl.provenance import historical_text_sha256_matches
 from ramp_rl.schema import load_protocol
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +23,14 @@ FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "ramp_v6"
 ENERGY_MODEL_V3_PANEL_ROOT = ROOT / "output" / "energy_model_v3" / "ramp_v6"
 ENERGY_MODEL_V3_HANDOFF = ENERGY_MODEL_V3_PANEL_ROOT / "factory_manifest.json"
 SPLIT_MONTH = {"train": 1, "validation": 7, "test": 9}
+CANONICAL_TEXT_SUFFIXES = {
+    ".csv",
+    ".json",
+    ".md",
+    ".py",
+    ".yaml",
+    ".yml",
+}
 
 
 class MissingEnergyModelV3PanelError(FileNotFoundError):
@@ -29,11 +38,20 @@ class MissingEnergyModelV3PanelError(FileNotFoundError):
 
 
 def _sha256(path: Path) -> str:
+    if path.suffix.lower() in CANONICAL_TEXT_SUFFIXES:
+        payload = path.read_bytes().replace(b"\r\n", b"\n")
+        return hashlib.sha256(payload).hexdigest()
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _sha256_matches(path: Path, expected: str) -> bool:
+    if path.suffix.lower() in CANONICAL_TEXT_SUFFIXES:
+        return historical_text_sha256_matches(path, expected)
+    return _sha256(path) == expected
 
 
 def _fixture_context(request: EnvRequest) -> dict[str, Any]:
@@ -85,7 +103,7 @@ def _load_verified_energy_window(
         "fixture": fixture_sha256,
     }
     for name, path in required.items():
-        if _sha256(path) != expected[name]:
+        if not _sha256_matches(path, expected[name]):
             raise ValueError(
                 f"energy-model-v3 {name} SHA-256 does not match the handoff"
             )

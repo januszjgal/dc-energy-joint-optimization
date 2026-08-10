@@ -355,6 +355,7 @@ function cellBorders() {
 
 function markdownTable(rows) {
   const columnCount = Math.max(...rows.map((row) => row.length));
+  const cellFontSize = columnCount >= 6 ? 16 : columnCount >= 5 ? 17 : 18;
   const baseWidth = Math.floor(CONTENT_WIDTH / columnCount);
   const widths = Array.from({ length: columnCount }, (_, index) =>
     index === columnCount - 1
@@ -379,7 +380,7 @@ function markdownTable(rows) {
                 new Paragraph({
                   spacing: { after: 0 },
                   children: parseInline(row[columnIndex] || "", {
-                    size: 18,
+                    size: cellFontSize,
                     bold: rowIndex === 0,
                   }),
                 }),
@@ -489,6 +490,7 @@ function blockStarts(line, nextLine) {
     /^[-*]\s+/.test(trimmed) ||
     /^\d+\.\s+/.test(trimmed) ||
     /^>\s?/.test(trimmed) ||
+    /^<!--.*-->$/.test(trimmed) ||
     /^---+$/.test(trimmed) ||
     /^<!--\s*pagebreak\s*-->$/i.test(trimmed) ||
     (trimmed.startsWith("|") && nextLine && isTableSeparator(nextLine))
@@ -507,6 +509,10 @@ function bodyBlocks(lines, start) {
     }
     if (/^<!--\s*pagebreak\s*-->$/i.test(trimmed)) {
       blocks.push(new Paragraph({ children: [new PageBreak()] }));
+      index += 1;
+      continue;
+    }
+    if (/^<!--.*-->$/.test(trimmed)) {
       index += 1;
       continue;
     }
@@ -701,10 +707,10 @@ function bodyBlocks(lines, start) {
 function titlePage(metadata) {
   const title =
     metadata.title ||
-    "Safe Joint Energy Optimization for Geo-Distributed Data Centers";
+    "Anticipatory Grid-Ramp Smoothing with Pure Reinforcement Learning";
   const subtitle =
     metadata.subtitle ||
-    "A reproducible study using Google ClusterData, CAISO, and TD3+BC";
+    "A Reproducible Six-Market Study of Spatial and Temporal Data-Center Flexibility";
   const author = metadata.author || "Janusz Gal";
   const date = metadata.date || "August 2026";
   const repository =
@@ -780,7 +786,7 @@ const doc = new Document({
   revision: 1,
   title: metadata.title || "Joint Energy Optimization Thesis",
   description:
-    "Reproducible thesis on safe spatio-temporal data-center energy optimization.",
+    "Reproducible thesis on reward-only reinforcement learning for data-center grid-ramp smoothing.",
   styles: {
     default: {
       document: {
@@ -874,7 +880,7 @@ const doc = new Document({
               },
               children: [
                 new TextRun({
-                  text: "Safe Joint Energy Optimization",
+                  text: "Anticipatory Grid-Ramp Smoothing",
                   font: BODY_FONT,
                   size: 17,
                   color: "666666",

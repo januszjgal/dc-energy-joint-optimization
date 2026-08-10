@@ -10,6 +10,12 @@ import numpy as np
 from env.ramp_v6.models import EDFQueue
 
 
+SEMANTIC_ADJUSTMENT_COORDINATE_ID = (
+    "decoded-work-allocation-service-batch-total-destination-2n-plus-1-v1"
+)
+SEMANTIC_ADJUSTMENT_UNITS = "compute_work_units_per_hourly_decision"
+
+
 class InfeasibleActionError(RuntimeError):
     """Raised with a hard, inspectable feasibility certificate."""
 
@@ -26,6 +32,44 @@ class ProjectedAction:
     transport: np.ndarray
     mandatory_batch: float
     requested_batch: float
+    requested_service: np.ndarray
+    requested_batch_by_destination: np.ndarray
+
+    def requested_semantic_allocation(self) -> np.ndarray:
+        """Return the unconstrained request in decoded 2N+1 work coordinates."""
+        return np.concatenate(
+            (
+                np.asarray(self.requested_service, dtype=np.float64),
+                np.asarray([self.requested_batch], dtype=np.float64),
+                np.asarray(
+                    self.requested_batch_by_destination,
+                    dtype=np.float64,
+                ),
+            )
+        )
+
+    def projected_semantic_allocation(self) -> np.ndarray:
+        """Return executed work in the same decoded 2N+1 coordinates."""
+        return np.concatenate(
+            (
+                np.asarray(self.service, dtype=np.float64),
+                np.asarray(
+                    [float(self.batch_by_destination.sum())],
+                    dtype=np.float64,
+                ),
+                np.asarray(self.batch_by_destination, dtype=np.float64),
+            )
+        )
+
+    def semantic_adjustment_l2(self, tolerance: float = 1e-12) -> float:
+        """Euclidean decoder adjustment in compute-work units, not logit units."""
+        value = float(
+            np.linalg.norm(
+                self.projected_semantic_allocation()
+                - self.requested_semantic_allocation()
+            )
+        )
+        return 0.0 if value <= tolerance else value
 
 
 def softmax(logits: np.ndarray) -> np.ndarray:
@@ -130,8 +174,12 @@ def project_action(
             service=float(service_total),
             capacity=float(capacity.sum()),
         )
-    service_pref = softmax(action[:n_sites]) * service_total
-    service = project_capped_simplex(service_pref, service_total, capacity)
+    requested_service = softmax(action[:n_sites]) * service_total
+    service = project_capped_simplex(
+        requested_service,
+        service_total,
+        capacity,
+    )
     residual = capacity - service
 
     queue_total = queue.total
@@ -152,7 +200,9 @@ def project_action(
     maximum = min(queue_total, float(residual.sum()))
     requested = bounded_fraction(float(action[n_sites])) * queue_total
     batch_total = float(np.clip(requested, mandatory, maximum))
-    destination_pref = softmax(action[n_sites + 1 :]) * batch_total
+    destination_weights = softmax(action[n_sites + 1 :])
+    requested_batch_destination = destination_weights * requested
+    destination_pref = destination_weights * batch_total
     batch_destination = project_capped_simplex(
         destination_pref, batch_total, residual
     )
@@ -165,4 +215,6 @@ def project_action(
         transport=transport,
         mandatory_batch=float(mandatory),
         requested_batch=float(requested),
+        requested_service=requested_service,
+        requested_batch_by_destination=requested_batch_destination,
     )
