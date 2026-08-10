@@ -40,6 +40,9 @@ WORD_SAFE_HYPERLINK_IDS = (
 FIXED_CORE_TIMESTAMP = "2026-08-07T00:00:00.000Z"
 FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 V4R_FIGURE_MANIFEST = ROOT / "docs" / "figures" / "ramp_v6" / "v4r_figure_manifest.json"
+EXPECTED_V4R_FIGURE_MANIFEST_SHA256 = (
+    "44bb9ff11399fce3a3d6d7c20f75640011ca621b3760de4df814ca216f9790d0"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -91,7 +94,14 @@ def validate_source(source: Path) -> None:
     if "data-result-contract-begin" in text:
         if not V4R_FIGURE_MANIFEST.is_file():
             raise FileNotFoundError(f"Missing V4R figure manifest: {V4R_FIGURE_MANIFEST}")
-        figure_manifest = json.loads(V4R_FIGURE_MANIFEST.read_text(encoding="utf-8"))
+        manifest_bytes = V4R_FIGURE_MANIFEST.read_bytes()
+        manifest_hash = hashlib.sha256(manifest_bytes).hexdigest()
+        if manifest_hash != EXPECTED_V4R_FIGURE_MANIFEST_SHA256:
+            raise RuntimeError(
+                "V4R figure manifest hash mismatch: "
+                f"expected {EXPECTED_V4R_FIGURE_MANIFEST_SHA256}, got {manifest_hash}"
+            )
+        figure_manifest = json.loads(manifest_bytes)
 
         if figure_manifest.get("canonical_evidence_sha256") != EXPECTED_CANONICAL_SHA256:
             raise RuntimeError("V4R figure manifest is bound to the wrong canonical evidence")
