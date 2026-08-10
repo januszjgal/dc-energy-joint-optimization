@@ -12,6 +12,7 @@ from unittest.mock import patch
 from ramp_rl.final_aggregation import (
     SCHEMA_VERSION,
     EvidenceError,
+    _raw_gate_outcome,
     audit_manifest,
     generate_package,
     sha256_file,
@@ -196,6 +197,23 @@ class FinalAggregationTests(unittest.TestCase):
         self.assertTrue((self.root / "report" / "claim_ledger.json").is_file())
         self.assertTrue((self.root / "report" / "tables" / "market_ramps.csv").is_file())
         self.assertTrue((self.root / "report" / "figures" / "sensitivities.png").is_file())
+        self.assertFalse((self.root / "report" / "tables" / "safety_decoder.csv").exists())
+
+    def test_rejects_truthy_string_gate_boolean(self) -> None:
+        payload = json.loads(
+            (self.evidence / "validation_11.json").read_text(encoding="utf-8")
+        )
+        payload["success_gate"]["checks"]["every_market_ramp_improves"] = "false"
+        with self.assertRaisesRegex(EvidenceError, "must be a boolean"):
+            _raw_gate_outcome(payload, "synthetic validation")
+
+    def test_rejects_missing_semantic_adjustment_telemetry(self) -> None:
+        payload = json.loads(
+            (self.evidence / "validation_11.json").read_text(encoding="utf-8")
+        )
+        payload.pop("semantic_adjustment_l2")
+        with self.assertRaisesRegex(EvidenceError, "decoder telemetry missing"):
+            _raw_gate_outcome(payload, "synthetic validation")
 
     def test_rejects_test_split_leakage_into_promotion(self) -> None:
         self.mutate_json(
