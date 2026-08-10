@@ -6,10 +6,11 @@ Canonical evidence: `output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`
 
 ## Publication decision
 
-**PAUSE publication for one blocking provenance defect and four claim/tooling
-corrections.** The sealed numerical evidence itself recomputes exactly, the
-five recovered models load with the declared V3-equivalent policy/critic and
-normalizer identities, and the narrow headline is supported:
+**The headline is supported. Before final release, make one non-scientific
+provenance-portability correction and four claim/tooling corrections.** The
+sealed numerical evidence itself recomputes exactly, the five recovered models
+load with the declared V3-equivalent policy/critic and normalizer identities,
+and the narrow headline is supported:
 
 > On the fixed six-market, price-taking simulator and March-April 2026 sealed
 > test, the deterministic ensemble of pure-RL-origin PPO policies reduced mean
@@ -24,10 +25,11 @@ generalization.
 
 ## High-confidence findings
 
-### BLOCKER: evidence hashes depend on checkout line endings
+### PORTABILITY/TOOLING: some evidence hashes depend on checkout line endings
 
-The immutable hash chain mixes hashes of Git LF blob bytes with hashes of
-Windows CRLF working-tree bytes.
+The recovery binding is correct and recovery equivalence is sound. However,
+downstream V4R sidecars mix hashes of Git LF blob bytes with hashes of Windows
+CRLF working-tree bytes, creating a cross-platform publication-audit issue.
 
 `source_freeze.json` records:
 
@@ -36,10 +38,11 @@ recovery_source_report_sha256 =
 d1ccf86acf6ed8f9a58c1d07546d02678f77f1aeab8c1181e09e16a3173357e6
 ```
 
-That is the committed LF blob hash and the hash in the originating V4R
-worktree, where this one generated file remained LF. In a clean Windows
-worktree with `core.autocrlf=true`, the same tracked file is checked out as
-CRLF and hashes:
+That is the canonical committed-stream hash of
+`recovery_transfer_manifest.json` at recovery commit `d1d4828`, and the hash in
+the originating V4R worktree, where the corresponding generated recovery-source
+manifest remained LF. A Windows checkout that converts that file to CRLF would
+instead hash:
 
 ```text
 a162c2ed8325a3a9d1b966e8b08d633b54ae905a278b9dedf062cac6768b6b4c
@@ -57,21 +60,33 @@ are CRLF working-tree hashes, not committed LF blob hashes:
 
 Consequences:
 
-1. A clean Windows checkout cannot satisfy the frozen recovery-source hash.
-2. A clean LF checkout cannot satisfy the other recorded sidecar hashes.
-3. Prospective `ramp_rl/v4r_thesis.py` can pass on the originating Windows
-   checkout while omitting the broken nested recovery-source hash, but its
-   raw-byte sidecar checks are not portable.
-4. The canonical result commit remains immutable, but the claimed reproducible
-   byte-hash chain is not currently valid across clean checkouts.
+1. `scripts/run_ramp_rl_v4r.py::verify_source_freeze` does not re-check
+   `recovery_source_report_sha256`; therefore the prior inference that this
+   verifier necessarily fails on a clean Windows checkout was incorrect.
+2. Prospective
+   `python scripts/build_ramp_rl_thesis_results.py --v4r --audit-only` passes
+   in the originating Windows checkout, but its raw-byte checks of the
+   canonical evidence, source freeze, recovery binding, and sealed-test opening
+   can fail in an LF checkout.
+3. That publication verifier does not verify the nested recovery-source report
+   hash, so it should be strengthened even though the frozen binding value is
+   correct.
+4. This is a portability/tooling limitation in publication verification, not a
+   scientific or provenance invalidation and not a reason to rerun or reseal
+   the test or create a new protocol/evidence identity.
 
-**Required correction:** do not rewrite or rerun the sealed test. Add an
-additive provenance erratum that defines one canonical byte representation
-(for example, UTF-8 canonical JSON with LF) or hashes Git blob bytes. Enforce
-the convention with `.gitattributes`, bind every sidecar and nested recovery
-record using that convention, and make the thesis audit verify the complete
-chain from a clean Windows and LF checkout. Publish both the original
-`7ebd9b2` identity and the additive corrected provenance identity.
+**Required correction:** make an additive provenance/tooling correction before
+final release. The minimal preferred policy is a careful `.gitattributes`
+mapping that preserves historically hashed bytes across platforms:
+`output/ramp_rl_v6/recovered_v4r/recovery_source_manifest.json eol=lf`, with
+the other hashed V4R JSON sidecars set to `eol=crlf` and explicit exceptions
+where their historical bytes differ. Then make the publication audit verify
+the complete nested chain and test it in both Windows and LF checkouts.
+Alternatively, add a supplemental provenance manifest defining canonical JSON
+or Git-blob hashes. No test rerun, reseal, protocol change, model change, or new
+scientific evidence identity is needed. If supplemental hashes are published,
+give that erratum its own provenance-manifest identity while retaining the
+original `7ebd9b2` evidence identity.
 
 ### MAJOR: "counter-ramp" is stronger than the estimand
 
@@ -157,6 +172,17 @@ record. The opening binds validation commit `35969b7`, result
 and decision
 `4d07c14122eeb40601e7a573fc9b8026ea9c347e7932c2cd0923ded7e38af5a1`.
 The test decision then authorizes robustness without retuning.
+
+At recovery commit `d1d4828`, the canonical Git-blob SHA-256 values are:
+
+| Artifact | Canonical committed-stream SHA-256 |
+|---|---|
+| `recovery_transfer_manifest.json` | `d1ccf86acf6ed8f9a58c1d07546d02678f77f1aeab8c1181e09e16a3173357e6` |
+| `scripts/recover_ramp_rl_v3.py` | `18f509b1cb7694d7e854e18846ba25481f0d5c89438f3f55f648ed649f8423a1` |
+| `.gitignore` | `65a5fc37fdb74b89f2421c7a4a02994fb8dca2102755179ddca890fa5e174ca9` |
+
+The V4R recovery binding correctly uses the first two canonical committed-stream
+hashes. All recovered model, normalizer, and artifact hashes remain unchanged.
 
 Original V4 has no `output/ramp_rl_v6/live_v4` evaluation artifact at
 `1ddd4c8` or `7ebd9b2`. Canonical V4R explicitly records
@@ -318,10 +344,14 @@ git ls-files --eol -- output/ramp_rl_v6/recovered_v4r/*.json
 
 python -m unittest tests.ramp_v6.test_v4r_recovered_ensemble -v
 
-python scripts\build_ramp_rl_thesis_results.py --v4r --audit-only
+python scripts/build_ramp_rl_thesis_results.py --v4r --audit-only
 ```
 
 The V4R tests pass without skips in the originating worktree where the ignored
 models remain available. The prospective thesis audit currently reports pass
-on Windows, but it does not detect the nested recovery-source mismatch and is
-not cross-checkout portable; therefore that pass does not clear the blocker.
+in the originating Windows checkout. Its raw-byte checks of
+`canonical_evidence.json`, `source_freeze.json`, `recovery_binding.json`, and
+`sealed_test_opening.json` are not cross-checkout portable, and it does not
+verify the nested recovery-source report hash. These are publication-verifier
+gaps to correct before final release; they do not change the supported headline
+or invalidate the sealed evidence.
