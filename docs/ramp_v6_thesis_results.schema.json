@@ -1,80 +1,73 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "ramp-pure-rl-recovered-v4r-canonical-evidence-v1",
-  "title": "Canonical V4R ramp-thesis evidence",
+  "$id": "ramp-pure-rl-recovered-v4r-canonical-evidence-v2",
+  "title": "Corrected canonical V4R provenance evidence",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "blocked_original_v4_evaluated",
-    "created_at_utc",
+    "hash_contract",
+    "migration_map",
+    "numerical_results_changed",
+    "protocol_controller_model_data_factory_forecast_identities_changed",
     "protocol_id",
-    "protocol_sha256",
-    "recovery_binding_sha256",
-    "robustness",
+    "recovery_binding",
+    "robustness_chain",
     "schema_version",
+    "sealed_test_chain",
     "sealed_test_open_count",
-    "sealed_test_opened",
-    "source_freeze_sha256",
-    "test",
-    "validation"
+    "sealed_test_passed",
+    "source_freeze",
+    "status",
+    "supersedes",
+    "supersession_scope",
+    "training_or_retuning_performed",
+    "validation_chain",
+    "validation_or_test_evaluation_rerun",
+    "validation_passed"
   ],
   "properties": {
     "schema_version": {
-      "const": "ramp-pure-rl-recovered-v4r-canonical-evidence-v1"
+      "const": "ramp-pure-rl-recovered-v4r-canonical-evidence-v2"
     },
-    "blocked_original_v4_evaluated": {"const": false},
-    "created_at_utc": {"type": "string", "format": "date-time"},
+    "status": {"const": "canonical-corrected-provenance"},
     "protocol_id": {
       "const": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r"
     },
-    "protocol_sha256": {
-      "const": "57310edca9e7b1e917be2901010352ad928d124beeaa5a10d21ae5fddd4f78dd"
+    "hash_contract": {"$ref": "#/$defs/canonicalJsonReference"},
+    "migration_map": {"$ref": "#/$defs/canonicalJsonReference"},
+    "source_freeze": {"$ref": "#/$defs/canonicalJsonReference"},
+    "recovery_binding": {"$ref": "#/$defs/canonicalJsonReference"},
+    "validation_chain": {"$ref": "#/$defs/canonicalJsonReference"},
+    "sealed_test_chain": {"$ref": "#/$defs/canonicalJsonReference"},
+    "robustness_chain": {"$ref": "#/$defs/canonicalJsonReference"},
+    "supersedes": {"$ref": "#/$defs/canonicalJsonReference"},
+    "supersession_scope": {"const": "provenance-hash-chain-only"},
+    "numerical_results_changed": {"const": false},
+    "protocol_controller_model_data_factory_forecast_identities_changed": {
+      "const": false
     },
-    "recovery_binding_sha256": {
-      "const": "2c125bce0de306aa6606942dba05d85f975153e33dffc41b5b6d8e4d258e98b4"
-    },
-    "source_freeze_sha256": {
-      "const": "21e3b036be9e111a4af26ac60697e44993fbc681cd38d2b9ec2ad7c9d9848c02"
-    },
-    "sealed_test_opened": {"const": true},
-    "sealed_test_open_count": {"const": 1},
-    "validation": {"$ref": "#/$defs/evidenceRecord"},
-    "test": {"$ref": "#/$defs/evidenceRecord"},
-    "robustness": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["one_gw_total", "c_h_overlapping"],
-      "properties": {
-        "one_gw_total": {"$ref": "#/$defs/evidenceRecord"},
-        "c_h_overlapping": {"$ref": "#/$defs/evidenceRecord"}
-      }
-    }
+    "training_or_retuning_performed": {"const": false},
+    "validation_or_test_evaluation_rerun": {"const": false},
+    "validation_passed": {"const": true},
+    "sealed_test_passed": {"const": true},
+    "sealed_test_open_count": {"const": 1}
   },
   "$defs": {
     "sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "evidenceRecord": {
+    "canonicalJsonReference": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "result", "sha256"],
+      "required": ["algorithm", "path", "representation", "sha256"],
       "properties": {
+        "algorithm": {"const": "sha256"},
         "path": {"type": "string", "minLength": 1},
-        "sha256": {"$ref": "#/$defs/sha256"},
-        "decision_path": {"type": "string", "minLength": 1},
-        "decision_sha256": {"$ref": "#/$defs/sha256"},
-        "result": {
-          "type": "object",
-          "required": [
-            "protocol_id",
-            "protocol_sha256",
-            "mean_incremental_ramp_impact",
-            "energy_cost_ratio",
-            "per_market_macro",
-            "success_gate"
-          ]
-        }
+        "representation": {
+          "const": "canonical-json-utf8-sort-compact-v1"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"}
       }
     }
   }

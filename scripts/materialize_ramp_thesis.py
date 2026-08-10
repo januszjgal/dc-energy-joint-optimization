@@ -14,6 +14,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from ramp_rl.provenance import (  # noqa: E402
+    CANONICAL_JSON_REPRESENTATION,
+    HASH_CONTRACT_ID,
+)
 from ramp_rl.v4r_thesis import (  # noqa: E402
     DEFAULT_CANONICAL,
     EXPECTED_CANONICAL_SHA256,
@@ -29,7 +33,7 @@ from scripts.validate_ramp_thesis import validate_text  # noqa: E402
 DEFAULT_SOURCE = ROOT / "thesis_ramp_v6.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.md"
 EXPECTED_TEMPLATE_SHA256 = (
-    "ba215bbf0cd2645591d8a1a9e02e32aef64407662b1de2c13a73506ee88abd44"
+    "49c4892a10e5d6bbd73608ef05b5768a6a1af3134d9b41fa06d9ee8e1ed44428"
 )
 MARKET_LABELS = {
     "CAISO_NP15": "CAISO NP15",
@@ -78,13 +82,14 @@ def render_market_table(evidence: dict[str, Any]) -> str:
     validation = evidence["validation"]["result"]["per_market_macro"]
     test = evidence["test"]["result"]["per_market_macro"]
     rows = [
-        "| Evaluated market | Validation impact | Sealed-test impact | Test direction |",
+        "| Evaluated market | Validation impact | Sealed-test impact | Test interpretation |",
         "|---|---:|---:|---|",
     ]
     for market in MARKET_LABELS:
         rows.append(
             f"| {MARKET_LABELS[market]} | {fmt(validation[market], 11)} | "
-            f"{fmt(test[market], 11)} | counter-ramp |"
+            f"{fmt(test[market], 11)} | reduced modeled data-center contribution "
+            "to squared normalized grid ramps |"
         )
     return "\n".join(rows)
 
@@ -160,6 +165,8 @@ def render_tokens(evidence: dict[str, Any]) -> dict[str, str]:
         "PROTOCOL_ID": f"`{EXPECTED_PROTOCOL_ID}`",
         "PROTOCOL_SHA256": f"`{EXPECTED_PROTOCOL_SHA256}`",
         "SOURCE_COMMIT": f"`{EXPECTED_SOURCE_COMMIT}`",
+        "HASH_CONTRACT_ID": f"`{HASH_CONTRACT_ID}`",
+        "CANONICAL_REPRESENTATION": f"`{CANONICAL_JSON_REPRESENTATION}`",
         "CANONICAL_EVIDENCE_SHA256": f"`{EXPECTED_CANONICAL_SHA256}`",
         "CLAIM_LEDGER_SHA256": f"`{ledger_sha}`",
         "SPLIT_RESULTS_TABLE": render_split_table(evidence),

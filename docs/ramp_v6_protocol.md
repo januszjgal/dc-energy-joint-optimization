@@ -16,7 +16,8 @@ issue timestamp and vintage ID. `forecast_issue_time_utc` must not exceed the
 controller timestamp. Realized future demand and real-time price are not
 policy inputs.
 
-The primary study uses six independent market sites at 100 MW/site. The core
+The primary study uses six separately sourced market/BA series at 100 MW/site.
+They are fixed evaluated cases, not statistically independent samples. The core
 supports arbitrary N and multiple sites attached to one market; site power is
 summed exactly once before market ramp scoring. Physical sensitivities scale
 rated MW, compute capacity, arrivals, and warm power together:

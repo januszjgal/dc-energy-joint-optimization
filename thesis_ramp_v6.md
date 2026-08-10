@@ -20,9 +20,11 @@ thesis asks whether a controller whose learned preferences originate entirely
 in reward-only reinforcement learning can reduce a fleet's incremental
 contribution to physical 1 h and 3 h net-load ramps while preserving exact
 workload service and a day-ahead energy-cost constraint. The study uses a common
-hourly UTC panel from September 2025 through April 2026 for six independently
-observed US markets: CAISO NP15, ERCOT North, NYISO Zone J, MISO Minnesota Hub,
-SPP North Hub, and ISO New England NEMA. September-January is training,
+hourly UTC panel from September 2025 through April 2026 for six separately
+sourced market/balancing-authority series: CAISO NP15, ERCOT North, NYISO Zone J,
+MISO Minnesota Hub, SPP North Hub, and ISO New England NEMA. These are fixed
+market cases, not statistically independent samples or facility-level grids;
+hub/zonal price and physical-stress geographies can differ. September-January is training,
 February is validation, and March-April is sealed test. PJM DOM / Northern
 Virginia was not evaluated because the required credential was unavailable.
 
@@ -61,7 +63,7 @@ emissions, or renewable mismatch by moving workload to favorable places and
 times. Those objectives are useful, but an immediate price signal does not
 directly identify whether controllable demand anticipates a future physical
 ramp. A scheduler may save money while amplifying a balancing-area net-load
-change, or it may counter a ramp without lowering a wholesale settlement proxy.
+change, or it may attenuate ramp magnitude without lowering a wholesale settlement proxy.
 This thesis therefore separates a physical ramp estimand from a wholesale
 day-ahead LMP cost constraint.
 
@@ -69,8 +71,10 @@ The data-center contribution is evaluated against the native market trajectory,
 not against zero load. For market \(m\), time \(t\), and horizon \(h\), the
 question is whether adding modeled data-center power makes the squared,
 market-normalized net-load change larger or smaller than it would have been
-under native demand. Negative incremental impact means counter-ramping; positive
-impact means amplification.
+under native demand. Negative incremental impact means the modeled data-center
+load reduced squared normalized ramp magnitude; it does not by itself prove
+opposite-direction action or delivery of a balancing service. Positive impact
+means amplification.
 
 ## 1.2 Why pure-RL attribution matters
 
@@ -103,8 +107,8 @@ The central question is:
 
 The contributions are:
 
-1. an independently sourced six-market hourly panel with explicit geography,
-   licensing, missing-data, and causal-forecast contracts;
+1. six separately sourced market/BA series with explicit price-versus-physical
+   geography, licensing, missing-data, and causal-forecast contracts;
 2. an incremental squared-ramp objective with interpretable 1 h/3 h p95 and
    maximum adjusted-ramp reporting;
 3. a pure-RL attribution boundary that excludes demonstrations, imitation,
@@ -146,7 +150,7 @@ V6 preserved every failure as evidence:
 | V2-A | all three fresh seeds failed at least one strict gate | shaped retry rejected |
 | V2-B | reporting mean remained weak and strict gates failed | retry rejected |
 | V3 | four of five seeds passed; seed 2805 harmed MISO slightly | conjunctive validation failure; test stayed closed |
-| Original V4 | lost binaries prevented trustworthy evaluation | blocked and explicitly unevaluated |
+| Original V4 | N/A: lost binaries prevented trustworthy evaluation | blocked and explicitly not evaluated |
 | V4R | recovered-policy equal-action ensemble passed validation | new recovered-container identity authorized one test opening |
 
 ![Figure 1. Protocol progression with failures, operational block, and V4R validation success.](docs/figures/ramp_v6/protocol_progression.png)
@@ -168,27 +172,32 @@ observations on one exact hourly UTC index:
 
 | Site proxy | Day-ahead price | Physical stress geography | Workload cell |
 |---|---|---|---|
-| Northern California | CAISO NP15 | CAISO system | a |
-| North Texas | ERCOT LZ North | ERCOT system | b |
+| Northern California | CAISO NP15 | CAISO BA gross demand and renewables via EIA-930 fallback | a |
+| North Texas | ERCOT LZ North | ERCOT native load plus hourly wind/solar | b |
 | New York City | NYISO Zone J | Zone J load with NYCA renewable context | c |
-| Minnesota | MISO Minnesota Hub | MISO system | d |
-| SPP North | SPP North Hub | SPP balancing authority | e |
-| Boston/NEMA | ISO-NE location 4008 | ISO New England balancing authority | f |
+| Minnesota | MISO Minnesota Hub | MISO BA gross demand and renewables via EIA-930 fallback | d |
+| SPP North | SPP North Hub | SPP BA gross demand and renewables via EIA-930 fallback | e |
+| Boston/NEMA | ISO-NE location 4008 | ISO-NE BA gross demand and renewables via EIA-930 fallback | f |
 
 ![Figure 2. Six-market study design and fixed calendar split.](docs/figures/ramp_v6/six_market_study_design.png)
 
-These are independent market series, not wall-time shifts of one CAISO trace.
-They are nevertheless fixed cases rather than random draws from all US grids.
-The market-level physical geography is not a facility feeder, utility territory,
-or local reliability zone. PJM DOM / Northern Virginia was not evaluated and
-has no result in any aggregate.
+These are separately sourced market/BA series, not wall-time shifts of one CAISO
+trace. They are fixed cases rather than statistically independent or iid draws
+from all US grids. Their wholesale price products are hub/zonal series, while
+physical stress can be balancing-authority or system scale; neither represents a
+facility feeder, utility territory, or local reliability zone. PJM DOM /
+Northern Virginia was not evaluated and has no result in any aggregate.
 
 ## 3.2 Source and licensing boundaries
 
 Day-ahead price comes from operator products at the stated hub or zone.
 Physical demand and renewable components use operator products where complete
-and defensible; documented same-balancing-authority EIA bulk fallback is used
-only where the operator historical physical tuple is unavailable. Each source
+and defensible. ERCOT and NYISO use the selected operator physical products;
+CAISO, MISO, SPP, and ISO-NE use a documented same-balancing-authority EIA bulk fallback
+because complete, timestamp-defensible operator history was unavailable. In
+particular, CAISO Today's Outlook lacked an authoritative UTC field and SPP
+GenMix365 had 67 incomplete five-minute hours, which could not be interpolated.
+Each source
 descriptor records product, geography, cadence, units, timezone, revision
 status, authentication, retrieval query/time, raw hash, quality flags, and
 redistribution policy. Restricted raw/native/panel files remain local and
@@ -337,7 +346,11 @@ while there was no new V4R training.
 
 **Frozen V4R source commit:** {{CANONICAL_V4R:SOURCE_COMMIT}}
 
-**Canonical evidence SHA-256:** {{CANONICAL_V4R:CANONICAL_EVIDENCE_SHA256}}
+**Provenance hash contract:** {{CANONICAL_V4R:HASH_CONTRACT_ID}}
+
+**Canonical JSON representation:** {{CANONICAL_V4R:CANONICAL_REPRESENTATION}}
+
+**Canonical evidence SHA-256 under that representation:** {{CANONICAL_V4R:CANONICAL_EVIDENCE_SHA256}}
 
 **Generated claim-ledger SHA-256:** {{CANONICAL_V4R:CLAIM_LEDGER_SHA256}}
 
@@ -422,7 +435,8 @@ reliability claim. PJM and Northern Virginia remain absent.
 
 The controller is price-taking: data-center action does not change LMP, unit
 commitment, reserves, or network constraints. This is most plausible for the
-600 MW primary case. The 1 GW-total case is a bounded sensitivity, while larger
+600 MW primary case. The 1 GW-total case is a price-taking scale sensitivity, not evidence that price
+or network response would remain exogenous at that penetration; larger
 penetration overrides are stress tests.
 
 ## 8.2 Data and forecast horizon
@@ -461,11 +475,22 @@ different results.
 ## 9.1 Committed and local evidence
 
 The final publication path is
-`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json`. Recovery binding,
-source freeze, validation/test decisions, single-open records, embedded raw
-results, and post-selection robustness records reside beside it. The generated
-claim ledger and CSV tables are under
-`output/ramp_rl_v6/recovered_v4r/thesis/`.
+`output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`. Its
+hash contract is `dc-energy-provenance-sha256-v2`. JSON evidence identities use
+`canonical-json-utf8-sort-compact-v1`; tracked non-JSON source text uses
+Git-blob bytes at an explicit commit and path, never platform-dependent
+working-tree bytes. Binary and model-container identities use raw bytes.
+Recovery binding, source freeze, validation/test chains, single-open records,
+and post-selection robustness chains reside beside it. The generated claim
+ledger and CSV tables are under
+`output/ramp_rl_v6/recovered_v4r_resealed_v2/thesis/`.
+
+The reseal has `provenance-hash-chain-only` supersession scope. It supersedes
+only platform-dependent checkout hashes in the original evidence chain; the
+protocol, chronology, controller, trained models, data, forecasts, numerical
+metrics, strict decisions, and sealed-test opening are unchanged. The original
+evidence remains append-only historical provenance rather than the publication
+hash authority.
 
 Recovered model binaries may be intentionally local or unavailable in a fresh
 clone because of size or licensing constraints. Their required SHA-256 values,
@@ -480,18 +505,18 @@ Run from the repository root in this worktree:
 
 ```powershell
 python scripts\build_ramp_rl_thesis_results.py --v4r `
-  output\ramp_rl_v6\recovered_v4r\canonical_evidence.json `
-  --output output\ramp_rl_v6\recovered_v4r\thesis
+  output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json `
+  --output output\ramp_rl_v6\recovered_v4r_resealed_v2\thesis
 
 python scripts\build_ramp_thesis_figures.py
 
 python scripts\materialize_ramp_thesis.py `
-  --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json `
+  --results output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json `
   --output thesis_paper.md
 
 python scripts\validate_ramp_thesis.py `
   --source thesis_paper.md `
-  --results output\ramp_rl_v6\recovered_v4r\canonical_evidence.json
+  --results output\ramp_rl_v6\recovered_v4r_resealed_v2\canonical_evidence.json
 
 python scripts\build_final_thesis.py `
   --source thesis_paper.md `
@@ -533,8 +558,9 @@ exact simulated service and deadlines, and required no emergency action.
 
 The result supports a narrow conclusion: under the frozen six-market,
 price-taking simulator and fixed 2025-2026 panel, pure-RL-origin preferences
-with constraint-only decoding can anticipate and counter measured market-scale
-ramps. It does not establish feeder relief, endogenous market effects, retail
+with constraint-only decoding reduced the modeled data-center contribution to
+squared normalized grid ramps. It does not establish opposite-direction action,
+balancing-service delivery, feeder relief, endogenous market effects, retail
 savings, universal US-grid generalization, or future-year performance.
 
 # References
