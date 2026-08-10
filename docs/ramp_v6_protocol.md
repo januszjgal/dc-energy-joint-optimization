@@ -69,10 +69,25 @@ is the negative weighted dimensionless stress score. It is not labeled or
 interpreted as dollars.
 
 Actual hourly DA energy cost is separately
-`LMP_USD_per_MWh * P_MW * 1h`. Evaluation reports cost-budget compliance and
-Pareto status, per-market and macro ramp impact, native/adjusted maximum and
-p95 1h/3h ramps in MW and fraction-S/hour, tail burden, safety, P/S, P/D,
-status-quo/no-proxy comparators, and forecast-error strata.
+`LMP_USD_per_MWh * P_MW * 1h`. The primary incremental objective remains the
+per-market 0.40/0.60 weighted squared impact above. Physical p95 and maximum
+telemetry instead pools `abs(a_h)` over every market and scored timestep with
+equal market-timestep weight. Signed cross-market means are compatibility
+telemetry only and are never inputs to physical p95 or maximum metrics.
+
+The preregistered per-market gate asks whether each policy impact is negative
+relative to the native grid ramp. That gate is not a claim that policy beats
+the operational status quo in each market. Evaluation therefore reports a
+separate policy-versus-status-quo block with overall and per-market deltas,
+better-market count/share, and the diagnostic
+`every_market_outperforms_status_quo`.
+
+The normal decoder adjustment is the Euclidean distance between requested and
+executed vectors in decoded `2N+1` work-allocation coordinates: N service
+amounts, one total batch amount, and N batch-destination amounts. Its units are
+compute-work units per hourly decision. Raw preference logits are never
+subtracted from allocations. Normal projection telemetry is reported
+separately from the emergency fallback path.
 
 ## Deterministic verification
 
@@ -85,5 +100,7 @@ python scripts\run_ramp_v6_fixture.py --scale-multiplier 10 --output-root output
 
 The committed fixture evidence is an implementation check only. Miniature
 random-initialized PPO/SAC metrics are smoke evidence, not a trained-policy
-claim. The final long RL campaign has not been run and remains blocked only on
-the energy-model v3 ramp panel described in `docs/ramp_rl_v6.md`.
+claim. The later V1-V4R campaign lineage, immutable single-open result, and
+additive post-hoc metric correction are described in `docs/ramp_rl_v6.md` and
+`docs/ramp_v6_result_handoff.md`; fixture outputs must not be substituted for
+that evidence.

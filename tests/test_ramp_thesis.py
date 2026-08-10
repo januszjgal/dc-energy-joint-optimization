@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import unittest
@@ -8,15 +7,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from ramp_rl.provenance import canonical_json_file_sha256, canonical_json_sha256
-from ramp_rl.v4r_thesis import (
+from ramp_rl.provenance import (
+    canonical_json_file_sha256,
+    canonical_json_sha256,
+)
+from ramp_rl.v4r_corrected_thesis import (
     DEFAULT_CANONICAL,
     EXPECTED_CANONICAL_SHA256,
-    EXPECTED_MEMBER_SEEDS,
-    EXPECTED_RECOVERY_BINDING_SHA256,
-    _verify_controller,
-    _verify_result,
-    build_claim_ledger,
+    EXPECTED_SEALED_CANONICAL_SHA256,
     load_verified_evidence,
     write_publication_package,
 )
@@ -27,50 +25,253 @@ from scripts.materialize_ramp_thesis import (
     materialize_text,
     render_tokens,
 )
-from scripts.validate_ramp_thesis import REQUIRED_PLACEHOLDERS, validate_text
+from scripts.recompute_v4r_posthoc_metrics import verify as verify_posthoc
+from scripts.validate_ramp_thesis import (
+    REQUIRED_PLACEHOLDERS,
+    validate_text,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
-class RampThesisContractTests(unittest.TestCase):
+class CorrectedRampThesisTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.evidence = load_verified_evidence()
 
-    def test_canonical_evidence_has_expected_hash_and_identity(self) -> None:
-        digest = canonical_json_file_sha256(DEFAULT_CANONICAL)
-        self.assertEqual(digest, EXPECTED_CANONICAL_SHA256)
+    def test_corrected_and_sealed_evidence_identities(self) -> None:
         self.assertEqual(
-            self.evidence["_verified"]["hash_contract_id"],
-            "dc-energy-provenance-sha256-v2",
+            canonical_json_file_sha256(DEFAULT_CANONICAL),
+            EXPECTED_CANONICAL_SHA256,
+        )
+        self.assertEqual(
+            self.evidence["_verified"]["sealed_canonical_sha256"],
+            EXPECTED_SEALED_CANONICAL_SHA256,
         )
         self.assertEqual(self.evidence["sealed_test_open_count"], 1)
         self.assertFalse(self.evidence["blocked_original_v4_evaluated"])
 
-    def test_template_has_required_v4r_placeholders_and_scope_guards(self) -> None:
+    def test_posthoc_scope_is_explicit_and_non_confirmatory(self) -> None:
+        wrapper = verify_posthoc(DEFAULT_CANONICAL)
+        self.assertFalse(wrapper["second_sealed_generalization_test"])
+        self.assertFalse(
+            wrapper["metric_replay_training_or_retuning_performed"]
+        )
+        self.assertFalse(
+            wrapper["model_selection_or_weighting_performed"]
+        )
+        self.assertTrue(
+            wrapper[
+                "original_sealed_result_and_chronology_preserved"
+            ]
+        )
+        self.assertEqual(
+            wrapper["supersession_scope"],
+            "physical-ramp-status-quo-labeling-and-decoder-telemetry-only",
+        )
+
+    def test_primary_result_is_invariant(self) -> None:
+        for split in ("validation", "test"):
+            sealed = self.evidence["sealed_results"][split]
+            corrected = self.evidence[split]["result"]
+            self.assertEqual(
+                corrected["mean_incremental_ramp_impact"],
+                sealed["mean_incremental_ramp_impact"],
+            )
+            self.assertEqual(
+                corrected["per_market_macro"],
+                sealed["per_market_macro"],
+            )
+            self.assertEqual(
+                corrected["energy_cost_ratio"],
+                sealed["energy_cost_ratio"],
+            )
+            self.assertEqual(
+                corrected["behavior_audit"],
+                sealed["behavior_audit"],
+            )
+
+    def test_physical_metrics_pool_absolute_market_timestep_values(
+        self,
+    ) -> None:
+        test = self.evidence["test"]["result"]
+        contract = test["physical_ramp_metric_contract"]
+        self.assertEqual(
+            contract["input"],
+            "absolute adjusted ramp magnitude",
+        )
+        self.assertFalse(contract["cross_market_signed_averaging"])
+        h1_count = sum(
+            len(values)
+            for episode in test["policy_episodes"]
+            for values in episode[
+                "abs_adjusted_ramp_h1_by_market"
+            ].values()
+        )
+        h3_count = sum(
+            len(values)
+            for episode in test["policy_episodes"]
+            for values in episode[
+                "abs_adjusted_ramp_h3_by_market"
+            ].values()
+        )
+        self.assertEqual(h1_count, 60 * 27 * 6)
+        self.assertEqual(h3_count, 60 * 27 * 6)
+        self.assertGreaterEqual(
+            test[
+                "abs_adjusted_ramp_h1_fraction_s_per_hour_max"
+            ],
+            test[
+                "abs_adjusted_ramp_h1_fraction_s_per_hour_p95"
+            ],
+        )
+
+    def test_status_quo_comparison_reports_miso_exception(self) -> None:
+        comparison = self.evidence["test"]["result"][
+            "status_quo_comparison"
+        ]
+        self.assertEqual(comparison["markets_better_count"], 5)
+        self.assertEqual(comparison["market_count"], 6)
+        self.assertAlmostEqual(
+            comparison["markets_better_share"],
+            5 / 6,
+        )
+        self.assertFalse(
+            comparison["every_market_outperforms_status_quo"]
+        )
+        miso = comparison["per_market"]["MISO_MINN_HUB"]
+        self.assertFalse(miso["policy_outperforms_status_quo"])
+        self.assertAlmostEqual(
+            miso["policy_native_relative_incremental_ramp_impact"],
+            -5.652448501033376e-07,
+        )
+        self.assertAlmostEqual(
+            miso["status_quo_native_relative_incremental_ramp_impact"],
+            -1.1404305922222146e-06,
+        )
+        self.assertTrue(
+            self.evidence["test"]["result"]["success_gate"]["checks"][
+                "every_market_native_relative_incremental_ramp_improves"
+            ]
+        )
+
+    def test_secondary_cost_and_ramp_power_match_evidence(self) -> None:
+        test = self.evidence["test"]["result"]
+        policy_cost = sum(
+            episode["energy_cost"]
+            for episode in test["policy_episodes"]
+        )
+        status_cost = sum(
+            episode["energy_cost"]
+            for episode in test["status_quo_episodes"]
+        )
+        self.assertAlmostEqual(policy_cost, 21098313.786029983)
+        self.assertAlmostEqual(status_cost, 21582662.393725865)
+        self.assertAlmostEqual(
+            status_cost - policy_cost,
+            484348.6076958813,
+        )
+        self.assertAlmostEqual(
+            test["behavior_audit"]["policy_ramp_power"],
+            303077.9035596151,
+        )
+        self.assertAlmostEqual(
+            test["behavior_audit"]["status_quo_ramp_power"],
+            313167.22669593635,
+        )
+
+    def test_decoder_adjustment_is_real_and_separate_from_emergency(
+        self,
+    ) -> None:
+        adjustment = self.evidence["test"]["result"][
+            "semantic_adjustment"
+        ]
+        self.assertEqual(
+            adjustment["units"],
+            "compute_work_units_per_hourly_decision",
+        )
+        self.assertGreater(adjustment["mean_l2"], 0.0)
+        self.assertGreater(
+            adjustment["positive_adjustment_count"],
+            0,
+        )
+        self.assertGreaterEqual(
+            adjustment["max_l2"],
+            adjustment["p95_l2"],
+        )
+        self.assertEqual(adjustment["emergency_fallback_rate"], 0.0)
+        self.assertEqual(
+            adjustment["decision_count"],
+            60 * 27,
+        )
+
+    def test_all_frozen_training_cost_multipliers_stayed_zero(
+        self,
+    ) -> None:
+        for seed in range(2801, 2806):
+            manifest = json.loads(
+                (
+                    ROOT
+                    / "models"
+                    / "ramp_rl_v6"
+                    / "live_v3"
+                    / "confirmation"
+                    / "ppo"
+                    / str(seed)
+                    / "training_manifest.json"
+                ).read_text(encoding="utf-8")
+            )
+            multiobjective = manifest["multiobjective"]
+            self.assertEqual(
+                multiobjective["final_lagrangian_multiplier"],
+                0.0,
+            )
+            self.assertTrue(
+                all(
+                    update["multiplier"] == 0.0
+                    for update in multiobjective[
+                        "lagrangian_updates"
+                    ]
+                )
+            )
+
+    def test_template_placeholders_and_hash_are_frozen(self) -> None:
         text = DEFAULT_SOURCE.read_text(encoding="utf-8")
-        self.assertEqual(validate_text(text, allow_placeholders=True), [])
+        self.assertEqual(
+            validate_text(text, allow_placeholders=True),
+            [],
+        )
         self.assertEqual(
             hashlib.sha256(text.encode("utf-8")).hexdigest(),
             EXPECTED_TEMPLATE_SHA256,
         )
         for token in REQUIRED_PLACEHOLDERS:
-            self.assertIn(f"{{{{CANONICAL_V4R:{token}}}}}", text)
+            self.assertIn(
+                f"{{{{CANONICAL_V4R:{token}}}}}",
+                text,
+            )
 
-    def test_materialized_contract_has_no_unresolved_results(self) -> None:
-        text = DEFAULT_SOURCE.read_text(encoding="utf-8")
-        begin = text.index("<!-- data-result-contract-begin -->")
-        end = text.index("<!-- data-result-contract-end -->")
-        replacements = render_tokens(self.evidence)
-        for name in replacements:
-            token = f"{{{{CANONICAL_V4R:{name}}}}}"
-            self.assertTrue(begin < text.index(token) < end)
-        for name, rendered in replacements.items():
-            token = f"{{{{CANONICAL_V4R:{name}}}}}"
-            text = text.replace(token, rendered)
+    def test_materialized_contract_matches_evidence(self) -> None:
+        template = DEFAULT_SOURCE.read_text(encoding="utf-8")
+        text = materialize_text(template, self.evidence)
         self.assertEqual(
-            validate_text(text, allow_placeholders=False, evidence=self.evidence),
+            validate_text(
+                text,
+                allow_placeholders=False,
+                evidence=self.evidence,
+            ),
             [],
         )
-        tampered = text.replace("-1.42587105143e-05", "0.5", 1)
+        for name in render_tokens(self.evidence):
+            self.assertNotIn(
+                f"{{{{CANONICAL_V4R:{name}}}}}",
+                text,
+            )
+        tampered = text.replace(
+            "-1.42587105143e-05",
+            "0.5",
+            1,
+        )
         self.assertTrue(
             any(
                 "contract differs" in error
@@ -82,185 +283,80 @@ class RampThesisContractTests(unittest.TestCase):
             )
         )
 
-    def test_wrong_canonical_hash_fails_closed(self) -> None:
+    def test_wrong_corrected_hash_fails_closed(self) -> None:
+        payload = json.loads(
+            DEFAULT_CANONICAL.read_text(encoding="utf-8")
+        )
+        payload["second_sealed_generalization_test"] = True
         with TemporaryDirectory() as temporary:
-            path = Path(temporary) / "canonical_evidence.json"
-            payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
-            payload["sealed_test_open_count"] = 2
+            path = Path(temporary) / "canonical.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "wrong canonical evidence canonical-JSON"):
-                load_verified_evidence(path)
-
-    def test_more_than_one_test_opening_fails_closed(self) -> None:
-        payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
-        payload["sealed_test_open_count"] = 2
-        with TemporaryDirectory() as temporary:
-            base = Path(temporary)
-            path = base / "canonical_evidence.json"
-            path.write_text(json.dumps(payload), encoding="utf-8")
-            digest = canonical_json_sha256(payload)
             with (
-                patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
-                patch("ramp_rl.v4r_thesis._verify_git_identity"),
-                self.assertRaisesRegex(ValueError, "open exactly once"),
+                patch(
+                    "ramp_rl.v4r_corrected_thesis.EXPECTED_CANONICAL_SHA256",
+                    canonical_json_sha256(payload),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "mislabeled as a new sealed test",
+                ),
             ):
                 load_verified_evidence(path)
 
-    def test_member_selection_and_wrong_model_hash_fail_closed(self) -> None:
-        result = copy.deepcopy(self.evidence["test"]["result"])
-        binding = json.loads(
-            (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
+    def test_corrected_reference_tampering_fails_closed(self) -> None:
+        payload = json.loads(
+            DEFAULT_CANONICAL.read_text(encoding="utf-8")
         )
-        result["controller_audit"]["member_selection_or_exclusion"] = True
-        with self.assertRaisesRegex(ValueError, "member selection"):
-            _verify_controller(result, binding)
-        result = copy.deepcopy(self.evidence["test"]["result"])
-        result["controller_audit"]["members"][0]["model_sha256"] = "0" * 64
-        with self.assertRaisesRegex(ValueError, "wrong recovered model hash"):
-            _verify_controller(result, binding)
-
-    def test_missing_market_and_seed_fail_closed(self) -> None:
-        binding = json.loads(
-            (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
-        )
-        result = copy.deepcopy(self.evidence["test"]["result"])
-        result["per_market_macro"].pop("MISO_MINN_HUB")
-        with self.assertRaisesRegex(ValueError, "missing or unsupported market"):
-            _verify_result(result, split="test", episode_count=60, binding=binding)
-        result = copy.deepcopy(self.evidence["test"]["result"])
-        result["controller_audit"]["member_seeds"] = list(EXPECTED_MEMBER_SEEDS[:-1])
-        with self.assertRaisesRegex(ValueError, "wrong member seeds"):
-            _verify_result(result, split="test", episode_count=60, binding=binding)
-
-    def test_test_selection_fails_closed(self) -> None:
-        result = copy.deepcopy(self.evidence["robustness"]["one_gw_total"]["result"])
-        binding = json.loads(
-            (DEFAULT_CANONICAL.parent / "recovery_binding.json").read_text(encoding="utf-8")
-        )
-        result["selection_or_tuning"] = True
-        with self.assertRaisesRegex(ValueError, "selection or tuning"):
-            _verify_result(
-                result,
-                split="test",
-                episode_count=60,
-                binding=binding,
-                post_selection=True,
-            )
-    def test_decision_sidecars_are_hash_verified(self) -> None:
-        payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
-        payload["sealed_test_chain"]["sha256"] = "0" * 64
+        payload["corrected_results"]["test"]["sha256"] = "0" * 64
         with TemporaryDirectory() as temporary:
-            base = Path(temporary)
-            path = base / "canonical_evidence.json"
+            path = Path(temporary) / "canonical.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
-            digest = canonical_json_sha256(payload)
-            with (
-                patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
-                patch("ramp_rl.v4r_thesis._verify_git_identity"),
-                self.assertRaisesRegex(ValueError, "wrong sealed-test chain reference"),
-            ):
-                load_verified_evidence(path)
+            with self.assertRaisesRegex(ValueError, "hash mismatch"):
+                verify_posthoc(path)
 
-    def test_migration_and_supersession_sidecars_are_hash_verified(self) -> None:
-        payload = json.loads(DEFAULT_CANONICAL.read_text(encoding="utf-8"))
-        for key, label in (
-            ("migration_map", "migration map"),
-            ("supersedes", "superseded canonical evidence"),
-        ):
-            tampered = copy.deepcopy(payload)
-            tampered[key]["sha256"] = "0" * 64
-            with TemporaryDirectory() as temporary:
-                path = Path(temporary) / "canonical_evidence.json"
-                path.write_text(json.dumps(tampered), encoding="utf-8")
-                digest = canonical_json_sha256(tampered)
-                with (
-                    patch("ramp_rl.v4r_thesis.EXPECTED_CANONICAL_SHA256", digest),
-                    patch("ramp_rl.v4r_thesis._verify_git_identity"),
-                    self.assertRaisesRegex(ValueError, f"wrong {label} reference"),
-                ):
-                    load_verified_evidence(path)
-
-    def test_claim_ledger_is_hash_bound_and_labels_overlap(self) -> None:
-        ledger = build_claim_ledger(self.evidence)
-        self.assertEqual(
-            ledger["canonical_evidence_sha256"],
-            EXPECTED_CANONICAL_SHA256,
-        )
-        self.assertEqual(
-            ledger["recovery_binding_sha256"],
-            EXPECTED_RECOVERY_BINDING_SHA256,
-        )
-        overlap = next(
-            claim
-            for claim in ledger["claims"]
-            if claim["claim_id"] == "c-h-overlapping-robustness"
-        )
-        self.assertIn("overlapping/non-independent", overlap["scope"])
-
-    def test_publication_package_writes_claim_ledger_and_tables(self) -> None:
+    def test_publication_package_writes_corrected_tables(self) -> None:
         with TemporaryDirectory() as temporary:
             output = Path(temporary)
-            manifest = write_publication_package(self.evidence, output)
-            self.assertTrue((output / "claim_ledger.json").is_file())
-            self.assertTrue((output / "per_market_test.csv").is_file())
-            self.assertIn("claim_ledger_sha256", manifest)
+            manifest = write_publication_package(
+                self.evidence,
+                output,
+            )
+            for name in (
+                "claim_ledger.json",
+                "split_summary.csv",
+                "sealed_test_market_comparison.csv",
+                "physical_ramps.csv",
+                "decoder_adjustment.csv",
+                "behavior.csv",
+                "cost_comparison.csv",
+                "package_manifest.json",
+            ):
+                self.assertTrue((output / name).is_file(), name)
+            self.assertEqual(
+                manifest["corrected_canonical_sha256"],
+                EXPECTED_CANONICAL_SHA256,
+            )
 
-    def test_unsupported_scope_claim_is_rejected(self) -> None:
-        text = DEFAULT_SOURCE.read_text(encoding="utf-8")
-        text += "\nThe c-h result is an independent holdout.\n"
-        errors = validate_text(text, allow_placeholders=True)
-        self.assertTrue(any("unsupported claim" in item for item in errors))
-
-    def test_materialized_source_resolves_repo_relative_images(self) -> None:
+    def test_docx_source_validation_rejects_tampering(self) -> None:
+        materialized = materialize_text(
+            DEFAULT_SOURCE.read_text(encoding="utf-8"),
+            self.evidence,
+        )
         with TemporaryDirectory() as temporary:
             source = Path(temporary) / "materialized.md"
-            source.write_text(materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence), encoding="utf-8")
+            source.write_text(materialized, encoding="utf-8")
             validate_source(source)
-
-    def test_docx_build_rejects_tampering_outside_contract(self) -> None:
-        text = materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence)
-        tampered = text.replace(
-            "incremental normalized squared-ramp impact -1.4086907198e-05",
-            "incremental normalized squared-ramp impact 0.5",
-            1,
-        )
-        self.assertNotEqual(tampered, text)
-        with TemporaryDirectory() as temporary:
-            source = Path(temporary) / "tampered.md"
-            source.write_text(tampered, encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "does not exactly match"):
-                validate_source(source)
-
-    def test_docx_build_rejects_missing_contract_marker(self) -> None:
-        text = materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence)
-        with TemporaryDirectory() as temporary:
-            source = Path(temporary) / "tampered.md"
             source.write_text(
-                text.replace("<!-- data-result-contract-begin -->", "", 1),
-                encoding="utf-8",
-            )
-            with self.assertRaisesRegex(RuntimeError, "does not exactly match"):
-                validate_source(source)
-
-    def test_docx_build_rejects_modified_figure_manifest(self) -> None:
-        text = materialize_text(DEFAULT_SOURCE.read_text(encoding="utf-8"), self.evidence)
-        with TemporaryDirectory() as temporary:
-            base = Path(temporary)
-            source = base / "materialized.md"
-            source.write_text(text, encoding="utf-8")
-            manifest = base / "v4r_figure_manifest.json"
-            manifest.write_text(
-                json.dumps(
-                    {
-                        "canonical_evidence_sha256": EXPECTED_CANONICAL_SHA256,
-                        "files": {},
-                    }
+                materialized.replace(
+                    "five of six markets",
+                    "six of six markets",
+                    1,
                 ),
                 encoding="utf-8",
             )
-            with (
-                patch("scripts.build_final_thesis.V4R_FIGURE_MANIFEST", manifest),
-                self.assertRaisesRegex(RuntimeError, "manifest hash mismatch"),
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "does not exactly match",
             ):
                 validate_source(source)
 

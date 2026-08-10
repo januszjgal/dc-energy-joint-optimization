@@ -18,6 +18,7 @@ from energy_model_v3.calendar import make_calendar
 from energy_model_v3.forecasts import reconstruct_forecasts
 from env.ramp_v6.models import FrozenRampStats, RampProtocol
 from env.ramp_v6.panel import CanonicalMarketPanel
+from ramp_rl.provenance import historical_text_sha256_matches
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = ROOT / "data" / "energy_model_v3"
@@ -30,6 +31,14 @@ ACQUISITION_MANIFEST_SHA256 = (
     "64fd78254dabefa8d525f3e43144b2a50bc12c3050bad21efcc8836e3d11b7e7"
 )
 FORECAST_MODEL = "energy-v3-causal-h3-trajectory-gross-net-ridge-v1"
+CANONICAL_TEXT_SUFFIXES = {
+    ".csv",
+    ".json",
+    ".md",
+    ".py",
+    ".yaml",
+    ".yml",
+}
 MARKET_TO_CELL = {
     "CAISO_NP15": "a",
     "ERCOT_LZ_NORTH": "b",
@@ -46,11 +55,20 @@ PHYSICAL_COLUMNS = {
 
 
 def sha256_file(path: Path) -> str:
+    if path.suffix.lower() in CANONICAL_TEXT_SUFFIXES:
+        payload = path.read_bytes().replace(b"\r\n", b"\n")
+        return hashlib.sha256(payload).hexdigest()
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_matches(path: Path, expected: str) -> bool:
+    if path.suffix.lower() in CANONICAL_TEXT_SUFFIXES:
+        return historical_text_sha256_matches(path, expected)
+    return sha256_file(path) == expected
 
 
 def sha256_json(payload: Any) -> str:
@@ -61,15 +79,15 @@ def sha256_json(payload: Any) -> str:
 def _verify_live_inputs() -> dict[str, Any]:
     panel_manifest_path = LIVE_ROOT / "manifest.json"
     acquisition_path = DATA_ROOT / "provenance" / "live-acquisition-manifest.json"
-    if sha256_file(panel_manifest_path) != PANEL_MANIFEST_SHA256:
+    if not sha256_matches(panel_manifest_path, PANEL_MANIFEST_SHA256):
         raise ValueError("live panel manifest SHA-256 does not match the verified handoff")
-    if sha256_file(acquisition_path) != ACQUISITION_MANIFEST_SHA256:
+    if not sha256_matches(acquisition_path, ACQUISITION_MANIFEST_SHA256):
         raise ValueError("live acquisition manifest SHA-256 does not match the verified handoff")
     manifest = json.loads(panel_manifest_path.read_text(encoding="utf-8"))
     if manifest["market_order"] != list(MARKET_TO_CELL):
         raise ValueError("live panel market order does not match the frozen six-market mapping")
     for name, expected in manifest["outputs"].items():
-        if sha256_file(LIVE_ROOT / name) != expected:
+        if not sha256_matches(LIVE_ROOT / name, expected):
             raise ValueError(f"live panel artifact hash mismatch: {name}")
     return manifest
 
@@ -500,7 +518,10 @@ def validate_factory(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
                 ("canonical_panel", "canonical_panel.csv"),
                 ("fixture", "fixture.json"),
             ):
-                if sha256_file(root / filename) != window["source_hashes"][name]:
+                if not sha256_matches(
+                    root / filename,
+                    window["source_hashes"][name],
+                ):
                     raise ValueError(f"{split} window {name} hash mismatch")
             panel = CanonicalMarketPanel.from_csv(root / "canonical_panel.csv")
             fixture = json.loads((root / "fixture.json").read_text(encoding="utf-8"))

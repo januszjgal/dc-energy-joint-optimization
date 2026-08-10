@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -16,7 +15,11 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
-from ramp_rl.evaluation import _aggregate, _episode
+from ramp_rl.evaluation import (
+    _aggregate,
+    _collect_per_market_metrics,
+    _episode,
+)
 from ramp_rl.evidence import sha256_file, verify_pure_rl_manifest
 
 
@@ -345,18 +348,21 @@ def _policy_episode(
         if tail_emitted_in_steps
         else infos[-1]["terminal_tail_semantic_adjustment_l2"]
     )
-    per_market_incremental: dict[str, list[float]] = defaultdict(list)
-    for info in infos:
-        for market, row in info.get("per_market", {}).items():
-            per_market_incremental[str(market)].append(
-                sum(
-                    weight
-                    * float(
-                        row["windows"][f"{horizon}h"]["incremental_squared_impact"]
-                    )
-                    for horizon, weight in ((1, 0.4), (3, 0.6))
-                )
-            )
+    (
+        per_market_incremental,
+        abs_adjusted_h1_by_market,
+        abs_adjusted_h3_by_market,
+    ) = _collect_per_market_metrics(infos)
+    if not tail_emitted_in_steps:
+        abs_adjusted_h1_by_market.setdefault(
+            "__aggregate_fixture__", []
+        ).extend(abs(float(value)) for value in tail_h1)
+        abs_adjusted_h3_by_market.setdefault(
+            "__aggregate_fixture__", []
+        ).extend(abs(float(value)) for value in tail_h3)
+    semantic_adjustment_values = [
+        float(info["semantic_adjustment_l2"]) for info in infos
+    ] + [float(value) for value in tail_semantic_adjustment]
     return {
         "window_id": window_id,
         "evaluation_seed": seed,
@@ -373,6 +379,8 @@ def _policy_episode(
         "incremental": [float(info["incremental_ramp_impact"]) for info in infos]
         + [float(value) for value in tail_incremental],
         "per_market_incremental": dict(per_market_incremental),
+        "abs_adjusted_ramp_h1_by_market": abs_adjusted_h1_by_market,
+        "abs_adjusted_ramp_h3_by_market": abs_adjusted_h3_by_market,
         "energy_cost": sum(float(info["energy_cost"]) for info in infos)
         + sum(float(value) for value in tail_energy),
         "status_quo_energy_cost": sum(
@@ -398,10 +406,8 @@ def _policy_episode(
         )
         + sum(bool(value) for value in tail_emergency),
         "step_count": len(infos) + len(tail_emergency),
-        "semantic_adjustment_l2": sum(
-            float(info["semantic_adjustment_l2"]) for info in infos
-        )
-        + sum(float(value) for value in tail_semantic_adjustment),
+        "semantic_adjustment_l2_values": semantic_adjustment_values,
+        "semantic_adjustment_l2": sum(semantic_adjustment_values),
         "deferrable_pre_service": sum(
             float(info["deferrable_pre_service"]) for info in infos
         ),

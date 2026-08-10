@@ -13,6 +13,9 @@ HASH_CONTRACT_ID = "dc-energy-provenance-sha256-v2"
 CANONICAL_JSON_REPRESENTATION = "canonical-json-utf8-sort-compact-v1"
 GIT_BLOB_REPRESENTATION = "git-blob-bytes-v1"
 RAW_BYTES_REPRESENTATION = "raw-bytes-v1"
+UTF8_LINE_ENDING_EQUIVALENT_REPRESENTATION = (
+    "utf8-raw-or-lf-or-crlf-bytes-v1"
+)
 
 
 def sha256_bytes(content: bytes) -> str:
@@ -25,6 +28,22 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def line_ending_sha256_candidates(path: Path) -> set[str]:
+    """Hash exact bytes and the same UTF-8 text under LF/CRLF checkout forms."""
+    raw = path.read_bytes()
+    lf = raw.replace(b"\r\n", b"\n")
+    crlf = lf.replace(b"\n", b"\r\n")
+    return {
+        sha256_bytes(raw),
+        sha256_bytes(lf),
+        sha256_bytes(crlf),
+    }
+
+
+def historical_text_sha256_matches(path: Path, expected: str) -> bool:
+    return expected in line_ending_sha256_candidates(path)
 
 
 def canonical_json_bytes(payload: Any) -> bytes:

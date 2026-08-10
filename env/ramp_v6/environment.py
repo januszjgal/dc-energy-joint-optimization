@@ -20,7 +20,12 @@ from env.ramp_v6.models import (
     WorkloadTrace,
 )
 from env.ramp_v6.panel import CanonicalMarketPanel
-from env.ramp_v6.projection import ProjectedAction, project_action
+from env.ramp_v6.projection import (
+    SEMANTIC_ADJUSTMENT_COORDINATE_ID,
+    SEMANTIC_ADJUSTMENT_UNITS,
+    ProjectedAction,
+    project_action,
+)
 from env.ramp_v6.reward import closed_window_terms
 from ramp_rl.contract import CONTRACT_VERSION, SEMANTIC_ACTION_ID
 
@@ -143,6 +148,24 @@ class RampAwareEnv(gym.Env):
             "action_shape": list(self.action_space.shape),
             "action_low": self.action_space.low.tolist(),
             "action_high": self.action_space.high.tolist(),
+            "physical_ramp_metric_contract": {
+                "coordinate": "per_market_per_timestep",
+                "statistic_input": "absolute_adjusted_ramp_magnitude",
+                "units": "fraction_of_market_training_q95_gross_demand_per_hour",
+                "cross_market_signed_averaging": False,
+            },
+            "metric_compatibility_aliases": {
+                "ramp_h1_adjusted": (
+                    "legacy_signed_cross_market_mean_adjusted_ramp_h1_fraction_s_per_hour"
+                ),
+                "ramp_h3_adjusted": (
+                    "legacy_signed_cross_market_mean_adjusted_ramp_h3_fraction_s_per_hour"
+                ),
+            },
+            "semantic_adjustment_coordinate_id": (
+                SEMANTIC_ADJUSTMENT_COORDINATE_ID
+            ),
+            "semantic_adjustment_units": SEMANTIC_ADJUSTMENT_UNITS,
         }
 
     def set_lagrangian_multiplier(self, value: float) -> None:
@@ -574,6 +597,8 @@ class RampAwareEnv(gym.Env):
                 "certificate_violations",
                 "emergency_feasibility",
                 "semantic_adjustment_l2",
+                "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market",
+                "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market",
             )
             for field in terminal_fields:
                 info[f"terminal_tail_{field}"] = [item[field] for item in tail]
@@ -605,6 +630,8 @@ class RampAwareEnv(gym.Env):
         total_da_cost = 0.0
         ramp_h1: list[float] = []
         ramp_h3: list[float] = []
+        abs_ramp_h1: list[float] = []
+        abs_ramp_h3: list[float] = []
         incremental_by_market: list[float] = []
         realized_ramp_power = 0.0
         deferrable_pre_service = 0.0
@@ -643,6 +670,9 @@ class RampAwareEnv(gym.Env):
                         - self._market_power_history[market][-(horizon + 1)]
                     ),
                     **terms.__dict__,
+                    "adjusted_abs_fraction_s_per_hour": abs(
+                        terms.adjusted_fraction_s_per_hour
+                    ),
                 }
                 weighted_impact += (
                     self.protocol.ramp_weights[horizon]
@@ -654,10 +684,16 @@ class RampAwareEnv(gym.Env):
                 )
                 if horizon == 1:
                     ramp_h1.append(terms.adjusted_fraction_s_per_hour)
+                    abs_ramp_h1.append(
+                        abs(terms.adjusted_fraction_s_per_hour)
+                    )
                     if terms.native_fraction_s_per_hour > 0.0:
                         realized_ramp_power += market_power[market]
                 else:
                     ramp_h3.append(terms.adjusted_fraction_s_per_hour)
+                    abs_ramp_h3.append(
+                        abs(terms.adjusted_fraction_s_per_hour)
+                    )
             da_cost = (
                 market_power[market] * float(row["da_lmp_usd_per_mwh"])
             )
@@ -729,6 +765,9 @@ class RampAwareEnv(gym.Env):
         )
         if service_unserved <= self.protocol.tolerance:
             service_unserved = 0.0
+        semantic_adjustment_l2 = projected.semantic_adjustment_l2(
+            self.protocol.tolerance
+        )
         batch_unfinished = (
             0.0 if self.queue.total <= self.protocol.tolerance else self.queue.total
         )
@@ -750,6 +789,15 @@ class RampAwareEnv(gym.Env):
             "da_energy_cost_usd": total_da_cost,
             "ramp_h1_adjusted": float(np.mean(ramp_h1)),
             "ramp_h3_adjusted": float(np.mean(ramp_h3)),
+            "legacy_signed_cross_market_mean_adjusted_ramp_h1_fraction_s_per_hour": float(
+                np.mean(ramp_h1)
+            ),
+            "legacy_signed_cross_market_mean_adjusted_ramp_h3_fraction_s_per_hour": float(
+                np.mean(ramp_h3)
+            ),
+            "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": abs_ramp_h1,
+            "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": abs_ramp_h3,
+            "physical_ramp_market_order": list(self.panel.markets),
             "incremental_ramp_impact": weighted_impact,
             "energy_cost": total_da_cost,
             "status_quo_energy_cost": status_quo_cost,
@@ -758,13 +806,22 @@ class RampAwareEnv(gym.Env):
             "batch_expired": 0.0,
             "certificate_violations": 0,
             "emergency_feasibility": False,
-            "semantic_adjustment_l2": 0.0,
+            "semantic_adjustment_l2": semantic_adjustment_l2,
+            "semantic_adjustment_applied": (
+                semantic_adjustment_l2 > self.protocol.tolerance
+            ),
+            "semantic_adjustment_coordinate_id": (
+                SEMANTIC_ADJUSTMENT_COORDINATE_ID
+            ),
+            "semantic_adjustment_units": SEMANTIC_ADJUSTMENT_UNITS,
             "action_provenance": action_provenance,
             "terminal_work": batch_unfinished,
             "deferrable_pre_service": deferrable_pre_service,
             "dc_power_during_realized_ramp": realized_ramp_power,
             "step_ramp_h1_adjusted": ramp_h1,
             "step_ramp_h3_adjusted": ramp_h3,
+            "step_abs_adjusted_ramp_h1_fraction_s_per_hour": abs_ramp_h1,
+            "step_abs_adjusted_ramp_h3_fraction_s_per_hour": abs_ramp_h3,
             "step_incremental_ramp_impact": incremental_by_market,
             "step_energy_cost": [
                 per_market[market]["da_energy_cost_usd"]

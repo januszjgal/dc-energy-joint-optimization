@@ -207,11 +207,17 @@ calendar and validated local panel. PJM DOM / Northern Virginia remains
 credential-blocked, was not evaluated, and is excluded from every result and
 claim.
 
-The final ramp-aware publication consumes the hash-bound derivative at
-`output/ramp_rl_v6/recovered_v4r/canonical_evidence.json` (SHA-256
-`b1742a2e753d9a899be256667c80679cbfcf2da4cf6056a6b471d42e66ee7b30`).
-The V4R thesis build validates the committed factory/source identities and does
-not reacquire, interpolate, retrain, or retune data or models.
+The final ramp-aware publication consumes the authoritative post-hoc telemetry
+wrapper at
+`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json`.
+That wrapper preserves and references the immutable single-open result at
+`output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`
+(canonical-JSON SHA-256
+`f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b`).
+The correction changes physical-ramp aggregation, status-quo labeling, and
+decoder telemetry only; it is not a second sealed test. The thesis build
+validates the committed factory/source identities and does not reacquire,
+interpolate, retune, or change policy parameters.
 
 Raw operator downloads, restricted native products, the full local panel, and
 recovered model containers may be absent from a fresh clone because of

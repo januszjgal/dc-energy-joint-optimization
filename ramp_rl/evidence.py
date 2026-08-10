@@ -196,6 +196,10 @@ def record_pareto_sensitivities(
 def evaluate_success_gate(summary: dict[str, Any], *, split: str) -> dict[str, Any]:
     if split not in {"validation", "test"}:
         raise ValueError("success gates apply only to validation or sealed test")
+    per_market_native_relative = summary.get(
+        "per_market_policy_native_relative_incremental_ramp_impact",
+        summary["per_market_macro"],
+    )
     checks = {
         "exact_service": float(summary["service_unserved"]) == 0.0,
         "exact_batch_completion": float(summary["batch_unfinished"]) == 0.0,
@@ -203,7 +207,10 @@ def evaluate_success_gate(summary: dict[str, Any], *, split: str) -> dict[str, A
         "zero_terminal_work": float(summary["terminal_work"]) == 0.0,
         "zero_certificate_violations": int(summary["certificate_violations"]) == 0,
         "mean_ramp_improves": float(summary["mean_incremental_ramp_impact"]) < 0.0,
-        "every_market_ramp_improves": all(float(value) < 0.0 for value in summary["per_market_macro"].values()),
+        "every_market_native_relative_incremental_ramp_improves": all(
+            float(value) < 0.0
+            for value in per_market_native_relative.values()
+        ),
         "primary_energy_budget": float(summary["energy_cost_ratio"]) <= 1.02,
         "emergency_path_below_one_percent": float(summary["emergency_feasibility_rate"]) < 0.01,
         "no_future_leakage": summary["future_leakage_detected"] is False,
@@ -218,4 +225,10 @@ def evaluate_success_gate(summary: dict[str, Any], *, split: str) -> dict[str, A
         "failure_is_publishable": True,
         "iterations_may_use": ["train", "validation"],
         "test_tuning_prohibited": True,
+        "compatibility_aliases": {
+            "every_market_ramp_improves": (
+                "every_market_native_relative_incremental_ramp_improves"
+            )
+        },
+        "status_quo_outperformance_is_diagnostic_not_preregistered_gate": True,
     }

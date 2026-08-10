@@ -11,6 +11,10 @@ import numpy as np
 from gymnasium import spaces
 
 from ramp_rl.contract import CONTRACT_VERSION, SEMANTIC_ACTION_ID, EnvRequest
+from env.ramp_v6.projection import (
+    SEMANTIC_ADJUSTMENT_COORDINATE_ID,
+    SEMANTIC_ADJUSTMENT_UNITS,
+)
 
 INTERVALS_PER_HOUR = 12
 HISTORY_STEPS = 3 * INTERVALS_PER_HOUR
@@ -69,6 +73,16 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
             "action_shape": list(self.action_space.shape),
             "action_low": self.action_space.low.tolist(),
             "action_high": self.action_space.high.tolist(),
+            "physical_ramp_metric_contract": {
+                "coordinate": "synthetic_single_market_per_timestep",
+                "statistic_input": "absolute_adjusted_ramp_magnitude",
+                "units": "fixture_ramp_units",
+                "cross_market_signed_averaging": False,
+            },
+            "semantic_adjustment_coordinate_id": (
+                SEMANTIC_ADJUSTMENT_COORDINATE_ID
+            ),
+            "semantic_adjustment_units": SEMANTIC_ADJUSTMENT_UNITS,
         }
 
     def set_lagrangian_multiplier(self, value: float) -> None:
@@ -239,6 +253,13 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
             "month": self._month,
             "ramp_h1_adjusted": h1,
             "ramp_h3_adjusted": h3,
+            "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": [
+                abs(h1)
+            ],
+            "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": [
+                abs(h3)
+            ],
+            "physical_ramp_market_order": ["SYNTHETIC_FIXTURE"],
             "incremental_ramp_impact": incremental,
             "energy_cost": cost,
             "status_quo_energy_cost": status_quo_cost,
@@ -249,12 +270,23 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
             "certificate_violations": 0,
             "emergency_feasibility": False,
             "semantic_adjustment_l2": 0.0,
+            "semantic_adjustment_applied": False,
+            "semantic_adjustment_coordinate_id": (
+                SEMANTIC_ADJUSTMENT_COORDINATE_ID
+            ),
+            "semantic_adjustment_units": SEMANTIC_ADJUSTMENT_UNITS,
             "action_provenance": provenance,
             "tail_complete": terminated,
             "actual_terminal": terminated,
             "terminal_work": 0.0,
             "terminal_tail_ramp_h1_adjusted": tail_h1,
             "terminal_tail_ramp_h3_adjusted": tail_h3,
+            "terminal_tail_abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": [
+                [abs(value)] for value in tail_h1
+            ],
+            "terminal_tail_abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": [
+                [abs(value)] for value in tail_h3
+            ],
             "terminal_tail_incremental_ramp_impact": tail_incremental,
             "terminal_tail_energy_cost": tail_energy,
             "terminal_tail_status_quo_energy_cost": tail_status_quo_energy,
@@ -268,6 +300,8 @@ class DeterministicRampFixtureEnv(gym.Env[np.ndarray, np.ndarray]):
             "dc_power_during_realized_ramp": power if absolute >= HISTORY_STEPS + self.decision_steps // 2 else 0.0,
             "step_ramp_h1_adjusted": [h1],
             "step_ramp_h3_adjusted": [h3],
+            "step_abs_adjusted_ramp_h1_fraction_s_per_hour": [abs(h1)],
+            "step_abs_adjusted_ramp_h3_fraction_s_per_hour": [abs(h3)],
             "step_incremental_ramp_impact": [incremental],
             "step_energy_cost": [cost],
             "step_service_unserved": [0.0],

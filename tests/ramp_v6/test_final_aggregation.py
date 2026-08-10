@@ -207,6 +207,19 @@ class FinalAggregationTests(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceError, "must be a boolean"):
             _raw_gate_outcome(payload, "synthetic validation")
 
+    def test_accepts_explicit_native_relative_market_gate_name(self) -> None:
+        payload = json.loads(
+            (self.evidence / "validation_11.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        checks = payload["success_gate"]["checks"]
+        checks[
+            "every_market_native_relative_incremental_ramp_improves"
+        ] = checks.pop("every_market_ramp_improves")
+        outcome = _raw_gate_outcome(payload, "synthetic validation")
+        self.assertTrue(outcome["ramp"])
+
     def test_rejects_missing_semantic_adjustment_telemetry(self) -> None:
         payload = json.loads(
             (self.evidence / "validation_11.json").read_text(encoding="utf-8")
