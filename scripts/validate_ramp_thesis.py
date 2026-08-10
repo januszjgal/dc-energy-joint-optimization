@@ -67,6 +67,8 @@ REQUIRED_SCOPE_PHRASES = {
     "186 scalar values": "observation dimension",
     "1,620 ensemble decisions": "controller decision count",
     "2, 1, 2, 3, 4, and 3 hours": "a-f deadline horizons",
+    "The `dede685` worktree executes only": "training/verifier context separation",
+    "original live_v3 training manifests": "stable verifier evidence context",
 }
 PROHIBITED_CLAIMS = (
     re.compile(r"\bc-h\b.{0,40}\b(?:(?<!non-)independent|holdout|out-of-fold)\b", re.I),

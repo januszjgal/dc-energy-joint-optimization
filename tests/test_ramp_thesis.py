@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -321,6 +322,65 @@ class CorrectedRampThesisTests(unittest.TestCase):
                 f"{{{{CANONICAL_V4R:{token}}}}}",
                 text,
             )
+
+    def test_recovery_instructions_separate_training_and_verification(
+        self,
+    ) -> None:
+        text = DEFAULT_SOURCE.read_text(encoding="utf-8")
+        training_start = text.index(
+            "git worktree add $trainingRoot dede685"
+        )
+        verifier_start = text.index(
+            "# Verify only from the stable recovery-tooling/evidence context."
+        )
+        stage_start = text.index(
+            "# Stage only the verified ignored binaries"
+        )
+        training_block = text[training_start:verifier_start]
+        verifier_block = text[verifier_start:stage_start]
+        self.assertIn("scripts\\run_ramp_rl_v3.py", training_block)
+        self.assertNotIn("recover_ramp_rl_v3.py", training_block)
+        self.assertNotIn("<explicit-UTC-timestamp>", text)
+        self.assertIn("--recomputed-at-utc $recomputedAt", text)
+        self.assertIn(
+            "d1d4828c32bada1ba1e852d0479c37bb71164561",
+            verifier_block,
+        )
+        self.assertIn("recover_ramp_rl_v3.py", verifier_block)
+        for revision, path, expected in (
+            ("dede685", "scripts/run_ramp_rl_v3.py", 0),
+            ("dede685", "scripts/recover_ramp_rl_v3.py", 1),
+            (
+                STABLE_RECOVERY_COMMIT,
+                "scripts/recover_ramp_rl_v3.py",
+                0,
+            ),
+            (
+                STABLE_RECOVERY_COMMIT,
+                "output/ramp_rl_v6/live_v3/recovery_transfer_manifest.json",
+                0,
+            ),
+            (
+                STABLE_RECOVERY_COMMIT,
+                "models/ramp_rl_v6/live_v3/confirmation/ppo/2801/"
+                "training_manifest.json",
+                0,
+            ),
+        ):
+            result = subprocess.run(
+                ["git", "cat-file", "-e", f"{revision}:{path}"],
+                cwd=ROOT,
+                capture_output=True,
+                check=False,
+            )
+            if expected == 0:
+                self.assertEqual(result.returncode, 0, f"{revision}:{path}")
+            else:
+                self.assertNotEqual(
+                    result.returncode,
+                    0,
+                    f"{revision}:{path} unexpectedly exists",
+                )
 
     def test_materialized_contract_matches_evidence(self) -> None:
         template = DEFAULT_SOURCE.read_text(encoding="utf-8")
