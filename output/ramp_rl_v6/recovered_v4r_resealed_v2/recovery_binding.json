@@ -1,0 +1,219 @@
+{
+  "all_non_container_recovery_checks_exact": true,
+  "allowed_container_divergences": [
+    "seed.2801.artifact.model.zip.original",
+    "seed.2802.artifact.model.zip.original",
+    "seed.2803.artifact.model.zip.original",
+    "seed.2804.artifact.model.zip.original",
+    "seed.2805.artifact.model.zip.original"
+  ],
+  "classification": "new-binary-identity-weight-equivalent-recovered-pure-rl",
+  "copied_recovery_manifest": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r/recovery_source_manifest.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "0ff4f78e4ca72aaaa4fc02c2002f54267fd97e99987c82b76d3f27e92b9c2a83"
+  },
+  "members": [
+    {
+      "interaction_count": 110592,
+      "internal_state": {
+        "critic_sha256": "c0b564e69436417c45213c76c0e443176596a0f99ff044bc76cf643cd096b4d9",
+        "loaded_critic_sha256": "c0b564e69436417c45213c76c0e443176596a0f99ff044bc76cf643cd096b4d9",
+        "loaded_policy_sha256": "1bbd1918564a87ac2b2357185207016cf9835e5e9c0c4949d58fec62e63c0d6b",
+        "policy_sha256": "1bbd1918564a87ac2b2357185207016cf9835e5e9c0c4949d58fec62e63c0d6b",
+        "representation": "ordered-tensor-state-bytes-v1"
+      },
+      "new_model_container_identity": true,
+      "normalization_byte_equivalent_to_v3": true,
+      "original_model_sha256": "ce9a464851c78a2db988c1be51f0bb58970945b50ac1ae2aa798abf04d88577b",
+      "original_training_manifest": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2801/training_manifest.json",
+        "representation": "canonical-json-utf8-sort-compact-v1",
+        "sha256": "4f6feff02e44c804e3064f98e0c02587664b6d98e7a0e755b6e0227b84e45648"
+      },
+      "recovered_model": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2801/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "47e68ae430be484da860b6e1520f1868e5869ccbd49d86fe48920a253c861883"
+      },
+      "recovered_vecnormalize": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2801/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "0789b19f8999d1cdc79249daa33db92fe4ef9152f7202274d26a90bcae0549c3"
+      },
+      "seed": 2801,
+      "update_count": 540,
+      "weight_equivalent_to_v3": true
+    },
+    {
+      "interaction_count": 110592,
+      "internal_state": {
+        "critic_sha256": "7dbd8aaeec645bb0fbec5213d05ff7c97804f425d4c2c9b8a7adddbb7e71bfaa",
+        "loaded_critic_sha256": "7dbd8aaeec645bb0fbec5213d05ff7c97804f425d4c2c9b8a7adddbb7e71bfaa",
+        "loaded_policy_sha256": "236030e9d320e735242f320fe42b8e4a3d9cb794b7422fc544f3204029d8df4f",
+        "policy_sha256": "236030e9d320e735242f320fe42b8e4a3d9cb794b7422fc544f3204029d8df4f",
+        "representation": "ordered-tensor-state-bytes-v1"
+      },
+      "new_model_container_identity": true,
+      "normalization_byte_equivalent_to_v3": true,
+      "original_model_sha256": "60afb3c1799316d92d7f27d72f5f95cd2e0d00c06147d4cd85b779a50be63bbc",
+      "original_training_manifest": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2802/training_manifest.json",
+        "representation": "canonical-json-utf8-sort-compact-v1",
+        "sha256": "7c43af0c040bf6bfa24b3f23413734fe48ccf377c6496e2a59260cb9776b57f7"
+      },
+      "recovered_model": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2802/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "93296e54bb61be72b9c41f58175860734208f1785089a11730236891f9a8700f"
+      },
+      "recovered_vecnormalize": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2802/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "bbb6ccad327453c757fd636ed64b4c5af6012490dbaecfc004aaab57fc0c5bd3"
+      },
+      "seed": 2802,
+      "update_count": 540,
+      "weight_equivalent_to_v3": true
+    },
+    {
+      "interaction_count": 110592,
+      "internal_state": {
+        "critic_sha256": "a6aa43662a26babfcdc0fcfc80e22cd470736a2d3b6f2391657a887056a8d9c9",
+        "loaded_critic_sha256": "a6aa43662a26babfcdc0fcfc80e22cd470736a2d3b6f2391657a887056a8d9c9",
+        "loaded_policy_sha256": "2e5874c9ac4a160ded42e26cf9a68680ad7f691a534b41bab4fe86c8413700ef",
+        "policy_sha256": "2e5874c9ac4a160ded42e26cf9a68680ad7f691a534b41bab4fe86c8413700ef",
+        "representation": "ordered-tensor-state-bytes-v1"
+      },
+      "new_model_container_identity": true,
+      "normalization_byte_equivalent_to_v3": true,
+      "original_model_sha256": "e912d4ead89fbf3872ded0717f9c621eca36ec1c6e7443f06cfa8d4aa7da0dd1",
+      "original_training_manifest": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2803/training_manifest.json",
+        "representation": "canonical-json-utf8-sort-compact-v1",
+        "sha256": "38e9a955244b7d4147366d464bdddb5e10eb6ab1a7ec937d6c37bd776d506375"
+      },
+      "recovered_model": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2803/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "292a24819bb13dd8372b25c932eb3ac44b06bab891237ab331c7ba224873f507"
+      },
+      "recovered_vecnormalize": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2803/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "f5362840c1fb8c96983ec2d60505e15619fa0bfb3b35ec69a18808f4c178dd9c"
+      },
+      "seed": 2803,
+      "update_count": 540,
+      "weight_equivalent_to_v3": true
+    },
+    {
+      "interaction_count": 110592,
+      "internal_state": {
+        "critic_sha256": "d8aeea3ce5d520893f4fa5161b52363e99a71ea73c118698f865c2d14ef19bb4",
+        "loaded_critic_sha256": "d8aeea3ce5d520893f4fa5161b52363e99a71ea73c118698f865c2d14ef19bb4",
+        "loaded_policy_sha256": "9d0342ecb9da1ae578e578604a005220b00bfeea48fc144fcf3d9cae67470bb6",
+        "policy_sha256": "9d0342ecb9da1ae578e578604a005220b00bfeea48fc144fcf3d9cae67470bb6",
+        "representation": "ordered-tensor-state-bytes-v1"
+      },
+      "new_model_container_identity": true,
+      "normalization_byte_equivalent_to_v3": true,
+      "original_model_sha256": "99893a31ee32aa40dc7638b1a4c533db49986822eca6f0161f24c8b836ab9ae1",
+      "original_training_manifest": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2804/training_manifest.json",
+        "representation": "canonical-json-utf8-sort-compact-v1",
+        "sha256": "ac9a9c28cd40183ff923c152a0de3edf40871396907ce826c3b61f96cec18b95"
+      },
+      "recovered_model": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2804/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "ee5ee15ce884d7958da253ea7fb6f95297d395cb0ca5cc816d83ac72bb345fbb"
+      },
+      "recovered_vecnormalize": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2804/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "778fb2ad91d1ec1e9a16a76f5b1cef139c2c2fbb6256479868473bbb9155b63e"
+      },
+      "seed": 2804,
+      "update_count": 540,
+      "weight_equivalent_to_v3": true
+    },
+    {
+      "interaction_count": 110592,
+      "internal_state": {
+        "critic_sha256": "8bf203bb9303cac0a815f5c4325e85f5e1ccc8f01eb4140fdb5b7fa8d810027e",
+        "loaded_critic_sha256": "8bf203bb9303cac0a815f5c4325e85f5e1ccc8f01eb4140fdb5b7fa8d810027e",
+        "loaded_policy_sha256": "8aa28e035f7f0710adffdbe5773ffc4a6a43d9a562ecca784ea616599f61e42f",
+        "policy_sha256": "8aa28e035f7f0710adffdbe5773ffc4a6a43d9a562ecca784ea616599f61e42f",
+        "representation": "ordered-tensor-state-bytes-v1"
+      },
+      "new_model_container_identity": true,
+      "normalization_byte_equivalent_to_v3": true,
+      "original_model_sha256": "8af7f31ea23041a0eb03b56d5dc93c88446271c0ea072f359c165ee922ca1d63",
+      "original_training_manifest": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/live_v3/confirmation/ppo/2805/training_manifest.json",
+        "representation": "canonical-json-utf8-sort-compact-v1",
+        "sha256": "fcb26fcc2d376013132d3a9ce64803dcf744963c5ea7d9f4ca485e07b2cc6f70"
+      },
+      "recovered_model": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2805/model.zip",
+        "representation": "raw-bytes-v1",
+        "sha256": "ffba64a2b4574e1a10edfd96e91bcd08f78d380c756a4d3231ac5ee1365e07f6"
+      },
+      "recovered_vecnormalize": {
+        "algorithm": "sha256",
+        "path": "models/ramp_rl_v6/recovered_v4r/members/2805/vecnormalize.pkl",
+        "representation": "raw-bytes-v1",
+        "sha256": "e9e1d4523ddfd16f17744deaa371627fcae2d0316a971a02f140cc73c2d2e8f7"
+      },
+      "seed": 2805,
+      "update_count": 540,
+      "weight_equivalent_to_v3": true
+    }
+  ],
+  "protocol_id": "v6-ramp-pure-rl-recovered-equal-action-ensemble-v4r",
+  "recovery_commit": "d1d4828c32bada1ba1e852d0479c37bb71164561",
+  "recovery_commit_is_ancestor": true,
+  "recovery_manifest": {
+    "algorithm": "sha256",
+    "commit": "d1d4828c32bada1ba1e852d0479c37bb71164561",
+    "git_blob_oid": "e520add5ad942b1aa8631a023cb5c043c55408a8",
+    "git_blob_sha256": "d1ccf86acf6ed8f9a58c1d07546d02678f77f1aeab8c1181e09e16a3173357e6",
+    "path": "output/ramp_rl_v6/live_v3/recovery_transfer_manifest.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "0ff4f78e4ca72aaaa4fc02c2002f54267fd97e99987c82b76d3f27e92b9c2a83"
+  },
+  "recovery_source": {
+    "algorithm": "sha256",
+    "commit": "d1d4828c32bada1ba1e852d0479c37bb71164561",
+    "git_blob_oid": "b4f16173453900a4ee47a917c21e11c30503f869",
+    "path": "scripts/recover_ramp_rl_v3.py",
+    "representation": "git-blob-bytes-v1",
+    "sha256": "18f509b1cb7694d7e854e18846ba25481f0d5c89438f3f55f648ed649f8423a1"
+  },
+  "results_changed": false,
+  "schema_version": "ramp-pure-rl-recovered-v4r-binding-v2",
+  "status": "corrected-provenance-superseding-v1",
+  "supersedes": {
+    "algorithm": "sha256",
+    "path": "output/ramp_rl_v6/recovered_v4r/recovery_binding.json",
+    "representation": "canonical-json-utf8-sort-compact-v1",
+    "sha256": "71017dd31ec5d26cd59810dd3fa8798974c5f4557cb7aac360a44c834725c406"
+  },
+  "test_opened": false
+}
