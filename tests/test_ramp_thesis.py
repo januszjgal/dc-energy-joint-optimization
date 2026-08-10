@@ -18,6 +18,12 @@ from ramp_rl.v4r_corrected_thesis import (
     load_verified_evidence,
     write_publication_package,
 )
+from ramp_rl.v4r_metric_replay_recovery import (
+    COMPARISON_FIELDS,
+    DEFAULT_MANIFEST as DEFAULT_RECOVERY_MANIFEST,
+    STABLE_RECOVERY_COMMIT,
+    verify_metric_replay_recovery_manifest,
+)
 from scripts.build_final_thesis import validate_source
 from scripts.materialize_ramp_thesis import (
     DEFAULT_SOURCE,
@@ -68,6 +74,71 @@ class CorrectedRampThesisTests(unittest.TestCase):
         self.assertEqual(
             wrapper["supersession_scope"],
             "physical-ramp-status-quo-labeling-and-decoder-telemetry-only",
+        )
+        self.assertEqual(
+            wrapper["checkpoint_recovery"]["sha256"],
+            canonical_json_file_sha256(DEFAULT_RECOVERY_MANIFEST),
+        )
+        self.assertTrue(
+            wrapper[
+                "deterministic_checkpoint_reconstruction_performed"
+            ]
+        )
+
+    def test_checkpoint_recovery_is_fully_bound_and_non_confirmatory(
+        self,
+    ) -> None:
+        recovery = verify_metric_replay_recovery_manifest(
+            DEFAULT_RECOVERY_MANIFEST
+        )
+        self.assertEqual(
+            recovery["stable_recovery_commit"],
+            STABLE_RECOVERY_COMMIT,
+        )
+        self.assertTrue(recovery["training_computation_performed"])
+        self.assertFalse(recovery["fresh_generalization_evidence"])
+        self.assertFalse(
+            recovery["validation_or_test_opened_during_recovery"]
+        )
+        self.assertFalse(
+            recovery["march_april_replay_is_fresh_sealed_test"]
+        )
+        self.assertFalse(
+            recovery["training_or_retuning_for_policy_change"]
+        )
+        self.assertFalse(recovery["model_selection_performed"])
+        self.assertTrue(recovery["original_sealed_result_immutable"])
+        self.assertEqual(
+            [member["seed"] for member in recovery["members"]],
+            list(range(2801, 2806)),
+        )
+        for member in recovery["members"]:
+            self.assertEqual(
+                member["comparison_fields"],
+                list(COMPARISON_FIELDS),
+            )
+            self.assertTrue(member["comparison_fields_exact"])
+            self.assertEqual(
+                member["training_data_splits_observed"],
+                ["train"],
+            )
+            self.assertEqual(member["validation_or_test_rows"], 0)
+            self.assertTrue(
+                member["vecnormalize"][
+                    "byte_identical_to_frozen_v3"
+                ]
+            )
+        self.assertEqual(
+            recovery["data_access_audit"],
+            {
+                "raw_source_test_opened": False,
+                "member_training_splits": {
+                    str(seed): ["train"] for seed in range(2801, 2806)
+                },
+                "member_validation_or_test_rows": {
+                    str(seed): 0 for seed in range(2801, 2806)
+                },
+            },
         )
 
     def test_primary_result_is_invariant(self) -> None:
@@ -335,6 +406,12 @@ class CorrectedRampThesisTests(unittest.TestCase):
             self.assertEqual(
                 manifest["corrected_canonical_sha256"],
                 EXPECTED_CANONICAL_SHA256,
+            )
+            self.assertEqual(
+                manifest["checkpoint_recovery_sha256"],
+                self.evidence["posthoc_correction"][
+                    "checkpoint_recovery"
+                ]["sha256"],
             )
 
     def test_docx_source_validation_rejects_tampering(self) -> None:

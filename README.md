@@ -8,7 +8,7 @@ Word deliverable [`thesis_paper.docx`](thesis_paper.docx).
 The authoritative publication wrapper is
 [`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json`](output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json).
 Its canonical-JSON SHA-256 is
-`bd1e8a242ec93e389c9e7b9e13ae7f19b60a9445716206b6527938ffe639f842`.
+`42bbcf4c4cd2cca58cfce0e07319d5280145e0fac948a7fe66d2a6582e379d4b`.
 
 That wrapper **references rather than replaces** the immutable single-open
 sealed evidence at
@@ -25,6 +25,15 @@ The replay occurred after unblinding and is not a second sealed generalization
 test. The primary squared incremental objective, policy, members, equal weights,
 normalizers, data, forecasts, constraints, and original chronology are
 unchanged.
+
+Checkpoint reconstruction is independently bound by
+[`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_manifest.json`](output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_manifest.json).
+Its canonical-JSON SHA-256 is
+`26e9c77a1d932ff7edb66fe8b7d55b6f769a2e2029a49c95411b62465b14f064`.
+It references the full raw verifier output, stable recovery commit `d1d4828`,
+all initial/final tensor and training-provenance checks, the new ZIP hashes,
+and byte-identical normalizer hashes. Recovered binaries remain under the
+ignored `models/ramp_rl_v6/recovery_v3_metric_replay/` root.
 
 ## Final V4R result
 
@@ -52,6 +61,7 @@ Committed manifests, hashes, sealed evidence, and corrected metrics are the
 publication boundary.
 
 ```powershell
+python scripts\bind_v4r_metric_replay_recovery.py verify
 python scripts\recompute_v4r_posthoc_metrics.py verify
 python scripts\build_ramp_rl_thesis_results.py --corrected
 python scripts\build_ramp_thesis_figures.py

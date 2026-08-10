@@ -29,7 +29,7 @@ DEFAULT_CANONICAL = (
 )
 DEFAULT_OUTPUT = DEFAULT_CANONICAL.parent / "thesis"
 EXPECTED_CANONICAL_SHA256 = (
-    "bd1e8a242ec93e389c9e7b9e13ae7f19b60a9445716206b6527938ffe639f842"
+    "42bbcf4c4cd2cca58cfce0e07319d5280145e0fac948a7fe66d2a6582e379d4b"
 )
 
 
@@ -238,6 +238,9 @@ def write_publication_package(
         "schema_version": "v4r-corrected-thesis-claim-ledger-v1",
         "corrected_canonical_sha256": EXPECTED_CANONICAL_SHA256,
         "sealed_canonical_sha256": EXPECTED_SEALED_CANONICAL_SHA256,
+        "checkpoint_recovery_sha256": evidence[
+            "posthoc_correction"
+        ]["checkpoint_recovery"]["sha256"],
         "protocol_id": EXPECTED_PROTOCOL_ID,
         "classification": (
             "post_hoc_frozen_policy_metric_recomputation"
@@ -269,6 +272,9 @@ def write_publication_package(
         "schema_version": "v4r-corrected-thesis-package-v1",
         "corrected_canonical_sha256": EXPECTED_CANONICAL_SHA256,
         "sealed_canonical_sha256": EXPECTED_SEALED_CANONICAL_SHA256,
+        "checkpoint_recovery_sha256": evidence[
+            "posthoc_correction"
+        ]["checkpoint_recovery"]["sha256"],
         "files": {
             path.name: _sha256(path)
             for path in sorted(output_dir.glob("*"))

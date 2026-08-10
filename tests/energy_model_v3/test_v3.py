@@ -504,6 +504,7 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             "scripts/build_ramp_rl_evidence_v6.py",
             "scripts/build_ramp_rl_final_evidence.py",
             "scripts/build_ramp_rl_v2_candidate_report.py",
+            "scripts/bind_v4r_metric_replay_recovery.py",
             "scripts/build_final_thesis.py",
             "scripts/build_final_thesis_docx.js",
             "scripts/build_ramp_rl_thesis_results.py",

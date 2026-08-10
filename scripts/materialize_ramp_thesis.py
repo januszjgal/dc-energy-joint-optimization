@@ -33,7 +33,7 @@ from scripts.validate_ramp_thesis import validate_text  # noqa: E402
 DEFAULT_SOURCE = ROOT / "thesis_ramp_v6.md"
 DEFAULT_OUTPUT = ROOT / "thesis_paper.md"
 EXPECTED_TEMPLATE_SHA256 = (
-    "965e0e412652088f1520854c8c01f1539bafbd76c8976448005259ff07497426"
+    "17b9470d5650a9bab1cdece28ce9c6671998cdc525fedde57767ef24f1cd7980"
 )
 MARKET_LABELS = {
     "CAISO_NP15": "CAISO NP15",
@@ -273,6 +273,9 @@ def render_tokens(evidence: dict[str, Any]) -> dict[str, str]:
         "CANONICAL_REPRESENTATION": f"`{CANONICAL_JSON_REPRESENTATION}`",
         "SEALED_CANONICAL_EVIDENCE_SHA256": (
             f"`{EXPECTED_SEALED_CANONICAL_SHA256}`"
+        ),
+        "CHECKPOINT_RECOVERY_SHA256": (
+            f"`{evidence['posthoc_correction']['checkpoint_recovery']['sha256']}`"
         ),
         "CANONICAL_EVIDENCE_SHA256": f"`{EXPECTED_CANONICAL_SHA256}`",
         "CORRECTION_CLASSIFICATION": (

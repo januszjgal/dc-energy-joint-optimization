@@ -161,6 +161,12 @@ publication wrapper is
 It corrects physical-ramp aggregation, native/status-quo labels, and decoder
 telemetry while preserving the original result and chronology. The replay is
 post-hoc and not a second sealed generalization test.
+The separate
+`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_manifest.json`
+binds deterministic reconstruction to stable recovery commit `d1d4828`, the
+complete training-manifest equivalence checks, new outer ZIP hashes, and exact
+policy, critic, and normalizer identities. Recovered checkpoint binaries remain
+ignored under `models/ramp_rl_v6/recovery_v3_metric_replay/`.
 V4R passed all 28 February validation episodes, then opened the March-April
 sealed test exactly once and passed all 60 test episodes. The 1 GW-total and
 c-h overlapping analyses are post-selection robustness; c-h is not an

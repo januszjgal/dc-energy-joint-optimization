@@ -3,6 +3,7 @@
 The authoritative thesis build uses the additive post-hoc telemetry wrapper:
 
 ```powershell
+python scripts\bind_v4r_metric_replay_recovery.py verify
 python scripts\recompute_v4r_posthoc_metrics.py verify
 python scripts\build_ramp_rl_thesis_results.py --corrected
 ```
@@ -13,7 +14,7 @@ Canonical input:
 
 Canonical-JSON SHA-256:
 
-`bd1e8a242ec93e389c9e7b9e13ae7f19b60a9445716206b6527938ffe639f842`
+`42bbcf4c4cd2cca58cfce0e07319d5280145e0fac948a7fe66d2a6582e379d4b`
 
 The wrapper references the immutable sealed evidence at
 `output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json`, whose
@@ -45,6 +46,16 @@ wrapper therefore records that reconstruction training code ran after
 unblinding, that the new outer ZIP hashes differ, and that policy, critic,
 normalizer, and action-chain identities remain exact. The metric replay itself
 performs no training. Neither reconstruction nor replay is fresh test evidence.
+
+The tracked checkpoint identity is
+`output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_manifest.json`.
+Its canonical-JSON SHA-256 is
+`26e9c77a1d932ff7edb66fe8b7d55b6f769a2e2029a49c95411b62465b14f064`.
+It references the complete raw `recover_ramp_rl_v3.py` verifier output and
+binds stable commit `d1d4828`, every required training-manifest comparison,
+loaded tensor hashes, new model-container hashes, and exact normalizer bytes.
+The corresponding binaries remain ignored under
+`models/ramp_rl_v6/recovery_v3_metric_replay/`.
 
 ## Baseline interpretation
 

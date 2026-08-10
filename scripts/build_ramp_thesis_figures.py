@@ -294,7 +294,10 @@ def build_provenance_flow() -> None:
         ("Source contracts +\nraw SHA-256", COLORS["light_blue"]),
         ("Canonical panel +\nforecast manifest", COLORS["light_green"]),
         ("Daily factory windows +\ntraining-only stats", COLORS["light_green"]),
-        ("Frozen model/normalizer +\ninternal tensor hashes", COLORS["light_orange"]),
+        (
+            "Frozen identity +\ncheckpoint recovery verification",
+            COLORS["light_orange"],
+        ),
         ("Single-open sealed\nevidence chain", COLORS["light_orange"]),
         ("Post-hoc corrected\ntelemetry wrapper", COLORS["light_orange"]),
     ]

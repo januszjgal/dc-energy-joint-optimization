@@ -1100,34 +1100,72 @@ The command checks the original sealed canonical hash, corrected validation
 and test result hashes, correction declarations, absolute per-market physical
 metric contract, status-quo comparison, and decoder distribution.
 
-## 10.4 Recompute corrected telemetry with local frozen binaries
+## 10.4 Reconstruct checkpoints and recompute telemetry
 
-Raw recovered model containers may be absent from a fresh clone because they
-are large ignored artifacts. If the exact protocol-bound binaries are staged
-at their declared paths, rerun:
+Raw recovered containers may be absent from a fresh clone because they are
+large ignored artifacts. Recovery must use the frozen historical V3 source and
+must not evaluate validation or test. The equivalence verifier is bound to
+stable recovery commit `d1d4828c32bada1ba1e852d0479c37bb71164561`. The
+committed procedure is:
 
 ```powershell
+git worktree add ..\dc-energy-v3-metric-recovery dede685
+Push-Location ..\dc-energy-v3-metric-recovery
+
+$env:OMP_NUM_THREADS = "1"
+$env:MKL_NUM_THREADS = "1"
+$env:OPENBLAS_NUM_THREADS = "1"
+$env:NUMEXPR_NUM_THREADS = "1"
+
+$jobs = foreach ($seed in 2801..2805) {
+  $output = "models\ramp_rl_v6\recovery_v3_metric_replay\$seed"
+  Start-Process python `
+    -ArgumentList @(
+      "scripts\run_ramp_rl_v3.py", "train",
+      "--seed", "$seed", "--output", $output
+    ) `
+    -PassThru
+}
+$jobs | Wait-Process
+
+python scripts\recover_ramp_rl_v3.py `
+  --recovery-root models\ramp_rl_v6\recovery_v3_metric_replay `
+  --manifest metric_replay_recovery_verification_raw.json `
+  --allow-model-container-difference
+Pop-Location
+
+Copy-Item `
+  ..\dc-energy-v3-metric-recovery\models\ramp_rl_v6\recovery_v3_metric_replay `
+  models\ramp_rl_v6\recovery_v3_metric_replay `
+  -Recurse
+
+python scripts\bind_v4r_metric_replay_recovery.py bind `
+  --raw-verification `
+    ..\dc-energy-v3-metric-recovery\metric_replay_recovery_verification_raw.json `
+  --recovery-root models\ramp_rl_v6\recovery_v3_metric_replay
+
 python scripts\recompute_v4r_posthoc_metrics.py recompute `
-  --recomputed-at-utc 2026-08-10T02:55:50Z
+  --recomputed-at-utc <explicit-UTC-timestamp> `
+  --recovered-binary-root models\ramp_rl_v6\recovery_v3_metric_replay `
+  --recovery-manifest `
+    output\ramp_rl_v6\recovered_v4r_posthoc_metrics_v1\metric_replay_recovery_manifest.json
 ```
 
-The replay fails if a model, normalizer, protocol, panel, forecast, or source
-hash differs. It verifies that the primary objective, cost, safety, behavior,
-and ensemble action-chain identities equal the immutable result before writing
-corrected telemetry. It performs no learning.
+The stable verifier compares initial and final actor/critic hashes,
+interactions, updates, normalizer bytes, pure-RL assertions, replay provenance,
+training-window sources, forecasts, factory identity, and job identity against
+the frozen manifests. It permits only outer `model.zip` metadata differences.
+The tracked recovery manifest records the new container hashes and proves that
+only training split data was observed. The metric replay then verifies that
+primary objective, cost, safety, behavior, and ensemble action-chain identities
+equal the immutable result before writing corrected telemetry.
 
-If the ignored containers are unavailable, reproduce the checkpoints from the
-frozen historical V3 source and pass their `<seed>/model.zip` and
-`vecnormalize.pkl` root with `--recovered-binary-root`. The loader still
-requires exact policy, critic, and normalizer identities. The resulting
-wrapper explicitly records that deterministic reconstruction training
-occurred, that outer container hashes differ, and that the replay is not fresh
-generalization evidence.
-
-Reconstruction can reproduce internal tensors, normalizers, actions, and
-metrics exactly while producing a different outer ZIP hash because SB3 stores
-runtime/ZIP metadata. Therefore the committed wrapper hash is verified rather
-than promised as the byte identity of every later reconstruction.
+Checkpoint reconstruction executes the already frozen training computation
+after unblinding; the metric replay itself performs no learning. Neither is
+fresh generalization evidence: the reconstruction and March-April replay are
+not fresh generalization evidence. Reconstruction can reproduce tensors,
+normalizers, actions, and metrics exactly while producing a different outer ZIP
+hash because SB3 stores runtime and ZIP timestamps.
 
 ## 10.5 Rebuild tables, figures, Markdown, and DOCX
 
@@ -1177,7 +1215,9 @@ A reviewer can audit from result to source:
 
 **Immutable sealed canonical SHA-256:** `f642bd5868abdd9f7cda2a6fffb228250f3570fd0c6d440085da68c976892d9b`
 
-**Authoritative post-hoc correction SHA-256:** `bd1e8a242ec93e389c9e7b9e13ae7f19b60a9445716206b6527938ffe639f842`
+**Metric-replay checkpoint recovery SHA-256:** `26e9c77a1d932ff7edb66fe8b7d55b6f769a2e2029a49c95411b62465b14f064`
+
+**Authoritative post-hoc correction SHA-256:** `42bbcf4c4cd2cca58cfce0e07319d5280145e0fac948a7fe66d2a6582e379d4b`
 
 **Correction classification:** `post_hoc_frozen_policy_metric_recomputation; not_a_second_sealed_generalization_test`
 
@@ -1526,6 +1566,7 @@ value remain open questions.
 | V3 member training | `models/ramp_rl_v6/live_v3/confirmation/ppo/<seed>/training_manifest.json` |
 | V4R protocol | `env/protocols/v6_pure_ramp_rl_v4r.yaml` |
 | Immutable sealed evidence | `output/ramp_rl_v6/recovered_v4r_resealed_v2/canonical_evidence.json` |
+| Metric-replay recovery verification | `output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/metric_replay_recovery_manifest.json` |
 | Corrected telemetry wrapper | `output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/canonical_posthoc_metrics.json` |
 | Publication tables | `output/ramp_rl_v6/recovered_v4r_posthoc_metrics_v1/thesis/` |
 | Figure manifest | `docs/figures/ramp_v6/v4r_figure_manifest.json` |
