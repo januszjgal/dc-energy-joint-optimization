@@ -1,0 +1,563 @@
+{
+  "classification": "large_non_final_validation_only",
+  "paired_variant_comparison": {
+    "envelope_off_outperforms_envelope_on_consistently": false,
+    "envelope_off_outperforms_envelope_on_seed_count": 2,
+    "mean_envelope_off_minus_envelope_on_native_relative_impact": 7.526964880304504e-08,
+    "pairs": [
+      {
+        "envelope_off_minus_envelope_on_native_relative_impact": -6.0103275894420825e-09,
+        "envelope_off_outperforms_envelope_on": true,
+        "seed": 4101
+      },
+      {
+        "envelope_off_minus_envelope_on_native_relative_impact": -8.690807333719934e-07,
+        "envelope_off_outperforms_envelope_on": true,
+        "seed": 4102
+      },
+      {
+        "envelope_off_minus_envelope_on_native_relative_impact": 1.1009000073705706e-06,
+        "envelope_off_outperforms_envelope_on": false,
+        "seed": 4103
+      }
+    ],
+    "sample_standard_deviation_of_paired_difference": 9.875023319698681e-07
+  },
+  "schema_version": "four-market-v2-paired-aggregation-v1",
+  "sealed_test_accessed": false,
+  "seed_results": {
+    "envelope_off": [
+      {
+        "batch_expired": 0.0,
+        "batch_unfinished": 0.0,
+        "behavior_audit": {
+          "deferrable_pre_service": 257.47217289544784,
+          "policy_ramp_power": 456478.1312048616,
+          "status_quo_ramp_power": 454625.25263261516
+        },
+        "certificate_violations": 0,
+        "day_ahead_cost_ratio": 0.9486742033368691,
+        "elapsed_seconds": 1621.351187999826,
+        "emergency_fallback_rate": 0.0,
+        "native_relative_incremental_ramp_impact": -2.8968486027907293e-06,
+        "per_market": {
+          "CAISO_NP15": {
+            "policy_minus_status_quo_incremental_ramp_impact": 1.292506688695544e-05,
+            "policy_native_relative_incremental_ramp_impact": 4.076807816315538e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -8.8482590706399e-06
+          },
+          "ISONE_NEMA": {
+            "policy_minus_status_quo_incremental_ramp_impact": 8.448610319438147e-06,
+            "policy_native_relative_incremental_ramp_impact": -8.28478005574461e-07,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -9.277088325012608e-06
+          },
+          "MISO_MINN_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": 5.576149101475502e-07,
+            "policy_native_relative_incremental_ramp_impact": -4.268652193478585e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -4.826267103626135e-06
+          },
+          "SPP_NORTH_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -7.689304369735206e-06,
+            "policy_native_relative_incremental_ramp_impact": -1.0567072028425409e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -2.877767658690203e-06
+          }
+        },
+        "policy_minus_status_quo_impact": 3.5604969367014826e-06,
+        "seed": 4101,
+        "service_unserved": 0.0,
+        "success_gate": {
+          "checks": {
+            "behavior_lower_ramp_power": false,
+            "behavior_pre_service": true,
+            "emergency_path_below_one_percent": true,
+            "every_market_native_relative_incremental_ramp_improves": false,
+            "exact_batch_completion": true,
+            "exact_service": true,
+            "mean_ramp_improves": true,
+            "no_future_leakage": true,
+            "primary_energy_budget": true,
+            "zero_certificate_violations": true,
+            "zero_expiry": true,
+            "zero_terminal_work": true
+          },
+          "compatibility_aliases": {
+            "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+          },
+          "failed_gates": [
+            "every_market_native_relative_incremental_ramp_improves",
+            "behavior_lower_ramp_power"
+          ],
+          "failure_is_publishable": true,
+          "iterations_may_use": [
+            "train",
+            "validation"
+          ],
+          "passed": false,
+          "split": "validation",
+          "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+          "test_tuning_prohibited": true
+        },
+        "terminal_work": 0.0,
+        "throughput_interactions_per_second": 68.20977516686648
+      },
+      {
+        "batch_expired": 0.0,
+        "batch_unfinished": 0.0,
+        "behavior_audit": {
+          "deferrable_pre_service": 266.298381169078,
+          "policy_ramp_power": 458721.64856965025,
+          "status_quo_ramp_power": 454625.25263261516
+        },
+        "certificate_violations": 0,
+        "day_ahead_cost_ratio": 0.9784824678067588,
+        "elapsed_seconds": 1603.6266602000687,
+        "emergency_fallback_rate": 0.0,
+        "native_relative_incremental_ramp_impact": 4.800421399279274e-07,
+        "per_market": {
+          "CAISO_NP15": {
+            "policy_minus_status_quo_incremental_ramp_impact": 1.0381234337997606e-05,
+            "policy_native_relative_incremental_ramp_impact": 1.5329752673577056e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -8.8482590706399e-06
+          },
+          "ISONE_NEMA": {
+            "policy_minus_status_quo_incremental_ramp_impact": 1.871411252824534e-05,
+            "policy_native_relative_incremental_ramp_impact": 9.437024203232728e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -9.277088325012608e-06
+          },
+          "MISO_MINN_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -2.1525440364768857e-06,
+            "policy_native_relative_incremental_ramp_impact": -6.9788111401030206e-06,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -4.826267103626135e-06
+          },
+          "SPP_NORTH_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": 8.067478879145004e-07,
+            "policy_native_relative_incremental_ramp_impact": -2.0710197707757027e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -2.877767658690203e-06
+          }
+        },
+        "policy_minus_status_quo_impact": 6.937387679420139e-06,
+        "seed": 4102,
+        "service_unserved": 0.0,
+        "success_gate": {
+          "checks": {
+            "behavior_lower_ramp_power": false,
+            "behavior_pre_service": true,
+            "emergency_path_below_one_percent": true,
+            "every_market_native_relative_incremental_ramp_improves": false,
+            "exact_batch_completion": true,
+            "exact_service": true,
+            "mean_ramp_improves": false,
+            "no_future_leakage": true,
+            "primary_energy_budget": true,
+            "zero_certificate_violations": true,
+            "zero_expiry": true,
+            "zero_terminal_work": true
+          },
+          "compatibility_aliases": {
+            "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+          },
+          "failed_gates": [
+            "mean_ramp_improves",
+            "every_market_native_relative_incremental_ramp_improves",
+            "behavior_lower_ramp_power"
+          ],
+          "failure_is_publishable": true,
+          "iterations_may_use": [
+            "train",
+            "validation"
+          ],
+          "passed": false,
+          "split": "validation",
+          "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+          "test_tuning_prohibited": true
+        },
+        "terminal_work": 0.0,
+        "throughput_interactions_per_second": 68.9636825981694
+      },
+      {
+        "batch_expired": 0.0,
+        "batch_unfinished": 0.0,
+        "behavior_audit": {
+          "deferrable_pre_service": 260.0202217192217,
+          "policy_ramp_power": 452015.30906582,
+          "status_quo_ramp_power": 454625.25263261516
+        },
+        "certificate_violations": 0,
+        "day_ahead_cost_ratio": 0.9967998800399613,
+        "elapsed_seconds": 1516.8268177001737,
+        "emergency_fallback_rate": 0.0,
+        "native_relative_incremental_ramp_impact": -3.953123305886744e-05,
+        "per_market": {
+          "CAISO_NP15": {
+            "policy_minus_status_quo_incremental_ramp_impact": -5.2677580583760203e-05,
+            "policy_native_relative_incremental_ramp_impact": -6.15258396544001e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -8.8482590706399e-06
+          },
+          "ISONE_NEMA": {
+            "policy_minus_status_quo_incremental_ramp_impact": -7.154814424628984e-05,
+            "policy_native_relative_incremental_ramp_impact": -8.082523257130245e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -9.277088325012608e-06
+          },
+          "MISO_MINN_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": 1.1921004508711782e-06,
+            "policy_native_relative_incremental_ramp_impact": -3.6341666527549567e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -4.826267103626135e-06
+          },
+          "SPP_NORTH_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -9.26192569832202e-06,
+            "policy_native_relative_incremental_ramp_impact": -1.2139693357012223e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -2.877767658690203e-06
+          }
+        },
+        "policy_minus_status_quo_impact": -3.3073887519375226e-05,
+        "seed": 4103,
+        "service_unserved": 0.0,
+        "success_gate": {
+          "checks": {
+            "behavior_lower_ramp_power": true,
+            "behavior_pre_service": true,
+            "emergency_path_below_one_percent": true,
+            "every_market_native_relative_incremental_ramp_improves": true,
+            "exact_batch_completion": true,
+            "exact_service": true,
+            "mean_ramp_improves": true,
+            "no_future_leakage": true,
+            "primary_energy_budget": true,
+            "zero_certificate_violations": true,
+            "zero_expiry": true,
+            "zero_terminal_work": true
+          },
+          "compatibility_aliases": {
+            "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+          },
+          "failed_gates": [],
+          "failure_is_publishable": true,
+          "iterations_may_use": [
+            "train",
+            "validation"
+          ],
+          "passed": true,
+          "split": "validation",
+          "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+          "test_tuning_prohibited": true
+        },
+        "terminal_work": 0.0,
+        "throughput_interactions_per_second": 72.91010332193399
+      }
+    ],
+    "envelope_on": [
+      {
+        "batch_expired": 0.0,
+        "batch_unfinished": 0.0,
+        "behavior_audit": {
+          "deferrable_pre_service": 223.91739915484618,
+          "policy_ramp_power": 453631.5076561402,
+          "status_quo_ramp_power": 454625.2526417807
+        },
+        "certificate_violations": 0,
+        "day_ahead_cost_ratio": 0.9448788876207941,
+        "elapsed_seconds": 1402.7354544999544,
+        "emergency_fallback_rate": 0.0,
+        "native_relative_incremental_ramp_impact": -2.890838275201287e-06,
+        "per_market": {
+          "CAISO_NP15": {
+            "policy_minus_status_quo_incremental_ramp_impact": 4.6330608319320705e-06,
+            "policy_native_relative_incremental_ramp_impact": -4.2151982043923e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -8.84825903632437e-06
+          },
+          "ISONE_NEMA": {
+            "policy_minus_status_quo_incremental_ramp_impact": 1.1434050754366126e-05,
+            "policy_native_relative_incremental_ramp_impact": 2.1569624156721134e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -9.277088338694012e-06
+          },
+          "MISO_MINN_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": 3.177865478762986e-06,
+            "policy_native_relative_incremental_ramp_impact": -1.6484016330912124e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -4.8262671118541985e-06
+          },
+          "SPP_NORTH_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -4.978948008236027e-06,
+            "policy_native_relative_incremental_ramp_impact": -7.856715678993752e-06,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -2.877767670757725e-06
+          }
+        },
+        "policy_minus_status_quo_impact": 3.566507264206289e-06,
+        "seed": 4101,
+        "service_unserved": 0.0,
+        "success_gate": {
+          "checks": {
+            "behavior_lower_ramp_power": true,
+            "behavior_pre_service": true,
+            "emergency_path_below_one_percent": true,
+            "every_market_native_relative_incremental_ramp_improves": false,
+            "exact_batch_completion": true,
+            "exact_service": true,
+            "mean_ramp_improves": true,
+            "no_future_leakage": true,
+            "primary_energy_budget": true,
+            "zero_certificate_violations": true,
+            "zero_expiry": true,
+            "zero_terminal_work": true
+          },
+          "compatibility_aliases": {
+            "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+          },
+          "failed_gates": [
+            "every_market_native_relative_incremental_ramp_improves"
+          ],
+          "failure_is_publishable": true,
+          "iterations_may_use": [
+            "train",
+            "validation"
+          ],
+          "passed": false,
+          "split": "validation",
+          "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+          "test_tuning_prohibited": true
+        },
+        "terminal_work": 0.0,
+        "throughput_interactions_per_second": 78.84024007892758
+      },
+      {
+        "batch_expired": 0.0,
+        "batch_unfinished": 0.0,
+        "behavior_audit": {
+          "deferrable_pre_service": 230.58006917050133,
+          "policy_ramp_power": 459131.77050616406,
+          "status_quo_ramp_power": 454625.2526417807
+        },
+        "certificate_violations": 0,
+        "day_ahead_cost_ratio": 0.976404674083984,
+        "elapsed_seconds": 1591.62685650005,
+        "emergency_fallback_rate": 0.0,
+        "native_relative_incremental_ramp_impact": 1.3491228732999208e-06,
+        "per_market": {
+          "CAISO_NP15": {
+            "policy_minus_status_quo_incremental_ramp_impact": 9.462411827139628e-06,
+            "policy_native_relative_incremental_ramp_impact": 6.141527908152574e-07,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -8.84825903632437e-06
+          },
+          "ISONE_NEMA": {
+            "policy_minus_status_quo_incremental_ramp_impact": 2.5391787311083093e-05,
+            "policy_native_relative_incremental_ramp_impact": 1.611469897238908e-05,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -9.277088338694012e-06
+          },
+          "MISO_MINN_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -2.9990627146577294e-06,
+            "policy_native_relative_incremental_ramp_impact": -7.825329826511928e-06,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -4.8262671118541985e-06
+          },
+          "SPP_NORTH_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -6.292627727350032e-07,
+            "policy_native_relative_incremental_ramp_impact": -3.507030443492728e-06,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -2.877767670757725e-06
+          }
+        },
+        "policy_minus_status_quo_impact": 7.806468412707498e-06,
+        "seed": 4102,
+        "service_unserved": 0.0,
+        "success_gate": {
+          "checks": {
+            "behavior_lower_ramp_power": false,
+            "behavior_pre_service": true,
+            "emergency_path_below_one_percent": true,
+            "every_market_native_relative_incremental_ramp_improves": false,
+            "exact_batch_completion": true,
+            "exact_service": true,
+            "mean_ramp_improves": false,
+            "no_future_leakage": true,
+            "primary_energy_budget": true,
+            "zero_certificate_violations": true,
+            "zero_expiry": true,
+            "zero_terminal_work": true
+          },
+          "compatibility_aliases": {
+            "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+          },
+          "failed_gates": [
+            "mean_ramp_improves",
+            "every_market_native_relative_incremental_ramp_improves",
+            "behavior_lower_ramp_power"
+          ],
+          "failure_is_publishable": true,
+          "iterations_may_use": [
+            "train",
+            "validation"
+          ],
+          "passed": false,
+          "split": "validation",
+          "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+          "test_tuning_prohibited": true
+        },
+        "terminal_work": 0.0,
+        "throughput_interactions_per_second": 69.4836227149303
+      },
+      {
+        "batch_expired": 0.0,
+        "batch_unfinished": 0.0,
+        "behavior_audit": {
+          "deferrable_pre_service": 227.08465846061745,
+          "policy_ramp_power": 450603.80835394503,
+          "status_quo_ramp_power": 454625.2526417807
+        },
+        "certificate_violations": 0,
+        "day_ahead_cost_ratio": 1.0031447913509148,
+        "elapsed_seconds": 1610.6661398999859,
+        "emergency_fallback_rate": 0.0,
+        "native_relative_incremental_ramp_impact": -4.063213306623801e-05,
+        "per_market": {
+          "CAISO_NP15": {
+            "policy_minus_status_quo_incremental_ramp_impact": -4.2360300719159366e-05,
+            "policy_native_relative_incremental_ramp_impact": -5.120855975548374e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -8.84825903632437e-06
+          },
+          "ISONE_NEMA": {
+            "policy_minus_status_quo_incremental_ramp_impact": -8.890757222803343e-05,
+            "policy_native_relative_incremental_ramp_impact": -9.818466056672744e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -9.277088338694012e-06
+          },
+          "MISO_MINN_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": 1.9455041153647824e-06,
+            "policy_native_relative_incremental_ramp_impact": -2.880762996489416e-06,
+            "policy_outperforms_status_quo": false,
+            "status_quo_native_relative_incremental_ramp_impact": -4.8262671118541985e-06
+          },
+          "SPP_NORTH_HUB": {
+            "policy_minus_status_quo_incremental_ramp_impact": -7.376781275493702e-06,
+            "policy_native_relative_incremental_ramp_impact": -1.0254548946251427e-05,
+            "policy_outperforms_status_quo": true,
+            "status_quo_native_relative_incremental_ramp_impact": -2.877767670757725e-06
+          }
+        },
+        "policy_minus_status_quo_impact": -3.417478752683043e-05,
+        "seed": 4103,
+        "service_unserved": 0.0,
+        "success_gate": {
+          "checks": {
+            "behavior_lower_ramp_power": true,
+            "behavior_pre_service": true,
+            "emergency_path_below_one_percent": true,
+            "every_market_native_relative_incremental_ramp_improves": true,
+            "exact_batch_completion": true,
+            "exact_service": true,
+            "mean_ramp_improves": true,
+            "no_future_leakage": true,
+            "primary_energy_budget": true,
+            "zero_certificate_violations": true,
+            "zero_expiry": true,
+            "zero_terminal_work": true
+          },
+          "compatibility_aliases": {
+            "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+          },
+          "failed_gates": [],
+          "failure_is_publishable": true,
+          "iterations_may_use": [
+            "train",
+            "validation"
+          ],
+          "passed": true,
+          "split": "validation",
+          "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+          "test_tuning_prohibited": true
+        },
+        "terminal_work": 0.0,
+        "throughput_interactions_per_second": 68.66227411154692
+      }
+    ]
+  },
+  "variant_aggregates": {
+    "envelope_off": {
+      "all_feasible": true,
+      "maximum_native_relative_incremental_ramp_impact": 4.800421399279274e-07,
+      "mean_day_ahead_cost_ratio": 0.9746521837278631,
+      "mean_emergency_fallback_rate": 0.0,
+      "mean_native_relative_incremental_ramp_impact": -1.3982679840576747e-05,
+      "mean_policy_minus_status_quo_impact": -7.525334301084534e-06,
+      "mean_throughput_interactions_per_second": 70.02785369565662,
+      "mean_training_elapsed_seconds": 1580.6015553000227,
+      "minimum_native_relative_incremental_ramp_impact": -3.953123305886744e-05,
+      "per_market_mean": {
+        "CAISO_NP15": {
+          "policy_minus_status_quo_incremental_ramp_impact": -9.79042645293572e-06,
+          "policy_native_relative_incremental_ramp_impact": -1.863868552357562e-05,
+          "status_quo_native_relative_incremental_ramp_impact": -8.8482590706399e-06
+        },
+        "ISONE_NEMA": {
+          "policy_minus_status_quo_incremental_ramp_impact": -1.4795140466202117e-05,
+          "policy_native_relative_incremental_ramp_impact": -2.407222879121473e-05,
+          "status_quo_native_relative_incremental_ramp_impact": -9.277088325012608e-06
+        },
+        "MISO_MINN_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": -1.342762251527191e-07,
+          "policy_native_relative_incremental_ramp_impact": -4.960543328778854e-06,
+          "status_quo_native_relative_incremental_ramp_impact": -4.826267103626135e-06
+        },
+        "SPP_NORTH_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": -5.381494060047575e-06,
+          "policy_native_relative_incremental_ramp_impact": -8.259261718737779e-06,
+          "status_quo_native_relative_incremental_ramp_impact": -2.877767658690203e-06
+        }
+      },
+      "sample_standard_deviation_native_relative_incremental_ramp_impact": 2.219002650816214e-05,
+      "seed_count": 3
+    },
+    "envelope_on": {
+      "all_feasible": true,
+      "maximum_native_relative_incremental_ramp_impact": 1.3491228732999208e-06,
+      "mean_day_ahead_cost_ratio": 0.9748094510185643,
+      "mean_emergency_fallback_rate": 0.0,
+      "mean_native_relative_incremental_ramp_impact": -1.4057949489379791e-05,
+      "mean_policy_minus_status_quo_impact": -7.6006039499722155e-06,
+      "mean_throughput_interactions_per_second": 72.3287123018016,
+      "mean_training_elapsed_seconds": 1535.00948363333,
+      "minimum_native_relative_incremental_ramp_impact": -4.063213306623801e-05,
+      "per_market_mean": {
+        "CAISO_NP15": {
+          "policy_minus_status_quo_incremental_ramp_impact": -9.421609353362556e-06,
+          "policy_native_relative_incremental_ramp_impact": -1.8269868389686928e-05,
+          "status_quo_native_relative_incremental_ramp_impact": -8.84825903632437e-06
+        },
+        "ISONE_NEMA": {
+          "policy_minus_status_quo_incremental_ramp_impact": -1.7360578054194734e-05,
+          "policy_native_relative_incremental_ramp_impact": -2.6637666392888746e-05,
+          "status_quo_native_relative_incremental_ramp_impact": -9.277088338694012e-06
+        },
+        "MISO_MINN_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": 7.081022931566797e-07,
+          "policy_native_relative_incremental_ramp_impact": -4.118164818697519e-06,
+          "status_quo_native_relative_incremental_ramp_impact": -4.8262671118541985e-06
+        },
+        "SPP_NORTH_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": -4.328330685488244e-06,
+          "policy_native_relative_incremental_ramp_impact": -7.206098356245969e-06,
+          "status_quo_native_relative_incremental_ramp_impact": -2.877767670757725e-06
+        }
+      },
+      "sample_standard_deviation_native_relative_incremental_ramp_impact": 2.3111355265704793e-05,
+      "seed_count": 3
+    }
+  }
+}

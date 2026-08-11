@@ -203,35 +203,64 @@ def _normalization_summary(vec: VecNormalize) -> dict[str, Any]:
     }
 
 
-def source_bundle_hash() -> str:
+def source_bundle_hash(
+    factory: RampEnvironmentFactory | dict[str, Any] | None = None,
+    protocol: dict[str, Any] | None = None,
+) -> str:
+    """Hash active RL/core code plus the selected factory and protocol."""
+    if isinstance(factory, dict):
+        if protocol is not None:
+            raise ValueError("protocol was supplied twice")
+        protocol = factory
+        factory = None
     root = Path(__file__).resolve().parent.parent
     paths = [
         root / relative
         for relative in (
-            "ramp_rl/campaign.py",
             "ramp_rl/contract.py",
             "ramp_rl/evaluation.py",
             "ramp_rl/evidence.py",
             "ramp_rl/runner.py",
             "ramp_rl/schema.py",
+            "env/ramp_v6/__init__.py",
             "env/ramp_v6/environment.py",
-            "env/ramp_v6/factory.py",
-            "env/ramp_v6/fixture.py",
             "env/ramp_v6/models.py",
             "env/ramp_v6/panel.py",
             "env/ramp_v6/projection.py",
-            "env/ramp_v6/protocol.py",
             "env/ramp_v6/reward.py",
-            "env/protocols/v6_ramp_pure_rl.yaml",
-            "env/protocols/v6_pure_ramp_rl.yaml",
-            "env/protocols/v6_pure_ramp_rl.schema.json",
-            "env/protocols/v6_ramp_panel.schema.json",
         )
     ]
+    if factory is not None:
+        source = inspect.getsourcefile(factory)
+        if source is None:
+            raise ValueError("environment factory must have an inspectable source file")
+        paths.append(Path(source).resolve())
+        module = inspect.getmodule(factory)
+        identity_provider = getattr(module, "factory_identity_paths", None)
+        if callable(identity_provider):
+            for path in identity_provider(factory):
+                resolved = Path(path)
+                paths.append(
+                    resolved.resolve()
+                    if resolved.is_absolute()
+                    else (root / resolved).resolve()
+                )
+    if protocol is not None:
+        protocol_path = protocol.get("_path")
+        if protocol_path:
+            paths.append(root / str(protocol_path))
     digest = hashlib.sha256()
-    for path in paths:
-        digest.update(str(path.relative_to(root)).encode("utf-8"))
+    for path in sorted(set(paths), key=lambda value: str(value)):
+        if not path.is_file():
+            raise FileNotFoundError(f"source-bundle identity file is missing: {path}")
+        try:
+            display = str(path.relative_to(root))
+        except ValueError:
+            display = path.name
+        digest.update(display.encode("utf-8"))
         digest.update(path.read_bytes())
+    if protocol is not None and not protocol.get("_path"):
+        digest.update(sha256_json(protocol).encode("utf-8"))
     return digest.hexdigest()
 
 
@@ -250,6 +279,15 @@ def _factory_identity(factory: RampEnvironmentFactory) -> dict[str, str]:
         "source_path": display_path,
         "source_sha256": sha256_file(path),
     }
+
+
+def _repository_path(path: Path) -> str:
+    root = Path(__file__).resolve().parent.parent
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(root).as_posix()
+    except ValueError:
+        return resolved.name
 
 
 def _assert_artifact_hash(path: Path, expected: dict[str, Any], label: str) -> None:
@@ -389,7 +427,7 @@ def run_training(
         raise RuntimeError("all vector environments must use the same decision_steps")
     factory_identity = _factory_identity(factory)
     environment_contract = dict(base_vec.envs[0].contract)
-    integrated_source_sha256 = source_bundle_hash()
+    integrated_source_sha256 = source_bundle_hash(factory, protocol)
     job_identity = {
         "protocol_sha256": protocol["_sha256"],
         "algorithm": algorithm,
@@ -585,13 +623,22 @@ def run_training(
             "prior_final_policy_sha256": prior_manifest.get("final_policy_sha256") if prior_manifest else None,
             "loaded_policy_sha256": initial_hashes["policy"] if resumed else None,
             "loaded_critic_sha256": initial_hashes["critic"] if resumed else None,
-            "isolated_job_directory": str(output_dir),
+            "isolated_job_directory": _repository_path(output_dir),
         },
         "artifacts": {
-            "model": {"path": str(model_path), "sha256": sha256_file(model_path)},
-            "normalization": {"path": str(normalization_path), "sha256": sha256_file(normalization_path)},
+            "model": {
+                "path": _repository_path(model_path),
+                "sha256": sha256_file(model_path),
+            },
+            "normalization": {
+                "path": _repository_path(normalization_path),
+                "sha256": sha256_file(normalization_path),
+            },
             "replay": (
-                {"path": str(replay_path), "sha256": sha256_file(replay_path)}
+                {
+                    "path": _repository_path(replay_path),
+                    "sha256": sha256_file(replay_path),
+                }
                 if replay_path.exists()
                 else None
             ),

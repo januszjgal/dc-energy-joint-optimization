@@ -1,0 +1,43 @@
+{
+  "completed_seed_variant_count": 6,
+  "elapsed_seconds": 9557.708558100043,
+  "paired_seeds": [
+    4101,
+    4102,
+    4103
+  ],
+  "post_campaign_factory_verification": {
+    "envelope_off": {
+      "max_immediate_arrival_work": 2.424402597223561,
+      "steps": 3834,
+      "train": 114,
+      "validation": 28
+    },
+    "envelope_on": {
+      "max_immediate_arrival_work": 2.424402597223561,
+      "steps": 3834,
+      "train": 114,
+      "validation": 28
+    }
+  },
+  "preflight": {
+    "envelope_off": {
+      "steps": 3834,
+      "train": 114,
+      "validation": 28
+    },
+    "envelope_on": {
+      "steps": 3834,
+      "train": 114,
+      "validation": 28
+    }
+  },
+  "requested_interactions_per_seed_variant": 100000,
+  "requested_interactions_total": 600000,
+  "schema_version": "four-market-v2-paired-campaign-v1",
+  "sealed_test_accessed": false,
+  "variants": [
+    "envelope_on",
+    "envelope_off"
+  ]
+}

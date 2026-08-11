@@ -1,6 +1,3 @@
-"""Independent six-market US energy model v3."""
+"""Active four-market energy-data and factory package."""
 
-from .contract import ContractError
-
-__all__ = ["ContractError"]
-__version__ = "3.0.0"
+__version__ = "4.0.0"

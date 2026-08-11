@@ -1,0 +1,165 @@
+{
+  "classification": "large_non_final_validation_only",
+  "requested_interactions": 100000,
+  "schema_version": "four-market-v2-seed-summary-v1",
+  "sealed_test_accessed": false,
+  "seed": 4103,
+  "training_elapsed_seconds": 1610.6661398999859,
+  "training_manifest": {
+    "effective_boundary_timesteps": 110592,
+    "interaction_count": 110592,
+    "path": "models/four_market_v2/campaign/envelope_on/ppo/seed-4103/training_manifest.json",
+    "sha256": "0827a8d2ef4e3184f1375560167fd02521cdedd467a8adf17e64430218fe721a"
+  },
+  "training_throughput_interactions_per_second": 68.66227411154692,
+  "validation": {
+    "abs_adjusted_ramp_h1_fraction_s_per_hour_max": 0.30273937468931744,
+    "abs_adjusted_ramp_h1_fraction_s_per_hour_p95": 0.09803283883072446,
+    "abs_adjusted_ramp_h3_fraction_s_per_hour_max": 0.1638370666143876,
+    "abs_adjusted_ramp_h3_fraction_s_per_hour_p95": 0.077464769954763,
+    "batch_expired": 0.0,
+    "batch_unfinished": 0.0,
+    "behavior_audit": {
+      "deferrable_pre_service": 227.08465846061745,
+      "policy_ramp_power": 450603.80835394503,
+      "status_quo_ramp_power": 454625.2526417807
+    },
+    "bootstrap_by_day": {
+      "draws": 500,
+      "estimable": true,
+      "group_count": 28,
+      "lower_95": -4.486816634811251e-05,
+      "mean": -4.063213306623801e-05,
+      "unit": "day",
+      "upper_95": -3.688773899896896e-05
+    },
+    "bootstrap_by_month": {
+      "estimable": false,
+      "group_count": 1,
+      "mean": -4.063213306623801e-05,
+      "reason": "at least two independent groups are required",
+      "unit": "month"
+    },
+    "certificate_violations": 0,
+    "emergency_feasibility_rate": 0.0,
+    "energy_cost_ratio": 1.0031447913509148,
+    "episode_count": 28,
+    "evaluation_seed_interval": {
+      "maximum": -4.063213306623801e-05,
+      "mean": -4.063213306623801e-05,
+      "minimum": -4.063213306623801e-05,
+      "seed_count": 1
+    },
+    "future_leakage_detected": false,
+    "mean_incremental_ramp_impact": -4.063213306623801e-05,
+    "mean_policy_native_relative_incremental_ramp_impact": -4.063213306623801e-05,
+    "per_market_macro": {
+      "CAISO_NP15": -5.120855975548374e-05,
+      "ISONE_NEMA": -9.818466056672744e-05,
+      "MISO_MINN_HUB": -2.880762996489416e-06,
+      "SPP_NORTH_HUB": -1.0254548946251427e-05
+    },
+    "per_market_policy_native_relative_incremental_ramp_impact": {
+      "CAISO_NP15": -5.120855975548374e-05,
+      "ISONE_NEMA": -9.818466056672744e-05,
+      "MISO_MINN_HUB": -2.880762996489416e-06,
+      "SPP_NORTH_HUB": -1.0254548946251427e-05
+    },
+    "physical_ramp_metric_contract": {
+      "cross_market_signed_averaging": false,
+      "input": "absolute adjusted ramp magnitude",
+      "pooling": "all market-timestep values with equal weight",
+      "units": "fraction_of_market_training_q95_gross_demand_per_hour"
+    },
+    "ramp_h1_adjusted_max": 0.30273937468931744,
+    "ramp_h1_adjusted_p95": 0.09803283883072446,
+    "ramp_h3_adjusted_max": 0.1638370666143876,
+    "ramp_h3_adjusted_p95": 0.077464769954763,
+    "semantic_adjustment": {
+      "adjustment_rate": 0.30952380952380953,
+      "coordinate_id": "decoded-work-allocation-service-batch-total-destination-2n-plus-1-v1",
+      "decision_count": 756,
+      "emergency_fallback_rate": 0.0,
+      "max_l2": 0.5358261904473388,
+      "mean_l2": 0.037565416410602695,
+      "p50_l2": 0.0,
+      "p95_l2": 0.2276537464066839,
+      "positive_adjustment_count": 234,
+      "sum_l2": 28.39945480641564,
+      "units": "compute_work_units_per_hourly_decision"
+    },
+    "semantic_adjustment_l2": 28.39945480641564,
+    "service_unserved": 0.0,
+    "split": "validation",
+    "status_quo_comparison": {
+      "every_market_outperforms_status_quo": false,
+      "market_count": 4,
+      "markets_better_count": 3,
+      "markets_better_share": 0.75,
+      "per_market": {
+        "CAISO_NP15": {
+          "policy_minus_status_quo_incremental_ramp_impact": -4.2360300719159366e-05,
+          "policy_native_relative_incremental_ramp_impact": -5.120855975548374e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -8.84825903632437e-06
+        },
+        "ISONE_NEMA": {
+          "policy_minus_status_quo_incremental_ramp_impact": -8.890757222803343e-05,
+          "policy_native_relative_incremental_ramp_impact": -9.818466056672744e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -9.277088338694012e-06
+        },
+        "MISO_MINN_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": 1.9455041153647824e-06,
+          "policy_native_relative_incremental_ramp_impact": -2.880762996489416e-06,
+          "policy_outperforms_status_quo": false,
+          "status_quo_native_relative_incremental_ramp_impact": -4.8262671118541985e-06
+        },
+        "SPP_NORTH_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": -7.376781275493702e-06,
+          "policy_native_relative_incremental_ramp_impact": -1.0254548946251427e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -2.877767670757725e-06
+        }
+      },
+      "policy_minus_status_quo_mean_incremental_ramp_impact": -3.417478752683043e-05,
+      "policy_native_relative_mean_incremental_ramp_impact": -4.063213306623801e-05,
+      "status_quo_native_relative_mean_incremental_ramp_impact": -6.457345539407576e-06
+    },
+    "success_gate": {
+      "checks": {
+        "behavior_lower_ramp_power": true,
+        "behavior_pre_service": true,
+        "emergency_path_below_one_percent": true,
+        "every_market_native_relative_incremental_ramp_improves": true,
+        "exact_batch_completion": true,
+        "exact_service": true,
+        "mean_ramp_improves": true,
+        "no_future_leakage": true,
+        "primary_energy_budget": true,
+        "zero_certificate_violations": true,
+        "zero_expiry": true,
+        "zero_terminal_work": true
+      },
+      "compatibility_aliases": {
+        "every_market_ramp_improves": "every_market_native_relative_incremental_ramp_improves"
+      },
+      "failed_gates": [],
+      "failure_is_publishable": true,
+      "iterations_may_use": [
+        "train",
+        "validation"
+      ],
+      "passed": true,
+      "split": "validation",
+      "status_quo_outperformance_is_diagnostic_not_preregistered_gate": true,
+      "test_tuning_prohibited": true
+    },
+    "terminal_work": 0.0
+  },
+  "validation_raw": {
+    "path": "output/four_market_v2/campaign/envelope_on/seed-4103/validation_raw.json",
+    "sha256": "fe903b5f49daba1a1b4ab65a4cdc7c97686c3c9cdfb73c4213bf231c1dd8a827"
+  },
+  "variant": "envelope_on"
+}

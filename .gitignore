@@ -38,26 +38,6 @@ Thumbs.db
 .env
 *.secret
 
-# Energy model v3 restricted/large live evidence (regenerable)
-data/energy_model_v3/raw/
-data/energy_model_v3/native/
-data/energy_model_v3/forecasts/*.csv
-data/energy_model_v3/modeled_dc_power/
-output/energy_model_v3/live-panel/
-
-# Real ramp-RL checkpoints stay local; manifests and evaluation evidence are tracked.
-models/ramp_rl_v6/live/**/model.zip
-models/ramp_rl_v6/live/**/vecnormalize.pkl
-models/ramp_rl_v6/live/**/replay_buffer.pkl
-models/ramp_rl_v6/live_v2/**/model.zip
-models/ramp_rl_v6/live_v2/**/vecnormalize.pkl
-models/ramp_rl_v6/live_v2/**/replay_buffer.pkl
-models/ramp_rl_v6/live_v3/**/model.zip
-models/ramp_rl_v6/live_v3/**/vecnormalize.pkl
-models/ramp_rl_v6/live_v3/**/replay_buffer.pkl
-models/ramp_rl_v6/recovered_v4r/
-
-# Deterministic V3 recovery scratch checkpoints remain local.
-models/ramp_rl_v6/recovery_v3/
-models/ramp_rl_v6/recovery_v3_transfer/
-models/ramp_rl_v6/recovery_v3_metric_replay/
+# PPO model containers remain local; manifests and evaluation evidence are tracked.
+models/four_market_v2/**/model.zip
+models/four_market_v2/**/vecnormalize.pkl
