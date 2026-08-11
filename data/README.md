@@ -1,237 +1,181 @@
-# Data Contracts
+# Final V6/V4R Data Contract
 
-The repository preserves two additive data contracts:
+The active data surface contains:
 
-1. the legacy V2-V5 May 2025 CAISO-derived archetype documented below; and
-2. the final ramp-aware energy-model V3 six-market panel documented in
-   [`energy_model_v3/README.md`](energy_model_v3/README.md).
+1. measured Google ClusterData2019 workload curves;
+2. Google PowerData2019-derived CPU-to-power parameters; and
+3. the final energy-model V3 six-market panel and provenance.
 
-The primary runtime never reads from `archive/`.
+The final runtime never reads from `archive/`. The superseded CAISO-only V2
+archetype and stale extraction artifacts are retained there for provenance.
 
-## Final ramp-aware energy-model V3
+## 1. ClusterData2019 workload
 
-The final V4R result uses an hourly common UTC panel from September 2025 through
-April 2026 for CAISO NP15, ERCOT North, NYISO Zone J, MISO Minnesota Hub, SPP
-North Hub, and ISO-NE NEMA. Training is September-January, validation is
-February, and the sealed test is March-April. PJM DOM / Northern Virginia was
-credential-blocked and was not evaluated.
+### Source and primary mapping
 
-Operator day-ahead LMP and physical products are retained with product,
-geography, cadence, revision, licensing, retrieval, and raw-hash provenance.
-Documented same-balancing-authority EIA bulk physical fallback is used only
-where a complete operator historical physical tuple is unavailable. No market
-series is interpolated or silently substituted. Restricted native files and the
-complete live panel remain in ignored local paths when licensing forbids
-redistribution; committed manifests and hashes bind the canonical evidence.
-
-Measured Borg cell a-f profiles support the primary six-site map. The c-h
-robustness map overlaps the primary workload population and is not an
-independent holdout. The present eight-month panel does not support prior-year
-or future-year claims. Extending it requires complete licensed all-six coverage,
-new causal forecast vintages, new split boundaries, and a separately frozen
-protocol; the March-April sealed test cannot be reused for development.
-
-Re-run the local live preflight from the repository root:
-
-```powershell
-python scripts\build_energy_model_v3.py preflight
-```
-
-The immutable single-open V4R evidence remains under
-`output\ramp_rl_v6\recovered_v4r_resealed_v2\`. The authoritative additive
-physical-ramp/status-quo/decoder telemetry correction is under
-`output\ramp_rl_v6\recovered_v4r_posthoc_metrics_v1\`; it references rather
-than rewrites the sealed package. Locally restricted acquisition inputs remain
-under the energy-model V3 paths described in its README.
-
-## Legacy V2-V5 Google Borg workload data
-
-### Aggregate curves
-
-`cells/cell_a.csv` through `cells/cell_h.csv` contain normalized aggregate CPU
-usage for the eight ClusterData2019 Borg cells. Each file has timesteps
-`0..8928` (8,929 samples). The active energy calendar contains 8,928
-five-minute intervals, so `env/data_loader.py` deliberately truncates every
-loaded series to the shortest input and uses workload timesteps `0..8927`.
-
-The extraction source is Google's public BigQuery dataset:
+The upstream source is Google's public BigQuery dataset:
 
 ```text
 google.com:google-cluster-data.clusterdata_2019_{cell}
 ```
 
-The original trace covers May 2019. Absolute timestamps were discarded during
-workload extraction; timestep zero is aligned to May 1, 2025 00:00 Pacific as
-an explicit cross-year modeling convention. This is not a contemporaneous
-market replay.
+ClusterData2019 covers eight Borg cells during May 2019. The primary six-market
+study maps cells a-f to CAISO NP15, ERCOT North, NYISO Zone J, MISO Minnesota,
+SPP North, and ISO-NE NEMA. The c-h robustness mapping overlaps the primary
+population and is not an independent holdout.
 
-### Measured service and batch tiers
+### Aggregate and tier curves
 
-`cells/cell_a_tiers.csv` through `cells/cell_h_tiers.csv` are five-minute
-CPU-usage decompositions from BigQuery `instance_usage`, left-joined to
-`collection_events` for priority:
+`cells/cell_a.csv` through `cells/cell_h.csv` contain normalized aggregate CPU
+usage. `cells/cell_a_tiers.csv` through `cells/cell_h_tiers.csv` contain the
+measured five-minute split:
 
 ```text
 batch (deferrable, no SLO): usage with matched priority <= 115
 service/residual: aggregate usage - classified batch usage
 ```
 
-The service/residual curve contains matched priorities at or above 116 and any
-usage without matched priority metadata. The committed extraction does not
-include a canonical unmatched-priority-rate audit, so it does not assert that
-every service/residual sample has an observed priority at or above 116.
+The service/residual curve includes matched priorities at or above 116 and
+usage without matched priority metadata. The extraction does not claim that
+every residual observation has a measured production priority.
 
-At every timestep:
+Every row satisfies:
 
 ```text
 service_demand_norm + batch_demand_norm = cpu_demand_norm
 ```
 
-This identity holds to floating-point precision for all eight cells. Cells
-a-d are regenerated by `extract_tier_curves.ipynb`; cells e-h are regenerated
-by `extract_cells_eh.ipynb`. The e-h tier volumes are measured, not generated
-or fitted.
+Cells a-d are regenerated by `extract_tier_curves.ipynb`; cells e-h are
+regenerated by `extract_cells_eh.ipynb`. The tier volumes are measured, not
+generated or fitted.
 
-| Cell | Machines | Mean CPU | Peak CPU | Measured batch share | Primary deadline |
-|---|---:|---:|---:|---:|---:|
-| a | 10,001 | 0.560 | 0.690 | 16.618% | 18 steps |
-| b | 10,047 | 0.540 | 0.670 | 15.728% | 8 steps |
-| c | 13,245 | 0.550 | 0.700 | 22.328% | 14 steps |
-| d | 12,576 | 0.530 | 0.660 | 26.374% | 26 steps |
-| e | 14,122 | 0.550 | 0.720 | 23.489% | 37 steps |
-| f | 12,201 | 0.550 | 0.730 | 8.366% | 34 steps |
-| g | 12,796 | 0.630 | 0.750 | 37.736% | 35 steps |
-| h | 11,592 | 0.580 | 0.770 | 29.125% | 54 steps |
+Each file has 8,929 indexed rows. `energy_model_v3/ramp_factory.py` excludes
+the final terminal row, averages the remaining 8,928 five-minute intervals
+into 744 hours, and repeats that profile over the 5,808-hour September
+2025-April 2026 market calendar. This is a counterfactual alignment, not a
+contemporaneous workload/market replay.
 
-Machine counts come from `machines/machines_{a..h}.csv`; they are provenance
-and calibration metadata. They do not rescale the normalized workload a
-second time.
+### Cell summary
 
-### Synthetic deadline semantics
+| Cell | Machines | Measured batch share | Mean completed no-SLO duration | Final V6 deadline |
+|---|---:|---:|---:|---:|
+| a | 10,001 | 16.618% | 2,551.8 s | 2 h |
+| b | 10,047 | 15.728% | 1,154.9 s | 1 h |
+| c | 13,245 | 22.328% | 2,082.1 s | 2 h |
+| d | 12,576 | 26.374% | 3,865.3 s | 3 h |
+| e | 14,122 | 23.489% | 5,407.2 s | 4 h |
+| f | 12,201 | 8.366% | 4,958.8 s | 3 h |
+| g | 12,796 | 37.736% | 5,246.4 s | 3 h |
+| h | 11,592 | 29.125% | 8,093.7 s | 5 h |
 
-The volume of service and batch work is measured, but the trace does not
-provide the scheduling deadline used by this experiment. Each batch arrival
-receives an experimental deadline:
+Machine counts come from `machines/machines_{a..h}.csv`. These files are
+provenance and normalization metadata; they do not rescale normalized workload
+a second time.
 
-```text
-H_i = ceil(mean_duration_i * (1 + flexibility_factor) / 300 seconds)
-deadline_step = arrival_step + H_i
-```
+### Experimental deadlines
 
-The primary `flexibility_factor` is `1.0`. The per-cell mean durations used by
-the runtime come from `jobs/batch_distributions_{a..h}.json`, referenced by
-the scenario YAML files. They produce primary horizons:
+The trace supplies completed no-SLO durations but not the experiment's control
+deadlines. The final hourly factory reads
+`jobs/batch_distributions_{a..h}.json` and computes:
 
 ```text
-a-d: 18, 8, 14, 26 steps
-e-h: 37, 34, 35, 54 steps
+deadline_hours = max(1, ceil(2 * mean_completed_no_slo_duration / 3600))
 ```
 
-These are experimental control deadlines, not Borg SLOs.
+These horizons are experimental assumptions, not Borg SLOs, customer
+commitments, or production queue policies. `jobs/durations_eh.json` preserves
+the e-h BigQuery duration summaries used to materialize the compact runtime
+JSON files.
 
-`workload_generator_params.json` is retained as extraction and fitting
-provenance for the older cross-cell synthetic generator. Active scenarios do
-not load it. When measured tier curves are present, `env/data_loader.py`
-always uses those curves for demand; fitted job distributions supply deadline
-statistics and optional sensitivity/fallback generation only.
+### Runtime admission envelope
 
-## 2. Power data and model
+New batch arrivals are limited to 10% of normalized fleet capacity. If measured
+batch exceeds that envelope, the factory proportionally reduces admitted batch
+and conserves the excess by reclassifying it as immediate service. Work is not
+dropped. Immediate service is limited to 75% of normalized fleet capacity.
 
-`power_model_params.json` contains pooled and per-cell linear fits derived from
+The executable transformation is `energy_model_v3/ramp_factory.py`. Exact tier
+and deadline input hashes are recorded in
+`../output/energy_model_v3/ramp_v6/factory_manifest.json`.
+
+## 2. PowerData2019 model
+
+`power_model_params.json` contains pooled and per-cell affine fits derived from
 Google PowerData2019:
 
 ```text
-power_utilization_i = idle_i + slope_i * cpu_utilization_i
-grid_power_i_MW = rated_power_i_MW * power_utilization_i
+power_fraction_i = idle_i + slope_i * cpu_utilization_i
+grid_power_i_mw = rated_power_i_mw * power_fraction_i
 ```
 
-Every modeled site is an equal 100 MW proxy data center with normalized CPU
-capacity `1.0`. The active scenarios use the per-cell coefficients. The
-per-cell fits have R-squared values from approximately 0.65 to 0.94; the pooled
-fit is retained for comparison and fallback.
+Every primary proxy facility has rated power 100 MW and normalized compute
+capacity 1.0. The active final pipeline uses the complete per-cell parameter
+set in `power_model_params.json`.
 
-`power_model_scatter.csv` and `extraction_summary.png` are calibration
-diagnostics. `power_model_eh.json` is an older e-h-only view; the active
-complete parameter set is `power_model_params.json`.
+Exact workload source hashes, per-cell coefficients, hourly row counts,
+repetition counts, and modeled-power hashes are recorded in
+`energy_model_v3/provenance/workload-power-manifest.json`.
 
-## 3. CAISO energy data
+## 3. Energy-model V3 six-market panel
 
-See `energy_model_v2/README.md` and
-`energy_model_v2/2025/manifest.json` for the full source contract and SHA-256
-hashes.
+The final V4R result uses a common hourly UTC panel from September 2025 through
+April 2026:
 
-The active calendar is:
+- CAISO NP15;
+- ERCOT LZ_NORTH;
+- NYISO Zone J;
+- MISO Minnesota Hub;
+- SPP North Hub; and
+- ISO-NE NEMA.
 
-```text
-2025-05-01 07:00:00Z inclusive
-2025-06-01 07:00:00Z exclusive
-5-minute cadence
-8,928 intervals
-```
+Training is September 2025-January 2026, validation is February 2026, and the
+sealed test is March-April 2026. PJM DOM/Northern Virginia was
+credential-blocked and was not evaluated.
 
-Inputs are:
+Operator day-ahead LMP and physical products retain product, geography,
+cadence, interval, revision, licensing, retrieval, quality, and raw-hash
+metadata. Where a complete operator historical physical tuple is unavailable,
+the pipeline uses an explicit same-balancing-authority EIA bulk fallback. No
+primary market series is interpolated or silently substituted.
 
-- CAISO Today's Outlook five-minute net demand and solar;
-- CAISO OASIS NP15 day-ahead hourly LMP in USD/MWh; and
-- explicit IANA time-zone mappings for four US and four Global market slots.
+See [`energy_model_v3/README.md`](energy_model_v3/README.md) for the complete
+market-by-market source contract, fail-closed behavior, and local staging
+requirements.
 
-Hourly price is expanded as a step function to five-minute intervals and
-converted to USD/kWh. Price, net demand, and solar remain co-timestamped.
-For each geographic slot, the full signal tuple is shifted by matching target
-local wall time to the reference California wall time. This produces a
-controlled geographic archetype; it does not claim to reproduce eight
-independent regional electricity markets.
+## 4. Reproduction and validation
 
-Signed net demand is:
+Regenerating the workload artifacts requires access to the public Google
+BigQuery trace:
 
-```text
-net_demand_signed = net_demand_mw / 33,361 MW
-```
+- `extract_clusterdata2019_full.ipynb` - a-d aggregate curves, machine metadata,
+  full job metadata, and supporting fits;
+- `extract_tier_curves.ipynb` - authoritative measured a-d tier curves;
+- `extract_cells_eh.ipynb` - measured e-h aggregate/tier curves, machine
+  metadata, durations, and power inputs; and
+- `scripts/refit_freebeb_local.py` - corrected a-d compact duration JSON from
+  locally staged full job extracts.
 
-and is clipped only to `[-1, 1]`. Negative values and negative prices are
-preserved. The primary grid-stress term uses only
-`max(net_demand_signed, 0)`.
+Large full job extracts are intentionally not committed. The active simulation
+consumes the committed aggregate/tier curves and compact per-cell duration JSON.
 
-## 4. Active scenario wiring
-
-The four active scenario pairs are:
-
-- `env/scenarios/us_model_v2_2025.yaml` (cells a-d);
-- `env/scenarios/global_model_v2_2025.yaml` (cells a-d);
-- `env/scenarios/us_model_eh_v2_2025.yaml` (cells e-h); and
-- `env/scenarios/global_model_eh_v2_2025.yaml` (cells e-h).
-
-Each site YAML points to one aggregate curve, one measured tier curve, one
-machine file, one per-cell batch distribution, and one processed energy slot.
-All sites declare `rated_power_mw: 100.0`, `capacity: 1.0`, and
-`memory_capacity: 1.0`.
-
-Routing is unrestricted among the four modeled sites. The data contract does
-not model latency, residency, transfer bandwidth, transfer energy, or transfer
-cost. Results are therefore an optimistic routing upper bound.
-
-## 5. Validation and regeneration
-
-From the repository root on Windows:
+From the repository root:
 
 ```powershell
-python scripts\preflight_energy_model_v2.py
-python scripts\build_energy_model_v2.py --year 2025
+python scripts\build_energy_model_v3.py preflight
+python scripts\build_energy_v3_ramp_factory.py
+python -m unittest discover -s tests\energy_model_v3 -v
+python -m unittest discover -s tests\ramp_v6 -p "test_*.py" -v
 ```
 
-The preflight verifies 8,928-step alignment, measured-tier conservation,
-signed negative net demand, and Status Quo neutrality for all four scenarios.
-The build command regenerates the CAISO processed slots and figures from the
-committed raw window; it fails rather than substituting synthetic prices.
+## 5. Archived predecessors
 
-Regenerating Borg curves requires access to the public Google BigQuery trace:
+The following are preserved under `../archive/` and are not final V6 inputs:
 
-- `extract_clusterdata2019_full.ipynb` - aggregate curves, machine metadata,
-  job distributions, and power calibration;
-- `extract_tier_curves.ipynb` - measured a-d tier curves; and
-- `extract_cells_eh.ipynb` - measured e-h aggregate/tier curves, machines,
-  durations, and power inputs.
+- `v1_v5_legacy_20260810/` - CAISO-only energy model, V2-V5 protocols,
+  campaigns, models, and result packages;
+- `clusterdata2019_stale_extraction_20260810/` - stale raw extracts, synthetic
+  generator parameters, and superseded extraction utilities; and
+- `v6_superseded_artifacts_20260810/` - noncanonical V6 drafts and figures.
 
-Large full job extracts are intentionally not committed. Truncated examples
-under `jobs/` support schema inspection; the active simulation consumes the
-committed aggregate/tier curves and fitted per-cell JSON files.
+See [`../archive/README.md`](../archive/README.md) for original paths and
+replacement boundaries.
