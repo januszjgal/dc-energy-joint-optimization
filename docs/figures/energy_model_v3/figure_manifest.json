@@ -1,0 +1,43 @@
+{
+  "outputs": {
+    "docs/figures/energy_model_v3/single_day_normalized_net_load.png": "ae753f314d797760a54deafef8c25b32b4a2c25005cd59e041f643d076582c02",
+    "docs/figures/energy_model_v3/six_market_normalized_net_load.png": "c856dc761cc2e6ad3f54024a9339ea8c5a30a76424cad22aad2211f5a345d831"
+  },
+  "schema_version": "energy-model-v3-thesis-figures-v1",
+  "single_day_selection": {
+    "local_date": "2026-01-30",
+    "peak_normalized_net_load": 0.783948806336866,
+    "peak_timestamp_utc": "2026-01-31T03:00:00+00:00",
+    "score": 0.6696554084613786,
+    "selection_criterion": "maximum evening(17-22) minus midday(10-15) normalized net load among complete CAISO training days",
+    "selection_market": "CAISO_NP15",
+    "selection_split": "train",
+    "selection_timezone": "America/Los_Angeles",
+    "simultaneous_end_utc_exclusive": "2026-01-31T08:00:00+00:00",
+    "simultaneous_start_utc": "2026-01-30T08:00:00+00:00",
+    "trough_normalized_net_load": 0.11429339787548742,
+    "trough_timestamp_utc": "2026-01-30T23:00:00+00:00"
+  },
+  "source_factory_manifest": {
+    "path": "output/energy_model_v3/ramp_v6/factory_manifest.json",
+    "sha256": "5a508d81f48bfe2a3d886a86ede62706eb0f5f4a7e0cd2f2a798147c71712b55"
+  },
+  "source_scope": {
+    "active_decision_hours_only": true,
+    "active_hours_per_market": 4848,
+    "end_utc": "2026-04-29T23:00:00+00:00",
+    "market_order": [
+      "CAISO_NP15",
+      "ERCOT_LZ_NORTH",
+      "NYISO_NYC_J",
+      "MISO_MINN_HUB",
+      "SPP_NORTH_HUB",
+      "ISONE_NEMA"
+    ],
+    "rows": 29088,
+    "smoothing": false,
+    "start_utc": "2025-10-10T00:00:00+00:00",
+    "value": "net_load_mw / market_scale_mw",
+    "window_count": 202
+  }
+}

@@ -101,6 +101,7 @@ python scripts\run_ramp_v6_fixture.py --scale-multiplier 10 --output-root output
 The committed fixture evidence is an implementation check only. Miniature
 random-initialized PPO/SAC metrics are smoke evidence, not a trained-policy
 claim. The later V1-V4R campaign lineage, immutable single-open result, and
-additive post-hoc metric correction are described in `docs/ramp_rl_v6.md` and
-`docs/ramp_v6_result_handoff.md`; fixture outputs must not be substituted for
-that evidence.
+additive post-hoc metric correction are described in `docs/ramp_rl_v6.md`.
+The retired Markdown/DOCX result handoff is preserved at
+`archive/markdown_docx_pipeline_20260810/docs/ramp_v6_result_handoff.md`;
+fixture outputs must not be substituted for that evidence.
