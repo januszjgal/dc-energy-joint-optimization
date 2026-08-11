@@ -123,6 +123,7 @@ class RampProtocol:
     guaranteed_batch_capacity_fraction: float = 0.25
     service_envelope_fraction_of_fleet: float = 0.75
     batch_arrival_envelope_fraction_of_fleet: float = 0.10
+    admission_envelope_enabled: bool = True
     tolerance: float = 1e-9
 
     def validate(self) -> None:
@@ -144,21 +145,22 @@ class RampProtocol:
             raise ValueError("service envelope fraction must be in [0, 1]")
         if not 0.0 <= self.batch_arrival_envelope_fraction_of_fleet <= 1.0:
             raise ValueError("batch arrival envelope fraction must be in [0, 1]")
-        expected_batch_capacity = 1.0 - self.service_envelope_fraction_of_fleet
-        if not math.isclose(
-            self.guaranteed_batch_capacity_fraction,
-            expected_batch_capacity,
-            rel_tol=0.0,
-            abs_tol=self.tolerance,
-        ):
-            raise ValueError(
-                "guaranteed batch capacity must equal one minus service envelope"
-            )
-        if (
-            self.batch_arrival_envelope_fraction_of_fleet
-            > self.guaranteed_batch_capacity_fraction + self.tolerance
-        ):
-            raise ValueError("batch arrival envelope exceeds guaranteed capacity")
+        if self.admission_envelope_enabled:
+            expected_batch_capacity = 1.0 - self.service_envelope_fraction_of_fleet
+            if not math.isclose(
+                self.guaranteed_batch_capacity_fraction,
+                expected_batch_capacity,
+                rel_tol=0.0,
+                abs_tol=self.tolerance,
+            ):
+                raise ValueError(
+                    "guaranteed batch capacity must equal one minus service envelope"
+                )
+            if (
+                self.batch_arrival_envelope_fraction_of_fleet
+                > self.guaranteed_batch_capacity_fraction + self.tolerance
+            ):
+                raise ValueError("batch arrival envelope exceeds guaranteed capacity")
         if tuple(sorted(self.deadline_bucket_hours)) != self.deadline_bucket_hours:
             raise ValueError("deadline buckets must be strictly increasing")
 

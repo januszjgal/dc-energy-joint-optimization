@@ -15,7 +15,7 @@
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcommand{\codepath}[1]{{\Urlmuskip=0mu plus 1mu\relax\nolinkurl{#1}}}
 
-\title{Thesis Data Sources and Transformations}
+\title{Four-Market Data-Center Scheduling for Grid-Ramp Smoothing}
 \author{}
 \date{}
 
@@ -28,91 +28,54 @@
 \addcontentsline{toc}{section}{TL;DR}
 
 \begin{enumerate}
-  \item We queried Google ClusterData2019 for cells \(a\)--\(h\), using
-        \codepath{machine_events} for cell capacity,
-        \codepath{instance_usage} for measured CPU use, and
-        \codepath{collection_events} for priority and completed no-SLO
-        durations.
-  \item The extraction produced one aggregate CPU curve, one
-        service/residual-versus-batch curve, machine metadata, and a compact
-        deadline-statistics file per cell. The primary study uses cells
-        \(a\)--\(f\); cells \(c\)--\(h\) provide an overlapping sensitivity to
-        the choice of workload traces.
-  \item The V6 factory removes one terminal row, averages twelve five-minute
-        samples into each hour, repeats the resulting 744-hour profile across
-        the 5,808-hour market calendar, and supplies immediate arrivals and
-        earliest-deadline-first batch arrivals to the controller.
-  \item We joined hourly ClusterData2019 CPU utilization to Google
-        PowerData2019 measured power utilization and fitted one affine
-        CPU-to-power model per cell. The runtime combines those coefficients
-        with executed work and a 100 MW proxy rating to calculate site power
-        used by the ramp objective.
-  \item We acquired 5,808 common UTC hours of physical grid conditions and
-        day-ahead prices for six US market cases. Operator price feeds,
-        operator or EIA physical data, training-only scales, and causal
-        reconstructed forecasts are combined into the panel that supplies
-        native net load, forecast trajectories, and the wholesale-cost context
-        used by V6.
-  \item The problem treats the fleet as six fungible proxy sites with hourly
-        capacity, immediate service, deadline-constrained batch work, and
-        unrestricted inter-site movement. Grid conditions and prices are
-        exogenous. A feasible causal scheduler may choose service destinations,
-        batch execution volume, and batch destinations, but may not drop work
-        or violate capacity or deadlines.
-  \item At each hourly decision, V6 compares the grid's native ramp with the
-        ramp after adding scheduled data-center power over 1 h and 3 h windows.
-        That incremental difference becomes the PPO learning signal; day-ahead
-        cost remains a separate guardrail, while causal panel observations
-        inform where service and batch work should be executed.
+  \item Google ClusterData2019 supplies measured CPU workload for eight Borg
+        cells. Cells \(a\)--\(d\) form the active workload set; cells
+        \(e\)--\(h\) remain a disjoint holdout.
+  \item Google PowerData2019 supplies one affine CPU-to-power relationship per
+        cell. EIA and operator feeds supply four consistent physical-grid cases
+        and their day-ahead prices.
+  \item The experiment maps cells \(a\)--\(d\) to CAISO, MISO, SPP, and
+        ISO-NE, converts five-minute workload to repeated hourly arrivals,
+        assigns experimental deadlines, and gives each normalized-capacity
+        proxy site a 500 MW rating.
+  \item The single measured May 2019 workload month is repeated across the
+        energy calendar. Policy learning uses 114 October--January days so the
+        same workload encounters varied net-load, renewable, price, and
+        forecast conditions; 28 February days are held out for validation.
+  \item The scheduling problem chooses service destinations, batch execution,
+        and batch destinations while preserving work, capacity, deadlines, and
+        causal information.
+  \item The attempted Proximal Policy Optimization (PPO) solution uses nine
+        preferences and is rewarded when fleet power reduces the grid's native
+        1 h and 3 h squared net-load ramps, subject to a day-ahead cost
+        guardrail.
+  \item A paired three-seed, 100k-interaction validation compared the original
+        admission envelope with the raw measured service/batch split. Both were
+        feasible and improved mean grid-ramp impact, but removing the envelope
+        did not improve PPO consistently.
 \end{enumerate}
 
 \section{Google ClusterData2019 Workload Trace}
 \label{sec:clusterdata2019}
 
-\subsection{Role in the study}
+\subsection{Dataset scope}
 \label{subsec:clusterdata-role}
 
-The workload input is derived from Google's ClusterData2019 trace, not from
-ClusterData2011 and not from a synthetic arrival generator. ClusterData2019
-contains production measurements from eight Borg cells during May 2019 and is
-hosted in BigQuery because the complete dataset is approximately 2.4 TiB
-compressed \cite{wilkes2020clusterdata2019}. The repository does not vendor the
-BigQuery tables. It retains derived time series, compact job-duration summaries,
-machine metadata, and cryptographic hashes.
+Google ClusterData2019 contains production traces from eight Borg cells,
+labeled \(a\)--\(h\), during May 2019. The complete dataset is approximately
+2.4 TiB compressed and is distributed through BigQuery rather than as a local
+download \cite{wilkes2020clusterdata2019}.
 
-The final primary experiment uses cells \(a\)--\(f\). The purpose of the
-secondary \(c\)--\(h\) mapping is to test whether the accepted controller's
-result depends on the exact six Borg workload profiles selected for the
-primary map. After the primary sealed test passed, the policy, markets,
-calendar, forecasts, decoder, and constraints remained fixed while the
-workload profiles were replaced by cells \(c\)--\(h\) and the fleet was scaled
-to 1 GW total. No policy selection or tuning used this analysis.
+The trace contains normalized machine capacity, per-instance resource usage,
+collection events, priorities, and resource requests. It does not identify
+end users, application data, storage-access patterns, data-center locations, or
+electricity markets.
 
-The secondary map overlaps the primary population in cells \(c\)--\(f\).
-It can therefore show sensitivity to an alternative workload mix, but it
-cannot establish independent out-of-sample generalization. The declared
-mapping is in \codepath{env/protocols/independent_us_v3.yaml}; the executable
-primary mapping is in \codepath{energy_model_v3/ramp_factory.py}; and the
-post-selection sensitivity is implemented in
-\codepath{ramp_rl/ensemble_robustness.py}.
-
-\begin{table}[htbp]
-  \centering
-  \caption{Mapping from electricity-market cases to Borg cells.}
-  \label{tab:clusterdata-market-map}
-  \begin{tabular}{@{}lll@{}}
-    \toprule
-    Market case & Primary mapping & Overlapping robustness mapping \\
-    \midrule
-    CAISO NP15       & cell \(a\) & cell \(c\) \\
-    ERCOT North      & cell \(b\) & cell \(d\) \\
-    NYISO Zone J     & cell \(c\) & cell \(e\) \\
-    MISO Minnesota   & cell \(d\) & cell \(f\) \\
-    SPP North        & cell \(e\) & cell \(g\) \\
-    ISO-NE NEMA      & cell \(f\) & cell \(h\) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+The repository retains measured summaries rather than the full BigQuery
+tables. Cells \(a\)--\(d\) are used by the active experiment; cells
+\(e\)--\(h\) remain available as a disjoint workload holdout. The mapping from
+workload cells to electricity markets is a later experimental assumption, not
+a property of Google's data.
 
 \subsection{BigQuery tables and fields used}
 \label{subsec:clusterdata-upstream-tables}
@@ -154,97 +117,69 @@ repository's extraction workflow:
       \codepath{resource_request.cpus},
       \codepath{resource_request.memory}
     & Supplies task counts and resource-request metadata in the comprehensive
-      job extract. Those fitted fields are retained for provenance and legacy
-      studies, but the final V6 runtime reads only the duration mean from the
-      resulting job-summary JSON. \\
+      job extract. \\
   \bottomrule
 \end{longtable}
 
 \subsection{Measured utilization extraction}
 \label{subsec:clusterdata-utilization}
 
-For each machine \(m\) in cell \(c\), the extraction takes the maximum reported
-CPU \emph{capacity} over its machine-event records. A machine can have several
-add, update, or snapshot-derived records; this maximum collapses those records
-to one capacity value. It does not select a maximum CPU-usage observation. The
-cell denominator is
-\begin{equation}
-  C_c = \sum_{m \in c}
-        \max_{e \in \mathcal{E}_m}
-        \left(\texttt{capacity.cpus}_{m,e}\right).
-  \label{eq:clusterdata-cell-capacity}
-\end{equation}
+Each machine may have several add, update, or snapshot-derived capacity
+records. The extraction retains one CPU-capacity value per machine by taking
+its maximum reported capacity, then sums those machine values to obtain total
+cell capacity. This maximum is applied to capacity metadata; it does not select
+the maximum observed CPU usage.
 
-The phrase ``top-level instances'' means instances that are not running inside
-an allocation set. In Google's trace schema,
-\codepath{alloc_collection_id} equal to zero means
-\codepath{NO_ALLOC_COLLECTION}; the query also accepts a null value
-\cite{googleTraceFormatV3}. This filter follows Google's cell-level analysis
-pattern and excludes nested task records associated with an alloc set. It does
-not choose the highest utilization during a five-minute interval.
+Google's trace distinguishes ordinary task records from tasks running inside
+an allocation set. To avoid mixing nested allocation-set tasks into the
+cell-level aggregate, the extraction keeps only records whose
+\codepath{alloc_collection_id} is null or zero
+(\codepath{NO_ALLOC_COLLECTION}) \cite{googleTraceFormatV3}. Google's analysis
+notebook refers to these as ``top-level instances.'' This filter is unrelated
+to the earlier maximum-capacity step and does not choose the highest
+utilization observed during a five-minute interval.
 
-The query requires each retained usage record to span at least 300 seconds.
-Records are assigned to five-minute buckets by
-\(\lfloor\texttt{start\_time}/(10^6 \cdot 300)\rfloor\), and
-\codepath{average_usage.cpus} is summed across every qualifying record in the
-bucket. The normalized aggregate CPU demand is
-\begin{equation}
-  u_{c,k}
-  =
-  \operatorname{clip}_{[0,1]}
-  \left(
-    \frac{
-      \sum_{r \in (c,k)} \texttt{average\_usage.cpus}_r
-    }{C_c}
-  \right).
-  \label{eq:clusterdata-aggregate}
-\end{equation}
-Clipping prevents reported overcommit from producing a normalized value above
-one. The committed aggregate files are
-\codepath{data/cells/cell_X.csv}, with columns
+The query retains usage records spanning at least 300 seconds and groups them
+into five-minute buckets. Within each bucket it sums
+\codepath{average_usage.cpus} across qualifying instances and divides by total
+cell CPU capacity. Values above one, which can occur under reported
+overcommitment, are capped at one.
+
+The 300-second condition means that usage records covering shorter partial
+windows are excluded. ClusterData2019 can emit a partial record when an
+instance starts or stops inside a five-minute measurement window. Treating its
+reported average as though it covered the full five minutes would overstate
+that instance's contribution when the records are summed. Filtering to complete
+windows follows Google's example analysis and gives every retained row the same
+duration. The tradeoff is that short-lived work is underrepresented. A more
+complete future extraction could retain partial records by weighting each
+record by its actual overlap with the five-minute bucket.
+
+The result is one normalized aggregate CPU time series per cell in
+\codepath{data/cells/cell_X.csv}. Each row contains a five-minute
 \codepath{timestep} and \codepath{cpu_demand_norm}.
 
 \subsection{Service and deferrable-batch decomposition}
 \label{subsec:clusterdata-tier-split}
 
 Priority is recorded in \codepath{collection_events}, not in
-\codepath{instance_usage}. The extraction therefore forms one priority record
-per submitted collection (\codepath{type} equal to zero) and left-joins it to measured
-usage by \codepath{collection_id}. Using the priority bands documented in
-Google's ClusterData2019 analysis, matched priority at or below 115 is treated
-as no-SLO, deferrable work: free tier at or below 99 and best-effort batch from
-100 through 115 \cite{googleClusterAnalysisColab}.
+\codepath{instance_usage}. The extraction therefore creates one priority
+record per submitted collection and joins it to measured usage by
+\codepath{collection_id}.
 
-Let \(p_r\) be the matched collection priority for usage record \(r\). Before
-the simulator-side runtime admission envelope defined in
-Section~\ref{subsec:clusterdata-admission} is applied, measured batch demand is
-\begin{equation}
-  b_{c,k}
-  =
-  \min\left[
-    u_{c,k},
-    \operatorname{clip}_{[0,1]}
-    \left(
-      \frac{
-        \sum_{r \in(c,k)}
-        \mathbf{1}\{p_r \leq 115\}
-        \texttt{average\_usage.cpus}_r
-      }{C_c}
-    \right)
-  \right],
-  \label{eq:clusterdata-batch}
-\end{equation}
-and the service/residual demand is
-\begin{equation}
-  s_{c,k} = u_{c,k} - b_{c,k}.
-  \label{eq:clusterdata-service}
-\end{equation}
-Consequently, every committed row satisfies
-\begin{equation}
-  s_{c,k} + b_{c,k} = u_{c,k}
-  \label{eq:clusterdata-conservation}
-\end{equation}
-to floating-point precision.
+Google's published priority bands define:
+\begin{itemize}
+  \item \textbf{no-SLO batch:} matched priority at or below 115, comprising the
+        free tier and best-effort batch tier; and
+  \item \textbf{service/residual:} aggregate measured CPU not classified as
+        no-SLO batch.
+\end{itemize}
+
+For each five-minute bucket, classified batch CPU is normalized by the same
+cell capacity as aggregate CPU. Service/residual CPU is calculated as aggregate
+CPU minus classified batch CPU. The two components therefore sum back to the
+measured aggregate at every timestep, up to floating-point precision
+\cite{googleClusterAnalysisColab}.
 
 The left join is important for interpretation. Usage without matched priority
 metadata is assigned zero classified batch use and therefore remains in the
@@ -253,173 +188,53 @@ the unmatched-priority rate. The thesis must therefore call this component
 ``service/residual,'' not claim that every such observation has a measured
 production priority.
 
-The direct runtime inputs are
+The committed decomposition is
 \codepath{data/cells/cell_X_tiers.csv}. Each file contains
 \codepath{timestep}, \codepath{cpu_demand_norm}, \codepath{batch_share},
 \codepath{service_demand_norm}, and \codepath{batch_demand_norm}. Cells
-\(a\)--\(d\) are generated by \codepath{extract_tier_curves.ipynb}; cells
-\(e\)--\(h\) are generated by \codepath{extract_cells_eh.ipynb}. These are
-measured usage decompositions.
+\(a\)--\(d\) are generated by \codepath{extract_tier_curves.ipynb}; the same
+extraction logic is applied to cells \(e\)--\(h\) by
+\codepath{extract_cells_eh.ipynb}. These are measured usage decompositions.
 
-\subsection{Committed cell characteristics}
+\subsection{Measured cell characteristics}
 \label{subsec:clusterdata-cell-characteristics}
 
-Table~\ref{tab:clusterdata-cell-summary} describes the committed artifacts.
-The batch share is measured CPU-use share from the tier curves before the
-runtime admission envelope. Mean duration uses completed no-SLO collections
-and is the only job-distribution statistic consumed by the final V6 factory.
+Table~\ref{tab:clusterdata-cell-summary} summarizes measurements retained from
+the trace. Batch share is the fraction of measured CPU usage assigned to the
+no-SLO tiers. Mean duration uses collections that ended normally with a FINISH
+event; it is a measured duration, not a scheduling deadline.
 
 \begin{table}[htbp]
   \centering
   \small
-  \caption{Committed ClusterData2019 cell artifacts and final V6 deadline
-  horizons.}
+  \caption{Measured ClusterData2019 cell characteristics retained by the
+  repository.}
   \label{tab:clusterdata-cell-summary}
-  \begin{tabular}{@{}cL{0.28\textwidth}rrrr@{}}
+  \begin{tabular}{@{}cL{0.16\textwidth}rrrrr@{}}
     \toprule
-    Cell & Final role & Machines & Batch share & Mean duration (s)
-         & Deadline (h) \\
+    Cell & Study role & Machines & Mean CPU & Peak CPU & Batch share
+         & Mean duration (s) \\
     \midrule
-    \(a\) & primary only                 & 10,001 & 16.618\% & 2,551.8 & 2 \\
-    \(b\) & primary only                 & 10,047 & 15.728\% & 1,154.9 & 1 \\
-    \(c\) & primary + robustness overlap & 13,245 & 22.328\% & 2,082.1 & 2 \\
-    \(d\) & primary + robustness overlap & 12,576 & 26.374\% & 3,865.3 & 3 \\
-    \(e\) & primary + robustness overlap & 14,122 & 23.489\% & 5,407.2 & 4 \\
-    \(f\) & primary + robustness overlap & 12,201 &  8.366\% & 4,958.8 & 3 \\
-    \(g\) & robustness only              & 12,796 & 37.736\% & 5,246.4 & 3 \\
-    \(h\) & robustness only              & 11,592 & 29.125\% & 8,093.7 & 5 \\
+    \(a\) & active  & 10,001 & 0.561 & 0.693 & 16.618\% & 2,551.8 \\
+    \(b\) & active  & 10,047 & 0.537 & 0.671 & 15.728\% & 1,154.9 \\
+    \(c\) & active  & 13,245 & 0.547 & 0.699 & 22.328\% & 2,082.1 \\
+    \(d\) & active  & 12,576 & 0.534 & 0.660 & 26.374\% & 3,865.3 \\
+    \(e\) & holdout & 14,122 & 0.549 & 0.725 & 23.489\% & 5,407.2 \\
+    \(f\) & holdout & 12,201 & 0.552 & 0.728 &  8.366\% & 4,958.8 \\
+    \(g\) & holdout & 12,796 & 0.631 & 0.750 & 37.736\% & 5,246.4 \\
+    \(h\) & holdout & 11,592 & 0.582 & 0.772 & 29.125\% & 8,093.7 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 The machine files contain 96,580 records across all eight cells. They are
-provenance and calibration metadata; the final normalized workload is not
-multiplied by the machine count a second time.
+provenance metadata; machine count is not itself a runtime workload multiplier.
 
-\subsection{From five-minute rows to the final hourly workload}
-\label{subsec:clusterdata-hourly-transform}
-
-Each committed tier file contains 8,929 indexed rows. The final factory detects
-the extra terminal row, removes it, and retains 8,928 complete five-minute
-intervals. It then averages consecutive groups of 12:
-\begin{equation}
-  x^{\mathrm{hour}}_{c,j}
-  =
-  \frac{1}{12}
-  \sum_{q=0}^{11}
-  x^{\mathrm{5min}}_{c,12j+q},
-  \qquad x \in \{s,b\}.
-  \label{eq:clusterdata-hourly-average}
-\end{equation}
-This produces a 744-hour profile. The factory repeats that profile from
-2025-09-01 00:00 UTC until it fills the 5,808-hour market calendar ending
-2026-05-01 00:00 UTC:
-\begin{equation}
-  x^{\mathrm{calendar}}_{c,t}
-  =
-  x^{\mathrm{hour}}_{c,\,t \bmod 744}.
-  \label{eq:clusterdata-tiling}
-\end{equation}
-Eight copies are touched; the eighth is partial. This transformation preserves
-the measured within-month shape, but it does not preserve an empirical
-relationship between May 2019 workload and 2025--2026 electricity conditions.
-The alignment is a counterfactual modeling convention, not a contemporaneous
-operational replay.
-
-\subsection{Runtime batch admission and conservation}
-\label{subsec:clusterdata-admission}
-
-A \emph{runtime admission envelope} is a simulator-side bound on how much new
-work may enter an hourly decision. It is not a measured property of
-ClusterData2019. Its purpose is to ensure that the constraint decoder can
-produce a feasible schedule under the finite episode, capacity, and deadline
-rules.
-
-The final V6 protocol limits immediate service to 75\% of normalized fleet
-capacity, leaving 25\% as guaranteed batch capacity. New batch is capped at
-10\%, leaving a further 15\% available to drain batch already carried in the
-queue. The environment uses this \(25\%-10\%=15\%\) remainder when certifying
-future capacity by deadline. For the six-site primary fleet, the 10\% limit is
-\(0.6\) work units per hour. Let \(B_t=\sum_c b_{c,t}\). The factory applies
-\begin{align}
-  \lambda_t
-    &= \min\left(1,\frac{0.6}{B_t}\right), \\
-  b^{\mathrm{admitted}}_{c,t}
-    &= \lambda_t b_{c,t}, \\
-  s^{\mathrm{runtime}}_{c,t}
-    &= s_{c,t} +
-       \left(b_{c,t}-b^{\mathrm{admitted}}_{c,t}\right).
-  \label{eq:clusterdata-admission}
-\end{align}
-If \(B_t=0\), the implementation uses \(\lambda_t=1\). Excess measured batch
-is therefore conserved and reclassified as immediate service; it is never
-dropped. The service envelope is 75\% of normalized fleet capacity. These
-rules are implemented in \codepath{energy_model_v3/ramp_factory.py} and recorded
-under \codepath{workload_policy} in
-\codepath{output/energy_model_v3/ramp_v6/factory_manifest.json}.
-
-The need for positive carried-batch capacity is a feasibility reason for
-having an admission bound, but the specific 10\% value was a frozen protocol
-design choice rather than a quantity estimated from ClusterData2019 or an
-external source. In the committed primary profile it binds in 407 of 744 hours
-and reclassifies 8.31\% of measured batch mass as immediate service. A future
-protocol should remove this fixed cap and redesign the feasibility treatment
-to admit the complete measured batch series, or preregister a sensitivity over
-admission limits. Removing it from the present study would create a new
-protocol and would not retroactively change the frozen V4R result.
-
-\subsection{Experimental deadline construction}
-\label{subsec:clusterdata-deadlines}
-
-ClusterData2019 supplies observed collection durations, but it does not supply
-the scheduling deadlines used in this experiment. The extraction route differs
-between the first and second groups of cells, but the selection rule and the
-runtime information are the same.
-
-For cells \(a\)--\(d\), the comprehensive notebook creates full job extracts
-from \codepath{collection_events} and \codepath{instance_events}.
-\codepath{scripts/refit_freebeb_local.py} selects priority at or below 115,
-retains positive-duration collections whose terminal type is FINISH
-(\codepath{type} equal to six), and materializes rich
-\codepath{data/jobs/batch_distributions_X.json} files. Those files also contain
-inter-arrival, resource-request, and task-count statistics that V6 does not
-read.
-
-For cells \(e\)--\(h\), \codepath{extract_cells_eh.ipynb} applies the same
-priority, FINISH, and positive-duration conditions directly in BigQuery. It
-first writes mean, median, and completed-count summaries to
-\codepath{data/jobs/durations_eh.json}; the corresponding compact
-\codepath{batch_distributions_e.json} through
-\codepath{batch_distributions_h.json} carry those values into the runtime
-schema. Thus the files differ in extra metadata, but every cell provides the
-same final field consumed by V6: the mean completed no-SLO duration.
-
-The final hourly controller reads only \codepath{duration.mean} and defines
-\begin{equation}
-  H_c
-  =
-  \max\left[
-    1,
-    \left\lceil
-      \frac{2\bar{d}_c}{3600}
-    \right\rceil
-  \right],
-  \label{eq:clusterdata-deadline}
-\end{equation}
-where \(\bar{d}_c\) is mean completed no-SLO duration in seconds. Every hourly
-batch arrival from cell \(c\) receives horizon \(H_c\), producing the values in
-Table~\ref{tab:clusterdata-cell-summary}. These are experimental control
-deadlines. They are not Borg SLOs, customer commitments, or observed production
-queue policies.
-
-\subsection{Artifact lineage and citation guide}
+\subsection{Committed extraction artifacts}
 \label{subsec:clusterdata-artifacts}
 
-Table~\ref{tab:clusterdata-artifact-lineage} is the file-level lineage to use
-when later chapters explain the implemented solution.
-
-\begin{longtable}{@{}L{0.34\textwidth}L{0.16\textwidth}L{0.42\textwidth}@{}}
-  \caption{ClusterData2019 artifact lineage for the final V6 study.}
+\begin{longtable}{@{}L{0.34\textwidth}L{0.19\textwidth}L{0.39\textwidth}@{}}
+  \caption{ClusterData2019 extraction artifacts retained by the repository.}
   \label{tab:clusterdata-artifact-lineage}\\
   \toprule
   Repository path & Status & What it establishes \\
@@ -432,8 +247,7 @@ when later chapters explain the implemented solution.
   \codepath{extract_clusterdata2019_full.ipynb}
     & extraction source
     & Queries cells \(a\)--\(d\) for aggregate CPU, machine inventory, and full
-      job metadata. It also documents the FINISH-only duration fitting
-      method. \\
+      job metadata. \\
   \codepath{extract_tier_curves.ipynb}
     & authoritative extraction
     & Produces measured five-minute service/residual and no-SLO batch curves for
@@ -441,100 +255,44 @@ when later chapters explain the implemented solution.
   \codepath{extract_cells_eh.ipynb}
     & authoritative extraction
     & Produces aggregate and measured tier curves, machine inventories, and
-      completed no-SLO duration summaries for cells \(e\)--\(h\). Its historical
-      ``held-out'' wording does not define the final experiment. \\
+      completed no-SLO duration summaries for cells \(e\)--\(h\). \\
   \codepath{data/cells/cell_X_tiers.csv}
-    & direct runtime input
-    & Supplies measured service and batch CPU-use curves. This is the
-      authoritative demand source for both the primary and robustness factories. \\
+    & measured decomposition
+    & Supplies five-minute aggregate, service/residual, and no-SLO batch CPU. \\
   \codepath{data/cells/cell_X.csv}
-    & derived source artifact
-    & Supplies aggregate normalized CPU. It is an audit counterpart to the tier
-      curve and an input to the later workload-to-power transformation; it is
-      not the direct final service/batch arrival path. \\
+    & measured aggregate
+    & Supplies five-minute normalized aggregate CPU. \\
   \codepath{data/jobs/batch_distributions_X.json}
-    & direct runtime input
-    & Supplies \codepath{duration.mean}, from which the final V6 deadline horizon
-      is computed. Other fitted fields are not used to generate final V6 demand. \\
+    & duration summary
+    & Retains completed no-SLO duration statistics and supporting fitted
+      metadata. \\
   \codepath{data/jobs/durations_eh.json}
     & intermediate artifact
-    & Records the BigQuery duration summaries from which the minimal \(e\)--\(h\)
-      runtime JSON files were materialized. \\
+    & Records the direct BigQuery duration summaries for cells \(e\)--\(h\). \\
   \codepath{data/machines/machines_X.csv}
     & provenance metadata
-    & Records per-machine CPU and memory capacities and supports the normalization
-      audit. It does not rescale runtime demand. \\
-  \codepath{energy_model_v3/ramp_factory.py}
-    & executable transformation
-    & Maps cells to markets, drops the terminal row, averages to hours, tiles the
-      trace, applies the batch envelope, derives deadlines, and hashes inputs. \\
-  \codepath{ramp_rl/ensemble_robustness.py}
-    & executable transformation
-    & Implements the \(c\)--\(h\) overlapping robustness mapping and binds its
-      tier and duration files to expected hashes. \\
-  \codepath{output/energy_model_v3/ramp_v6/factory_manifest.json}
-    & final provenance record
-    & Records the exact tier-workload and deadline-model hashes used by the
-      primary factory, together with source cells and admission policy. \\
-  \codepath{data/energy_model_v3/provenance/workload-power-manifest.json}
-    & downstream provenance
-    & Records aggregate source hashes, hourly row count, repetition count, and
-      modeled-power artifacts. Its power-model content is discussed in the next
-      data-source section. \\
-  \codepath{env/protocols/v6_pure_ramp_rl_v4r.yaml}
-    & publication binding
-    & Binds the accepted controller to the frozen factory manifest and identifies
-      the primary and overlapping robustness workload mappings. \\
+    & Records per-machine CPU and memory capacities. \\
   \bottomrule
 \end{longtable}
-
-For later solution chapters, the recommended references are:
-\begin{itemize}
-  \item cite Equations~\eqref{eq:clusterdata-batch}--\eqref{eq:clusterdata-conservation}
-        and \codepath{data/cells/cell_X_tiers.csv} when describing measured
-        immediate and deferrable demand;
-  \item cite Equations~\eqref{eq:clusterdata-hourly-average} and
-        \eqref{eq:clusterdata-tiling} plus
-        \codepath{energy_model_v3/ramp_factory.py} when describing hourly
-        arrivals;
-  \item cite Equation~\eqref{eq:clusterdata-admission} and the factory manifest
-        when describing the workload actually admitted to the controller;
-  \item cite Equation~\eqref{eq:clusterdata-deadline} and
-        \codepath{data/jobs/batch_distributions_X.json} when describing
-        earliest-deadline-first queue semantics; and
-  \item cite Table~\ref{tab:clusterdata-market-map} and the relevant factory
-        implementation when describing spatial workload movement.
-\end{itemize}
 
 \subsection{Reproduction boundary and limitations}
 \label{subsec:clusterdata-limitations}
 
 Re-extraction requires a Google Cloud project with BigQuery billing enabled.
-The reproducible sequence is to run
-\codepath{extract_clusterdata2019_full.ipynb} for the \(a\)--\(d\) aggregate,
-machine, and full-job artifacts; run
-\codepath{scripts/refit_freebeb_local.py} to materialize the
-\(a\)--\(d\) duration JSON; run \codepath{extract_tier_curves.ipynb} for the
-authoritative \(a\)--\(d\) measured tier curves; run
-\codepath{extract_cells_eh.ipynb} for \(e\)--\(h\); and then rebuild the final
-factory with \codepath{scripts/build_energy_v3_ramp_factory.py} after the
-restricted electricity panel has been staged.
+Run \codepath{extract_clusterdata2019_full.ipynb} for the \(a\)--\(d\)
+aggregate, machine, and full-job artifacts;
+\codepath{extract_tier_curves.ipynb} for the authoritative \(a\)--\(d\)
+measured tier curves; and \codepath{extract_cells_eh.ipynb} for \(e\)--\(h\).
 
-A fresh clone contains the committed curves, compact duration files, and
-manifests, but not the full BigQuery tables or the large
-\codepath{data/jobs/jobs_X.csv} extracts. Exact re-fitting of the \(a\)--\(d\)
-duration JSON therefore requires rerunning the BigQuery extraction. The
-repository also has no dedicated command that converts
-\codepath{durations_eh.json} into the minimal \(e\)--\(h\)
-\codepath{batch_distributions_X.json}; those committed JSON files are the
-hash-bound runtime boundary.
+A fresh clone contains the committed curves and compact duration summaries,
+but not the full BigQuery tables or the large
+\codepath{data/jobs/jobs_X.csv} extracts.
 
-Finally, the trace represents one company's workload during one month in 2019.
-Repeating 744 hours suppresses long-term growth and seasonality. The model omits
-application latency, data locality, residency constraints, wide-area bandwidth,
-migration energy, replication, failures, and customer-specific SLOs. The
-cell-to-market assignment is an experimental proxy, not evidence that the Borg
-cells physically operated in those electricity markets.
+The trace represents one company's workload during one month in 2019. Its
+resource units and identifiers are normalized or anonymized, and the full
+job-level extracts are not committed. The eight cells are useful production
+workload samples, but they are not a representative sample of the wider
+data-center industry.
 
 \section{Google PowerData2019 Power Model}
 \label{sec:powerdata2019}
@@ -546,9 +304,9 @@ ClusterData2019 measures normalized compute use, not absolute facility power.
 PowerData2019 supplies measured power-utilization traces for 57 Google power
 domains, most associated with the eight ClusterData2019 cells
 \cite{googlePowerData2019}. This study uses PowerData2019 to estimate how the
-power fraction of each cell changes with aggregate CPU utilization. It then
-places that normalized relationship inside an explicitly modeled 100 MW proxy
-facility.
+power fraction of each cell changes with aggregate CPU utilization. Absolute
+facility size is not provided by PowerData2019 and is introduced later as an
+experimental assumption.
 
 The source is the BigQuery wildcard
 \codepath{google.com:google-cluster-data.powerdata_2019.cell*}. The extraction
@@ -587,32 +345,14 @@ uses:
 \subsection{Hourly alignment and fitting}
 \label{subsec:powerdata-fitting}
 
-For each cell and hour, the power query averages
-\codepath{measured_power_util} over all retained power-domain rows:
-\begin{equation}
-  y_{c,h}
-  =
-  \operatorname{mean}
-  \left(
-    \texttt{measured\_power\_util}_{c,h}
-  \right),
-  \label{eq:powerdata-target}
-\end{equation}
-after excluding rows where \codepath{bad_measurement_data} is true. The query
-does not capacity-weight the contributing power domains; it is an arithmetic
-mean of their normalized measurements.
+For each cell and hour, the power query takes the arithmetic mean of valid
+\codepath{measured_power_util} rows after excluding records marked
+\codepath{bad_measurement_data}. It does not capacity-weight the contributing
+power domains.
 
-Hourly CPU utilization is constructed from the same ClusterData2019 filter
-described in Section~\ref{subsec:clusterdata-utilization}. Twelve five-minute
-measurements are summed and divided by twelve times cell capacity:
-\begin{equation}
-  u_{c,h}
-  =
-  \frac{
-    \sum_{r \in(c,h)} \texttt{average\_usage.cpus}_r
-  }{12C_c}.
-  \label{eq:powerdata-hourly-cpu}
-\end{equation}
+Hourly CPU utilization uses the same instance filters and cell-capacity
+normalization described in Section~\ref{subsec:clusterdata-utilization}.
+Twelve five-minute measurements are averaged into each hour.
 Power and CPU are joined by cell and integer hour index rather than by exact
 timestamps. This follows the source-data guidance: power timestamps are aligned
 to five-minute marks, whereas cluster event timestamps need not be
@@ -631,18 +371,38 @@ The stored \codepath{peak_power} value is
 \(\alpha_c+\beta_c\), the fitted value at \(u=1\); it is not a separately
 measured nameplate rating.
 
+The available data could support a richer fit. The current regression compares
+cell-wide CPU utilization with an unweighted mean across the cell's power
+domains. PowerData2019 also provides
+\codepath{machine_to_pdu_mapping}, which could be used to:
+\begin{itemize}
+  \item aggregate CPU only from machines attached to each measured power domain;
+  \item fit at the native five-minute cadence instead of hourly cadence;
+  \item weight domain-level predictions by mapped capacity before combining
+        them; and
+  \item test memory utilization, nonlinear terms, or power-domain random
+        effects.
+\end{itemize}
+
+Those changes may improve out-of-sample \(R^2\), especially where cell-wide CPU
+and power-domain coverage are poorly aligned. A higher in-sample \(R^2\) is not
+itself sufficient: any replacement model should be selected on held-out time
+periods and should retain a clear interpretation when converted to proxy MW.
+The affine CPU-only model is retained here because it is transparent and
+already provides moderate-to-strong per-cell fits.
+
 \subsection{Committed coefficients}
 \label{subsec:powerdata-coefficients}
 
-The final runtime authority is
+The committed coefficient file is
 \codepath{data/power_model_params.json}. It contains 745 joined hourly
-observations per cell and the coefficients in
+observations per cell and the fitted coefficients in
 Table~\ref{tab:powerdata-coefficients}.
 
 \begin{table}[htbp]
   \centering
   \small
-  \caption{Per-cell CPU-only affine power fits used by the final runtime.}
+  \caption{Per-cell CPU-only affine PowerData2019 fits.}
   \label{tab:powerdata-coefficients}
   \begin{tabular}{@{}crrrrr@{}}
     \toprule
@@ -661,66 +421,17 @@ Table~\ref{tab:powerdata-coefficients}.
   \end{tabular}
 \end{table}
 
-There is no pooled or merged \(a\)--\(h\) \(R^2\) used by the final model. The
-runtime uses the eight separate per-cell fits in
-Table~\ref{tab:powerdata-coefficients}. Their \(R^2\) values range from 0.6472
-for cell \(f\) to 0.9432 for cell \(h\). Each value reports the fraction of
-within-cell variation in measured power utilization explained by that cell's
-CPU-only affine model.
+There is no pooled \(a\)--\(h\) model. The repository retains eight separate
+per-cell fits. Their \(R^2\) values range from 0.6472 for cell \(f\) to 0.9432
+for cell \(h\). Each value reports the fraction of within-cell variation in
+measured power utilization explained by that cell's CPU-only affine fit. The
+active experiment later selects coefficients \(a\)--\(d\).
 
-\subsection{Conversion to proxy megawatts}
-\label{subsec:powerdata-megawatts}
-
-PowerData2019 reports normalized power utilization, not the absolute MW rating
-of each Google cell. The study therefore introduces a separate proxy rating
-\(R_c\). The primary scenario sets \(R_c=100\) MW and normalized compute
-capacity \(K_c=1\) for every site. At runtime,
-\begin{align}
-  u^{\mathrm{runtime}}_{c,t}
-    &= \operatorname{clip}_{[0,1]}
-       \left(\frac{w_{c,t}}{K_c}\right), \\
-  P_{c,t}
-    &= R_c
-       \left(
-         \alpha_c + \beta_c u^{\mathrm{runtime}}_{c,t}
-       \right),
-  \label{eq:powerdata-runtime-power}
-\end{align}
-where \(w_{c,t}\) is the service plus batch work executed at the site during
-hour \(t\). The 100 MW rating is an experimental scaling assumption; it is not
-estimated from PowerData2019. The affine coefficients determine the fraction
-of that proxy rating consumed.
-
-\subsection{How the final environment uses the model}
-\label{subsec:powerdata-runtime-use}
-
-The model enters the final system in two related ways:
-\begin{enumerate}
-  \item \codepath{energy_model_v3/cli.py} reads each aggregate
-        \codepath{data/cells/cell_X.csv}, removes the terminal row, averages to
-        744 hours, tiles the profile over the 5,808-hour market calendar, and
-        applies Equation~\eqref{eq:powerdata-runtime-power}. It writes one
-        locally staged
-        \codepath{data/energy_model_v3/modeled_dc_power/MARKET.csv} file per
-        market.
-  \item \codepath{energy_model_v3/ramp_factory.py} loads those files as the
-        three-hour warm-power history required to score the first ramp windows.
-        It also places each cell's \(\alpha_c\) and \(\beta_c\) in the site
-        configuration. During an episode,
-        \codepath{env/ramp_v6/models.py} recomputes power from the work actually
-        routed and scheduled by the controller.
-\end{enumerate}
-
-Thus the tiled measured profile initializes the counterfactual, but policy
-power is not a fixed replay of that profile. Routing service among sites and
-moving batch work among hours changes \(w_{c,t}\), which changes modeled MW and
-therefore the adjusted grid ramps.
-
-\subsection{File lineage and reproduction}
+\subsection{Committed model and reproduction}
 \label{subsec:powerdata-lineage}
 
-\begin{longtable}{@{}L{0.34\textwidth}L{0.16\textwidth}L{0.42\textwidth}@{}}
-  \caption{PowerData2019 source-to-runtime file lineage.}
+\begin{longtable}{@{}L{0.34\textwidth}L{0.19\textwidth}L{0.39\textwidth}@{}}
+  \caption{PowerData2019 extraction artifacts.}
   \label{tab:powerdata-lineage}\\
   \toprule
   Repository path & Status & Role \\
@@ -738,21 +449,8 @@ therefore the adjusted grid ramps.
     & extraction source
     & Applies the same per-cell CPU-only method to cells \(e\)--\(h\). \\
   \codepath{data/power_model_params.json}
-    & direct runtime input
+    & committed model
     & Merged, authoritative coefficients for all eight cells. \\
-  \codepath{energy_model_v3/cli.py}
-    & executable transformation
-    & Builds tiled measured-power inputs and the workload-power manifest. \\
-  \codepath{data/energy_model_v3/provenance/workload-power-manifest.json}
-    & provenance authority
-    & Records source, parameter, modeled-power hashes, row counts, and
-      repetition counts for the primary map. \\
-  \codepath{energy_model_v3/ramp_factory.py}
-    & runtime handoff
-    & Loads warm power and injects the per-cell model into each site. \\
-  \codepath{env/ramp_v6/models.py}
-    & runtime implementation
-    & Converts executed work into site MW at every decision. \\
   \bottomrule
 \end{longtable}
 
@@ -762,10 +460,7 @@ Run \codepath{extract_clusterdata2019_full.ipynb} for cells \(a\)--\(d\) and
 \(e\)--\(h\) per-cell records into
 \codepath{data/power_model_params.json}. The repository does not currently
 provide a dedicated merge command, so the committed all-cell JSON and its hash
-are the reproducibility boundary. After the market files are staged,
-run \codepath{scripts/build_energy_model_v3.py} with the
-\codepath{acquire-live} subcommand to rebuild the modeled-power files and
-manifest.
+are the reproducibility boundary.
 
 \subsection{Model limitations}
 \label{subsec:powerdata-limitations}
@@ -775,11 +470,11 @@ distribution losses, storage, generators, and network equipment. Its
 \(\alpha_c\) and \(\beta_c\) values describe normalized cell-level association,
 not causal server physics. The power target is an unweighted average across
 available power domains, and the fit uses one month from one operator. The
-100 MW rating and equal compute capacity are proxy assumptions. Consequently,
-the model supports controlled comparisons among schedules but does not claim
-to reproduce the absolute consumption of a named Google facility.
+trace provides normalized utilization rather than facility nameplate MW.
+Consequently, the fit supports a relative CPU-to-power relationship but does
+not reproduce the absolute consumption of a named Google facility.
 
-\section{Six-Market Electricity Data}
+\section{Four-Market Electricity Data}
 \label{sec:energy-data}
 
 \subsection{Purpose and calendar}
@@ -788,13 +483,36 @@ to reproduce the absolute consumption of a named Google facility.
 The electricity input has two distinct roles. The \emph{physical} layer
 describes gross demand, wind, solar, and net load in MW. It defines the native
 grid ramps that the data-center schedule may increase or decrease. The
-\emph{economic} layer is hourly day-ahead locational marginal price in
+\emph{economic} layer is hourly day-ahead locational marginal price (LMP) in
 USD/MWh. It supplies a separate wholesale-cost guardrail and does not represent
 physical utilization, congestion loading, or a retail bill.
 
-All six markets share one exact hourly UTC index from
-2025-09-01 00:00 UTC through 2026-05-01 00:00 UTC, exclusive. This gives 5,808
-rows per market and 34,848 market-hours in total.
+Day-ahead price is used because it is published before the operating hour and
+is therefore compatible with causal workload planning. It provides one
+standardized wholesale energy price for each scheduled market-hour. The policy
+does not receive realized future real-time price, and price is not the physical
+ramp objective; it is used to account for the economic consequence of moving
+work and to enforce the later cost guardrail.
+
+The active design uses four market cases: CAISO NP15, MISO Minnesota, SPP
+North, and ISO-NE NEMA. Their physical data all come from the same EIA
+balancing-authority bulk schema. Operator day-ahead prices remain separate
+economic context.
+
+The active source snapshot contains the causal history needed for 114 learning
+days and 28 February validation days. This yields 3,408 active decision hours
+per market and 13,632 four-market decision rows. No test split is exposed while
+the design is still changing.
+
+The multiple months provide \emph{grid-context diversity}, not new workload
+months. The Borg input remains the same measured May 2019 profile repeated over
+the energy calendar. What changes from day to day is the observed market net
+load, renewable generation, price, and causal forecast. PPO therefore revisits
+the same workload shapes under many winter and shoulder-season grid conditions.
+September supplies forecast and normalization history; 114 daily windows from
+October 10 through January 31 are sampled during policy learning; February's
+28 days are held out for development validation. Cells \(e\)--\(h\) are not
+used in this temporal split and remain a separate future workload test.
 
 \begin{table}[htbp]
   \centering
@@ -805,14 +523,15 @@ rows per market and 34,848 market-hours in total.
     Split & Months & Permitted use \\
     \midrule
     Training
-      & 2025-09 through 2026-01
-      & Forecast fitting, scales, thresholds, normalization, and policy learning \\
+      & 2025-10-10 through 2026-01-31
+      & Policy learning; forecasts and statistics use preceding training data
+        beginning 2025-09-01 \\
     Validation
       & 2026-02
-      & Frozen model/protocol selection and test-opening decision \\
-    Sealed test
-      & 2026-03 through 2026-04
-      & One authorized generalization evaluation; no tuning or selection \\
+      & Development evaluation while the four-market design is refined \\
+    Test
+      & Not assigned
+      & A new sealed calendar is required after the design is frozen \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -820,13 +539,13 @@ rows per market and 34,848 market-hours in total.
 \subsection{Actual price and physical sources}
 \label{subsec:energy-sources}
 
-Table~\ref{tab:energy-sources} reports the products actually used by the
-committed live acquisition. Price and physical geography are intentionally
+Table~\ref{tab:energy-sources} reports the products represented in the active
+canonical source. Price and physical geography are intentionally
 listed separately because a hub or zone price is not the same object as
 balancing-authority-wide physical demand.
 
 \begin{longtable}{@{}L{0.14\textwidth}L{0.37\textwidth}L{0.41\textwidth}@{}}
-  \caption{Actual source products used in the six-market panel.}
+  \caption{Source products used in the active four-market panel.}
   \label{tab:energy-sources}\\
   \toprule
   Market case & Day-ahead price & Physical demand and renewables \\
@@ -843,17 +562,6 @@ balancing-authority-wide physical demand.
     & EIA CAISO balancing-authority demand, wind, and solar from
       \codepath{EBA.zip}; explicit same-BA fallback
       \cite{eiaGridMonitor}. \\
-  ERCOT North
-    & ERCOT MIS report 13060 annual DAM settlement price at
-      \codepath{LZ_NORTH} \cite{ercotMis}
-    & ERCOT \codepath{Native_Load_2025.zip} and
-      \codepath{Native_Load_2026.zip}, plus report 13052 SCED WGR/PVGR
-      renewable reconstruction \cite{ercotMis}. \\
-  NYISO Zone J
-    & Monthly \codepath{damlbmp} archive, NYC Zone J PTID 61761
-      \cite{nyisoMis}
-    & NYISO \codepath{palIntegrated} Zone J load, with EIA NYISO
-      balancing-authority wind and solar context \cite{nyisoMis,eiaGridMonitor}. \\
   MISO Minnesota
     & Daily DA ex-post LMP report at \codepath{MINN.HUB}
       \cite{misoReports}
@@ -872,6 +580,35 @@ balancing-authority-wide physical demand.
   \bottomrule
 \end{longtable}
 
+The source-specific fields are standardized into one canonical schema. EIA
+\codepath{D}, \codepath{NG.WND}, and \codepath{NG.SUN} series become
+\codepath{gross_demand_mw}, \codepath{wind_mw}, and \codepath{solar_mw};
+operator-specific price columns become \codepath{da_lmp_usd_per_mwh}.
+Table~\ref{tab:energy-example-rows} shows actual canonical rows at one common
+UTC hour.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Canonical four-market examples at 2025-10-10 00:00 UTC. Physical
+  columns are MW; day-ahead LMP is USD/MWh.}
+  \label{tab:energy-example-rows}
+  \begin{tabular}{@{}lrrrrr@{}}
+    \toprule
+    Market & Demand & Wind & Solar & Net load & DA LMP \\
+    \midrule
+    CAISO NP15 & 26,826 & 990 & 10,173 & 15,663 & 52.24268 \\
+    MISO Minnesota & 77,782 & 13,648 & 400 & 63,734 & 47.97 \\
+    SPP North & 33,915 & 4,542 & 649 & 28,724 & 29.4629 \\
+    ISO-NE NEMA & 13,679 & 741 & 6 & 12,932 & 35.01 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For example, the CAISO row is interpreted as
+\(26{,}826-990-10{,}173=15{,}663\) MW of net load. The CAISO OASIS record for
+the same hour supplies the separate 52.24268 USD/MWh day-ahead price.
+
 The fallbacks are explicit rather than silent substitutions:
 \begin{itemize}
   \item CAISO Today's Outlook history was not used as primary physical evidence
@@ -883,16 +620,11 @@ The fallbacks are explicit rather than silent substitutions:
         hours in the locked calendar; interpolation is prohibited.
   \item ISO-NE's public static physical reports do not provide one complete,
         harmonized historical tuple for the locked calendar.
-  \item NYISO retains native Zone J PAL load, but its operator
-        behind-the-meter solar archive is incomplete for the exact UTC index.
-        EIA wind and solar are therefore retained as NYCA system context rather
-        than used to alter PAL a second time.
 \end{itemize}
 
-PJM DOM/Northern Virginia was planned but not evaluated. The required
-\codepath{PJM_API_KEY} was unavailable, so the market is marked
-\codepath{BLOCKED_EXCLUDED} in the capability and acquisition records
-\cite{pjmDataMiner}.
+ERCOT and NYISO are excluded from the active design because their physical
+tuples required different construction methods. The working repository retains
+only the four consistent EIA physical cases.
 
 \subsection{Canonical fields and time semantics}
 \label{subsec:energy-canonical}
@@ -901,8 +633,8 @@ Every native product is converted to explicit
 \codepath{interval_start_utc} and \codepath{interval_end_utc}. Source-specific
 interval-beginning or interval-ending semantics, time zone, and daylight-saving
 rules are applied before products are joined. For example, MISO is interpreted
-using its fixed-EST report convention, while NYISO and ISO-NE repeated civil
-hours are resolved using their report-specific rules.
+using its fixed-EST report convention, while ISO-NE repeated civil hours are
+resolved using report order.
 
 The physical table requires:
 \begin{itemize}
@@ -914,37 +646,47 @@ The physical table requires:
 \end{itemize}
 
 The price table retains total day-ahead LMP and, where supplied, real-time LMP
-and energy, congestion, and loss components. The final controller uses total
-day-ahead LMP. Real-time price is retained only as separate sensitivity
-evidence and is prohibited as a policy input. Negative day-ahead prices are
-preserved.
+and energy, congestion, and loss components. The active design uses total
+day-ahead LMP. Real-time price is not a policy input. Negative day-ahead prices
+are preserved.
 
 Subhourly products may be averaged to an hour only when every native interval
 is present on the exact native grid. Duplicate timestamps, missing intervals,
 or an incomplete hour raise an error. Forward filling is forbidden.
 
-\subsection{Net-load construction}
+\subsection{Net load as a residual-demand and emissions-pressure proxy}
 \label{subsec:energy-net-load}
 
-For the EIA-backed markets and ERCOT, hourly net load is derived once:
+Gross demand measures customer electricity consumption, but it does not show
+how much of that demand remains after variable renewable generation. Grid
+operators must balance the residual. Subtracting wind and solar exposes the
+midday solar trough and evening rise commonly called the duck curve; using
+gross demand alone would hide much of that ramp.
+
+For every active market, hourly net load is derived once:
 \begin{equation}
   N_{m,t}
   =
   D_{m,t} - W_{m,t} - Q_{m,t},
   \label{eq:energy-net-load}
 \end{equation}
-where \(D\) is gross demand, \(W\) is wind generation, and \(Q\) is solar
-generation in MW.
+where \(D\) is EIA balancing-authority demand, \(W\) is wind generation, and
+\(Q\) is solar generation in MW.
 
-NYISO is different. Zone J PAL is already the native load quantity used by the
-study and reflects behind-the-meter solar treatment. Therefore
-\begin{equation}
-  N_{\mathrm{NYISO},t}
-  =
-  D^{\mathrm{PAL}}_{\mathrm{Zone\ J},t},
-  \label{eq:energy-nyiso-pal}
-\end{equation}
-and NYCA wind and solar are retained as context rather than subtracted again.
+Net load is also an indirect proxy for fossil-dispatch and emissions pressure.
+When wind and solar output falls or demand rises, dispatchable generators must
+usually cover more of the residual; in many power systems, fossil-fueled units
+provide a substantial part of that marginal response. A high or rapidly rising
+net load can therefore indicate conditions in which additional fossil dispatch
+and emissions are more likely.
+
+The proxy must not be read as a quantitative estimate of fossil generation or
+carbon intensity. The residual can also be supplied by nuclear, hydro, imports,
+storage, or other resources, and the active input contains no generator-level
+dispatch, fuel burn, emissions factors, or marginal-emissions series. The
+experiment consequently optimizes net-load ramp pressure, not tonnes of
+\(\mathrm{CO_2}\), and makes no claim that a given MW change maps to a known
+emissions reduction.
 
 EIA bulk series occasionally report negative renewable adjustments. Before
 Equation~\eqref{eq:energy-net-load}, negative wind or solar generation is
@@ -956,8 +698,10 @@ normalization. This is a disclosed non-negativity rule, not interpolation.
 \subsection{Training-only scales and penetration}
 \label{subsec:energy-scales}
 
-Market magnitudes differ by more than an order of magnitude, so the ramp metric
-uses a market-specific scale fitted only on the five training months:
+The four balancing areas are not the same size: their training-period Q95
+demand ranges from about 17.6 GW to 91.5 GW. A one-GW ramp therefore has a very
+different meaning in each market. For fair comparison, later ramp calculations
+divide each market's MW values by its own training-only reference demand:
 \begin{equation}
   S_m
   =
@@ -970,86 +714,103 @@ uses a market-specific scale fitted only on the five training months:
 
 \begin{table}[htbp]
   \centering
-  \caption{Training-only Q95 gross-demand scales used by V6, rounded to 0.01 MW.}
+  \caption{Training-only Q95 gross-demand scales and the fitted peak power of
+  one mapped data-center site as a share of each market scale.}
   \label{tab:energy-market-scales}
-  \begin{tabular}{@{}lr@{}}
+  \begin{tabular}{@{}lrr@{}}
     \toprule
-    Market case & \(S_m\) (MW) \\
+    Market case & \(S_m\) (MW) & Site peak / \(S_m\) \\
     \midrule
-    CAISO NP15 & 32,722.80 \\
-    ERCOT North & 71,754.42 \\
-    NYISO Zone J & 7,054.87 \\
-    MISO Minnesota & 91,510.75 \\
-    SPP North & 41,569.45 \\
-    ISO-NE NEMA & 17,608.25 \\
+    CAISO NP15 & 32,722.80 & 1.326\% \\
+    MISO Minnesota & 91,510.75 & 0.505\% \\
+    SPP North & 41,569.45 & 1.161\% \\
+    ISO-NE NEMA & 17,608.25 & 2.704\% \\
     \bottomrule
   \end{tabular}
 \end{table}
 
+This division changes neither the source data nor the simulated MW assigned to
+a market; it only puts ramp magnitudes on a comparable relative scale before
+the four market results are averaged.
+
 The training partition also supplies gross/net level normalizers and the
-training Q90 native absolute-ramp thresholds. Validation and test rows cannot
-influence any scale, threshold, normalization, forecast fit, or reward
-calibration.
+training Q90 native absolute-ramp thresholds. February cannot influence any
+scale, threshold, normalization, or forecast fit.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{../docs/figures/energy_model_v3/six_market_normalized_net_load.png}
-  \caption{Hourly net load for all six market cases on one shared axis,
+  \includegraphics[width=\textwidth]{../docs/figures/four_market_v2/four_market_normalized_net_load.png}
+  \caption{Hourly net load for all four active market cases on one shared axis,
   normalized by each market's training-only Q95 gross-demand scale \(S_m\).
-  The figure contains the 4,848 active decision hours per market represented
-  by the 202 hash-bound V6 daily windows, from 2025-10-10 through 2026-04-29.
-  Values are hourly and unsmoothed; forecast burn-in and separate warm/tail
-  rows are not plotted.}
+  The figure contains 3,408 active decision hours per market from the 142
+  hash-bound active daily windows. Values are hourly and unsmoothed; warm and
+  terminal-tail rows are not plotted.}
   \label{fig:energy-normalized-net-load}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{../docs/figures/energy_model_v3/single_day_normalized_net_load.png}
+  \includegraphics[width=\textwidth]{../docs/figures/four_market_v2/single_day_normalized_net_load.png}
   \caption{One-day zoom for 2026-01-30 in Pacific time. The day is selected
   deterministically from the training split as the complete CAISO day with the
   largest evening-peak minus midday-trough normalized net-load rise. CAISO is
-  highlighted to expose the duck curve; the other five lines show the same
+  highlighted to expose the duck curve; the other three lines show the same
   simultaneous UTC hours on the Pacific-time axis. Values are hourly and
   unsmoothed.}
   \label{fig:energy-single-day-duck-curve}
 \end{figure}
 
-The primary 600 MW fleet must also pass a 5\% penetration gate:
-\(P_{m,t}/S_m \leq 0.05\) for every non-stress scenario. The larger 6 GW stress
-case is separately labeled with an explicit override.
+Each mapped site has a nominal 500 MW capacity. Its fitted peak proxy is only
+0.505\%--2.704\% of the associated market scale, as
+Table~\ref{tab:energy-market-scales} shows. The protocol additionally requires:
+\begin{equation}
+  \frac{P_m^{\mathrm{peak}}}{S_m}
+  \leq
+  0.05,
+  \label{eq:energy-penetration-gate}
+\end{equation}
+where \(P_m^{\mathrm{peak}}\) is the site's fitted peak proxy power. The 5\%
+limit is a conservative experiment-design choice, not a value estimated from
+these four markets. It keeps each simulated site small relative to its
+balancing area so the experiment can treat price and native grid conditions as
+external rather than claiming to model market feedback from a very large new
+load.
 
 \subsection{Causal forecast construction}
 \label{subsec:energy-forecasts}
 
-No operator forecast is supplied to the controller. The repository reconstructs
-causal ridge forecasts for gross demand and net load from the observed panel.
-Features are observed lags at 1, 3, 24, and 168 hours; trailing means over 24
-and 168 hours; and sine/cosine encodings of target hour and day of week.
+No operator forecast is included in the acquired source data. The repository's
+forecast-construction pipeline therefore fits causal ridge models for gross
+demand and net load from the observed panel. Features are observed lags at 1,
+3, 24, and 168 hours; trailing means over 24 and 168 hours; and sine/cosine
+encodings of target hour and day of week.
 
-During training, a new expanding-window model vintage is fitted daily, and
-every training target used by a vintage strictly precedes that vintage. At the
-2026-02-01 boundary, the final training-only model is frozen for validation and
-sealed test.
+For each date in the October--January policy-learning calendar, a new
+expanding-window forecast vintage is fitted, and every target used by that
+vintage strictly precedes its issue date. At the 2026-02-01 boundary, the final
+forecast is frozen for February validation. This forecast fitting is separate
+from the PPO policy training described later: the former estimates future grid
+conditions, while the latter learns how to schedule workload using those
+causal estimates.
 
 The staged forecast files contain one-hour and three-hour records. The final
 factory uses the three-hour model to assemble a causal trajectory with
 endpoints at \(t+1\), \(t+2\), and \(t+3\). The corresponding forecasts were
 issued at \(t-2\), \(t-1\), and \(t\), respectively, so the latest issue time
-never follows the controller timestamp. Each bundle records model identity,
+never follows the scheduling-decision timestamp. Each bundle records model identity,
 vintage, issue time, horizon, and quality. Realized future load or real-time
 price is never used as a feature.
 
 The resulting panel supplies the physical baseline, causal forecast state, and
-price context used by the optimization problem in
-Section~\ref{sec:optimization-objective}. These quantities are data inputs;
-they do not become a learning objective until the controller executes an
-hourly action.
+price context used by the system model in
+Section~\ref{sec:problem-statement}. These quantities are data inputs; the
+optimization objective is defined only after the system boundary.
 
 \subsection{Quality gates and provenance}
 \label{subsec:energy-quality}
 
-The live builder fails closed on:
+The source snapshot was produced with fail-closed acquisition and validation
+rules. A record set was rejected for:
 \begin{itemize}
   \item missing or duplicate rows;
   \item incomplete native-to-hourly aggregation;
@@ -1057,18 +818,17 @@ The live builder fails closed on:
   \item unit or interval ambiguity;
   \item price/physical geography mismatches not declared in metadata;
   \item missing physical demand, wind, solar, or net load;
-  \item incomplete common calendars or missing credentials; and
+  \item an incomplete common calendar; and
   \item synthetic substitution or interpolation.
 \end{itemize}
 
-Raw downloads, restricted native products, generated forecasts, and the full
-local panel may be absent from a fresh clone because of redistribution terms
-and artifact size. The committed source contract, retrieval queries, hashes,
-coverage evidence, quality flags, and factory manifest bind the evaluated
-panel.
+The active repository begins at the validated canonical source boundary.
+\codepath{data/four_market_v2/source_manifest.json} hash-binds all retained
+physical, price, forecast, scale, and quality rows. The two generated factories
+then combine those rows with the measured workload and power fits.
 
 \begin{longtable}{@{}L{0.36\textwidth}L{0.16\textwidth}L{0.40\textwidth}@{}}
-  \caption{Energy-data source-to-runtime file lineage.}
+  \caption{Active four-market data and provenance artifacts.}
   \label{tab:energy-lineage}\\
   \toprule
   Repository path & Status & Role \\
@@ -1078,103 +838,239 @@ panel.
   Repository path & Status & Role \\
   \midrule
   \endhead
-  \codepath{env/protocols/independent_us_v3.yaml}
-    & frozen contract
-    & Declares calendar, markets, required physical fields, training-only
-      calibration, fallbacks, and fail-closed rules. \\
-  \codepath{data/energy_model_v3/provenance/source_contract.json}
-    & source catalog
-    & Records feed, product, location, cadence, units, time semantics,
-      licensing, query, revision, and redistribution policy. \\
-  \codepath{energy_model_v3/acquisition.py}
-    & acquisition code
-    & Downloads and reconstructs actual operator and EIA physical/price inputs. \\
-  \codepath{data/energy_model_v3/native/MARKET/physical_hourly.csv}
-    & local canonical input
-    & Hourly physical tuple for one market; locally staged and hash-bound. \\
-  \codepath{data/energy_model_v3/native/MARKET/price_hourly.csv}
-    & local canonical input
-    & Hourly price product for one market; locally staged and hash-bound. \\
-  \codepath{data/energy_model_v3/provenance/live-acquisition-manifest.json}
-    & acquisition authority
-    & Records actual files, URLs, hashes, source roles, normalizations, and
-      explicit fallbacks used by the evaluated panel. \\
-  \codepath{data/energy_model_v3/provenance/coverage_evidence.json}
-    & coverage gate
-    & Binds product-specific temporal coverage and raw evidence requirements. \\
-  \codepath{energy_model_v3/forecasts.py}
-    & forecast code
-    & Fits leakage-safe daily expanding/frozen ridge vintages. \\
-  \codepath{data/energy_model_v3/forecasts/MARKET.csv}
-    & local derived input
-    & Causal forecast records with target, value, issue time, vintage, and
-      horizon; locally staged and hash-bound. \\
-  \codepath{data/energy_model_v3/scale-config.yaml}
-    & calibration contract
-    & Declares training-only Q95/Q90 statistics and the 5\% penetration gate. \\
-  \codepath{output/energy_model_v3/live-campaign-summary.json}
-    & derived summary
-    & Persists actual scales, diagnostics, input identities, and panel status. \\
+  \codepath{data/four_market_v2/source_manifest.json}
+    & active source
+    & Hash-binds 114 learning panels, 28 February validation panels, frozen
+      statistics, and forecast identities. \\
+  \codepath{env/protocols/four_market_v2_envelope_on.yaml} and
+  \codepath{env/protocols/four_market_v2_envelope_off.yaml}
+    & paired designs
+    & Hold markets, fleet, deadlines, objective, and PPO settings fixed while
+      changing only the admission-envelope rule. \\
+  \codepath{energy_model_v3/four_market_v2.py}
+    & runtime factory
+    & Loads either active variant and prohibits test access. \\
+  \codepath{output/four_market_v2/campaign/paired_aggregation.json}
+    & validation evidence
+    & Aggregates three paired PPO seeds evaluated on all 28 February days. \\
   \codepath{scripts/build_energy_thesis_figures.py}
     & figure builder
     & Verifies every daily panel hash, selects active decision hours, and
       renders Figures~\ref{fig:energy-normalized-net-load} and
       \ref{fig:energy-single-day-duck-curve}. \\
-  \codepath{docs/figures/energy_model_v3/figure_manifest.json}
+  \codepath{docs/figures/four_market_v2/figure_manifest.json}
     & figure provenance
-    & Binds both figures to the factory manifest, market order, plotted
+    & Binds both figures to the active source manifest, market order, plotted
       periods, selection rule, row counts, and output hashes. \\
-  \codepath{output/energy_model_v3/live-panel/MARKET.csv}
-    & local runtime panel
-    & Complete canonical market rows supplied to the V6 adapter. \\
-  \codepath{output/energy_model_v3/ramp_v6/factory_manifest.json}
-    & runtime provenance
-    & Hash-binds panel rows, forecasts, power, workload, frozen statistics, and
-      every generated daily window. \\
   \bottomrule
 \end{longtable}
 
 \subsection{Reproduction boundary}
 \label{subsec:energy-reproduction}
 
-The source-description and parser probes are lightweight checks; they are not a
-replacement for the full eight-month acquisition. From the repository root:
+The active factory and figures can be validated from the repository root:
 
 \begin{verbatim}
-python scripts\build_energy_model_v3.py describe-sources
-python scripts\build_energy_model_v3.py probe
-python scripts\build_energy_model_v3.py probe-parsers
-python scripts\build_energy_model_v3.py probe-ercot-physical
-python scripts\build_energy_model_v3.py download-ercot-physical
-python scripts\build_energy_model_v3.py acquire-live
-python scripts\build_energy_model_v3.py preflight
-python scripts\build_energy_v3_ramp_factory.py
+python scripts\build_four_market_v2_factory.py
+python scripts\run_four_market_v2_campaign.py preflight
 python scripts\build_energy_thesis_figures.py
 \end{verbatim}
 
-The full path requires locally staged raw/native evidence at the locations
-recorded by the manifests. Verification of committed hashes and results is
-possible without redistributing restricted raw products, but complete
-reacquisition requires the public endpoints, the relevant source terms, and
-any declared credential.
+The factory builder reads only the v2 source manifest, cells \(a\)--\(d\), and
+the PowerData coefficient file. It can regenerate both admission variants
+without any earlier experiment.
 
 \subsection{Limitations}
 \label{subsec:energy-limitations}
 
-The panel covers one eight-month period and cannot support prior-year,
-future-year, or long-run seasonal claims. Four physical tuples are
-balancing-authority-wide EIA fallbacks; NYISO combines zonal load with
-systemwide renewable context; and ERCOT combines a load-zone price with
-system-level physical data. These geography mismatches are disclosed but do
-not represent local feeder conditions.
+The retained source context spans September 2025 through February 2026 and
+cannot support prior-year, future-year, or long-run seasonal claims. All four physical tuples are
+balancing-authority-wide EIA series, while prices are operator hubs or zones.
+These geography differences do not represent local feeder conditions.
 
 The model is price-taking: data-center actions do not change LMP, dispatch,
 unit commitment, reserves, congestion, or renewable output. Day-ahead LMP is
 not a retail tariff. The forecast is a reconstructed causal model rather than
 an operator-issued forecast. The panel contains no carbon-intensity input, and
-carbon is not optimized. PJM/Northern Virginia is absent. Extending the study
-requires a new complete all-six calendar, new forecast vintages and training
-statistics, and a new sealed protocol.
+carbon is not optimized. A new sealed calendar, forecast freeze, and protocol
+will be required after the four-market design is finalized.
+
+\section{Experimental Transformations and Modeling Assumptions}
+\label{sec:experimental-transformations}
+
+The preceding sections describe measured source data. The remaining steps are
+experimental choices: they map sources together, change temporal resolution,
+assign deadlines, test workload-admission rules, and set facility scale. None
+of those choices is a property claimed by Google, EIA, or the market operators.
+
+\subsection{Cell-to-market mapping}
+\label{subsec:transform-mapping}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Active four-market mapping and proxy scale.}
+  \label{tab:active-market-map}
+  \begin{tabular}{@{}llllr@{}}
+    \toprule
+    Site & Market case & Physical series & Borg cell & Rated power \\
+    \midrule
+    Northern California & CAISO NP15 & EIA CISO & \(a\) & 500 MW \\
+    Minnesota & MISO Minnesota & EIA MISO & \(b\) & 500 MW \\
+    SPP North & SPP North & EIA SWPP & \(c\) & 500 MW \\
+    Boston/NEMA & ISO-NE NEMA & EIA ISNE & \(d\) & 500 MW \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The market names describe the electricity cases, not the undisclosed physical
+locations of the Borg cells. Cells \(e\)--\(h\) are not mixed into the active
+mapping; they remain a disjoint workload holdout for a later experiment.
+
+\subsection{Five-minute traces to hourly arrivals}
+\label{subsec:transform-hourly-workload}
+
+Each tier curve contains 8,929 indexed samples. The final terminal boundary row
+does not represent another complete five-minute interval, so it is excluded.
+The remaining 8,928 samples are averaged in consecutive groups of twelve,
+producing one 744-hour service profile and one 744-hour batch profile per cell.
+
+The hourly interval is chosen to match all parts of the experiment on one
+clock: day-ahead prices, the canonical EIA panel, forecasts, scheduling
+decisions, and batch deadlines are hourly. Because each five-minute value is a
+normalized utilization rate, its twelve-sample hourly mean represents the
+average compute demand during that hour; multiplying that mean by one hour
+gives the normalized compute-hours to be served. This conversion also keeps the
+decision horizon tractable. Its cost is lost subhourly detail: five-minute
+spikes and opportunities to move work within an hour are not modeled, so the
+results support hourly scheduling claims only.
+
+Those hourly profiles are repeated from a common 2025-09-01 UTC alignment epoch
+to cover the electricity calendar. This preserves the measured within-month
+shape but does not claim that May 2019 Borg work occurred contemporaneously
+with 2025--2026 grid conditions. Repeating one month also suppresses long-run
+growth, seasonality, and rare workload regimes.
+
+\subsection{Coarse experimental batch deferral windows}
+\label{subsec:transform-deadlines}
+
+ClusterData2019 supplies observed completion durations for completed no-SLO
+work, but it does not report when that work was actually required to finish.
+The experiment therefore cannot recover the jobs' true urgency or customer
+deadlines. Instead, each cell receives one fixed, synthetic maximum deferral
+window:
+\begin{equation}
+  H_c
+  =
+  \max\left(
+    1,
+    \left\lceil \frac{2\bar d_c}{3600} \right\rceil
+  \right),
+  \label{eq:transform-deadline}
+\end{equation}
+where \(\bar d_c\) is mean completed no-SLO duration in seconds. For cells
+\(a\)--\(d\), the resulting horizons are 2, 1, 2, and 3 hours. These are
+experimental control deadlines, not Borg SLOs or customer commitments.
+
+At the hourly decision resolution, \(H_c=1\) means batch work arriving in hour
+\(t\) must be executed during that same one-hour scheduling interval, before
+the \(t+1\) boundary. \(H_c=2\) permits execution during hour \(t\) or the next
+hour, and \(H_c=3\) permits one of three consecutive hourly intervals. The
+model therefore does not distinguish, for example, a job that needed to finish
+in 10 minutes from one that could wait 50 minutes. Doubling the observed mean
+completion duration and rounding upward is a modeling heuristic for coarse
+flexibility, not evidence of the jobs' actual deadlines.
+
+\subsection{Admission-envelope ablation}
+\label{subsec:transform-admission}
+
+The raw four-cell workload never exceeds the available four normalized work
+units in one hour: the largest simultaneous service-plus-batch arrival is
+2.4244025972. It is therefore possible to retain the measured service/batch split
+without an additional admission cap. The validation campaign nevertheless
+constructs two otherwise identical factories to test the earlier feasibility
+rule.
+
+The \emph{envelope-on} variant applies:
+\begin{itemize}
+  \item immediate service may occupy at most 75\% of fleet capacity;
+  \item newly admitted batch may occupy at most 10\%; and
+  \item the remaining capacity is reserved for batch already carried in the
+        deadline queue.
+\end{itemize}
+
+If measured batch exceeds the 10\% arrival bound, it is not dropped. The excess
+is conserved and reclassified as immediate service. Across the 744-hour Borg
+profile, the batch cap binds in 500 hours and reclassifies 13.6\% of measured
+batch work.
+
+The \emph{envelope-off} variant preserves the raw service and batch columns
+exactly. Both retain the same hard site capacity, work conservation, batch
+deadlines, and terminal completion. This paired construction asks whether the
+extra restriction improves PPO learning; it is not treated as a property of
+ClusterData2019.
+
+\subsection{Direct 500 MW proxy rating}
+\label{subsec:transform-scaling}
+
+Each site's normalized compute capacity remains one work unit per hour, the
+same scale used by the measured utilization curve. Facility power is assigned
+directly:
+\begin{itemize}
+  \item compute capacity: \(K_c=1\) normalized work unit per hour;
+  \item rated power: \(R_c=500\) MW per site; and
+  \item fleet total: \(4\times500=2{,}000\) MW.
+\end{itemize}
+
+The 500 MW value is an experimental nameplate assumption, not a value disclosed
+by Google. No five-times workload or compute-capacity replication is used.
+
+\subsection{Conversion from executed work to power}
+\label{subsec:transform-runtime-power}
+
+Let \(w_{c,t}\) be service plus batch work executed at site \(c\) during hour
+\(t\), and let \(K_c=1\) be site compute capacity. Runtime utilization is
+\(w_{c,t}/K_c\), bounded to the fitted range \([0,1]\). The corresponding proxy
+power is
+\begin{equation}
+  P_{c,t}
+  =
+  500
+  \left(
+    \alpha_c + \beta_c \frac{w_{c,t}}{K_c}
+  \right)
+  \text{ MW},
+  \label{eq:transform-runtime-power}
+\end{equation}
+using the cell-specific PowerData2019 coefficients from
+Table~\ref{tab:powerdata-coefficients}. The 500 MW rating is an experimental
+facility scale; PowerData2019 provides only the normalized power relationship.
+Because \(\alpha_c+\beta_c<1\), fitted full-utilization power is approximately
+434, 462, 483, and 476 MW for cells \(a\)--\(d\), respectively. The model does
+not renormalize those measured fits merely to force 500 MW at full utilization.
+
+The repeated measured aggregate profile supplies three hours of warm power at
+the start of each episode. Once decisions begin, power is recomputed from the
+work actually routed and executed; it is not a fixed replay of the measured
+profile.
+
+\subsection{Active factory boundary}
+\label{subsec:transform-factory}
+
+The transformation is implemented in
+\codepath{energy_model_v3/four_market_v2.py}. Its generated artifacts are under
+\codepath{output/four_market_v2/factory}. Each variant manifest binds:
+\begin{itemize}
+  \item the four retained market panels and forecast identities;
+  \item cells \(a\)--\(d\), their measured tier curves, and deadline summaries;
+  \item four direct \(K=1\), 500 MW site definitions and fitted warm power;
+  \item 114 training days and 28 February validation days; and
+  \item an empty test split.
+\end{itemize}
+
+The two design contracts are
+\codepath{env/protocols/four_market_v2_envelope_on.yaml} and
+\codepath{env/protocols/four_market_v2_envelope_off.yaml}. They differ only in
+the admission rule described in Section~\ref{subsec:transform-admission}.
 
 \section{Problem Statement and System Boundary}
 \label{sec:problem-statement}
@@ -1182,9 +1078,11 @@ statistics, and a new sealed protocol.
 \subsection{Purpose of the system model}
 \label{subsec:problem-purpose}
 
-Sections~\ref{sec:clusterdata2019}--\ref{sec:energy-data} define the measured
-and derived inputs. This section defines the problem those inputs create
-without yet choosing an optimization algorithm. It identifies:
+Sections~\ref{sec:clusterdata2019}--\ref{sec:energy-data} describe the source
+data and fitted power model. Section~\ref{sec:experimental-transformations}
+defines how those sources become the active experiment. Together they provide
+the fixed inputs to the scheduling problem defined here. This section does not
+yet choose an optimization algorithm; it identifies:
 \begin{enumerate}
   \item what is fixed and observed;
   \item what an operator is allowed to change;
@@ -1199,9 +1097,9 @@ Section~\ref{sec:optimization-objective}.
 \subsection{Sets, time, and fixed inputs}
 \label{subsec:problem-given-inputs}
 
-Let \(\mathcal{M}=\{1,\ldots,6\}\) denote the six proxy data-center sites and
+Let \(\mathcal{M}=\{1,\ldots,4\}\) denote the four proxy data-center sites and
 their one-to-one electricity-market cases from
-Table~\ref{tab:clusterdata-market-map}. A site and its attached market share
+Table~\ref{tab:active-market-map}. A site and its attached market share
 the same index \(m\). Let \(t\) denote an hourly decision.
 
 \begin{longtable}{@{}L{0.27\textwidth}L{0.31\textwidth}L{0.34\textwidth}@{}}
@@ -1220,20 +1118,20 @@ the same index \(m\). Let \(t\) denote an hourly decision.
       Section~\ref{subsec:clusterdata-tier-split}
     & Work that must be completed during its arrival hour. \\
   Hourly batch arrivals \(q_{m,t}\)
-    & Same measured tier curves, after the admission rule in
-      Section~\ref{subsec:clusterdata-admission}
+    & Same measured tier curves, either raw or transformed by the paired rule in
+      Section~\ref{subsec:transform-admission}
     & Work that may wait and move, but must finish by its assigned deadline. \\
   Batch deadline \(H_m\)
     & \codepath{data/jobs/batch_distributions_X.json};
-      Equation~\eqref{eq:clusterdata-deadline}
+      Equation~\eqref{eq:transform-deadline}
     & Maximum modeled deferral horizon for arrivals associated with cell \(m\). \\
   Compute capacity \(K_m\)
-    & \codepath{env/scenarios/us_six_market_v3_primary.yaml}
+    & Active v2 protocols
     & Maximum service plus batch work executable at site \(m\) in one hour;
-      \(K_m=1\) in the primary study. \\
+      \(K_m=1\) in the active design. \\
   Rated power and affine coefficients
-    & Scenario file and \codepath{data/power_model_params.json};
-      Equation~\eqref{eq:powerdata-runtime-power}
+    & Active protocol and \codepath{data/power_model_params.json};
+      Equation~\eqref{eq:transform-runtime-power}
     & Converts executed work at a destination site into market-level MW. \\
   Net load \(N_{m,t}\), gross demand, wind, and solar
     & Canonical energy panel; Sections~\ref{subsec:energy-canonical} and
@@ -1243,47 +1141,46 @@ the same index \(m\). Let \(t\) denote an hourly decision.
     & Canonical price panel; Table~\ref{tab:energy-sources}
     & Supplies wholesale economic context and the cost guardrail. \\
   Causal forecast trajectory
-    & \codepath{energy_model_v3/forecasts.py};
+    & Active canonical panel;
       Section~\ref{subsec:energy-forecasts}
     & Provides estimates of upcoming gross and net load available at decision
       time. \\
   Training-only scales and thresholds
-    & \codepath{data/energy_model_v3/scale-config.yaml};
+    & \codepath{data/four_market_v2/frozen_stats.json};
       Equation~\eqref{eq:energy-market-scale}
     & Makes market states and later ramp comparisons commensurate without using
-      validation or test data. \\
+      February validation data. \\
   Three-hour warm power history
-    & \codepath{data/energy_model_v3/modeled_dc_power/MARKET.csv};
-      \codepath{energy_model_v3/ramp_factory.py}
+    & Active daily fixtures;
+      \codepath{energy_model_v3/four_market_v2.py}
     & Supplies real preceding fleet power for the first 1 h and 3 h ramp windows
       of each daily episode. \\
   \bottomrule
 \end{longtable}
 
 The authoritative assembly of these inputs is recorded in
-\codepath{output/energy_model_v3/ramp_v6/factory_manifest.json}. Each generated
-daily fixture contains site parameters, service and batch arrivals, deadline
-horizons, warm power, the canonical market panel, and hashes of all upstream
-inputs.
+\codepath{output/four_market_v2/factory}. Each generated daily fixture contains
+site parameters, service and batch arrivals, deadline horizons, warm power, the
+canonical market panel, and hashes of all upstream inputs.
 
 \subsection{Proxy-fleet interpretation}
 \label{subsec:problem-proxy-fleet}
 
-The six sites are controlled archetypes, not identified Google facilities and
-not claims about the undisclosed geography of the Borg cells. Each primary
+The four sites are controlled archetypes, not identified Google facilities and
+not claims about the undisclosed geography of the Borg cells. Each active
 site has:
 \begin{itemize}
   \item normalized compute capacity \(K_m=1\);
-  \item proxy rated power \(R_m=100\) MW;
+  \item proxy rated power \(R_m=500\) MW;
   \item one ClusterData2019 workload profile;
   \item one PowerData2019 affine power model; and
   \item one attached electricity-market case.
 \end{itemize}
 
-The primary fleet is therefore 600 MW. Assigning work to site \(m\) determines
+The active fleet is therefore 2 GW. Assigning work to site \(m\) determines
 the power added to market \(m\) through
-Equation~\eqref{eq:powerdata-runtime-power}. The workload shape and power
-response are measured or fitted; the 100 MW magnitude and the cell-to-market
+Equation~\eqref{eq:transform-runtime-power}. The workload shape and power
+response are measured or fitted; the 500 MW magnitude and the cell-to-market
 pairing are experimental assumptions.
 
 All compute work is represented as divisible aggregate work. Individual jobs,
@@ -1297,7 +1194,7 @@ resource constraint.
 At each hour, a feasible scheduler may control three quantities:
 \begin{enumerate}
   \item \textbf{Service destination.} It chooses how the fleet-wide total of
-        immediate service is divided among the six sites.
+        immediate service is divided among the four sites.
   \item \textbf{Batch execution volume.} It chooses how much queued batch work
         to execute now rather than retain for a later hour.
   \item \textbf{Batch destination.} It chooses where the selected batch work is
@@ -1311,7 +1208,7 @@ The origin of service is not retained after arrivals are pooled. Batch origin
 is retained in the deadline ledger, and an exact transport matrix
 \(\Pi_{i,j,t}\) accounts for movement from origin \(i\) to execution site \(j\).
 
-These are operational decisions, not yet PPO actions. The 13-dimensional
+These are operational decisions, not yet PPO actions. The 9-dimensional
 preference interface described later is one attempted parameterization of this
 three-part decision.
 
@@ -1345,11 +1242,10 @@ no later than that deadline, and all admitted batch work must be complete at
 the episode terminal. The implementation is the
 \codepath{EDFQueue} ledger in \codepath{env/ramp_v6/models.py}.
 
-The arrival envelope in Section~\ref{subsec:clusterdata-admission} is part of
+The arrival envelope in Section~\ref{subsec:transform-admission} is part of
 the current problem instance: service is limited to 75\% of fleet capacity,
 new batch to 10\%, and excess measured batch is conserved by reclassifying it
-as immediate service. As noted earlier, the specific 10\% bound is not
-externally calibrated and should be removed or varied in a future protocol.
+as immediate service.
 
 \subsection{Capacity and transport feasibility}
 \label{subsec:problem-feasibility}
@@ -1387,7 +1283,7 @@ what a real operator could use.
 \subsection{Episode and terminal boundary}
 \label{subsec:problem-episode}
 
-Each factory episode represents one UTC day with:
+Each episode represents one UTC day with:
 \begin{itemize}
   \item three real preceding hours for ramp history;
   \item 24 active arrival and decision hours; and
@@ -1398,7 +1294,7 @@ The tail allows late-day batch work to finish and allows 1 h and 3 h windows
 ending after the final arrival hour to be scored. Circular wrap to the start of
 the day is forbidden. The batch queue starts empty at reset and must be empty
 at the true terminal. These rules are generated in
-\codepath{energy_model_v3/ramp_factory.py} and enforced by
+\codepath{energy_model_v3/four_market_v2.py} and enforced by
 \codepath{env/ramp_v6/environment.py}.
 
 \subsection{Causal information boundary}
@@ -1432,15 +1328,15 @@ function only of the causal information set \(\mathcal{I}_t\):
 \subsection{Grid and market boundary}
 \label{subsec:problem-grid-boundary}
 
-The six physical net-load trajectories and day-ahead prices are exogenous. The
+The four physical net-load trajectories and day-ahead prices are exogenous. The
 modeled fleet is price-taking and does not alter dispatch, LMP, renewable
 generation, unit commitment, reserves, congestion, or the source forecasts.
 Fleet power is added to native net load for counterfactual evaluation, but the
 source grid trajectory itself is unchanged.
 
-The 5\% \(P/S\) gate described in
-Section~\ref{subsec:energy-scales} limits the primary price-taking
-approximation. Even so, market-level net load does not represent the local
+The price-taking approximation is bounded by the 5\% peak-power-to-scale gate
+in Equation~\eqref{eq:energy-penetration-gate}. Even so, market-level net load
+does not represent the local
 substation, feeder, nodal constraint, or utility tariff faced by a real
 facility.
 
@@ -1453,22 +1349,19 @@ The thesis distinguishes three systems:
         This is a physical counterfactual, not an operating policy.
   \item \textbf{Operational status quo.} Native grid plus fleet power from an
         evaluation-only baseline that routes service and batch in origin
-        proportions and requests immediate batch drainage through the same
-        feasibility decoder. It maintains an independent shadow queue.
+        proportions and requests immediate batch drainage under the same
+        capacity, conservation, and deadline rules. It maintains an independent
+        shadow queue.
   \item \textbf{Candidate policy.} Native grid plus fleet power produced by the
-        learned routing and timing preferences through that same decoder.
+        learned routing and timing preferences under those same feasibility
+        rules.
 \end{enumerate}
 
 Status quo and candidate use identical market, workload, forecast, capacity,
-and deadline windows. The baseline entry points are:
-\begin{itemize}
-  \item evaluation controller:
-        \codepath{status_quo_policy} in
-        \codepath{env/ramp_v6/evaluation.py}; and
-  \item independent environment shadow policy:
-        \codepath{_status_quo_action} in
-        \codepath{env/ramp_v6/environment.py}.
-\end{itemize}
+and deadline windows. The independent shadow queue and baseline action are
+implemented by \codepath{_status_quo_action} in
+\codepath{env/ramp_v6/environment.py}; evaluation aggregation is implemented in
+\codepath{ramp_rl/evaluation.py}.
 
 The native comparison isolates whether the modeled fleet increases or decreases
 the grid's pre-existing ramp. The status-quo comparison asks the more
@@ -1478,9 +1371,18 @@ grid-unaware way of running the same fleet.
 \subsection{Problem statement}
 \label{subsec:problem-formal-statement}
 
+The scheduling cases span many energy dates to avoid designing against one
+unusually favorable grid day or month. They do not contain many independent
+months of workload: one measured May 2019 Borg profile is repeated while net
+load, renewable output, day-ahead price, and causal forecasts change. The 114
+October--January days supply varied conditions for learning a schedule; the 28
+later February days test whether it transfers to unseen energy dates. The
+separate cells \(e\)--\(h\) holdout would test transfer to unseen workload and
+is outside the current experiment.
+
 \begin{quote}
 \textbf{Problem statement.}
-Given six hourly service and batch arrival streams, batch deadlines, six
+Given four hourly service and batch arrival streams, batch deadlines, four
 capacity and power models, causal physical-grid and forecast information, and
 day-ahead prices, construct a causal hourly schedule for service destination,
 batch execution volume, and batch destination such that:
@@ -1489,7 +1391,7 @@ batch execution volume, and batch destination such that:
   \item all batch work is conserved and completed by its deadline;
   \item no site exceeds compute capacity and the terminal queue is empty;
   \item the fleet's added power reduces, or at minimum does not amplify, the
-        native grid's rapid net-load changes across the six market cases; and
+        native grid's rapid net-load changes across the four market cases; and
   \item modeled day-ahead cost does not increase excessively relative to the
         same fleet under the status-quo comparator.
 \end{enumerate}
@@ -1499,11 +1401,12 @@ This statement does not prescribe reinforcement learning, a neural policy, the
 1 h/3 h weights, or a scalar reward. Those choices constitute the attempted
 solution defined next.
 
-\section{Optimization Objective and Controller Inputs}
+\section{Optimization Objective and Policy Inputs}
 \label{sec:optimization-objective}
 
 \noindent
-Within the feasible system defined in Section~\ref{sec:problem-statement}, V6
+Within the feasible system defined in Section~\ref{sec:problem-statement}, the
+active four-market design
 chooses a specific ramp objective, cost guardrail, policy representation, and
 constraint decoder. This section therefore describes the attempted solution,
 not an additional data source or a restatement of the problem.
@@ -1512,11 +1415,11 @@ not an additional data source or a restatement of the problem.
 \label{subsec:objective-hourly-decision}
 
 Each episode advances in one-hour decisions. At hour \(t\), the policy emits
-13 preferences for the six-site fleet:
+9 preferences for the four-site fleet:
 \begin{enumerate}
-  \item six preferences for the destination of immediate service work;
+  \item four preferences for the destination of immediate service work;
   \item one preference for how much queued batch work to execute; and
-  \item six preferences for the destination of that batch work.
+  \item four preferences for the destination of that batch work.
 \end{enumerate}
 
 The policy does not directly set MW. A constraint-only decoder converts the
@@ -1546,6 +1449,14 @@ horizons are comparable. The objective gives 40\% weight to the 1 h horizon
 and 60\% to the 3 h horizon. This favors sustained multi-hour smoothing while
 still penalizing sharp hourly changes.
 
+These horizons are experimental choices rather than universal grid constants.
+One hour matches the scheduling and source-data resolution. Three hours matches
+the longest batch deadline, the causal forecast trajectory, and the window over
+which an evening renewable decline can become a sustained ramp. Using both
+prevents a schedule from smoothing a single hour while merely shifting the
+change into the next few hours. The 40/60 weights place more emphasis on that
+sustained effect and should ultimately be tested by sensitivity analysis.
+
 \subsection{Native and data-center-adjusted ramps}
 \label{subsec:objective-native-adjusted}
 
@@ -1565,11 +1476,18 @@ The native ramp \(b_{m,t,h}\) answers: ``How quickly was the grid already
 changing without this modeled fleet?'' The adjusted ramp \(a_{m,t,h}\)
 answers: ``How quickly would net load change after adding the fleet schedule?''
 Normalization by \(S_m\) prevents a large market such as MISO from dominating
-a smaller market such as NYISO solely because its MW scale is larger.
+a smaller market such as ISO-NE solely because its MW scale is larger.
+
+The target is the ramp of the combined grid-facing trajectory \(N+P\), not the
+ramp of data-center power \(P\) alone. There is no term that minimizes
+\(\lvert P_{m,t}-P_{m,t-h}\rvert\). A sharp decrease in data-center power during
+an upward native-grid ramp, or a sharp increase during a downward native-grid
+ramp, can be beneficial because the two changes counteract each other. Constant
+data-center power is ramp-neutral rather than automatically optimal.
 
 The adjusted ramps are used twice. First, they are reported as physical
 per-market ramp magnitudes. Second, they are compared with the native ramps to
-calculate the controller's incremental effect.
+calculate the schedule's incremental effect.
 
 \subsection{Why ramps are squared}
 \label{subsec:objective-squared-ramp}
@@ -1582,9 +1500,16 @@ two purposes:
   \item a large ramp is penalized more strongly than several small ramps.
 \end{enumerate}
 
-The study does not minimize \(b^2\) itself because the controller did not cause
+The study does not minimize \(b^2\) itself because the modeled fleet did not cause
 the underlying grid ramp. Instead, \(b^2\) is the counterfactual baseline
 subtracted from the adjusted squared ramp.
+
+Squared ramp is not directly equivalent to monetary cost. It has normalized,
+dimensionless squared units and is used only as a convex severity proxy.
+Real ramping cost depends on which generators respond, startup and fuel costs,
+reserve requirements, congestion, and operating constraints that are outside
+the model. Day-ahead LMP therefore remains a separate wholesale-cost measure;
+the experiment does not convert ramp impact into dollars.
 
 \subsection{Per-window incremental impact and PPO reward}
 \label{subsec:objective-incremental-impact}
@@ -1609,8 +1534,8 @@ horizons:
 \begin{equation}
   \overline{I}_t
   =
-  \frac{1}{6}
-  \sum_{m=1}^{6}
+  \frac{1}{4}
+  \sum_{m=1}^{4}
   \left(
     0.40 I_{m,t,1}
     +
@@ -1620,10 +1545,31 @@ horizons:
 \end{equation}
 
 This is the quantity accumulated for the primary reported native-relative
-impact. A smaller training-Q90 tail term applies the same adjusted-minus-native
-comparison only to unusually large absolute ramps. If
-\(\overline{T}_t\) denotes the equal-market, horizon-weighted incremental tail
-burden, the ramp objective and reward are
+impact. A smaller tail term focuses learning on unusually large absolute
+ramps. Let \(\tau_{m,h}\) be market \(m\)'s training-only Q90 absolute native
+ramp threshold for horizon \(h\). The incremental tail burden is
+\begin{equation}
+  T_{m,t,h}
+  =
+  \max\left(|a_{m,t,h}|-\tau_{m,h},0\right)^2
+  -
+  \max\left(|b_{m,t,h}|-\tau_{m,h},0\right)^2,
+  \label{eq:objective-tail-impact}
+\end{equation}
+and its equal-market, horizon-weighted aggregate is
+\begin{equation}
+  \overline{T}_t
+  =
+  \frac{1}{4}
+  \sum_{m=1}^{4}
+  \left(
+    0.40T_{m,t,1}
+    +
+    0.60T_{m,t,3}
+  \right).
+  \label{eq:objective-tail-aggregate}
+\end{equation}
+The ramp objective and reward are then
 \begin{align}
   J_t^{\mathrm{ramp}}
     &= \overline{I}_t + 0.15\overline{T}_t, \\
@@ -1647,28 +1593,26 @@ hours. Day-ahead cost is retained to detect and constrain that behavior:
   C_{m,t}
     &= L^{\mathrm{DA}}_{m,t}P_{m,t}(1\ \mathrm{hour}), \\
   C_t
-    &= \sum_{m=1}^{6} C_{m,t},
+    &= \sum_{m=1}^{4} C_{m,t},
   \label{eq:energy-cost}
 \end{align}
 where \(L^{\mathrm{DA}}\) is in USD/MWh and \(P\) is in MW.
 
 The environment compares policy cost with a status-quo schedule on the same
 hours. A configurable Lagrangian penalty can reduce reward when the policy
-exceeds its cost budget, and the accepted V4R evaluation required the aggregate
-day-ahead cost ratio to remain at or below 1.02. In the accepted training run,
-the Lagrangian multipliers remained zero, so the realized learning signal was
-the ramp reward; cost still served as a validation gate and a separately
-reported outcome.
+exceeds its cost budget. The active design currently retains an aggregate
+day-ahead cost-ratio gate of 1.02. Whether that guardrail and its Lagrangian
+implementation remain unchanged is still part of design refinement.
 
 This cost is only a wholesale proxy. It is not used as physical grid stress and
 does not include retail rates, demand charges, taxes, ratchets, or contractual
 terms.
 
-\subsection{How observations affect controller behavior}
+\subsection{How observations affect policy behavior}
 \label{subsec:objective-observations}
 
 Observations do not mechanically force an action. They are inputs to the PPO
-network from which it learns its 13 preferences. Their intended decision roles
+network from which it learns its 9 preferences. Their intended decision roles
 are:
 
 \begin{longtable}{@{}L{0.31\textwidth}L{0.61\textwidth}@{}}
@@ -1711,14 +1655,88 @@ computed later from realized net load and executed fleet power when a ramp
 window closes. This separation allows anticipatory control without leaking
 future realized values.
 
+\subsection{Paired admission-envelope validation campaign}
+\label{subsec:objective-campaign}
+
+The direct \(K=1\), 500 MW design was trained from scratch under both admission
+variants from Section~\ref{subsec:transform-admission}. Seeds 4101, 4102, and
+4103 were paired across variants. Each of the six PPO runs requested 100,000
+interactions and stopped at the first complete rollout and episode boundary,
+at 110,592 interactions. Every run sampled all 114 learning days and was then
+evaluated on all 28 February validation days. Cells \(e\)--\(h\) and a test
+calendar were not accessed.
+
+Before training, the status-quo baseline completed every permitted window in
+both factories. The largest simultaneous raw service-plus-batch arrival was
+2.4244025972 work units against fleet capacity four. This confirms that the
+envelope-off workload is feasible without reclassification.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Three-seed February means for the paired 100k PPO validation.
+  Negative ramp impact is an improvement.}
+  \label{tab:four-market-campaign}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    Metric & Envelope on & Envelope off \\
+    \midrule
+    Native-relative incremental ramp impact
+      & \(-1.4058\times10^{-5}\) & \(-1.3983\times10^{-5}\) \\
+    Policy minus status-quo impact
+      & \(-7.6006\times10^{-6}\) & \(-7.5253\times10^{-6}\) \\
+    Day-ahead cost ratio
+      & \(0.97481\) & \(0.97465\) \\
+    Seeds with negative native-relative impact
+      & \(2/3\) & \(2/3\) \\
+    Seeds passing all recorded development gates
+      & \(1/3\) & \(1/3\) \\
+    Unserved / expired / terminal work
+      & \(0/0/0\) & \(0/0/0\) \\
+    Emergency fallback / certificate violations
+      & \(0/0\) & \(0/0\) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Removing the envelope produced a lower impact in two paired seeds, but not in
+the third. Its mean impact was \(7.53\times10^{-8}\) less favorable than the
+envelope-on mean. The difference between variants is therefore negligible
+relative to optimizer-seed variation: the paired-difference sample standard
+deviation was \(9.88\times10^{-7}\). It does not support the claim that removing
+the envelope improves PPO.
+
+Seed variation is the more important finding. Seed 4102 slightly worsened the
+native ramp under both variants, seed 4101 produced a small improvement, and
+seed 4103 produced most of the aggregate gain
+(\(-4.0632\times10^{-5}\) with the envelope and
+\(-3.9531\times10^{-5}\) without it). Across-seed means were negative in all
+four markets for both variants, but their across-seed standard deviations
+(\(2.31\times10^{-5}\) and \(2.22\times10^{-5}\)) exceeded the magnitude of
+their means. Envelope-off also narrowly beat status quo in
+all four per-market means, whereas envelope-on was slightly worse than status
+quo in MISO; individual-seed market results were not consistent.
+
+All six policies met the 2\% cost guardrail and completed work exactly without
+emergency fallback. The campaign therefore establishes that both workload
+representations are operationally trainable and that the raw measured split
+does not require the admission envelope for feasibility. It does not establish
+a robust performance advantage for either representation. Cells \(e\)--\(h\)
+remain untouched until the design and optimization procedure are frozen.
+
+The campaign directory \codepath{output/four_market_v2/campaign} contains the
+compact \codepath{paired_aggregation.json} result. PPO model containers remain
+local; tracked training manifests and validation evidence record the run.
+
 The executable sources are:
 \begin{itemize}
   \item ramp-window terms: \codepath{env/ramp_v6/reward.py};
   \item reward aggregation and observations:
         \codepath{env/ramp_v6/environment.py};
   \item feasibility decoding: \codepath{env/ramp_v6/projection.py}; and
-  \item frozen weights and semantics:
-        \codepath{env/protocols/v6_ramp_pure_rl.yaml}.
+  \item paired weights and semantics:
+        \codepath{env/protocols/four_market_v2_envelope_on.yaml} and
+        \codepath{env/protocols/four_market_v2_envelope_off.yaml}.
 \end{itemize}
 
 \begin{thebibliography}{9}
@@ -1761,18 +1779,6 @@ California Independent System Operator.
 \newblock PRC\_LMP v12, TH\_NP15\_GEN-APND.
 \newblock \url{https://oasis.caiso.com}.
 
-\bibitem{ercotMis}
-Electric Reliability Council of Texas.
-\newblock \emph{Market Information System and Historical Load Archives}.
-\newblock Reports 13060 and 13052.
-\newblock \url{https://www.ercot.com/mktinfo/prices}.
-
-\bibitem{nyisoMis}
-New York Independent System Operator.
-\newblock \emph{Market Information System Custom Reports}.
-\newblock Day-ahead LBMP and PAL archives.
-\newblock \url{https://www.nyiso.com/custom-reports}.
-
 \bibitem{misoReports}
 Midcontinent Independent System Operator.
 \newblock \emph{Market Reports}.
@@ -1797,12 +1803,15 @@ U.S. Energy Information Administration.
 \newblock Includes the EBA.zip bulk archive.
 \newblock \url{https://www.eia.gov/electricity/gridmonitor/}.
 
-\bibitem{pjmDataMiner}
-PJM Interconnection.
-\newblock \emph{Data Miner 2}.
-\newblock Listed for excluded-source reproducibility context.
-\newblock \url{https://dataminer2.pjm.com/list/pubsData}.
-
 \end{thebibliography}
 
 \end{document}
+
+% Verification Summary (2026-08-11; active cleaned repository only)
+% Total claims checked: 142
+% Confirmed: 125
+% Corrections: 2
+% - Replaced the two rounded raw simultaneous-arrival values with
+%   2.4244025972, the active campaign-manifest maximum.
+% Unverifiable: 15 external-source/product and acquisition descriptions;
+% retained as cited claims because their upstream records are not local.

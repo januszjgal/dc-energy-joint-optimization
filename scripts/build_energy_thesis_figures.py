@@ -1,4 +1,4 @@
-"""Build deterministic thesis figures from the hash-bound V6 energy windows."""
+"""Build deterministic thesis figures from the active four-market source."""
 
 from __future__ import annotations
 
@@ -17,35 +17,27 @@ import pandas as pd  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parent.parent
-FACTORY_MANIFEST = (
-    ROOT / "output" / "energy_model_v3" / "ramp_v6" / "factory_manifest.json"
-)
-OUTPUT_DIR = ROOT / "docs" / "figures" / "energy_model_v3"
-FIGURE_PATH = OUTPUT_DIR / "six_market_normalized_net_load.png"
+SOURCE_MANIFEST = ROOT / "data" / "four_market_v2" / "source_manifest.json"
+OUTPUT_DIR = ROOT / "docs" / "figures" / "four_market_v2"
+FIGURE_PATH = OUTPUT_DIR / "four_market_normalized_net_load.png"
 DAILY_FIGURE_PATH = OUTPUT_DIR / "single_day_normalized_net_load.png"
 MANIFEST_PATH = OUTPUT_DIR / "figure_manifest.json"
 CAISO_TIMEZONE = ZoneInfo("America/Los_Angeles")
 
 MARKET_ORDER = (
     "CAISO_NP15",
-    "ERCOT_LZ_NORTH",
-    "NYISO_NYC_J",
     "MISO_MINN_HUB",
     "SPP_NORTH_HUB",
     "ISONE_NEMA",
 )
 MARKET_LABELS = {
     "CAISO_NP15": "CAISO NP15",
-    "ERCOT_LZ_NORTH": "ERCOT North",
-    "NYISO_NYC_J": "NYISO Zone J",
     "MISO_MINN_HUB": "MISO Minnesota",
     "SPP_NORTH_HUB": "SPP North",
     "ISONE_NEMA": "ISO-NE NEMA",
 }
 MARKET_COLORS = {
     "CAISO_NP15": "#0072B2",
-    "ERCOT_LZ_NORTH": "#D55E00",
-    "NYISO_NYC_J": "#009E73",
     "MISO_MINN_HUB": "#CC79A7",
     "SPP_NORTH_HUB": "#E69F00",
     "ISONE_NEMA": "#56B4E9",
@@ -71,16 +63,16 @@ def text_sha256_candidates(path: Path) -> set[str]:
 
 
 def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
-    manifest = json.loads(FACTORY_MANIFEST.read_text(encoding="utf-8"))
+    manifest = json.loads(SOURCE_MANIFEST.read_text(encoding="utf-8"))
     frames: list[pd.DataFrame] = []
     window_count = 0
 
-    for split in ("train", "validation", "test"):
+    for split in ("train", "validation"):
         for window_id, record in sorted(manifest["windows"][split].items()):
             panel_path = (
                 ROOT / Path(record["artifact_root"]) / "canonical_panel.csv"
             )
-            expected_hash = record["source_hashes"]["canonical_panel"]
+            expected_hash = record["canonical_panel_sha256"]
             if expected_hash not in text_sha256_candidates(panel_path):
                 raise ValueError(f"{window_id} canonical panel hash mismatch")
 
@@ -95,7 +87,7 @@ def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
             ].copy()
 
             if set(active["market_id"]) != set(MARKET_ORDER):
-                raise ValueError(f"{window_id} does not cover all six markets")
+                raise ValueError(f"{window_id} does not cover all four markets")
             counts = active.groupby("market_id").size()
             if not (counts == 24).all():
                 raise ValueError(f"{window_id} lacks 24 active hours per market")
@@ -159,24 +151,14 @@ def plot_normalized_net_load(frame: pd.DataFrame) -> None:
         )
 
     validation_start = pd.Timestamp("2026-02-01T00:00:00Z")
-    test_start = pd.Timestamp("2026-03-01T00:00:00Z")
-    test_end = pd.Timestamp("2026-05-01T00:00:00Z")
     axis.axvspan(
         validation_start,
-        test_start,
+        pd.Timestamp("2026-03-01T00:00:00Z"),
         color="#7F8C8D",
         alpha=0.08,
         linewidth=0,
     )
-    axis.axvspan(
-        test_start,
-        test_end,
-        color="#E69F00",
-        alpha=0.06,
-        linewidth=0,
-    )
     axis.axvline(validation_start, color="#666666", linewidth=0.8, linestyle="--")
-    axis.axvline(test_start, color="#666666", linewidth=0.8, linestyle="--")
     axis.text(
         validation_start + pd.Timedelta(days=2),
         0.98,
@@ -187,18 +169,7 @@ def plot_normalized_net_load(frame: pd.DataFrame) -> None:
         color="#555555",
         fontsize=9,
     )
-    axis.text(
-        test_start + pd.Timedelta(days=2),
-        0.98,
-        "Sealed test",
-        transform=axis.get_xaxis_transform(),
-        ha="left",
-        va="top",
-        color="#8A5A00",
-        fontsize=9,
-    )
-
-    axis.set_title("Hourly normalized net load across six market cases", pad=12)
+    axis.set_title("Hourly normalized net load across four market cases", pad=12)
     axis.set_ylabel("Net load / training Q95 gross demand ($N_{m,t}/S_m$)")
     axis.set_xlabel("UTC month")
     axis.set_ylim(bottom=0.0)
@@ -208,14 +179,14 @@ def plot_normalized_net_load(frame: pd.DataFrame) -> None:
     axis.legend(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.16),
-        ncol=3,
+        ncol=2,
         frameon=False,
         handlelength=2.5,
     )
     figure.text(
         0.01,
         0.01,
-        "Source: hash-bound V6 daily canonical panels; raw hourly values, "
+        "Source: hash-bound four-market daily panels; raw hourly values, "
         "no smoothing.",
         ha="left",
         va="bottom",
@@ -369,14 +340,14 @@ def plot_single_day(
     axis.legend(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.16),
-        ncol=3,
+        ncol=2,
         frameon=False,
         handlelength=2.5,
     )
     figure.text(
         0.01,
         0.01,
-        "Source: simultaneous hash-bound V6 hourly rows; CAISO highlighted. "
+        "Source: simultaneous hash-bound four-market rows; CAISO highlighted. "
         "Yellow band marks 08:00-18:00 Pacific.",
         ha="left",
         va="bottom",
@@ -396,10 +367,10 @@ def main() -> None:
     plot_single_day(daily_frame, daily_selection)
 
     manifest = {
-        "schema_version": "energy-model-v3-thesis-figures-v1",
-        "source_factory_manifest": {
-            "path": str(FACTORY_MANIFEST.relative_to(ROOT)).replace("\\", "/"),
-            "sha256": sha256_file(FACTORY_MANIFEST),
+        "schema_version": "four-market-thesis-figures-v2",
+        "source_manifest": {
+            "path": str(SOURCE_MANIFEST.relative_to(ROOT)).replace("\\", "/"),
+            "sha256": sha256_file(SOURCE_MANIFEST),
         },
         "source_scope": {
             **metadata,
