@@ -1,0 +1,1623 @@
+{
+  "deadline_hours": [
+    2,
+    1,
+    2,
+    3
+  ],
+  "fleet": {
+    "compute_capacity_per_site": 1.0,
+    "power_model": "P=500*(idle_fraction+dynamic_fraction*utilization)",
+    "rated_power_mw_per_site": 500.0,
+    "site_count": 4,
+    "total_rated_power_mw": 2000.0
+  },
+  "forecast_model": "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+  "frozen_stats_sha256": "8e743adda4e76ff24e8f1fcece00180a546e7a9fa1723c7134753541178389c7",
+  "markets": [
+    "CAISO_NP15",
+    "MISO_MINN_HUB",
+    "SPP_NORTH_HUB",
+    "ISONE_NEMA"
+  ],
+  "physical_source": {
+    "manifest_path": "data/four_market_v2/source_manifest.json",
+    "manifest_sha256": "ce6e03c3d15f6795de42b0d83da8f3a71e81c267d4fbe4eaee34a2b9d4715a05"
+  },
+  "schema_version": "four-market-direct-k1-factory-v2",
+  "sealed_test_access": false,
+  "split_periods": {
+    "test": [],
+    "train": [
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01"
+    ],
+    "validation": [
+      "2026-02"
+    ]
+  },
+  "status": "large_validation_campaign_non_final",
+  "variant": {
+    "admission_envelope_enabled": false,
+    "batch_arrival_envelope_fraction_of_fleet": 0.1,
+    "batch_handling": "preserve_raw_measured_service_and_batch",
+    "id": "envelope_off",
+    "service_envelope_fraction_of_fleet": 0.75
+  },
+  "windows": {
+    "train": {
+      "2025-10-10-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-10-daily",
+        "day": "2025-10-10",
+        "forecast_vintage": "window-8274d046a388f392e7e5b9d2",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "28cfea162e73d761f9de4b2b3129de265c7f47492c0b46c4042267368e44ba87",
+          "fixture": "e8f447c2ee17bdebd62e934e61e2b23bb606f7a94fdc2b2e6426176fb907a648"
+        }
+      },
+      "2025-10-11-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-11-daily",
+        "day": "2025-10-11",
+        "forecast_vintage": "window-4f1146ef83b7da434a4c86e0",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "b6279b4a9577281c27f6bea42609508a3fa4054bbee90d78d40f8d045d1f458b",
+          "fixture": "f3c8fc50889111334dbb7709cba44a7f06f3f845ea2bfce319cbb4edfe2edb14"
+        }
+      },
+      "2025-10-12-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-12-daily",
+        "day": "2025-10-12",
+        "forecast_vintage": "window-b075e8511add615f787ecdb3",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "88c30cd2d072bce595eb76e065986bacaf719c426d509534c85d65fec2bf031b",
+          "fixture": "d20c34335fac2178c728fa9857b62167038bb9e67cb92c58c1cab3587f8a2161"
+        }
+      },
+      "2025-10-13-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-13-daily",
+        "day": "2025-10-13",
+        "forecast_vintage": "window-3c0aca172cbddbb4d38fd141",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "d3dbd8b057dfbda7239ba0be4ef384b616409d5960a7871af4171276e94e689e",
+          "fixture": "21a374ad40d3e2ddb38ee92698a71a97a33b2da714aa26fe5c45ffca8b910cf3"
+        }
+      },
+      "2025-10-14-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-14-daily",
+        "day": "2025-10-14",
+        "forecast_vintage": "window-aa482bd8cac6dad17abfc6af",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "31384bf947c7513071e9cf142ed03b3ac5797f5a0f7db5cdf5ea63df534972cb",
+          "fixture": "0779d071c025a57a67f894caab31545105c86cae8356da41c5ae8f2e9fa93ebe"
+        }
+      },
+      "2025-10-15-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-15-daily",
+        "day": "2025-10-15",
+        "forecast_vintage": "window-0ffc94427fc6205288b49a4d",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "f8b833cb2142571a4943bb10e513d07911817f2e0c293147ec079dbaedfaf1cc",
+          "fixture": "cd799a77653b46baede2cd93ca8ca1ad939d5a0068ea312dd2df13e71a22ef00"
+        }
+      },
+      "2025-10-16-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-16-daily",
+        "day": "2025-10-16",
+        "forecast_vintage": "window-a31bffc961b9c7e26b73efe3",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "a75ee3376d098d2d1854f8b96431efc196601cca3fc1d84d08ddac505c3217d4",
+          "fixture": "f98244a6660f586b0f674dc02a648e0aa3cb99deda7410b9f44325925af1c462"
+        }
+      },
+      "2025-10-17-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-17-daily",
+        "day": "2025-10-17",
+        "forecast_vintage": "window-0c3b3a889fc043b587280fd6",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "d6d658a396ad03edd896da911fddfeb051509bec2148282e5ad897e2e397c344",
+          "fixture": "31f3accdad10e1909ed556817a3eed9130e1417846dc07045c7720f5008b998a"
+        }
+      },
+      "2025-10-18-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-18-daily",
+        "day": "2025-10-18",
+        "forecast_vintage": "window-e24ec7ff24413343b1b3de7e",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "5015ad7ee3dd90c748f4deb68aa5d3815c9c9a980ff8b35fc70ee4e24a1f191c",
+          "fixture": "a88945bd298f16a5ce6dc4fdcdf7b5d8d43a1e36de8d23ae0ed64dcf217780c9"
+        }
+      },
+      "2025-10-19-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-19-daily",
+        "day": "2025-10-19",
+        "forecast_vintage": "window-e5b42f849810103ce0d1a959",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "4e56b41cac2ce4c89f832936f30ecdc61bd649da2cdfe01ee04d25f64659058b",
+          "fixture": "20e647f93f3beea422106eda93ed2c25aad395be96cd1276275ff2366591a6d7"
+        }
+      },
+      "2025-10-20-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-20-daily",
+        "day": "2025-10-20",
+        "forecast_vintage": "window-fead1440675bec1b86b36626",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "0736d80d4ae6038868f90c8227565ddb119b82800d710ad151e73019e4cbdf61",
+          "fixture": "a7daa30f1e3a32f1791c61da3c1b5b8037a39325f530d796ce37b137cd6a9284"
+        }
+      },
+      "2025-10-21-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-21-daily",
+        "day": "2025-10-21",
+        "forecast_vintage": "window-10d36bf50a37d893acc105ef",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "75d41f195279a9e5871ee48f91fc9bfba4f976afd67b28788ddd41a1a1ccc708",
+          "fixture": "d2efcbe055fbc35c81c816e47ca390221e777c2736b41fb5805cdb81e198df7b"
+        }
+      },
+      "2025-10-22-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-22-daily",
+        "day": "2025-10-22",
+        "forecast_vintage": "window-cd6208e6561521ee42dddbc8",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "cebb9c380eb17d8b570f0b6d6409d9d39a0101300b2ba1bb9cebed2e21db9dc8",
+          "fixture": "11c60f2c7b6f43e38b9ec2c2d9cb8be3f4060e0266fa5724f13fcba97fe974e9"
+        }
+      },
+      "2025-10-23-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-23-daily",
+        "day": "2025-10-23",
+        "forecast_vintage": "window-863c6edf31fc3cec347e46d3",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "35b46d6ecd851af71cd5eb80735119ea2eb6e3c49896651a61c559b02bf8d5fa",
+          "fixture": "0702e6d12dca23b7da9d5a31fec806fef540d7ebd5a0ec4b9e495c0ed3102966"
+        }
+      },
+      "2025-10-24-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-24-daily",
+        "day": "2025-10-24",
+        "forecast_vintage": "window-1679729c1ba51e4d66e938f2",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "adf6e2a89588eb125fedfd811227e3411e095478c8b6f9c94c1dfd6af5fc0bd3",
+          "fixture": "57bf78441eadc8cb23dece498f573ea835940feb255937aff3bfd37874b33461"
+        }
+      },
+      "2025-10-25-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-25-daily",
+        "day": "2025-10-25",
+        "forecast_vintage": "window-a9143d694c51c6607b1db985",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "a951773df281a0ce40808bda2fa82deaefa109c2e5b6385fcd3df30f828e2c2a",
+          "fixture": "4eb5a06f35030ae4e632da53ceb51a19b422b98c198ca4a27479bf6ff50f2c7e"
+        }
+      },
+      "2025-10-26-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-26-daily",
+        "day": "2025-10-26",
+        "forecast_vintage": "window-b0f7eb85c3e2aa4bd2487458",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "18264bb1498bb564925ead881c24a15bda0316f1d463a3e67cf8fb1213aed239",
+          "fixture": "7f349a689d4a3ec28848ca57291e587a3f153560650258d85ecd7be2c596892e"
+        }
+      },
+      "2025-10-27-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-27-daily",
+        "day": "2025-10-27",
+        "forecast_vintage": "window-8e6aaa9d18c2552f3eaa4e38",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "6bc9602b136e9a98508f4896f61c324347b402e4b3bc94e5c89236607f7f7bfb",
+          "fixture": "a6f26df92f515c517a15aaaea8f4ff7d23947e989fe53cc9da01ec20176f6f84"
+        }
+      },
+      "2025-10-28-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-28-daily",
+        "day": "2025-10-28",
+        "forecast_vintage": "window-1e8529c04a131ff2207d6786",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "682fb303b097e252bddbc95e39e7a19132ee807bbd87a97908439e58a42c49c2",
+          "fixture": "c29431c749996469d50fcc2ba3a674c1655391cbecf356b8f85ba8be59b95abf"
+        }
+      },
+      "2025-10-29-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-29-daily",
+        "day": "2025-10-29",
+        "forecast_vintage": "window-df8f4ede57e289c3be848b3f",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "95903ef58001f2bd5b24d72d0067611c884219eedb314da25c3d4ba777a762af",
+          "fixture": "86aaec2cfd9a6b4378f64c179cc24145a42628b5938a318877b20ab2b612772f"
+        }
+      },
+      "2025-10-30-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-30-daily",
+        "day": "2025-10-30",
+        "forecast_vintage": "window-4e32bfecdebf35f536fdb802",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "47d5e095b22348336d5ecad024a344e288fc7d57cc543eb2328fd64229d67314",
+          "fixture": "41f787011543f83af6ed79e22dd6490fd7e5336db55ec808f45c8bd6aa4bce34"
+        }
+      },
+      "2025-10-31-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-10-31-daily",
+        "day": "2025-10-31",
+        "forecast_vintage": "window-d703ea79fadc595c259c9cb9",
+        "month": 10,
+        "period": "2025-10",
+        "source_hashes": {
+          "canonical_panel": "9c5b113e4439341beafb5da4b2105e54402b5bf0570d0ca46f7e749ea4adbd4a",
+          "fixture": "069745e13a3b4cff190b6d85409f629b89b27fc670f25b5f7d6b0f437756de3d"
+        }
+      },
+      "2025-11-01-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-01-daily",
+        "day": "2025-11-01",
+        "forecast_vintage": "window-c2efb7757b908aa3fa400497",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "e7063950db6a8a276a46b084541c7b3a93a5843b84373dd80593186b12a16306",
+          "fixture": "263987374263f512c8c594fbdb5ca3e4026ddd5a24a2b5273150309b96ec8fc0"
+        }
+      },
+      "2025-11-02-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-02-daily",
+        "day": "2025-11-02",
+        "forecast_vintage": "window-dc2e46275a51061dd7a3632f",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "c2e7ee2f862123aae03aafddb544bd7ae673e9cddb813398e5792a291552bad6",
+          "fixture": "38804aa6abb8f73da75a34f68a1599147cd649ee50240838d49e8b19161cb9a6"
+        }
+      },
+      "2025-11-03-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-03-daily",
+        "day": "2025-11-03",
+        "forecast_vintage": "window-be2d966aa53792ef06c4fbab",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "331573a86452c9e3df94675ec2949f824b1b1297fa290c1e77d3b6060341b47f",
+          "fixture": "054f4c156962aef7c7a4d3116e0bb23705e0d4adcce3d063445817d0520d717c"
+        }
+      },
+      "2025-11-04-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-04-daily",
+        "day": "2025-11-04",
+        "forecast_vintage": "window-8e346c02c0b55a799cd5bf28",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "2ed5a83218fe840c9dfb4f420ade7e9363f05ff471c813197fb20b353a0f35c2",
+          "fixture": "6f716c490647d3a30bd778ce5eb8decc8f0df73c23992ec586720ec4733ca4aa"
+        }
+      },
+      "2025-11-05-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-05-daily",
+        "day": "2025-11-05",
+        "forecast_vintage": "window-71e46df62e106af455017af3",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "197bb6260b5913a45a2fd302e2be63b65d4e3443b933d2983825adb2ff02d0cb",
+          "fixture": "02f2cd68689f99534ee3736544c1d24058cd26166b235df5136d389813d742e2"
+        }
+      },
+      "2025-11-06-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-06-daily",
+        "day": "2025-11-06",
+        "forecast_vintage": "window-273cc3ff105b6a2e1b8e0bc7",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "1b63fc6cc6612c9c199ed1d71d733e24138a8818f01facb490297fbc5f64d237",
+          "fixture": "844d073d0e791459820e088e1f5ddc9784d56ce2c86279b9110e1d8428d6ce29"
+        }
+      },
+      "2025-11-07-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-07-daily",
+        "day": "2025-11-07",
+        "forecast_vintage": "window-781485ce39612f6127dcd971",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "1f85e838402ba1b9903951dcba0dee16a1ad8d587a7ca34858b75f11371fba34",
+          "fixture": "081f8560691d18384a76c6047b79d18c43261453d0dbd67b235baffe1825a06a"
+        }
+      },
+      "2025-11-08-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-08-daily",
+        "day": "2025-11-08",
+        "forecast_vintage": "window-4dd88ba72c06e4ff35b9e749",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "f347ca62fb90d8bcaac42927ae8dc78f10aae1bfa1e7fc3f956b3db3928c6755",
+          "fixture": "fcd1dd22a1abe6efbe1e783d508aef0c89788d7e5713848497b7a05e1d983fbc"
+        }
+      },
+      "2025-11-09-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-09-daily",
+        "day": "2025-11-09",
+        "forecast_vintage": "window-4ac0b12e7e1289194188aaf1",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "82cff286d87e82487581f20a8ea29e8849493afcdbc283ee6649dfc83cc7f39a",
+          "fixture": "071efc1ff82214f90b99199a24ffaac1996f100cad2dc88bd1e00f15d09409fd"
+        }
+      },
+      "2025-11-10-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-10-daily",
+        "day": "2025-11-10",
+        "forecast_vintage": "window-5307c1906fd5ac03dda4eb51",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "9fa32d01017168a7e5742f0efbf98a95974fcd5a2dea9a3ff3f5ac26b77d518e",
+          "fixture": "2d969ceac65f80b3611a4e17958c8cdbbc463bb4f60802948f8c3c9211cb4cf5"
+        }
+      },
+      "2025-11-11-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-11-daily",
+        "day": "2025-11-11",
+        "forecast_vintage": "window-ba44ac9ece611384939de841",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "3c7ef6aeca13fe6ed55dfae65cedf3bb3ca1d8523a7d3a6763ae0da3c9a7af15",
+          "fixture": "010c56d23b67a132aa955a1216ba1ce3a5d5c0d5caca3b44f7dd36da3c4f8e6d"
+        }
+      },
+      "2025-11-12-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-12-daily",
+        "day": "2025-11-12",
+        "forecast_vintage": "window-3bb65e845c10dd13aa4e13c8",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "90b1b4b38465b3b1966e7d42b631ce0639124c7c126e6f79ac66205be6da5698",
+          "fixture": "b8e881dccab19c2523c1a5d0b735e11177364d5c1e18afba7edc87e7f29aebe9"
+        }
+      },
+      "2025-11-13-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-13-daily",
+        "day": "2025-11-13",
+        "forecast_vintage": "window-d09db205c94a1b59f1583f44",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "8b1e078a28b5f6c14c66cbc7119a3fb08e08df53148557207a160462a7edb964",
+          "fixture": "f7c1d8f06c1c103fa21d381f83ddec356d1a39f29b35e33ffdd9cf00b6779691"
+        }
+      },
+      "2025-11-14-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-14-daily",
+        "day": "2025-11-14",
+        "forecast_vintage": "window-1b008f5435561baecc42a551",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "e2f8ea5272d2f9c0aa1099ec62cdb843e2e4b2588031ac13995186b5558e9016",
+          "fixture": "c6a718406beb6b2055737a2cfabcab3a26f141289cd5b628f82e5378cb1d9d1c"
+        }
+      },
+      "2025-11-15-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-15-daily",
+        "day": "2025-11-15",
+        "forecast_vintage": "window-c40acdc4aa53f03244873abf",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "a9de81cd19deeb3df456da7a935cf82972ea1d1beb58fab40e1919ec89286fc9",
+          "fixture": "c19d40ceab0335334b4cbd32381b18f7267bbc8469d8f1a510b4eda928ea927e"
+        }
+      },
+      "2025-11-16-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-16-daily",
+        "day": "2025-11-16",
+        "forecast_vintage": "window-64f6c697a8c5c851bf41727d",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "fcafc440520e20a00e2a9e41e30fbc13b8c988f2c3438709f71fbc31c80f6dd8",
+          "fixture": "8216d10b3b5e5147074b4644f6e53ab328525b5380b772d1364d6460766bbdf2"
+        }
+      },
+      "2025-11-17-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-17-daily",
+        "day": "2025-11-17",
+        "forecast_vintage": "window-c4f7e039af222126d7e0237b",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "a7de6f6a8a2f177a2aaf81ace21bf4aa8518dad78db80d6c996dfb8b95529695",
+          "fixture": "f6696d79eba277ea00e56fc7e50f63b7eeb1d3ae8a4eb1fb7b839f4747e6cc69"
+        }
+      },
+      "2025-11-18-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-18-daily",
+        "day": "2025-11-18",
+        "forecast_vintage": "window-434f6927b36cd21ed9495fff",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "2612cabd10606fb154d6bf5a43fb5022d33ee97b3d9022d004d2d5e474ab1a64",
+          "fixture": "825b53f0f86da3b9b6a60c89f546eccf30e87e28373d9584bcf1c238cbf355e8"
+        }
+      },
+      "2025-11-19-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-19-daily",
+        "day": "2025-11-19",
+        "forecast_vintage": "window-002c84061fedeaa099404a32",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "9ab04dc50cc80688c0e4f5561ead095591e9011b879c91c8bcb2e60d492f367f",
+          "fixture": "e15806826908189308e9e925476e9abadab39bff4cdbda59de3f1fe595758b59"
+        }
+      },
+      "2025-11-20-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-20-daily",
+        "day": "2025-11-20",
+        "forecast_vintage": "window-f7217a169eb9e94392a1155e",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "993cb2c286de1e99e4c21019ae67bdd42b3c4dc1de2c55a408cd88fb7ac44895",
+          "fixture": "70e40ec867f3452729c7c1dbd72bac230b582c510d2d1fb2d3dd690c0f238cb2"
+        }
+      },
+      "2025-11-21-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-21-daily",
+        "day": "2025-11-21",
+        "forecast_vintage": "window-2113964a4ca4ccf35d333b06",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "d79d5eba8a180bc664f20972d88f623130acc1685614a65d19a39a66e8840654",
+          "fixture": "5c66d2365ce3ff5f7d83feeff10584b2f9973b1dca87bab2dfbd5a774b1503e7"
+        }
+      },
+      "2025-11-22-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-22-daily",
+        "day": "2025-11-22",
+        "forecast_vintage": "window-3fa8bfe27b1d7beba74acd31",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "71eb02355ba265ac336555cc1be41d569bab845358bcc52c02e51c23d5d2fc06",
+          "fixture": "79b47b833bd8bf74eefab117ef3ad77eff4c47b2aadc82257aaf3bbeb0a74299"
+        }
+      },
+      "2025-11-23-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-23-daily",
+        "day": "2025-11-23",
+        "forecast_vintage": "window-11e8e4cf64feef0ed5e24a58",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "5745469062668279063f40e970c72c64081e31859994b8d2a917a95d4603f231",
+          "fixture": "64360bc66aa6493f1eb895edda45fd2997b536ed3a8bb460133a5f8b73e956f6"
+        }
+      },
+      "2025-11-24-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-24-daily",
+        "day": "2025-11-24",
+        "forecast_vintage": "window-7a9fa21e50415aace85de1f4",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "be551ad0805713daca7270166c05432ab3c14d6aeaccdbc46ba24e897979a59c",
+          "fixture": "6cd9590b183bfc2461e2a4927ffd5f8751efac7a027a4213f1f919b1293293a9"
+        }
+      },
+      "2025-11-25-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-25-daily",
+        "day": "2025-11-25",
+        "forecast_vintage": "window-0a1fa8c550b77a2f92a2b30a",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "25f8e0961270ec4bc97fd3cb67516d1db8b6ca567f981dfcf70d2b78bb7dec38",
+          "fixture": "ce5fa4b07b770bf827e836c0484c24bf4160f036d9958c101912394ffe46eb8f"
+        }
+      },
+      "2025-11-26-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-26-daily",
+        "day": "2025-11-26",
+        "forecast_vintage": "window-76af296c9d6a90b39e467a78",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "850372297d61943fde07b53b9219d3d73d62eba9c03bf8d441dc644b542cd8f2",
+          "fixture": "e27ac06e564ea3fb481a64b3c32066c3df8083e66ff7a3952dfe895cb5d30b60"
+        }
+      },
+      "2025-11-27-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-27-daily",
+        "day": "2025-11-27",
+        "forecast_vintage": "window-e1328bcdf28dbe4961f79caa",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "46c3d9818a13a4f8f897a07bde6ce69f81fe86c970f79ddf16bdb0ff504e3dd0",
+          "fixture": "df78bedffcceea889c6c1b3edb76caf5ea85f11122b93675536f922e77a31229"
+        }
+      },
+      "2025-11-28-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-28-daily",
+        "day": "2025-11-28",
+        "forecast_vintage": "window-17ed5e3cb904b74ff005cd73",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "284f2f4da5f367d67ec909bf10458c921cb5afaa544ec99bcd1b90b28c69c62d",
+          "fixture": "7ec3ad5b5b85f189de6f420dd687caa70cd56a8889ee4e08f8d57eeef2e4632b"
+        }
+      },
+      "2025-11-29-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-29-daily",
+        "day": "2025-11-29",
+        "forecast_vintage": "window-7f76e02631b76b7c0c24228e",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "52122fafec8b1ce76cfb7aeea369d6acf1a8e93c6382b9d7de3ed7aee8bac37b",
+          "fixture": "f9d18845c1c2024e60675044a82a253bb668ec0301db718be5e70a0867033740"
+        }
+      },
+      "2025-11-30-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-11-30-daily",
+        "day": "2025-11-30",
+        "forecast_vintage": "window-f538962cf3337e3176337117",
+        "month": 11,
+        "period": "2025-11",
+        "source_hashes": {
+          "canonical_panel": "244a7eea64b994b6214e3e0302aad38fb8596fbe5a2e7d0229607c2821ec2526",
+          "fixture": "027de911b38ceb0bae2cbfad3dcb5995ef86c15c5ea55a7752cecc2d649b6627"
+        }
+      },
+      "2025-12-01-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-01-daily",
+        "day": "2025-12-01",
+        "forecast_vintage": "window-c6605d5bf492a60f26de406d",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "37f7bf9a92c8ff06b521a39e081f8fd595510b6827991e45bd9ef82f79241fc0",
+          "fixture": "03d54a8ce01d633f6940eadfdf14b13742c9e5d5a5b5f8e55d9f169432a0c72a"
+        }
+      },
+      "2025-12-02-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-02-daily",
+        "day": "2025-12-02",
+        "forecast_vintage": "window-7f870824d70c7619caa147ee",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "b2b42ef52328768194d2f02a7eee6e84059db9956fd5cc965e144b5bba45264a",
+          "fixture": "db87803412230e321212d67e258d7bbeafac8cb12dec5d205be73b817a6488a8"
+        }
+      },
+      "2025-12-03-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-03-daily",
+        "day": "2025-12-03",
+        "forecast_vintage": "window-782722f28063f9c6d7ee2c81",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "9dd3a67be1d018484e56f943d5448351b169edff3c36bf78cea5bd995fd00bd6",
+          "fixture": "104a006378a8c7974b10966dd9424fe68ba700534975424dbbf45f2a8ea0318b"
+        }
+      },
+      "2025-12-04-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-04-daily",
+        "day": "2025-12-04",
+        "forecast_vintage": "window-ee4dd664946e9be9ed4c2070",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "b418dca5f0cf1a6750133eb885fda5dfd5d587e5ee39cf2b62e413493c432675",
+          "fixture": "a6d35dbe8f9bc091729f30931e69b956702109e729571bc40ca75426eecfa808"
+        }
+      },
+      "2025-12-05-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-05-daily",
+        "day": "2025-12-05",
+        "forecast_vintage": "window-1b818fb0e136e2b225548564",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "a47815b6084bbc41e778db032507f166b622df37e680a8d32990317efad02eea",
+          "fixture": "4f94eaaad21f6b436877fc1dd746f0156f7614a93ce15f4797811297d8f4b475"
+        }
+      },
+      "2025-12-06-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-06-daily",
+        "day": "2025-12-06",
+        "forecast_vintage": "window-f59cba1fe6ca8abc9eaff156",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "255330f2226412250eac882c7e79f3da0dfa9f4de63b5b5762cd02d991302eb5",
+          "fixture": "9b06e0df7d5def3cb43d7bc965e424e275841db409f01d3daed502b3f4399f5e"
+        }
+      },
+      "2025-12-07-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-07-daily",
+        "day": "2025-12-07",
+        "forecast_vintage": "window-8184957f45fbee3195cdeb42",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "25c68443520aabec6c7ec531fdc9b4dcaf44adbae5666a8bd92d5e820469fe14",
+          "fixture": "a42c0e217fe9586cd69f58d7cb9c43c0fbaa40391ee95fe25dc7ae2e379b02aa"
+        }
+      },
+      "2025-12-08-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-08-daily",
+        "day": "2025-12-08",
+        "forecast_vintage": "window-dcb2631f98be6ddc887e6aa0",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "5973bb39e3fab6d2664b9816142e8b31199c0089cfc3d4467ef5cd3bcabba7bd",
+          "fixture": "c441b9618cb0b6d6fcfe42f9a1380416ff7a2b7687a173a637ebbaee84a865f9"
+        }
+      },
+      "2025-12-09-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-09-daily",
+        "day": "2025-12-09",
+        "forecast_vintage": "window-cbb0d2fa9a2c39c43bf841e5",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "5eb6c04a487a1bd65ec4dbaeed82a5f4f1da6e99b45cdc67bae8b3a4873ce948",
+          "fixture": "f02cdc3d26773fdd40648e9a3d4e0dbcfae21105feab28fa29daf8875756b921"
+        }
+      },
+      "2025-12-10-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-10-daily",
+        "day": "2025-12-10",
+        "forecast_vintage": "window-60d7148477ec54f6a62bb7c8",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "73f6105171266c5f470ebb947e467ef2b0fb9be85f59965d98ac473c6610cdf9",
+          "fixture": "2a46bade11832747d6ead872750df7c6c8c2ce24e910994975397ece2512640e"
+        }
+      },
+      "2025-12-11-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-11-daily",
+        "day": "2025-12-11",
+        "forecast_vintage": "window-abf98251679cc7e7421f476f",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "0df4835f862babfba4990edb1abccab0c1e49ba7f5b8bf44a83058dbe29b8af6",
+          "fixture": "cbce8dc6494343dcdb7e68791bc8aac1df01ea028a2ae0e5604d10ea86016ca6"
+        }
+      },
+      "2025-12-12-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-12-daily",
+        "day": "2025-12-12",
+        "forecast_vintage": "window-54c4c0cf1b5f5bfb1f317a18",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "f940cdc6a935c2edd9f8d587fb9c692b47f6efaee96e0e1720a9883b33a7586a",
+          "fixture": "72f6801890afb387cd3a9e9dd77c816250896a69417dd03589e4edfb90b01e06"
+        }
+      },
+      "2025-12-13-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-13-daily",
+        "day": "2025-12-13",
+        "forecast_vintage": "window-122676a61aa15eb5a0541c60",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "0929ec63b7b4bb5017a6a435d2f2ea00738cad97465e4a9a2d99f102a959ff21",
+          "fixture": "1fd9ea00e638687bbab56102cbc57a8e145b71b9152cef6c445ae516757b380f"
+        }
+      },
+      "2025-12-14-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-14-daily",
+        "day": "2025-12-14",
+        "forecast_vintage": "window-ae4a3c850ff73d05c39acdd4",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "c300dc2933484fcaa6d0fefacff218f7f7ea894b1037c2f2c7abf64f18ca2ecd",
+          "fixture": "a1ef823b62ff97a18991ac5cecc4f7aa033a0b3e2fddea6521fd2bb5ab4ba507"
+        }
+      },
+      "2025-12-15-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-15-daily",
+        "day": "2025-12-15",
+        "forecast_vintage": "window-6bf1d02668aa900c7cc4e58e",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "2eca61f88527629e7f364f17543879dd0db398705d7132c84d2be403614544a0",
+          "fixture": "6e13369df9b8e5103d1f67253690245f9ae35551e1d0ef5d1f6883e32a051b91"
+        }
+      },
+      "2025-12-16-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-16-daily",
+        "day": "2025-12-16",
+        "forecast_vintage": "window-d144196a138f11c12343c818",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "2f0b4e5640ffc7de682cbcc5eff1f5f18ce2fce871c13560f9c3286c73ead41b",
+          "fixture": "54f6cc26f788fc6499e5b32c4639a782be5e1ebcf120fad1a1edac9ae77499ab"
+        }
+      },
+      "2025-12-17-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-17-daily",
+        "day": "2025-12-17",
+        "forecast_vintage": "window-2681ee36888864998443b39d",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "0db2ede264a753ec225c9a35fa6cb5d3883b4fc0333fd2e3180ad809f279c4aa",
+          "fixture": "24490de63ad0d50f5df5fc97a11a6086e5c50a9fa3628cf9750014d515340931"
+        }
+      },
+      "2025-12-18-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-18-daily",
+        "day": "2025-12-18",
+        "forecast_vintage": "window-ee0cce5328ca3a73073a892f",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "a3dcedcaa37ffed270519210f3484f5e0ae91b3aec5bb05152ac90ae5d0ec121",
+          "fixture": "367a9ef195f4911cf0968e0d260fb0efd3759895e5c09f808a38dbcfebff2947"
+        }
+      },
+      "2025-12-19-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-19-daily",
+        "day": "2025-12-19",
+        "forecast_vintage": "window-9dd7bd979c282873aa296961",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "06b945c40472d25b8e24e4f45a9f937462b1c5e6c9111b9975a6ac67b58252b6",
+          "fixture": "53ce677dcc1ca724fcf1f2f0068998deee061dd4aae3b02c56d86b3bbb80b89d"
+        }
+      },
+      "2025-12-20-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-20-daily",
+        "day": "2025-12-20",
+        "forecast_vintage": "window-093a1e646ff3149372125ea9",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "2c8724be0f0fc0263173e75fa8450c8cdce170ba15c501e5ca2ffbfefb5ead82",
+          "fixture": "8d469792415ca26d0ac169fda6cfb2116d645bd685437f56c8d4ff89c4783db2"
+        }
+      },
+      "2025-12-21-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-21-daily",
+        "day": "2025-12-21",
+        "forecast_vintage": "window-c277d84044a19c410818d903",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "7f0bbf53a3725cd3ff9a7429b78b640883bacfb0d6c8b45508d99aec2b4351a1",
+          "fixture": "2c8ae17f43bc41cc031f71943884416b7a9584849383ee06670b2ccbc1b9c2a5"
+        }
+      },
+      "2025-12-22-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-22-daily",
+        "day": "2025-12-22",
+        "forecast_vintage": "window-ad3163683397635fea764e1a",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "900479c284606239a2de702e9be8249abdf2378ede6478d5992e97d85fb42849",
+          "fixture": "e4d9f2fbc53f01a02b9624a2c5876960d9d67a8455331aba083b3d302373f9e9"
+        }
+      },
+      "2025-12-23-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-23-daily",
+        "day": "2025-12-23",
+        "forecast_vintage": "window-55f109c05ef60182984286b9",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "203ef882236d9169555c93e3cdb49884a84e832ac51997d8eb98a30a2c46599d",
+          "fixture": "507738be712f2d75a9358b1bceb3549983bc9612e88ff48852bb737e374d9dd4"
+        }
+      },
+      "2025-12-24-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-24-daily",
+        "day": "2025-12-24",
+        "forecast_vintage": "window-8242a3d78f21e6969246b2af",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "ed6e9ba06eca2ca62e62a354e6b8fdcb4d3b2a774676b809b8be069cc63acc3b",
+          "fixture": "39a0536c1e49075b0056b3aa8098290476daf7d889e07cc69ffcf44d73339d03"
+        }
+      },
+      "2025-12-25-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-25-daily",
+        "day": "2025-12-25",
+        "forecast_vintage": "window-bd0dcd1b9b77b6042ce9d7bf",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "7680804a0a6a6500e74e7604ade5e55d9bda8d386ffc9e9beb5c58893d19a256",
+          "fixture": "dfb234616f89f895590ba045cbba67b8440424b8daf998069af3dd3ad2aa8c53"
+        }
+      },
+      "2025-12-26-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-26-daily",
+        "day": "2025-12-26",
+        "forecast_vintage": "window-3231edc442a899f0d539a133",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "7a1f61315d16096c9b9d18e9d53ebbca3cec7c008d3d29e5fcda12d482f1f308",
+          "fixture": "52e1e8e6bdbb58d8d540eb176063193d53a3b94d20c9ec44b6d770079c9e3001"
+        }
+      },
+      "2025-12-27-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-27-daily",
+        "day": "2025-12-27",
+        "forecast_vintage": "window-84b59ce676aaad4bb4ecc60d",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "921f99932ee92990388639c90a0394f36975f89cccdabbcfad7b63900b9dc8ed",
+          "fixture": "31a13659eb51360b3cee346bd57a81a93b7190333c76c4aa9890c4cf1c0587a2"
+        }
+      },
+      "2025-12-28-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-28-daily",
+        "day": "2025-12-28",
+        "forecast_vintage": "window-c7296873a261d504f2afab13",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "dcd4c851d20d61b8f080cdb32249be13e6d8e3df55fb7c363203ed1ba799753d",
+          "fixture": "e5f955c96e4096242a602b28ba7b0c8d03e63c1d6e3bf688b3e1df45215d7da6"
+        }
+      },
+      "2025-12-29-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-29-daily",
+        "day": "2025-12-29",
+        "forecast_vintage": "window-1ad4ddc765c01704aedac3ad",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "2294eee7fa2d702749c42ab451c3c7ce860bb201cb300b6b56e4cb51ef148d5c",
+          "fixture": "eddeb029b5342cfeca20d2eb57b25b3fd584413b8817e395ab11997c6b1b1918"
+        }
+      },
+      "2025-12-30-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-30-daily",
+        "day": "2025-12-30",
+        "forecast_vintage": "window-f0af3ec99f2bd2d6bee561c5",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "8b624f48afc92571e9ba2490dd53c6f91ad60cc967c0b6ba681b7f3bfc2fe204",
+          "fixture": "0079cadd7d72240a5dfc25757f32e1f3cd0c5343bcd104378d1a01e0460b65af"
+        }
+      },
+      "2025-12-31-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2025-12-31-daily",
+        "day": "2025-12-31",
+        "forecast_vintage": "window-e86403fd0ec0e74fd73f5f40",
+        "month": 12,
+        "period": "2025-12",
+        "source_hashes": {
+          "canonical_panel": "4010a9397be9b7ab54a91dffe7724ebf55e6a5339a4338796c48202d7b3154d8",
+          "fixture": "98a01964f577a7a4dbd889305bcd33613cae9e6cd3143e923dc7b56c3b30cb37"
+        }
+      },
+      "2026-01-01-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-01-daily",
+        "day": "2026-01-01",
+        "forecast_vintage": "window-af1780d60e3da42453042285",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "cf35560ffc55a283f632600bb1a1303d620149a7c8c10a631d55b50a08d51d8b",
+          "fixture": "f8eda60d7739ead28e772923677ce91cc8bbe4eb018a5afb5e56039d05f502d1"
+        }
+      },
+      "2026-01-02-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-02-daily",
+        "day": "2026-01-02",
+        "forecast_vintage": "window-62fb4d936ec73ef4f48f1f34",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "88d26914ae6efe8b60b53b2974401d1d23ab694ed27bbfb429f3a8e7cbf4f19c",
+          "fixture": "c36e70589965321f629755caf1d2db17fedf168b8397a3cab0950aa89c000e81"
+        }
+      },
+      "2026-01-03-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-03-daily",
+        "day": "2026-01-03",
+        "forecast_vintage": "window-66085e3fe19a5a69b324927f",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "0bc33c8f36ce4167c6eaeb9d4278b7e96881f16070cd856e0b9090a184d0e533",
+          "fixture": "45851edaf57674137ed953ea4e798495c09f3397605b54aa3e3fd1e57ff665d8"
+        }
+      },
+      "2026-01-04-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-04-daily",
+        "day": "2026-01-04",
+        "forecast_vintage": "window-69e3026067534aef19bebcbc",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "7c78ea1add25ad502f6848482658fd4b37b661e85f8f446ae1591f6e58b9cef7",
+          "fixture": "bdabad398b0aead5c01181e6e3e4c1225e32eec792a2696435e46beed10e25f0"
+        }
+      },
+      "2026-01-05-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-05-daily",
+        "day": "2026-01-05",
+        "forecast_vintage": "window-da4cf8eda6347de3b010125f",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "9422af95657cb06c5f0e5a16ca887cdb2d86ce002542fab895445729d2907f0a",
+          "fixture": "2a88a2ba79313a43b9fccce56a55f1bf40d56734a69fef39626ab8bea683c3ae"
+        }
+      },
+      "2026-01-06-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-06-daily",
+        "day": "2026-01-06",
+        "forecast_vintage": "window-8920366dc711d29bba5b1f30",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "f458cf9d6ae4ffbdd79e360e3167099e7bc6b55bcfff48d7adb6bbd4f268e1a8",
+          "fixture": "5547b93e990d86f76fa21f8d08f7f4f70ea78b876ddf64ad39abf80709f277fb"
+        }
+      },
+      "2026-01-07-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-07-daily",
+        "day": "2026-01-07",
+        "forecast_vintage": "window-95edbd22639f095d6758b4ca",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "098167ab1cad1fec473b642f0d4c927f782abae8d85c2560eda68470fe7430aa",
+          "fixture": "eb33b017b37848b590c32e942fc124c31c51f26b5a75c6c61e52b0e51ba5ff59"
+        }
+      },
+      "2026-01-08-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-08-daily",
+        "day": "2026-01-08",
+        "forecast_vintage": "window-818a2c96ae8b7dcfde2d2978",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "9c154e29a18faded29862d5754a4d658614301b5b26f31073a302a74f02160b9",
+          "fixture": "4a60d983bb3f52d79d20e80b8ed8651263c7281f0e91ff65c33c5f50c67455b4"
+        }
+      },
+      "2026-01-09-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-09-daily",
+        "day": "2026-01-09",
+        "forecast_vintage": "window-aa9603a311013325c31aee99",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "8a2300b4e7118e4b63bba1fb351d0d844add4dfe433c54482bdf62c8fb05cb67",
+          "fixture": "f38bac06da1cec07c231f7fa860e991db51d22331199cda91afb2d577d5c5ac5"
+        }
+      },
+      "2026-01-10-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-10-daily",
+        "day": "2026-01-10",
+        "forecast_vintage": "window-d3d955f7d2a193edddfb9db6",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "f15c0a6afc8c748349ecfbba662d8bea0437b6790101e169aa7aa5e3a9dba501",
+          "fixture": "feb6a181846095fd3641431c8dde517a85d77544c3762f82df82200270777382"
+        }
+      },
+      "2026-01-11-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-11-daily",
+        "day": "2026-01-11",
+        "forecast_vintage": "window-af19a77f25d498a5e7a6b15c",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "bdd1424e1758e0b8d3e7df2fcb5d73fc551d18756df4dc4e077a5ada1dae2144",
+          "fixture": "34046576b94162fcfe996b4852d41dccdf2172baed0f7d4c3cd866902d173324"
+        }
+      },
+      "2026-01-12-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-12-daily",
+        "day": "2026-01-12",
+        "forecast_vintage": "window-4b2e3e0768d0cec3950eb65d",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "c7bdc293b4c018612d2a3d8f005b64f432d64b823cdeb0003248b93e280eb1c4",
+          "fixture": "e22eb4801fd84c07b97c10bd3280cda4314638d8faf1a74aba2062f6457f1e8b"
+        }
+      },
+      "2026-01-13-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-13-daily",
+        "day": "2026-01-13",
+        "forecast_vintage": "window-5a67e223e0545c6e9980bb94",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "9ec2b7f17ccd10e559e2c40a272993fc0ce1cb28638488646bfab3d137c5c0f3",
+          "fixture": "65f9b2082143da68c17b139861bb8eb80e83a0fbdd1296e8290e645117aa474c"
+        }
+      },
+      "2026-01-14-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-14-daily",
+        "day": "2026-01-14",
+        "forecast_vintage": "window-eddbd3c7318ce8d832c2a8a9",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "1db72b38392b55657753f246ad54a7373801d9da5194e9a67b85ce387e6c62a2",
+          "fixture": "287673a4404e826103c28793f32d63eb69ca43dfb0938b56eea41f27d4d88dc2"
+        }
+      },
+      "2026-01-15-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-15-daily",
+        "day": "2026-01-15",
+        "forecast_vintage": "window-bc44279dd81ba513ebd96f8e",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "1500c515eb135b77e8ecb0ea1bb4d02cc9807115565af874a4b52900439caef4",
+          "fixture": "a88a5cf965febf38b119e8c68fada1794862b330a75aecabc3d908645b52bc59"
+        }
+      },
+      "2026-01-16-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-16-daily",
+        "day": "2026-01-16",
+        "forecast_vintage": "window-d59d1718d438bd6df30400cf",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "cf25d636dbf37901274d9fefeacb529c83818a9a802bb698f9694f30969e8e73",
+          "fixture": "09b30bc2b10e841f19c15846d71156dd9f8c1d42ef78b5c1dbb6365a79e07e5f"
+        }
+      },
+      "2026-01-17-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-17-daily",
+        "day": "2026-01-17",
+        "forecast_vintage": "window-18d504baa545554fdb4b4622",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "8ce8af43fc0a122cd7835a4a80c4dcde8021afb37a2d7341246b125daff6b415",
+          "fixture": "d99d47d1eaf7400f43f5bd254b1ec2b9f71b4beed8113aa0062f0b90275d7b15"
+        }
+      },
+      "2026-01-18-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-18-daily",
+        "day": "2026-01-18",
+        "forecast_vintage": "window-6786042ac07e95d87ca39cc5",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "e6bf181f25e7bb69a4f189227ef48b53746df5929a9b4d0d3f6fc098da968bd0",
+          "fixture": "5a873ff60cd0c39b1f14875d424e5149ac6e9861d47e94be10986775b8253659"
+        }
+      },
+      "2026-01-19-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-19-daily",
+        "day": "2026-01-19",
+        "forecast_vintage": "window-d9561093b54bf9b4625351d2",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "31317a304ee9d0d1d3d3dc35f33835abb3f78ce2d080c64f3b71e90156f40947",
+          "fixture": "ccce66f51c541e12916c0934b0867f999648046c86cfb29084d96ea8f2378b43"
+        }
+      },
+      "2026-01-20-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-20-daily",
+        "day": "2026-01-20",
+        "forecast_vintage": "window-229eaa41ac6eb21b4aa7d965",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "fd0196c3949023082c8fdb1a4393faac21ccd546c576b611b067c16ea524d288",
+          "fixture": "6d12ae83f7d85f73ece1b1139e870469e1038ed8a6552ba7061fb9e2d082b770"
+        }
+      },
+      "2026-01-21-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-21-daily",
+        "day": "2026-01-21",
+        "forecast_vintage": "window-8d244cd719618cc637b3a3d8",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "493a631235264c690ce183e8892211a2a4f10ea1794fccb67cc901b9c5e53482",
+          "fixture": "158ead6e1753851f8534e9c1425167c88f529f90c126708a17ab460c70520c22"
+        }
+      },
+      "2026-01-22-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-22-daily",
+        "day": "2026-01-22",
+        "forecast_vintage": "window-f9fc01c1534b1b0c3f9182ef",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "cd75ebda6aae15ca4f9c7bbb87e078694e075f7658685ff811916ca2fde63cad",
+          "fixture": "6949550be961c76b3d3dea1027c9f6014fa4958b572bb74640bccc5aac2c5892"
+        }
+      },
+      "2026-01-23-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-23-daily",
+        "day": "2026-01-23",
+        "forecast_vintage": "window-8d9781fa890602f453e92e64",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "72a9370a5a5c4a8f16a49ab9d32530726241751d73615d31ae0630f3aeb1848f",
+          "fixture": "e9991452d31d1b5b3addbfa5301a26f769780a1f9d956b1550740b44eae6a280"
+        }
+      },
+      "2026-01-24-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-24-daily",
+        "day": "2026-01-24",
+        "forecast_vintage": "window-58e53cebce1bc23b4148929b",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "15dedd97b1c06764efc1693be5e17509a0a522915b1c0760f4763b473c343aa8",
+          "fixture": "83d517574d094d1338cadc255bdac98f186d6c2e80bc629de9a857f8ef7d9087"
+        }
+      },
+      "2026-01-25-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-25-daily",
+        "day": "2026-01-25",
+        "forecast_vintage": "window-a74b825cb82f8b705125ccb0",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "3212e932ef641d2fdfede033d6171296e978a2bbad11c560f4cf8d9b58419830",
+          "fixture": "1b896d5d0355d848a75ded696e9bcb7964cf0d415652d6906e90046c292d55d7"
+        }
+      },
+      "2026-01-26-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-26-daily",
+        "day": "2026-01-26",
+        "forecast_vintage": "window-13e95aafabe95a44bc9ab2a8",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "8ee0cdac2452e6caf7176235720fa34887c1d153a7d6175126a53dd752798f10",
+          "fixture": "54dadab465992742975a033b77c85e9997104eb6b3ab3044064809ee37289ff1"
+        }
+      },
+      "2026-01-27-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-27-daily",
+        "day": "2026-01-27",
+        "forecast_vintage": "window-4fd721e540e7f0811b2553e9",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "f3de4b8b57bc4ca170ac9a81af797d245bdc99677b9b781423a985cda774efff",
+          "fixture": "fbdf9c5b5d3831aaed3f9db4acf188adbf04826c8f7ef754bc7a6a2493f49372"
+        }
+      },
+      "2026-01-28-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-28-daily",
+        "day": "2026-01-28",
+        "forecast_vintage": "window-384e9b56cddb7d7c1f8a687e",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "43212c79310e0e6f037e8992811d864d6aa8c12f68b6d50dd2da980d27c42276",
+          "fixture": "dce65b97e688e4927e0a47ada8aeec2ee358e97bcb71f48ed0773ea4152c92e1"
+        }
+      },
+      "2026-01-29-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-29-daily",
+        "day": "2026-01-29",
+        "forecast_vintage": "window-859684f4d1503fecf9530213",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "9c3a630793fceff69b98261797b270472ab207d83acadddf903278f445d9b8d7",
+          "fixture": "979c36cd9e6f8f7b0766e14e5aadd1b4931c158860e82a05dbdba3246e01c60b"
+        }
+      },
+      "2026-01-30-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-30-daily",
+        "day": "2026-01-30",
+        "forecast_vintage": "window-9f8373375486f36bc397144a",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "2bb0ba6bff3bc856e66e5ddfb380f38627d7751224623a3c91e373f630417e38",
+          "fixture": "5ce68d094f21d94c08bf58b3fcf653de0956eded96bb8f061ad69cce5108223b"
+        }
+      },
+      "2026-01-31-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-01-31-daily",
+        "day": "2026-01-31",
+        "forecast_vintage": "window-02599b983dc5f4917ffef043",
+        "month": 1,
+        "period": "2026-01",
+        "source_hashes": {
+          "canonical_panel": "7be9932522d2470e779de94878fab373c8ee8656cbca0e1ea844333ac89dc11f",
+          "fixture": "05f156581affc0846f9e62cc9a49c53b026983d46d3f61cdd58c892b033414bc"
+        }
+      }
+    },
+    "validation": {
+      "2026-02-01-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-01-daily",
+        "day": "2026-02-01",
+        "forecast_vintage": "window-57809559dd626ca23f2a30ea",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "3bdbcdd309fbc0b69cc089fbc36f9590dc641472c7a524cc3ec8dd5d16763931",
+          "fixture": "fa5e94fabdf5e30dd79bc82cba067c1bf743195ab4e3d0a2f9352e1a88b8ef87"
+        }
+      },
+      "2026-02-02-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-02-daily",
+        "day": "2026-02-02",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "a11ac7535a7cbd141d9b6d65c5e51405595446cf0643530a9e248db8a2e30479",
+          "fixture": "f2334c4a7b2e4c6f6c1afb75c855d77ab67785fe366fbf9a8e91d200b97cd3cf"
+        }
+      },
+      "2026-02-03-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-03-daily",
+        "day": "2026-02-03",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "65a642ec3e62040f7474003da984ccc0970b380d91967a4424218f467fb120ba",
+          "fixture": "babe8ef63f2469d95d20c13fa064a2552090bc6d4cff74006c02dd3a542753fc"
+        }
+      },
+      "2026-02-04-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-04-daily",
+        "day": "2026-02-04",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "c4600c023633e35e7ac1ca60307a0e658ed0f19ca19204cdfde51666efb2d622",
+          "fixture": "395c99fefa561c3709ff0dfe658163b60100e6c3d3ee27e0ae81fcb9bbcfcf5d"
+        }
+      },
+      "2026-02-05-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-05-daily",
+        "day": "2026-02-05",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "0ea7755118200547dae54c0ef09cd4fb1986a50bae4b8e0c122b1564116645bc",
+          "fixture": "66e1fac89e5ae63bd14e826ba9957d4b16b6d6130e9fb88ae5d67b74a6b8a771"
+        }
+      },
+      "2026-02-06-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-06-daily",
+        "day": "2026-02-06",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "35f827a52fed1353471df5e07433f29dba6d2c792a6e80b748b4264a1cc07fbf",
+          "fixture": "bf7995b86f8db10f3aaa7cf114d0112d0a2d97b629de652b892555022277e705"
+        }
+      },
+      "2026-02-07-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-07-daily",
+        "day": "2026-02-07",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "6d7e7344c30740a3d760abd5412cead8a1fcdbb3059c156c24555558c46ed7b8",
+          "fixture": "ca78551bea869adbe8c331ecceccee60b5528a786d99ea6a601908d0e4617695"
+        }
+      },
+      "2026-02-08-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-08-daily",
+        "day": "2026-02-08",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "94e735ccd3b2105fae4a29dca723b05e797ea2a47fe7246c87059a62bee5c63e",
+          "fixture": "97266886fcaa5d6ca0c2935d11a5a9d6dd77a31190695188fae4e53f89aacb8b"
+        }
+      },
+      "2026-02-09-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-09-daily",
+        "day": "2026-02-09",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "1bf59e22229e2412826a1de5da648d21ba06d8901d5465a1221919e03038b677",
+          "fixture": "84a438c8793882bb02cf2cda9d00c8f4a040f8be1357d26e362a236038694907"
+        }
+      },
+      "2026-02-10-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-10-daily",
+        "day": "2026-02-10",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "bf753c51751cb2ea67f5899463327442c39feaa21c6ca1829a26e50908126ff0",
+          "fixture": "5edddaf381aa981c74e1f5a1e092e4c12692412ebcaacc7d97c909f06fbbce99"
+        }
+      },
+      "2026-02-11-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-11-daily",
+        "day": "2026-02-11",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "9e38f5049c86685f4736174175b4a736c08e236354ecba44acf2c24484927e4e",
+          "fixture": "9969dc388da78698c9b22a783358b651f99ba0996c8b44bdd5a8509256501885"
+        }
+      },
+      "2026-02-12-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-12-daily",
+        "day": "2026-02-12",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "097a7440dafb3c6b7dd82f9a71b6990d2c21bc95f0880c246c8a1d82d1e5c373",
+          "fixture": "32cdb7ef6d8a29912cd6e652e9f693bfbf40a70f0ba66f3606de956560dc4cbb"
+        }
+      },
+      "2026-02-13-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-13-daily",
+        "day": "2026-02-13",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "3ea1bb52b8db8140f2612425e610eca08a01649cfbed16ff7fdebe81c0d6515b",
+          "fixture": "4d927d58f43cc824e023ccc86ec9646af987c61bbb882629dc530aff98d775be"
+        }
+      },
+      "2026-02-14-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-14-daily",
+        "day": "2026-02-14",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "9ff466eb8dc949768d16394cb19d8e551664dfc816402bb19428d3ac10d7351b",
+          "fixture": "3271baf718c42179411c7e4f4f571f0821796e3916f1b3c5f42611a51854722a"
+        }
+      },
+      "2026-02-15-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-15-daily",
+        "day": "2026-02-15",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "06f7ef31fe15a4329244b55b362d111989cd01122db3ea47aadc54eb5fc6abca",
+          "fixture": "18968eb003f17bdc3749437fbce153a1ec8e1592b140c315fbd461c1cdcbd6e4"
+        }
+      },
+      "2026-02-16-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-16-daily",
+        "day": "2026-02-16",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "3c68812fc32b6cff2d61e43b4f736badeac22f23f4c5c3d37b4997ef22832ce6",
+          "fixture": "a08e3eab5c4443b348b1ce7e3b937d041455b6bcec0a8fbbf34c380e09b39d7c"
+        }
+      },
+      "2026-02-17-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-17-daily",
+        "day": "2026-02-17",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "9b2ace5c9110a0426ddb885d5a255774ea41c65caa6aa8a984b3bba2b61d4b29",
+          "fixture": "92ab59c7fc259cca90440b5e7f2350edf121831908e96ffe1e6beefee3020fbf"
+        }
+      },
+      "2026-02-18-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-18-daily",
+        "day": "2026-02-18",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "5cd29dfb429ddb17ac0e90a77002a0ccec06b9169f08d397956ddd1b539de75a",
+          "fixture": "4558e012b2a1a619d9b50a72b5d98efc9f18e03ec9a646924ef8b796ef9e155b"
+        }
+      },
+      "2026-02-19-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-19-daily",
+        "day": "2026-02-19",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "39a728c8b7b969d5b356617882139b26d6c70bc99d910bc5441331deedf4fd12",
+          "fixture": "7b5035908ea217f7d0807784fd927faf3b886534ea336f98c5e7359bd397758b"
+        }
+      },
+      "2026-02-20-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-20-daily",
+        "day": "2026-02-20",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "567d88db299951b0f3811c483a75d89ef3b33f7b3617c6faec24e94de701c65f",
+          "fixture": "1477dc44db3fd7736fc97c1f9c154feeee95787e5b06892162c9596a9c369c29"
+        }
+      },
+      "2026-02-21-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-21-daily",
+        "day": "2026-02-21",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "9cb2513e0aad4c19ef6731c0e816e122a9133163b183f536affe80754fec6119",
+          "fixture": "b2d1cc854b5afa9b3af9337dc48163e05fdb6d599f0e654abf8f5868fe070f80"
+        }
+      },
+      "2026-02-22-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-22-daily",
+        "day": "2026-02-22",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "c0104ed141b65fb9a99ed3ff0338a8732f8647bfd7850f9841a78a7b8a2d1e04",
+          "fixture": "b8646879a685d541427ad08319ea837f77ca7633119757b214ef8e45c9ceda2f"
+        }
+      },
+      "2026-02-23-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-23-daily",
+        "day": "2026-02-23",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "6cf52baa08d5263b9a34fd6241746f53246447d99a512a3dfe63e141df55e2fe",
+          "fixture": "8eb3ecc6d9f29384feafc33ff9544ae53b34a87f0147afd64793f754b92d06da"
+        }
+      },
+      "2026-02-24-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-24-daily",
+        "day": "2026-02-24",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "53187e2e468d4a3afb0ed7619589062146591037d189e9352948e2bc4ad8c574",
+          "fixture": "d660facbe04ba77a3cf34af5db5c9fcc975842475052041be0d1c0a6908a21e3"
+        }
+      },
+      "2026-02-25-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-25-daily",
+        "day": "2026-02-25",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "85227bd1240c034ff117941e03b427bda8b19475e4580929d422a991056fe0db",
+          "fixture": "cba7cd5ba62ac68e76075e6afe280bd39a9e86449dcb1c8b2ef96d0060226755"
+        }
+      },
+      "2026-02-26-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-26-daily",
+        "day": "2026-02-26",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "c2d805e69edb1a81e64cbffeb8287bdf43da2192d75ae3a8b5254cd1c78894f8",
+          "fixture": "70c115cdebeee225024eec2c8f2f7f8557638255133f5d378ee20fa8ac45eb16"
+        }
+      },
+      "2026-02-27-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-27-daily",
+        "day": "2026-02-27",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "d6d7b6e918a133438d139c2aed7e5f8affc02d9ed7da8e28401cc38fd2e380b2",
+          "fixture": "35eb31def4fe13cbb8338438fab0c31752f382d1324d56da790457c7f4d58deb"
+        }
+      },
+      "2026-02-28-daily": {
+        "artifact_root": "output/four_market_v2/factory/envelope_off/windows/2026-02-28-daily",
+        "day": "2026-02-28",
+        "forecast_vintage": "window-2a6f7d9f0aa676d582f53655",
+        "month": 2,
+        "period": "2026-02",
+        "source_hashes": {
+          "canonical_panel": "bfb31ca7dd31bf8446f5a9ce07bb2636ae4bc845ac48cce582f2a3c2c89a9b23",
+          "fixture": "5bfbb87ec814a251617b39762ee9373558b6a235e0e098b0ab3413e540ad9917"
+        }
+      }
+    }
+  },
+  "workload_cells": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}

@@ -520,7 +520,7 @@ class RampAwareEnv(gym.Env):
         self._next_action_provenance = "agent_semantic"
         service_total = float(self.workload.service_arrivals[self._step].sum())
         fleet_capacity = float(self._capacity.sum())
-        if self._step < self.main_steps:
+        if self.protocol.admission_envelope_enabled and self._step < self.main_steps:
             service_limit = (
                 fleet_capacity
                 * self.protocol.service_envelope_fraction_of_fleet

@@ -107,6 +107,33 @@ def _absolute_physical_values(
     return [abs(float(value)) for value in episode[legacy_key]]
 
 
+def _cluster_bootstrap_interval(
+    values: list[float],
+    groups: list[str],
+    *,
+    unit: str,
+    draws: int,
+) -> dict[str, Any]:
+    group_count = len(set(groups))
+    if group_count < 2:
+        return {
+            "estimable": False,
+            "group_count": group_count,
+            "mean": float(mean(values)),
+            "unit": unit,
+            "reason": "at least two independent groups are required",
+        }
+    interval = bootstrap_interval(values, groups, draws=draws)
+    interval.update(
+        {
+            "estimable": True,
+            "group_count": group_count,
+            "unit": unit,
+        }
+    )
+    return interval
+
+
 def _episode(
     *,
     factory: RampEnvironmentFactory,
@@ -475,14 +502,16 @@ def _aggregate(
             "policy_ramp_power": sum(episode["ramp_power"] for episode in policy),
             "status_quo_ramp_power": sum(episode["ramp_power"] for episode in baseline),
         },
-        "bootstrap_by_month": bootstrap_interval(
+        "bootstrap_by_month": _cluster_bootstrap_interval(
             [float(mean(episode["incremental"])) for episode in policy],
             [str(episode["month"]) for episode in policy],
+            unit="month",
             draws=500,
         ),
-        "bootstrap_by_day": bootstrap_interval(
+        "bootstrap_by_day": _cluster_bootstrap_interval(
             [float(mean(episode["incremental"])) for episode in policy],
             [episode["day_group"] for episode in policy],
+            unit="day",
             draws=500,
         ),
         "evaluation_seed_interval": optimizer_seed_interval(

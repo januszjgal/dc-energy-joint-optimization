@@ -1,4 +1,4 @@
-"""Pure-RL training and evidence utilities for the ramp-aware v6 environment."""
+"""Pure-RL training and evidence utilities for the ramp-aware environment."""
 
 from ramp_rl.contract import (
     CONTRACT_VERSION,
@@ -6,13 +6,9 @@ from ramp_rl.contract import (
     RampContractError,
     RampEnvAdapter,
 )
-from ramp_rl.schema import DEFAULT_PROTOCOL_PATH, load_protocol
-
 __all__ = [
     "CONTRACT_VERSION",
-    "DEFAULT_PROTOCOL_PATH",
     "EnvRequest",
     "RampContractError",
     "RampEnvAdapter",
-    "load_protocol",
 ]

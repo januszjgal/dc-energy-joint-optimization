@@ -1,0 +1,41 @@
+{
+  "outputs": {
+    "docs/figures/four_market_v2/four_market_normalized_net_load.png": "87a2d4f92280415456b928805c405a46469ddacbfe5e177f3182cbc593c8b6b7",
+    "docs/figures/four_market_v2/single_day_normalized_net_load.png": "142eb5d7b07de78011ea83aeb567cda7f1c44c569b8df8425b51300687a05d90"
+  },
+  "schema_version": "four-market-thesis-figures-v2",
+  "single_day_selection": {
+    "local_date": "2026-01-30",
+    "peak_normalized_net_load": 0.783948806336866,
+    "peak_timestamp_utc": "2026-01-31T03:00:00+00:00",
+    "score": 0.6696554084613786,
+    "selection_criterion": "maximum evening(17-22) minus midday(10-15) normalized net load among complete CAISO training days",
+    "selection_market": "CAISO_NP15",
+    "selection_split": "train",
+    "selection_timezone": "America/Los_Angeles",
+    "simultaneous_end_utc_exclusive": "2026-01-31T08:00:00+00:00",
+    "simultaneous_start_utc": "2026-01-30T08:00:00+00:00",
+    "trough_normalized_net_load": 0.11429339787548742,
+    "trough_timestamp_utc": "2026-01-30T23:00:00+00:00"
+  },
+  "source_manifest": {
+    "path": "data/four_market_v2/source_manifest.json",
+    "sha256": "ce6e03c3d15f6795de42b0d83da8f3a71e81c267d4fbe4eaee34a2b9d4715a05"
+  },
+  "source_scope": {
+    "active_decision_hours_only": true,
+    "active_hours_per_market": 3408,
+    "end_utc": "2026-02-28T23:00:00+00:00",
+    "market_order": [
+      "CAISO_NP15",
+      "MISO_MINN_HUB",
+      "SPP_NORTH_HUB",
+      "ISONE_NEMA"
+    ],
+    "rows": 13632,
+    "smoothing": false,
+    "start_utc": "2025-10-10T00:00:00+00:00",
+    "value": "net_load_mw / market_scale_mw",
+    "window_count": 142
+  }
+}
