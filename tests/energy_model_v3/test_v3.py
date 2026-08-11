@@ -478,9 +478,10 @@ class EndToEndFixtureTests(unittest.TestCase):
             )
 
 
-class FrozenLegacyRegressionTests(unittest.TestCase):
-    def test_branch_changes_only_additive_v3_surfaces(self) -> None:
+class ActiveSurfaceRegressionTests(unittest.TestCase):
+    def test_branch_changes_stay_within_active_or_archive_surfaces(self) -> None:
         allowed_prefixes = (
+            "archive/",
             "energy_model_v3/",
             "tests/energy_model_v3/",
             "tests/ramp_v6/",
@@ -492,7 +493,9 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             "models/ramp_rl_v6/",
             "ramp_rl/",
             "env/ramp_v6/",
+            "docs/figures/energy_model_v3/",
             "docs/figures/ramp_v6/",
+            "latex/",
         )
         allowed_files = {
             ".gitignore",
@@ -501,15 +504,13 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             "requirements.txt",
             "scripts/build_energy_model_v3.py",
             "scripts/build_energy_v3_ramp_factory.py",
+            "scripts/build_energy_thesis_figures.py",
             "scripts/build_ramp_rl_evidence_v6.py",
             "scripts/build_ramp_rl_final_evidence.py",
             "scripts/build_ramp_rl_v2_candidate_report.py",
             "scripts/bind_v4r_metric_replay_recovery.py",
-            "scripts/build_final_thesis.py",
-            "scripts/build_final_thesis_docx.js",
             "scripts/build_ramp_rl_thesis_results.py",
             "scripts/build_ramp_thesis_figures.py",
-            "scripts/materialize_ramp_thesis.py",
             "scripts/recompute_v4r_posthoc_metrics.py",
             "scripts/run_ramp_rl_v6.py",
             "scripts/run_ramp_rl_v3.py",
@@ -517,12 +518,9 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             "scripts/run_ramp_v6_fixture.py",
             "scripts/smoke_test_ramp_rl_v6.py",
             "scripts/summarize_ramp_rl_stage.py",
-            "scripts/validate_ramp_thesis.py",
             "tests/__init__.py",
-            "tests/test_ramp_thesis.py",
             "docs/ramp_rl_v6.md",
             "docs/ramp_v6_protocol.md",
-            "docs/ramp_v6_result_handoff.md",
             "docs/v4r_adversarial_review.md",
             "env/protocols/independent_us_v3.yaml",
             "env/protocols/v6_pure_ramp_rl.schema.json",
@@ -536,9 +534,6 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             "env/scenarios/us_six_market_v3_primary.yaml",
             "env/scenarios/us_six_market_v3_robustness.yaml",
             "env/scenarios/us_six_market_v3_stress_6gw.yaml",
-            "thesis_paper.docx",
-            "thesis_paper.md",
-            "thesis_ramp_v6.md",
         }
         result = subprocess.run(
             [
@@ -563,7 +558,7 @@ class FrozenLegacyRegressionTests(unittest.TestCase):
             if path not in allowed_files
             and not path.startswith(allowed_prefixes)
         ]
-        self.assertEqual(forbidden, [], f"legacy surfaces changed: {forbidden}")
+        self.assertEqual(forbidden, [], f"unapproved surfaces changed: {forbidden}")
 
 
 if __name__ == "__main__":

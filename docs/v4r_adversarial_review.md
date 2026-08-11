@@ -109,9 +109,11 @@ data-center power moved in the opposite direction from the native ramp. For
 example, reducing a positive ramp from `+10` to `+8` is favorable under the
 metric without being an opposite-direction counter-ramp.
 
-Prospective thesis text at `thesis_ramp_v6.md:72`, the conclusion at
-`thesis_ramp_v6.md:536`, and generated table wording in
-`scripts/materialize_ramp_thesis.py:87` use "counter-ramp" as the direct
+Prospective thesis text archived at
+`archive/markdown_docx_pipeline_20260810/thesis_ramp_v6.md:72`, the conclusion
+at line 536, and generated table wording in
+`archive/markdown_docx_pipeline_20260810/scripts/materialize_ramp_thesis.py:87`
+use "counter-ramp" as the direct
 interpretation.
 
 **Required correction:** use "reduced normalized squared-ramp impact/stress"
@@ -154,8 +156,9 @@ marker, not as zero.
 The six series are separately sourced and no market is a shifted copy of
 another. They are not demonstrated statistically independent, and the thesis
 correctly states later that they are not iid superpopulation draws.
-`thesis_ramp_v6.md:23-24`, `thesis_ramp_v6.md:180`, and the prospective figure
-title still use "independent."
+The archived template at
+`archive/markdown_docx_pipeline_20260810/thesis_ramp_v6.md:23-24` and line 180,
+plus the prospective figure title, still use "independent."
 
 **Required correction:** say "six separately sourced/evaluated market series."
 
