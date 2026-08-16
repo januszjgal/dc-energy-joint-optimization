@@ -1,0 +1,23 @@
+{
+  "action_steps": 27,
+  "effective_interactions": 2045952,
+  "learning_curve_path": "C:\\Users\\jagal\\copilot-worktrees\\dc-energy-joint-optimization\\jagal-microsoft-miniature-sniffle\\output\\four_market_v2\\campaign\\seed-4108\\learning_curve.csv",
+  "n_envs": 4,
+  "ppo_config": {
+    "batch_size": 256,
+    "gae_lambda": 0.95,
+    "learning_rate": 0.0003,
+    "n_epochs": 10,
+    "n_steps": 512,
+    "net_arch": [
+      64,
+      64
+    ]
+  },
+  "requested_interactions": 2000000,
+  "resumed_from_interactions": 0,
+  "safe_boundary_interactions": 55296,
+  "safe_quantum": 55296,
+  "seed": 4108,
+  "update_count": 9990
+}

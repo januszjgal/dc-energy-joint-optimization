@@ -9,7 +9,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from env.ramp_v6.models import FORECAST_HOURS, FrozenRampStats, HORIZONS
+from env.ramp_v6.models import FORECAST_HOURS, FrozenRampStats
 
 
 BASE_COLUMNS = (
@@ -135,7 +135,6 @@ class CanonicalMarketPanel:
         gross_std: dict[str, float] = {}
         net_mean: dict[str, float] = {}
         net_std: dict[str, float] = {}
-        thresholds: dict[str, dict[int, float]] = {}
         for market, rows in train.groupby("market_id", sort=True):
             rows = rows.sort_values("timestamp_utc")
             gross = rows["gross_demand_mw"].to_numpy(dtype=np.float64)
@@ -146,12 +145,6 @@ class CanonicalMarketPanel:
             gross_std[market] = max(float(np.std(gross)), 1e-9)
             net_mean[market] = float(np.mean(net))
             net_std[market] = max(float(np.std(net)), 1e-9)
-            thresholds[market] = {}
-            for horizon in HORIZONS:
-                ramp = (net[horizon:] - net[:-horizon]) / (scale * horizon)
-                thresholds[market][horizon] = float(
-                    np.quantile(np.abs(ramp), 0.90)
-                )
         return FrozenRampStats(
             fit_start_utc=train["timestamp_utc"].min().isoformat(),
             fit_end_utc=train["timestamp_utc"].max().isoformat(),
@@ -160,7 +153,6 @@ class CanonicalMarketPanel:
             gross_level_std_mw=gross_std,
             net_level_mean_mw=net_mean,
             net_level_std_mw=net_std,
-            native_abs_ramp_q90_fraction_s_per_hour=thresholds,
             fit_months=months,
         )
 

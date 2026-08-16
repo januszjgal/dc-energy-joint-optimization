@@ -1,4 +1,4 @@
-"""Deterministic validation/test evaluation for policy and status quo."""
+"""Deterministic validation evaluation for policy and status quo."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from statistics import mean
 from typing import Any
 
 import numpy as np
-from stable_baselines3 import PPO, SAC
+from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from env.ramp_v6.projection import (
@@ -16,11 +16,22 @@ from env.ramp_v6.projection import (
     SEMANTIC_ADJUSTMENT_UNITS,
 )
 from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
-from ramp_rl.evidence import (
-    bootstrap_interval,
-    evaluate_success_gate,
-    optimizer_seed_interval,
-)
+
+
+def _bootstrap_interval(
+    values: list[float], groups: list[str], *, draws: int = 500, seed: int = 20260808
+) -> dict[str, float]:
+    grouped: dict[str, list[float]] = defaultdict(list)
+    for value, group in zip(values, groups):
+        grouped[group].append(float(value))
+    keys = sorted(grouped)
+    rng = np.random.default_rng(seed)
+    samples = [
+        mean(value for key in rng.choice(keys, size=len(keys), replace=True) for value in grouped[str(key)])
+        for _ in range(draws)
+    ]
+    return {"mean": float(mean(values)), "lower_95": float(np.quantile(samples, .025)),
+            "upper_95": float(np.quantile(samples, .975))}
 
 
 def _collect_per_market_metrics(
@@ -91,22 +102,6 @@ def _market_series(
     return values
 
 
-def _absolute_physical_values(
-    episode: dict[str, Any],
-    *,
-    corrected_key: str,
-    legacy_key: str,
-) -> list[float]:
-    corrected = episode.get(corrected_key)
-    if corrected is not None:
-        return [
-            float(value)
-            for values in corrected.values()
-            for value in values
-        ]
-    return [abs(float(value)) for value in episode[legacy_key]]
-
-
 def _cluster_bootstrap_interval(
     values: list[float],
     groups: list[str],
@@ -123,7 +118,7 @@ def _cluster_bootstrap_interval(
             "unit": unit,
             "reason": "at least two independent groups are required",
         }
-    interval = bootstrap_interval(values, groups, draws=draws)
+    interval = _bootstrap_interval(values, groups, draws=draws)
     interval.update(
         {
             "estimable": True,
@@ -140,7 +135,7 @@ def _episode(
     split: str,
     seed: int,
     window_id: str,
-    model: PPO | SAC | None,
+    model: PPO | None,
     normalization_path: Path | None,
 ) -> dict[str, Any]:
     request = EnvRequest(
@@ -267,7 +262,6 @@ def _episode(
         "evaluation_seed": seed,
         "month": int(reset_info["episode_context"]["month"]),
         "day_group": str(reset_info["episode_context"].get("day", window_id)),
-        "source_hashes": dict(reset_info["episode_context"]["source_hashes"]),
         "future_realized_features_exposed": bool(
             reset_info["episode_context"][
                 "future_realized_features_exposed"
@@ -338,20 +332,14 @@ def _aggregate(
     abs_h1 = [
         value
         for episode in policy
-        for value in _absolute_physical_values(
-            episode,
-            corrected_key="abs_adjusted_ramp_h1_by_market",
-            legacy_key="ramp_h1",
-        )
+        for values in episode["abs_adjusted_ramp_h1_by_market"].values()
+        for value in values
     ]
     abs_h3 = [
         value
         for episode in policy
-        for value in _absolute_physical_values(
-            episode,
-            corrected_key="abs_adjusted_ramp_h3_by_market",
-            legacy_key="ramp_h3",
-        )
+        for values in episode["abs_adjusted_ramp_h3_by_market"].values()
+        for value in values
     ]
     if not impacts or not abs_h1 or not abs_h3:
         raise ValueError(
@@ -514,29 +502,29 @@ def _aggregate(
             unit="day",
             draws=500,
         ),
-        "evaluation_seed_interval": optimizer_seed_interval(
-            float(mean(values)) for values in per_evaluation_seed.values()
-        ),
+        "evaluation_seed_interval": {
+            "mean": float(mean(float(mean(values)) for values in per_evaluation_seed.values())),
+            "minimum": float(min(float(mean(values)) for values in per_evaluation_seed.values())),
+            "maximum": float(max(float(mean(values)) for values in per_evaluation_seed.values())),
+            "seed_count": len(per_evaluation_seed),
+        },
         "policy_episodes": policy,
         "status_quo_episodes": baseline,
     }
-    summary["success_gate"] = evaluate_success_gate(summary, split=split)
     return summary
 
 
 def evaluate_checkpoint(
     *,
     factory: RampEnvironmentFactory,
-    algorithm: str,
     checkpoint_dir: Path,
     split: str,
     seeds: list[int],
     windows: list[str],
 ) -> dict[str, Any]:
-    if split not in {"validation", "test"}:
-        raise ValueError("evaluation split must be validation or test")
-    model_class = PPO if algorithm == "ppo" else SAC
-    model = model_class.load(checkpoint_dir / "model.zip", device="cpu")
+    if split != "validation":
+        raise ValueError("evaluation is validation-only")
+    model = PPO.load(checkpoint_dir / "model.zip", device="cpu")
     normalization_path = checkpoint_dir / "vecnormalize.pkl"
     policy: list[dict[str, Any]] = []
     baseline: list[dict[str, Any]] = []

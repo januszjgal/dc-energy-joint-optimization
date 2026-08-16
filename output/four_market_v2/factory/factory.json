@@ -1,0 +1,875 @@
+{
+  "forecast_model": "energy-v3-causal-h3-trajectory-gross-net-ridge-v1",
+  "frozen_stats_path": "data/four_market_v2/frozen_stats.json",
+  "markets": [
+    "CAISO_NP15",
+    "MISO_MINN_HUB",
+    "SPP_NORTH_HUB",
+    "ISONE_NEMA"
+  ],
+  "windows": {
+    "test": {},
+    "train": {
+      "2025-10-10-daily": {
+        "day": "2025-10-10",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-10-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-10-daily/canonical_panel.csv"
+      },
+      "2025-10-11-daily": {
+        "day": "2025-10-11",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-11-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-11-daily/canonical_panel.csv"
+      },
+      "2025-10-12-daily": {
+        "day": "2025-10-12",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-12-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-12-daily/canonical_panel.csv"
+      },
+      "2025-10-13-daily": {
+        "day": "2025-10-13",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-13-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-13-daily/canonical_panel.csv"
+      },
+      "2025-10-14-daily": {
+        "day": "2025-10-14",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-14-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-14-daily/canonical_panel.csv"
+      },
+      "2025-10-15-daily": {
+        "day": "2025-10-15",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-15-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-15-daily/canonical_panel.csv"
+      },
+      "2025-10-16-daily": {
+        "day": "2025-10-16",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-16-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-16-daily/canonical_panel.csv"
+      },
+      "2025-10-17-daily": {
+        "day": "2025-10-17",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-17-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-17-daily/canonical_panel.csv"
+      },
+      "2025-10-18-daily": {
+        "day": "2025-10-18",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-18-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-18-daily/canonical_panel.csv"
+      },
+      "2025-10-19-daily": {
+        "day": "2025-10-19",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-19-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-19-daily/canonical_panel.csv"
+      },
+      "2025-10-20-daily": {
+        "day": "2025-10-20",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-20-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-20-daily/canonical_panel.csv"
+      },
+      "2025-10-21-daily": {
+        "day": "2025-10-21",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-21-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-21-daily/canonical_panel.csv"
+      },
+      "2025-10-22-daily": {
+        "day": "2025-10-22",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-22-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-22-daily/canonical_panel.csv"
+      },
+      "2025-10-23-daily": {
+        "day": "2025-10-23",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-23-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-23-daily/canonical_panel.csv"
+      },
+      "2025-10-24-daily": {
+        "day": "2025-10-24",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-24-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-24-daily/canonical_panel.csv"
+      },
+      "2025-10-25-daily": {
+        "day": "2025-10-25",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-25-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-25-daily/canonical_panel.csv"
+      },
+      "2025-10-26-daily": {
+        "day": "2025-10-26",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-26-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-26-daily/canonical_panel.csv"
+      },
+      "2025-10-27-daily": {
+        "day": "2025-10-27",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-27-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-27-daily/canonical_panel.csv"
+      },
+      "2025-10-28-daily": {
+        "day": "2025-10-28",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-28-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-28-daily/canonical_panel.csv"
+      },
+      "2025-10-29-daily": {
+        "day": "2025-10-29",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-29-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-29-daily/canonical_panel.csv"
+      },
+      "2025-10-30-daily": {
+        "day": "2025-10-30",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-30-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-30-daily/canonical_panel.csv"
+      },
+      "2025-10-31-daily": {
+        "day": "2025-10-31",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10-31-daily/fixture.json",
+        "month": 10,
+        "panel_path": "data/four_market_v2/windows/2025-10-31-daily/canonical_panel.csv"
+      },
+      "2025-11-01-daily": {
+        "day": "2025-11-01",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-01-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-01-daily/canonical_panel.csv"
+      },
+      "2025-11-02-daily": {
+        "day": "2025-11-02",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-02-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-02-daily/canonical_panel.csv"
+      },
+      "2025-11-03-daily": {
+        "day": "2025-11-03",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-03-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-03-daily/canonical_panel.csv"
+      },
+      "2025-11-04-daily": {
+        "day": "2025-11-04",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-04-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-04-daily/canonical_panel.csv"
+      },
+      "2025-11-05-daily": {
+        "day": "2025-11-05",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-05-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-05-daily/canonical_panel.csv"
+      },
+      "2025-11-06-daily": {
+        "day": "2025-11-06",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-06-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-06-daily/canonical_panel.csv"
+      },
+      "2025-11-07-daily": {
+        "day": "2025-11-07",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-07-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-07-daily/canonical_panel.csv"
+      },
+      "2025-11-08-daily": {
+        "day": "2025-11-08",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-08-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-08-daily/canonical_panel.csv"
+      },
+      "2025-11-09-daily": {
+        "day": "2025-11-09",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-09-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-09-daily/canonical_panel.csv"
+      },
+      "2025-11-10-daily": {
+        "day": "2025-11-10",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-10-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-10-daily/canonical_panel.csv"
+      },
+      "2025-11-11-daily": {
+        "day": "2025-11-11",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-11-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-11-daily/canonical_panel.csv"
+      },
+      "2025-11-12-daily": {
+        "day": "2025-11-12",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-12-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-12-daily/canonical_panel.csv"
+      },
+      "2025-11-13-daily": {
+        "day": "2025-11-13",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-13-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-13-daily/canonical_panel.csv"
+      },
+      "2025-11-14-daily": {
+        "day": "2025-11-14",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-14-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-14-daily/canonical_panel.csv"
+      },
+      "2025-11-15-daily": {
+        "day": "2025-11-15",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-15-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-15-daily/canonical_panel.csv"
+      },
+      "2025-11-16-daily": {
+        "day": "2025-11-16",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-16-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-16-daily/canonical_panel.csv"
+      },
+      "2025-11-17-daily": {
+        "day": "2025-11-17",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-17-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-17-daily/canonical_panel.csv"
+      },
+      "2025-11-18-daily": {
+        "day": "2025-11-18",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-18-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-18-daily/canonical_panel.csv"
+      },
+      "2025-11-19-daily": {
+        "day": "2025-11-19",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-19-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-19-daily/canonical_panel.csv"
+      },
+      "2025-11-20-daily": {
+        "day": "2025-11-20",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-20-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-20-daily/canonical_panel.csv"
+      },
+      "2025-11-21-daily": {
+        "day": "2025-11-21",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-21-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-21-daily/canonical_panel.csv"
+      },
+      "2025-11-22-daily": {
+        "day": "2025-11-22",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-22-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-22-daily/canonical_panel.csv"
+      },
+      "2025-11-23-daily": {
+        "day": "2025-11-23",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-23-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-23-daily/canonical_panel.csv"
+      },
+      "2025-11-24-daily": {
+        "day": "2025-11-24",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-24-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-24-daily/canonical_panel.csv"
+      },
+      "2025-11-25-daily": {
+        "day": "2025-11-25",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-25-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-25-daily/canonical_panel.csv"
+      },
+      "2025-11-26-daily": {
+        "day": "2025-11-26",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-26-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-26-daily/canonical_panel.csv"
+      },
+      "2025-11-27-daily": {
+        "day": "2025-11-27",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-27-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-27-daily/canonical_panel.csv"
+      },
+      "2025-11-28-daily": {
+        "day": "2025-11-28",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-28-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-28-daily/canonical_panel.csv"
+      },
+      "2025-11-29-daily": {
+        "day": "2025-11-29",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-29-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-29-daily/canonical_panel.csv"
+      },
+      "2025-11-30-daily": {
+        "day": "2025-11-30",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11-30-daily/fixture.json",
+        "month": 11,
+        "panel_path": "data/four_market_v2/windows/2025-11-30-daily/canonical_panel.csv"
+      },
+      "2025-12-01-daily": {
+        "day": "2025-12-01",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-01-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-01-daily/canonical_panel.csv"
+      },
+      "2025-12-02-daily": {
+        "day": "2025-12-02",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-02-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-02-daily/canonical_panel.csv"
+      },
+      "2025-12-03-daily": {
+        "day": "2025-12-03",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-03-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-03-daily/canonical_panel.csv"
+      },
+      "2025-12-04-daily": {
+        "day": "2025-12-04",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-04-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-04-daily/canonical_panel.csv"
+      },
+      "2025-12-05-daily": {
+        "day": "2025-12-05",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-05-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-05-daily/canonical_panel.csv"
+      },
+      "2025-12-06-daily": {
+        "day": "2025-12-06",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-06-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-06-daily/canonical_panel.csv"
+      },
+      "2025-12-07-daily": {
+        "day": "2025-12-07",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-07-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-07-daily/canonical_panel.csv"
+      },
+      "2025-12-08-daily": {
+        "day": "2025-12-08",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-08-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-08-daily/canonical_panel.csv"
+      },
+      "2025-12-09-daily": {
+        "day": "2025-12-09",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-09-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-09-daily/canonical_panel.csv"
+      },
+      "2025-12-10-daily": {
+        "day": "2025-12-10",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-10-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-10-daily/canonical_panel.csv"
+      },
+      "2025-12-11-daily": {
+        "day": "2025-12-11",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-11-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-11-daily/canonical_panel.csv"
+      },
+      "2025-12-12-daily": {
+        "day": "2025-12-12",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-12-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-12-daily/canonical_panel.csv"
+      },
+      "2025-12-13-daily": {
+        "day": "2025-12-13",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-13-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-13-daily/canonical_panel.csv"
+      },
+      "2025-12-14-daily": {
+        "day": "2025-12-14",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-14-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-14-daily/canonical_panel.csv"
+      },
+      "2025-12-15-daily": {
+        "day": "2025-12-15",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-15-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-15-daily/canonical_panel.csv"
+      },
+      "2025-12-16-daily": {
+        "day": "2025-12-16",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-16-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-16-daily/canonical_panel.csv"
+      },
+      "2025-12-17-daily": {
+        "day": "2025-12-17",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-17-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-17-daily/canonical_panel.csv"
+      },
+      "2025-12-18-daily": {
+        "day": "2025-12-18",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-18-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-18-daily/canonical_panel.csv"
+      },
+      "2025-12-19-daily": {
+        "day": "2025-12-19",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-19-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-19-daily/canonical_panel.csv"
+      },
+      "2025-12-20-daily": {
+        "day": "2025-12-20",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-20-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-20-daily/canonical_panel.csv"
+      },
+      "2025-12-21-daily": {
+        "day": "2025-12-21",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-21-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-21-daily/canonical_panel.csv"
+      },
+      "2025-12-22-daily": {
+        "day": "2025-12-22",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-22-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-22-daily/canonical_panel.csv"
+      },
+      "2025-12-23-daily": {
+        "day": "2025-12-23",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-23-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-23-daily/canonical_panel.csv"
+      },
+      "2025-12-24-daily": {
+        "day": "2025-12-24",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-24-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-24-daily/canonical_panel.csv"
+      },
+      "2025-12-25-daily": {
+        "day": "2025-12-25",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-25-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-25-daily/canonical_panel.csv"
+      },
+      "2025-12-26-daily": {
+        "day": "2025-12-26",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-26-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-26-daily/canonical_panel.csv"
+      },
+      "2025-12-27-daily": {
+        "day": "2025-12-27",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-27-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-27-daily/canonical_panel.csv"
+      },
+      "2025-12-28-daily": {
+        "day": "2025-12-28",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-28-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-28-daily/canonical_panel.csv"
+      },
+      "2025-12-29-daily": {
+        "day": "2025-12-29",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-29-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-29-daily/canonical_panel.csv"
+      },
+      "2025-12-30-daily": {
+        "day": "2025-12-30",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-30-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-30-daily/canonical_panel.csv"
+      },
+      "2025-12-31-daily": {
+        "day": "2025-12-31",
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12-31-daily/fixture.json",
+        "month": 12,
+        "panel_path": "data/four_market_v2/windows/2025-12-31-daily/canonical_panel.csv"
+      },
+      "2026-01-01-daily": {
+        "day": "2026-01-01",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-01-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-01-daily/canonical_panel.csv"
+      },
+      "2026-01-02-daily": {
+        "day": "2026-01-02",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-02-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-02-daily/canonical_panel.csv"
+      },
+      "2026-01-03-daily": {
+        "day": "2026-01-03",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-03-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-03-daily/canonical_panel.csv"
+      },
+      "2026-01-04-daily": {
+        "day": "2026-01-04",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-04-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-04-daily/canonical_panel.csv"
+      },
+      "2026-01-05-daily": {
+        "day": "2026-01-05",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-05-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-05-daily/canonical_panel.csv"
+      },
+      "2026-01-06-daily": {
+        "day": "2026-01-06",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-06-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-06-daily/canonical_panel.csv"
+      },
+      "2026-01-07-daily": {
+        "day": "2026-01-07",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-07-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-07-daily/canonical_panel.csv"
+      },
+      "2026-01-08-daily": {
+        "day": "2026-01-08",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-08-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-08-daily/canonical_panel.csv"
+      },
+      "2026-01-09-daily": {
+        "day": "2026-01-09",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-09-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-09-daily/canonical_panel.csv"
+      },
+      "2026-01-10-daily": {
+        "day": "2026-01-10",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-10-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-10-daily/canonical_panel.csv"
+      },
+      "2026-01-11-daily": {
+        "day": "2026-01-11",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-11-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-11-daily/canonical_panel.csv"
+      },
+      "2026-01-12-daily": {
+        "day": "2026-01-12",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-12-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-12-daily/canonical_panel.csv"
+      },
+      "2026-01-13-daily": {
+        "day": "2026-01-13",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-13-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-13-daily/canonical_panel.csv"
+      },
+      "2026-01-14-daily": {
+        "day": "2026-01-14",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-14-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-14-daily/canonical_panel.csv"
+      },
+      "2026-01-15-daily": {
+        "day": "2026-01-15",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-15-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-15-daily/canonical_panel.csv"
+      },
+      "2026-01-16-daily": {
+        "day": "2026-01-16",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-16-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-16-daily/canonical_panel.csv"
+      },
+      "2026-01-17-daily": {
+        "day": "2026-01-17",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-17-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-17-daily/canonical_panel.csv"
+      },
+      "2026-01-18-daily": {
+        "day": "2026-01-18",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-18-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-18-daily/canonical_panel.csv"
+      },
+      "2026-01-19-daily": {
+        "day": "2026-01-19",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-19-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-19-daily/canonical_panel.csv"
+      },
+      "2026-01-20-daily": {
+        "day": "2026-01-20",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-20-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-20-daily/canonical_panel.csv"
+      },
+      "2026-01-21-daily": {
+        "day": "2026-01-21",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-21-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-21-daily/canonical_panel.csv"
+      },
+      "2026-01-22-daily": {
+        "day": "2026-01-22",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-22-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-22-daily/canonical_panel.csv"
+      },
+      "2026-01-23-daily": {
+        "day": "2026-01-23",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-23-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-23-daily/canonical_panel.csv"
+      },
+      "2026-01-24-daily": {
+        "day": "2026-01-24",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-24-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-24-daily/canonical_panel.csv"
+      },
+      "2026-01-25-daily": {
+        "day": "2026-01-25",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-25-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-25-daily/canonical_panel.csv"
+      },
+      "2026-01-26-daily": {
+        "day": "2026-01-26",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-26-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-26-daily/canonical_panel.csv"
+      },
+      "2026-01-27-daily": {
+        "day": "2026-01-27",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-27-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-27-daily/canonical_panel.csv"
+      },
+      "2026-01-28-daily": {
+        "day": "2026-01-28",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-28-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-28-daily/canonical_panel.csv"
+      },
+      "2026-01-29-daily": {
+        "day": "2026-01-29",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-29-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-29-daily/canonical_panel.csv"
+      },
+      "2026-01-30-daily": {
+        "day": "2026-01-30",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-30-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-30-daily/canonical_panel.csv"
+      },
+      "2026-01-31-daily": {
+        "day": "2026-01-31",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-01-31-daily/fixture.json",
+        "month": 1,
+        "panel_path": "data/four_market_v2/windows/2026-01-31-daily/canonical_panel.csv"
+      }
+    },
+    "validation": {
+      "2026-02-01-daily": {
+        "day": "2026-02-01",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-01-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-01-daily/canonical_panel.csv"
+      },
+      "2026-02-02-daily": {
+        "day": "2026-02-02",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-02-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-02-daily/canonical_panel.csv"
+      },
+      "2026-02-03-daily": {
+        "day": "2026-02-03",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-03-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-03-daily/canonical_panel.csv"
+      },
+      "2026-02-04-daily": {
+        "day": "2026-02-04",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-04-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-04-daily/canonical_panel.csv"
+      },
+      "2026-02-05-daily": {
+        "day": "2026-02-05",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-05-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-05-daily/canonical_panel.csv"
+      },
+      "2026-02-06-daily": {
+        "day": "2026-02-06",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-06-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-06-daily/canonical_panel.csv"
+      },
+      "2026-02-07-daily": {
+        "day": "2026-02-07",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-07-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-07-daily/canonical_panel.csv"
+      },
+      "2026-02-08-daily": {
+        "day": "2026-02-08",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-08-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-08-daily/canonical_panel.csv"
+      },
+      "2026-02-09-daily": {
+        "day": "2026-02-09",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-09-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-09-daily/canonical_panel.csv"
+      },
+      "2026-02-10-daily": {
+        "day": "2026-02-10",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-10-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-10-daily/canonical_panel.csv"
+      },
+      "2026-02-11-daily": {
+        "day": "2026-02-11",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-11-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-11-daily/canonical_panel.csv"
+      },
+      "2026-02-12-daily": {
+        "day": "2026-02-12",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-12-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-12-daily/canonical_panel.csv"
+      },
+      "2026-02-13-daily": {
+        "day": "2026-02-13",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-13-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-13-daily/canonical_panel.csv"
+      },
+      "2026-02-14-daily": {
+        "day": "2026-02-14",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-14-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-14-daily/canonical_panel.csv"
+      },
+      "2026-02-15-daily": {
+        "day": "2026-02-15",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-15-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-15-daily/canonical_panel.csv"
+      },
+      "2026-02-16-daily": {
+        "day": "2026-02-16",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-16-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-16-daily/canonical_panel.csv"
+      },
+      "2026-02-17-daily": {
+        "day": "2026-02-17",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-17-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-17-daily/canonical_panel.csv"
+      },
+      "2026-02-18-daily": {
+        "day": "2026-02-18",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-18-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-18-daily/canonical_panel.csv"
+      },
+      "2026-02-19-daily": {
+        "day": "2026-02-19",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-19-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-19-daily/canonical_panel.csv"
+      },
+      "2026-02-20-daily": {
+        "day": "2026-02-20",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-20-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-20-daily/canonical_panel.csv"
+      },
+      "2026-02-21-daily": {
+        "day": "2026-02-21",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-21-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-21-daily/canonical_panel.csv"
+      },
+      "2026-02-22-daily": {
+        "day": "2026-02-22",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-22-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-22-daily/canonical_panel.csv"
+      },
+      "2026-02-23-daily": {
+        "day": "2026-02-23",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-23-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-23-daily/canonical_panel.csv"
+      },
+      "2026-02-24-daily": {
+        "day": "2026-02-24",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-24-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-24-daily/canonical_panel.csv"
+      },
+      "2026-02-25-daily": {
+        "day": "2026-02-25",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-25-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-25-daily/canonical_panel.csv"
+      },
+      "2026-02-26-daily": {
+        "day": "2026-02-26",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-26-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-26-daily/canonical_panel.csv"
+      },
+      "2026-02-27-daily": {
+        "day": "2026-02-27",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-27-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-27-daily/canonical_panel.csv"
+      },
+      "2026-02-28-daily": {
+        "day": "2026-02-28",
+        "fixture_path": "output/four_market_v2/factory/windows/2026-02-28-daily/fixture.json",
+        "month": 2,
+        "panel_path": "data/four_market_v2/windows/2026-02-28-daily/canonical_panel.csv"
+      }
+    }
+  },
+  "workload_cells": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}
