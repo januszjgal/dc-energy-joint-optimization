@@ -1,231 +1,143 @@
+"""Integration tests for the one raw-workload four-market experiment."""
+
 from __future__ import annotations
 
 import json
 import shutil
-import subprocess
-import sys
 import unittest
 from pathlib import Path
 
 import numpy as np
+import yaml
 
 from energy_model_v3.four_market_v2 import (
-    CELLS,
-    COMPUTE_CAPACITY,
-    MARKET_TO_CELL,
-    MARKETS,
-    factory_identity_paths,
-    make_envelope_off_env,
-    make_envelope_on_env,
+    CELLS, COMPUTE_CAPACITY, MARKET_TO_CELL, MARKETS, make_four_market_env,
 )
 from ramp_rl.contract import EnvRequest, RampEnvAdapter
-from ramp_rl.evaluation import _cluster_bootstrap_interval
-from ramp_rl.runner import source_bundle_hash
 from scripts.build_four_market_v2_factory import _raw_arrivals, build, validate
+from scripts.run_four_market_v2_campaign import preflight
 
 
 ROOT = Path(__file__).resolve().parents[2]
 FACTORY_ROOT = ROOT / "output" / "four_market_v2" / "factory"
-SOURCE_ROOT = ROOT / "data" / "four_market_v2"
+CALENDAR_PATH = ROOT / "data" / "four_market_v2" / "calendar.json"
 
 
 class FourMarketV2DesignTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         build()
-        cls.manifests = {
-            variant: json.loads(
-                (FACTORY_ROOT / variant / "factory_manifest.json").read_text()
-            )
-            for variant in ("envelope_on", "envelope_off")
-        }
-        cls.window = sorted(cls.manifests["envelope_off"]["windows"]["validation"])[0]
+        cls.factory = json.loads((FACTORY_ROOT / "factory.json").read_text())
+        cls.window = sorted(cls.factory["windows"]["validation"])[0]
 
-    def make_env(self, variant: str):
-        factory = make_envelope_on_env if variant == "envelope_on" else make_envelope_off_env
-        return factory(
-            EnvRequest(
-                split="validation",
-                seed=4101,
-                window_id=self.window,
-                training=False,
-            )
+    def make_env(self):
+        return make_four_market_env(
+            EnvRequest(split="validation", seed=4101, window_id=self.window)
         )
 
-    def test_mapping_k1_power_and_spaces(self) -> None:
-        env = self.make_env("envelope_on")
+    def test_mapping_spaces_and_observation_schema(self) -> None:
+        env = self.make_env()
         try:
             observation, _ = env.reset(seed=4101)
-            current = env._current
-            self.assertEqual(tuple((site.market_id, site.site_id[-1]) for site in current.sites), MARKET_TO_CELL)
-            self.assertEqual(tuple(current.panel.markets), tuple(sorted(MARKETS)))
+            self.assertEqual(tuple((site.market_id, site.site_id[-1]) for site in env._current.sites), MARKET_TO_CELL)
+            self.assertEqual(tuple(env._current.panel.markets), tuple(sorted(MARKETS)))
             self.assertEqual(env.action_space.shape, (9,))
-            self.assertEqual(observation.shape, (128,))
-            self.assertTrue(all(site.compute_capacity == COMPUTE_CAPACITY for site in current.sites))
-            self.assertTrue(all(site.rated_power_mw == 500.0 for site in current.sites))
-            self.assertEqual(sum(site.rated_power_mw for site in current.sites), 2000.0)
-            site = current.sites[0]
-            self.assertAlmostEqual(
-                site.power_mw(1.0),
-                500.0 * (site.idle_power_fraction + site.dynamic_power_fraction),
+            self.assertEqual(observation.shape, (100,))
+            schema = env._current.observation_schema
+            self.assertEqual(len(schema), 100)
+            self.assertEqual(
+                [name for name in schema if name.startswith("batch_queue_deadline")],
+                [
+                    "batch_queue_deadline_le_1h_capacity_fraction",
+                    "batch_queue_deadline_le_3h_capacity_fraction",
+                ],
             )
+            self.assertFalse(any("forecast_vintage_age" in name or "quality_ok" in name for name in schema))
+            self.assertFalse(any(name.endswith(suffix) for name in schema for suffix in (
+                ":compute_capacity", ":rated_power_100mw_units", ":idle_power_fraction", ":dynamic_power_fraction",
+            )))
+            self.assertTrue(all(site.compute_capacity == COMPUTE_CAPACITY for site in env._current.sites))
+            self.assertTrue(all(site.rated_power_mw == 500.0 for site in env._current.sites))
         finally:
             env.close()
 
-    def test_variant_workload_semantics_and_deadlines(self) -> None:
-        on = self.make_env("envelope_on")
-        off = self.make_env("envelope_off")
+    def test_raw_workload_deadlines_and_capacity_guarantee(self) -> None:
+        env = self.make_env()
         try:
-            on_workload = on._current.workload
-            off_workload = off._current.workload
-            times = off._current.panel.timestamps[3:-3]
+            current = env._current
+            times = current.panel.timestamps[3:-3]
             raw_service, raw_batch = _raw_arrivals(times)
-            np.testing.assert_allclose(off_workload.service_arrivals[:-3], raw_service)
-            np.testing.assert_allclose(off_workload.batch_arrivals[:-3], raw_batch)
-            self.assertLessEqual(
-                float(
-                    (
-                        off_workload.service_arrivals[:-3]
-                        + off_workload.batch_arrivals[:-3]
-                    ).sum(axis=1).max()
-                ),
-                4.0,
+            np.testing.assert_allclose(current.workload.service_arrivals[:-3], raw_service)
+            np.testing.assert_allclose(current.workload.batch_arrivals[:-3], raw_batch)
+            np.testing.assert_array_equal(
+                current.workload.batch_deadline_hours[0], [2, 1, 2, 3]
             )
-            np.testing.assert_allclose(
-                on_workload.service_arrivals[:-3] + on_workload.batch_arrivals[:-3],
-                raw_service + raw_batch,
-            )
-            self.assertLessEqual(float(on_workload.service_arrivals[:-3].sum(axis=1).max()), 3.0)
-            self.assertLessEqual(float(on_workload.batch_arrivals[:-3].sum(axis=1).max()), 0.4)
-            self.assertEqual(off_workload.batch_deadline_hours[0].tolist(), [2, 1, 2, 3])
-            np.testing.assert_array_equal(off_workload.service_arrivals[-3:], 0.0)
-            np.testing.assert_array_equal(off_workload.batch_arrivals[-3:], 0.0)
+            np.testing.assert_array_equal(current.workload.service_arrivals[-3:], 0.0)
+            np.testing.assert_array_equal(current.workload.batch_arrivals[-3:], 0.0)
+            max_arrivals = float((raw_service + raw_batch).sum(axis=1).max())
+            expected = 1.0 - max_arrivals / float(current._capacity.sum())
+            self.assertAlmostEqual(current._future_batch_capacity_fraction, expected)
+            self.assertGreaterEqual(current._future_batch_capacity_fraction, 0.0)
         finally:
-            on.close()
-            off.close()
+            env.close()
 
-    def test_raw_off_is_immediately_feasible_and_test_is_blocked(self) -> None:
-        env = self.make_env("envelope_off")
+    def test_only_train_validation_and_cells_a_to_d_are_accessible(self) -> None:
+        calendar = json.loads(CALENDAR_PATH.read_text())
+        self.assertEqual(len(calendar["train"]), 114)
+        self.assertEqual(len(calendar["validation"]), 28)
+        self.assertEqual(calendar["test"], [])
+        self.assertEqual(calendar["markets"], list(MARKETS))
+        rendered = json.dumps(calendar)
+        for forbidden in ("cell_e", "cell_f", "cell_g", "cell_h", "e-h"):
+            self.assertNotIn(forbidden, rendered)
+        with self.assertRaisesRegex(ValueError, "train and validation only"):
+            make_four_market_env(EnvRequest(split="test", seed=4101))
+
+    def test_single_protocol_and_no_removed_mechanisms(self) -> None:
+        protocol_files = list((ROOT / "env" / "protocols").glob("four_market_v2*.yaml"))
+        self.assertEqual(protocol_files, [ROOT / "env" / "protocols" / "four_market_v2.yaml"])
+        protocol = yaml.safe_load(protocol_files[0].read_text())
+        rendered = yaml.safe_dump(protocol)
+        for forbidden in ("envelope", "tail", "multiobjective", "lagrangian", "epsilon", "hash"):
+            self.assertNotIn(forbidden, rendered)
+        stats = json.loads((ROOT / "data" / "four_market_v2" / "frozen_stats.json").read_text())
+        self.assertFalse(any("q90" in key.lower() or "tail" in key.lower() for key in stats))
+        self.assertFalse((ROOT / "ramp_rl" / "evidence.py").exists())
+        self.assertFalse((ROOT / "ramp_rl" / "schema.py").exists())
+
+    def test_factory_rebuild_uses_canonical_panels_by_reference(self) -> None:
+        shutil.rmtree(FACTORY_ROOT)
+        self.assertEqual(build(), validate())
+        factory = json.loads((FACTORY_ROOT / "factory.json").read_text())
+        self.assertEqual(factory["windows"]["test"], {})
+        self.assertFalse(list(FACTORY_ROOT.rglob("canonical_panel.csv")))
+        for split in ("train", "validation"):
+            for record in factory["windows"][split].values():
+                self.assertTrue(record["panel_path"].startswith("data/four_market_v2/windows/"))
+                self.assertTrue((ROOT / record["fixture_path"]).is_file())
+
+    def test_adapter_and_status_quo_complete(self) -> None:
+        request = EnvRequest(split="validation", seed=4101, window_id=self.window)
+        adapter = RampEnvAdapter(make_four_market_env(request), request)
         try:
-            env.reset(seed=4101)
+            observation, _ = adapter.reset(seed=4101)
+            self.assertEqual(observation.shape, (100,))
             while True:
-                _, _, terminated, _, info = env.step(env.evaluation_action("status_quo"))
+                _, reward, terminated, truncated, info = adapter.step(adapter.evaluation_action("status_quo"))
+                self.assertFalse(truncated)
+                self.assertAlmostEqual(reward, -info["incremental_ramp_impact"])
                 if terminated:
                     self.assertEqual(info["batch_unfinished"], 0.0)
                     self.assertEqual(info["certificate_violations"], 0)
                     break
         finally:
-            env.close()
-        with self.assertRaisesRegex(ValueError, "train and validation only"):
-            make_envelope_off_env(
-                EnvRequest(split="test", seed=4101, window_id="forbidden", training=False)
-            )
-
-    def test_active_environment_satisfies_training_contract(self) -> None:
-        request = EnvRequest(
-            split="validation",
-            seed=4101,
-            window_id=self.window,
-            training=False,
-        )
-        adapter = RampEnvAdapter(make_envelope_off_env(request), request)
-        try:
-            observation, info = adapter.reset(seed=request.seed)
-            self.assertEqual(observation.shape, (128,))
-            self.assertEqual(adapter.action_space.shape, (9,))
-            self.assertEqual(info["episode_context"]["workload_cells"], list(CELLS))
-            terminal = None
-            while True:
-                action = adapter.evaluation_action("status_quo")
-                _, _, terminated, truncated, terminal = adapter.step(action)
-                self.assertFalse(truncated)
-                if terminated:
-                    break
-            self.assertTrue(terminal["tail_complete"])
-            self.assertEqual(terminal["service_unserved"], 0.0)
-            self.assertEqual(terminal["batch_expired"], 0.0)
-            self.assertEqual(terminal["terminal_work"], 0.0)
-            self.assertEqual(terminal["certificate_violations"], 0)
-        finally:
             adapter.close()
 
-    def test_factory_is_self_contained_and_holdout_free(self) -> None:
-        for manifest in self.manifests.values():
-            rendered = json.dumps(manifest)
-            for forbidden in ("ar" + "chive/", "V" + "4R"):
-                self.assertNotIn(forbidden, rendered)
-            self.assertEqual(manifest["split_periods"]["test"], [])
-            self.assertFalse(manifest["sealed_test_access"])
-            self.assertEqual(manifest["workload_cells"], list(CELLS))
-
-    def test_rebuild_uses_only_active_source(self) -> None:
-        source_manifest = SOURCE_ROOT / "source_manifest.json"
-        source = json.loads(source_manifest.read_text(encoding="utf-8"))
-        self.assertEqual(len(source["windows"]["train"]), 114)
-        self.assertEqual(len(source["windows"]["validation"]), 28)
-        shutil.rmtree(FACTORY_ROOT)
-        rebuilt = build()
-        self.assertEqual(rebuilt, validate())
-        for variant in ("envelope_on", "envelope_off"):
-            manifest = json.loads(
-                (FACTORY_ROOT / variant / "factory_manifest.json").read_text()
-            )
-            self.assertEqual(
-                manifest["physical_source"]["manifest_path"],
-                "data/four_market_v2/source_manifest.json",
-            )
-
-    def test_owned_source_and_runtime_are_clean(self) -> None:
-        files = (
-            ROOT / "energy_model_v3" / "four_market_v2.py",
-            ROOT / "scripts" / "build_four_market_v2_factory.py",
-            ROOT / "ramp_rl" / "runner.py",
-            SOURCE_ROOT / "source_manifest.json",
-        )
-        forbidden = (
-            "four_market_" + "v1",
-            "ar" + "chive",
-            "V" + "4R",
-        )
-        for path in files:
-            text = path.read_text(encoding="utf-8")
-            for value in forbidden:
-                self.assertNotIn(value, text, f"{path} contains {value}")
-
-    def test_runner_bundle_uses_selected_v2_factory_and_protocol(self) -> None:
-        protocol = {
-            "_path": "env/protocols/four_market_v2_envelope_on.yaml",
-        }
-        bundle = source_bundle_hash(make_envelope_on_env, protocol)
-        self.assertEqual(len(bundle), 64)
-        self.assertNotEqual(bundle, "0" * 64)
-        self.assertEqual(
-            factory_identity_paths(make_envelope_on_env),
-            (
-                SOURCE_ROOT / "source_manifest.json",
-                FACTORY_ROOT / "envelope_on" / "factory_manifest.json",
-            ),
-        )
-
-    def test_single_month_bootstrap_is_marked_non_estimable(self) -> None:
-        result = _cluster_bootstrap_interval(
-            [1.0, 2.0],
-            ["2026-02", "2026-02"],
-            unit="month",
-            draws=100,
-        )
-        self.assertFalse(result["estimable"])
-        self.assertEqual(result["group_count"], 1)
-        self.assertNotIn("lower_95", result)
-        self.assertNotIn("upper_95", result)
-
-    def test_v2_import_does_not_eagerly_load_legacy_factory(self) -> None:
-        factory_module = "env.ramp_v6." + "factory"
-        command = (
-            "import sys; import energy_model_v3.four_market_v2; "
-            f"assert {factory_module!r} not in sys.modules"
-        )
-        subprocess.run([sys.executable, "-c", command], check=True, cwd=ROOT)
+    def test_all_window_preflight(self) -> None:
+        result = preflight()
+        self.assertEqual(result["train"], 114)
+        self.assertEqual(result["validation"], 28)
+        self.assertGreater(result["steps"], 0)
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ class SiteConfig:
 
 @dataclass(frozen=True)
 class FrozenRampStats:
-    """Train-only normalizers and native-ramp tail thresholds."""
+    """Train-only normalizers for canonical market panels."""
 
     fit_start_utc: str
     fit_end_utc: str
@@ -77,9 +77,8 @@ class FrozenRampStats:
     gross_level_std_mw: dict[str, float]
     net_level_mean_mw: dict[str, float]
     net_level_std_mw: dict[str, float]
-    native_abs_ramp_q90_fraction_s_per_hour: dict[str, dict[int, float]]
     fit_months: tuple[str, ...]
-    stats_id: str = "ramp-v6-train-only-q95-q90-v1"
+    stats_id: str = "ramp-v6-train-only-q95-v1"
 
     def validate(self, markets: set[str]) -> None:
         mappings = (
@@ -88,7 +87,6 @@ class FrozenRampStats:
             self.gross_level_std_mw,
             self.net_level_mean_mw,
             self.net_level_std_mw,
-            self.native_abs_ramp_q90_fraction_s_per_hour,
         )
         if any(set(mapping) != markets for mapping in mappings):
             raise ValueError("frozen statistics must cover exactly the panel markets")
@@ -101,9 +99,6 @@ class FrozenRampStats:
                 raise ValueError("gross level standard deviation must be positive")
             if self.net_level_std_mw[market] <= 0.0:
                 raise ValueError("net level standard deviation must be positive")
-            thresholds = self.native_abs_ramp_q90_fraction_s_per_hour[market]
-            if set(thresholds) != set(HORIZONS):
-                raise ValueError("tail thresholds must contain 1h and 3h")
 
 
 @dataclass(frozen=True)
@@ -113,17 +108,11 @@ class RampProtocol:
     protocol_id: str = "ramp-v6-pure-rl-frozen-v1"
     history_hours: int = 3
     terminal_tail_hours: int = 3
-    deadline_bucket_hours: tuple[int, ...] = (1, 3, 6, 12, 24)
+    deadline_bucket_hours: tuple[int, ...] = (1, 3)
     ramp_weights: dict[int, float] = field(
         default_factory=lambda: {1: 0.40, 3: 0.60}
     )
-    tail_weight: float = 0.15
     ramp_reward_scale: float = 1.0
-    cost_budget_fraction: float = 0.05
-    guaranteed_batch_capacity_fraction: float = 0.25
-    service_envelope_fraction_of_fleet: float = 0.75
-    batch_arrival_envelope_fraction_of_fleet: float = 0.10
-    admission_envelope_enabled: bool = True
     tolerance: float = 1e-9
 
     def validate(self) -> None:
@@ -135,34 +124,10 @@ class RampProtocol:
             sum(self.ramp_weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-12
         ):
             raise ValueError("ramp weights must sum to one")
-        if self.tail_weight < 0.0 or self.ramp_reward_scale <= 0.0:
-            raise ValueError("reward weights must be non-negative with positive scale")
-        if self.cost_budget_fraction < 0.0 or self.tolerance <= 0.0:
-            raise ValueError("cost budget must be non-negative and tolerance positive")
-        if not 0.0 <= self.guaranteed_batch_capacity_fraction <= 1.0:
-            raise ValueError("guaranteed batch capacity fraction must be in [0, 1]")
-        if not 0.0 <= self.service_envelope_fraction_of_fleet <= 1.0:
-            raise ValueError("service envelope fraction must be in [0, 1]")
-        if not 0.0 <= self.batch_arrival_envelope_fraction_of_fleet <= 1.0:
-            raise ValueError("batch arrival envelope fraction must be in [0, 1]")
-        if self.admission_envelope_enabled:
-            expected_batch_capacity = 1.0 - self.service_envelope_fraction_of_fleet
-            if not math.isclose(
-                self.guaranteed_batch_capacity_fraction,
-                expected_batch_capacity,
-                rel_tol=0.0,
-                abs_tol=self.tolerance,
-            ):
-                raise ValueError(
-                    "guaranteed batch capacity must equal one minus service envelope"
-                )
-            if (
-                self.batch_arrival_envelope_fraction_of_fleet
-                > self.guaranteed_batch_capacity_fraction + self.tolerance
-            ):
-                raise ValueError("batch arrival envelope exceeds guaranteed capacity")
-        if tuple(sorted(self.deadline_bucket_hours)) != self.deadline_bucket_hours:
-            raise ValueError("deadline buckets must be strictly increasing")
+        if self.ramp_reward_scale <= 0.0 or self.tolerance <= 0.0:
+            raise ValueError("reward scale and tolerance must be positive")
+        if self.deadline_bucket_hours != (1, 3):
+            raise ValueError("policy observations use only <=1h and <=3h urgency")
 
 
 @dataclass(frozen=True)

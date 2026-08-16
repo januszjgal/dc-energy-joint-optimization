@@ -1,13 +1,15 @@
-"""SB3 2.9 pure PPO/SAC runner with resumable, hashable evidence."""
+"""PPO training runner for the active four-market experiment."""
 
 from __future__ import annotations
 
-import hashlib
+import csv
 import importlib
-import inspect
 import json
 import math
+import os
 import random
+import shutil
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -15,13 +17,44 @@ import gymnasium as gym
 import numpy as np
 import stable_baselines3 as sb3
 import torch
-from stable_baselines3 import PPO, SAC
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
-from ramp_rl.evidence import FrozenLagrangian, sha256_file, sha256_json, verify_pure_rl_manifest
-from ramp_rl.schema import EXPECTED_SB3_VERSION, FORBIDDEN_TRAINING_INPUTS
+
+
+EXPECTED_SB3_VERSION = "2.9.0"
+LEARNING_CURVE_COLUMNS = (
+    "interaction_count",
+    "mean_raw_ramp_reward",
+    "mean_raw_incremental_ramp_impact",
+    "episode_count",
+    "mean_completed_episode_return",
+    "elapsed_seconds",
+)
+MILESTONE_TARGETS = (110_592, 500_000, 1_000_000, 1_500_000, 2_000_000)
+TRAINING_IDENTITY_FIELDS = (
+    "seed",
+    "requested_interactions",
+    "effective_interactions",
+    "n_envs",
+    "action_steps",
+    "ppo_config",
+    "safe_quantum",
+)
+
+
+def configure_single_thread_runtime() -> None:
+    """Avoid CPU oversubscription when several campaign workers are active."""
+    for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        os.environ[name] = "1"
+    torch.set_num_threads(1)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        # PyTorch permits configuring inter-op threads only before parallel work.
+        pass
 
 
 def load_factory(specification: str) -> RampEnvironmentFactory:
@@ -34,59 +67,309 @@ def load_factory(specification: str) -> RampEnvironmentFactory:
     return factory
 
 
-def _state_hash(state: dict[str, torch.Tensor], prefixes: tuple[str, ...] = ()) -> str:
-    digest = hashlib.sha256()
-    selected = 0
-    for key in sorted(state):
-        if prefixes and not key.startswith(prefixes):
-            continue
-        digest.update(key.encode("utf-8"))
-        digest.update(np.ascontiguousarray(state[key].detach().cpu().numpy()).tobytes())
-        selected += 1
-    if selected == 0:
-        raise ValueError("state hash selected no tensors")
-    return digest.hexdigest()
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    temporary.replace(path)
 
 
-def model_hashes(model: PPO | SAC) -> dict[str, str]:
-    if isinstance(model, PPO):
-        state = model.policy.state_dict()
-        return {
-            "policy": _state_hash(state, ("mlp_extractor.policy_net", "action_net", "log_std")),
-            "critic": _state_hash(state, ("mlp_extractor.value_net", "value_net")),
-        }
+def safe_boundary_quantum(*, action_steps: int, n_envs: int, n_steps: int) -> int:
+    """Return the first interaction count aligned to vector episodes and rollouts."""
+    if action_steps <= 0 or n_envs <= 0 or n_steps <= 0:
+        raise ValueError("action_steps, n_envs, and n_steps must be positive")
+    return math.lcm(n_envs * action_steps, n_envs * n_steps)
+
+
+def milestone_interactions(
+    requested: tuple[int, ...], *, safe_quantum: int
+) -> dict[int, int]:
+    """Map requested snapshots to their first crash-safe interaction boundary."""
+    if safe_quantum <= 0:
+        raise ValueError("safe_quantum must be positive")
     return {
-        "policy": _state_hash(model.actor.state_dict()),
-        "critic": _state_hash(model.critic.state_dict()),
+        target: math.ceil(target / safe_quantum) * safe_quantum
+        for target in requested
     }
 
 
-class EvidenceCallback(BaseCallback):
+def _valid_curve_rows(path: Path, interaction_limit: int) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if tuple(reader.fieldnames or ()) != LEARNING_CURVE_COLUMNS:
+            raise ValueError(f"unexpected learning curve schema: {path}")
+        rows: list[dict[str, str]] = []
+        previous = -1
+        for row in reader:
+            try:
+                interaction = int(row["interaction_count"])
+                if (
+                    interaction <= previous
+                    or interaction > interaction_limit
+                    or any(row.get(column) in (None, "") for column in LEARNING_CURVE_COLUMNS)
+                ):
+                    break
+                for column in LEARNING_CURVE_COLUMNS[1:]:
+                    float(row[column])
+            except (TypeError, ValueError):
+                break
+            rows.append({column: row[column] for column in LEARNING_CURVE_COLUMNS})
+            previous = interaction
+    return rows
+
+
+def prepare_learning_curve(path: Path, *, interaction_limit: int) -> None:
+    """Keep only durable curve rows before opening the curve for append."""
+    rows = _valid_curve_rows(path, interaction_limit)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=LEARNING_CURVE_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
+        handle.flush()
+        os.fsync(handle.fileno())
+    temporary.replace(path)
+
+
+class LearningCurveWriter:
+    """Append durable raw-environment metrics after every PPO rollout."""
+
+    def __init__(self, path: Path, *, interaction_limit: int = 0):
+        self.path = path
+        prepare_learning_curve(path, interaction_limit=interaction_limit)
+        self._file = path.open("a", newline="", encoding="utf-8")
+        self._writer = csv.DictWriter(self._file, fieldnames=LEARNING_CURVE_COLUMNS)
+
+    def write(self, row: dict[str, float | int]) -> None:
+        self._writer.writerow({key: row[key] for key in LEARNING_CURVE_COLUMNS})
+        self._file.flush()
+        os.fsync(self._file.fileno())
+
+    def close(self) -> None:
+        self._file.close()
+
+
+def _checkpoint_state(checkpoint_dir: Path) -> dict[str, Any] | None:
+    state_path = checkpoint_dir / "state.json"
+    if not (
+        state_path.exists()
+        and (checkpoint_dir / "model.zip").exists()
+        and (checkpoint_dir / "vecnormalize.pkl").exists()
+    ):
+        return None
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if int(state["interaction_count"]) <= 0:
+            return None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return state
+
+
+def select_latest_checkpoint(output_dir: Path) -> tuple[Path, dict[str, Any]] | None:
+    """Select the newest complete latest checkpoint, including interrupted swaps."""
+    candidates = (
+        output_dir / "latest",
+        output_dir / "latest.pending",
+        output_dir / "latest.previous",
+    )
+    complete = [
+        (path, state)
+        for path in candidates
+        if (state := _checkpoint_state(path)) is not None
+    ]
+    if not complete:
+        return None
+    return max(complete, key=lambda item: int(item[1]["interaction_count"]))
+
+
+def _save_checkpoint(
+    model: PPO, vec_env: VecNormalize, checkpoint_dir: Path, state: dict[str, Any]
+) -> None:
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    model_path = checkpoint_dir / "model.zip"
+    normalization_path = checkpoint_dir / "vecnormalize.pkl"
+    model.save(model_path)
+    vec_env.save(normalization_path)
+    for path in (model_path, normalization_path):
+        with path.open("rb+") as handle:
+            os.fsync(handle.fileno())
+    _write_json(checkpoint_dir / "state.json", state)
+
+
+def _remove_directory_with_retry(path: Path, attempts: int = 20) -> None:
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.25)
+
+
+def _replace_directory_with_retry(
+    source: Path, target: Path, attempts: int = 20
+) -> None:
+    for attempt in range(attempts):
+        try:
+            source.replace(target)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.25)
+
+
+def save_latest_checkpoint(
+    model: PPO, vec_env: VecNormalize, output_dir: Path, state: dict[str, Any]
+) -> None:
+    """Publish a complete checkpoint atomically enough to survive a process crash."""
+    latest = output_dir / "latest"
+    pending = output_dir / "latest.pending"
+    previous = output_dir / "latest.previous"
+    _remove_directory_with_retry(pending)
+    _save_checkpoint(model, vec_env, pending, state)
+    if latest.exists():
+        _remove_directory_with_retry(previous)
+        _replace_directory_with_retry(latest, previous)
+    _replace_directory_with_retry(pending, latest)
+    _remove_directory_with_retry(previous)
+
+
+class TrainingCallback(BaseCallback):
     def __init__(
         self,
         *,
-        n_envs: int,
-        epsilon_pct: float,
-        dual_config: dict[str, Any],
-        initial_multiplier: float,
+        curve_path: Path,
+        progress_path: Path,
+        target_timesteps: int,
+        output_dir: Path,
+        safe_quantum: int,
+        action_steps: int,
+        n_steps: int,
+        resumed_from_interactions: int,
     ) -> None:
         super().__init__()
+        self.curve_writer = LearningCurveWriter(
+            curve_path, interaction_limit=resumed_from_interactions
+        )
+        self.progress_path = progress_path
+        self.target_timesteps = target_timesteps
+        self.output_dir = output_dir
+        self.safe_quantum = safe_quantum
+        self.action_steps = action_steps
+        self.n_steps = n_steps
+        self.resumed_from_interactions = resumed_from_interactions
+        self.milestone_map = milestone_interactions(
+            MILESTONE_TARGETS, safe_quantum=safe_quantum
+        )
+        self.milestone_dir = output_dir / "milestones"
+        self.milestone_index_path = self.milestone_dir / "index.json"
         self.interactions = 0
         self.terminals = 0
-        self.emergency = 0
-        self.semantic_adjustment_sum = 0.0
-        self.non_agent_actions = 0
-        self.episode_records: dict[str, dict[str, Any]] = {}
-        self.episode_energy = np.zeros(n_envs, dtype=np.float64)
-        self.episode_status_quo_energy = np.zeros(n_envs, dtype=np.float64)
         self.last_step_all_terminal = False
-        self.epsilon_pct = float(epsilon_pct)
-        self.dual = FrozenLagrangian(
-            multiplier=float(initial_multiplier),
-            learning_rate=float(dual_config["learning_rate"]),
-            maximum=float(dual_config["maximum"]),
+        self._raw_rewards: list[float] = []
+        self._raw_impacts: list[float] = []
+        self._episode_returns: list[float] = []
+        self._per_env_returns: list[float] = []
+        self._saved_milestones: set[int] = self._existing_milestones()
+        self._safe_checkpoint_pending = False
+        self._started = 0.0
+
+    def _existing_milestones(self) -> set[int]:
+        try:
+            index = json.loads(self.milestone_index_path.read_text(encoding="utf-8"))
+            saved = index.get("milestones", {})
+            return {
+                int(target)
+                for target, details in saved.items()
+                if int(details["actual_interactions"]) == self.milestone_map[int(target)]
+            }
+        except (OSError, ValueError, KeyError, TypeError):
+            return set()
+
+    def _checkpoint_state(self, interaction_count: int) -> dict[str, Any]:
+        return {
+            "interaction_count": interaction_count,
+            "requested_interactions": self.target_timesteps,
+            "safe_quantum": self.safe_quantum,
+            "action_steps": self.action_steps,
+            "n_envs": self.training_env.num_envs,
+            "n_steps": self.n_steps,
+        }
+
+    def _save_milestones(self, interaction_count: int) -> None:
+        due = [
+            target
+            for target, actual in self.milestone_map.items()
+            if actual <= interaction_count and target not in self._saved_milestones
+        ]
+        if not due:
+            return
+        vec_env = self.model.get_env()
+        if not isinstance(vec_env, VecNormalize):
+            raise RuntimeError("PPO environment must be VecNormalize")
+        self.milestone_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            index = json.loads(self.milestone_index_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            index = {"milestones": {}}
+        for target in due:
+            actual = self.milestone_map[target]
+            snapshot = self.milestone_dir / f"requested-{target}-at-{actual}"
+            state = self._checkpoint_state(actual)
+            state.update(
+                {
+                    "requested_milestone_interactions": target,
+                    "actual_milestone_interactions": actual,
+                }
+            )
+            _save_checkpoint(self.model, vec_env, snapshot, state)
+            index["milestones"][str(target)] = {
+                "requested_interactions": target,
+                "actual_interactions": actual,
+                "path": str(snapshot),
+            }
+            self._saved_milestones.add(target)
+        _write_json(self.milestone_index_path, index)
+
+    def save_safe_boundary(self, interaction_count: int) -> None:
+        if interaction_count % self.safe_quantum:
+            raise RuntimeError("checkpoint must be written at a safe boundary")
+        vec_env = self.model.get_env()
+        if not isinstance(vec_env, VecNormalize):
+            raise RuntimeError("PPO environment must be VecNormalize")
+        save_latest_checkpoint(
+            self.model, vec_env, self.output_dir, self._checkpoint_state(interaction_count)
         )
-        self.dual_updates: list[dict[str, float | str]] = []
+        self._save_milestones(interaction_count)
+
+    def _on_training_start(self) -> None:
+        self._started = time.perf_counter()
+        self._per_env_returns = [0.0] * self.training_env.num_envs
+        _write_json(
+            self.progress_path,
+            {
+                "status": "running",
+                "interaction_count": int(self.num_timesteps),
+                "target_interactions": self.target_timesteps,
+                "resumed_from_interactions": self.resumed_from_interactions,
+                "elapsed_seconds": 0.0,
+            },
+        )
+
+    def _on_rollout_start(self) -> None:
+        if self._safe_checkpoint_pending:
+            self.save_safe_boundary(int(self.num_timesteps))
+            self._safe_checkpoint_pending = False
 
     def _on_step(self) -> bool:
         infos = list(self.locals.get("infos", []))
@@ -94,96 +377,60 @@ class EvidenceCallback(BaseCallback):
         self.last_step_all_terminal = bool(infos) and all(
             bool(info.get("actual_terminal", False)) for info in infos
         )
-        any_terminal = any(bool(info.get("actual_terminal", False)) for info in infos)
-        if any_terminal and not self.last_step_all_terminal:
+        if any(bool(info.get("actual_terminal", False)) for info in infos) and not self.last_step_all_terminal:
             raise RuntimeError("vector environments reached asynchronous terminal boundaries")
         for index, info in enumerate(infos):
-            self.terminals += int(bool(info.get("actual_terminal", False)))
-            self.emergency += int(bool(info.get("emergency_feasibility", False)))
-            self.semantic_adjustment_sum += float(info.get("semantic_adjustment_l2", 0.0))
-            self.non_agent_actions += int(info.get("action_provenance") != "agent_semantic")
-            context = info.get("ramp_episode_context", {})
-            window_id = str(context.get("window_id", info.get("window_id", "")))
-            self.episode_records[window_id] = {
-                "window_id": window_id,
-                "split": str(context.get("split", "")),
-                "source_hashes": dict(context.get("source_hashes", {})),
-                "forecast_model": str(context.get("forecast_model", "")),
-                "forecast_vintage": str(context.get("forecast_vintage", "")),
-                "future_realized_features_exposed": bool(
-                    context.get("future_realized_features_exposed", True)
-                ),
-            }
-            self.episode_energy[index] += float(info.get("energy_cost", 0.0))
-            self.episode_status_quo_energy[index] += float(
-                info.get("status_quo_energy_cost", 0.0)
-            )
-            if bool(info.get("actual_terminal", False)) and not bool(
-                info.get("ramp_terminal_tail_emitted_in_steps", False)
-            ):
-                self.episode_energy[index] += sum(
-                    float(value)
-                    for value in info.get("terminal_tail_energy_cost", ())
-                )
-                self.episode_status_quo_energy[index] += sum(
-                    float(value)
-                    for value in info.get(
-                        "terminal_tail_status_quo_energy_cost", ()
-                    )
-                )
-                self.emergency += sum(
-                    bool(value)
-                    for value in info.get(
-                        "terminal_tail_emergency_feasibility", ()
-                    )
-                )
-                self.semantic_adjustment_sum += sum(
-                    float(value)
-                    for value in info.get(
-                        "terminal_tail_semantic_adjustment_l2", ()
-                    )
-                )
-        if self.last_step_all_terminal:
-            energy_cost = float(self.episode_energy.mean())
-            status_quo_energy_cost = float(self.episode_status_quo_energy.mean())
-            multiplier = self.dual.update(
-                energy_cost,
-                status_quo_energy_cost,
-                self.epsilon_pct,
-                split="train",
-            )
-            self.training_env.env_method("set_lagrangian_multiplier", multiplier)
-            self.dual_updates.append(
-                {
-                    "split": "train",
-                    "energy_cost": energy_cost,
-                    "status_quo_energy_cost": status_quo_energy_cost,
-                    "multiplier": multiplier,
-                }
-            )
-            self.episode_energy.fill(0.0)
-            self.episode_status_quo_energy.fill(0.0)
+            raw_reward = float(info["ramp_reward"])
+            self._raw_rewards.append(raw_reward)
+            self._raw_impacts.append(float(info["incremental_ramp_impact"]))
+            self._per_env_returns[index] += raw_reward
+            if bool(info.get("actual_terminal", False)):
+                self._episode_returns.append(self._per_env_returns[index])
+                self._per_env_returns[index] = 0.0
+                self.terminals += 1
         return True
 
+    def _on_rollout_end(self) -> None:
+        elapsed = time.perf_counter() - self._started
+        interaction_count = int(self.num_timesteps)
+        row = {
+            "interaction_count": interaction_count,
+            "mean_raw_ramp_reward": float(np.mean(self._raw_rewards)),
+            "mean_raw_incremental_ramp_impact": float(np.mean(self._raw_impacts)),
+            "episode_count": len(self._episode_returns),
+            "mean_completed_episode_return": (
+                float(np.mean(self._episode_returns)) if self._episode_returns else float("nan")
+            ),
+            "elapsed_seconds": elapsed,
+        }
+        self.curve_writer.write(row)
+        _write_json(
+            self.progress_path,
+            {
+                "status": "running",
+                "interaction_count": interaction_count,
+                "target_interactions": self.target_timesteps,
+                "resumed_from_interactions": self.resumed_from_interactions,
+                "episode_count": self.terminals,
+                "elapsed_seconds": elapsed,
+            },
+        )
+        self._raw_rewards.clear()
+        self._raw_impacts.clear()
+        self._episode_returns.clear()
+        self._safe_checkpoint_pending = (
+            self.last_step_all_terminal
+            and interaction_count % self.safe_quantum == 0
+        )
 
-def _make_base_vec_env(
-    factory: RampEnvironmentFactory,
-    *,
-    seed: int,
-    n_envs: int,
-    epsilon_pct: float,
-    lagrangian_multiplier: float,
-) -> DummyVecEnv:
+    def close(self) -> None:
+        self.curve_writer.close()
+
+
+def _make_vec_env(factory: RampEnvironmentFactory, *, seed: int, n_envs: int) -> DummyVecEnv:
     env_fns: list[Callable[[], gym.Env]] = []
     for rank in range(n_envs):
-        request = EnvRequest(
-            split="train",
-            seed=seed + rank,
-            rank=rank,
-            training=True,
-            epsilon_pct=epsilon_pct,
-            lagrangian_multiplier=lagrangian_multiplier,
-        )
+        request = EnvRequest(split="train", seed=seed + rank, rank=rank, training=True)
 
         def make(request: EnvRequest = request) -> gym.Env:
             return RampEnvAdapter(factory(request), request)
@@ -192,468 +439,209 @@ def _make_base_vec_env(
     return DummyVecEnv(env_fns)
 
 
-def _normalization_summary(vec: VecNormalize) -> dict[str, Any]:
-    return {
-        "fit_split": "train",
-        "frozen_for": ["validation", "test"],
-        "observation_mean": np.asarray(vec.obs_rms.mean).tolist(),
-        "observation_variance": np.asarray(vec.obs_rms.var).tolist(),
-        "sample_count": float(vec.obs_rms.count),
-        "reward_normalization_training_only": True,
-    }
-
-
-def source_bundle_hash(
-    factory: RampEnvironmentFactory | dict[str, Any] | None = None,
-    protocol: dict[str, Any] | None = None,
-) -> str:
-    """Hash active RL/core code plus the selected factory and protocol."""
-    if isinstance(factory, dict):
-        if protocol is not None:
-            raise ValueError("protocol was supplied twice")
-        protocol = factory
-        factory = None
-    root = Path(__file__).resolve().parent.parent
-    paths = [
-        root / relative
-        for relative in (
-            "ramp_rl/contract.py",
-            "ramp_rl/evaluation.py",
-            "ramp_rl/evidence.py",
-            "ramp_rl/runner.py",
-            "ramp_rl/schema.py",
-            "env/ramp_v6/__init__.py",
-            "env/ramp_v6/environment.py",
-            "env/ramp_v6/models.py",
-            "env/ramp_v6/panel.py",
-            "env/ramp_v6/projection.py",
-            "env/ramp_v6/reward.py",
-        )
-    ]
-    if factory is not None:
-        source = inspect.getsourcefile(factory)
-        if source is None:
-            raise ValueError("environment factory must have an inspectable source file")
-        paths.append(Path(source).resolve())
-        module = inspect.getmodule(factory)
-        identity_provider = getattr(module, "factory_identity_paths", None)
-        if callable(identity_provider):
-            for path in identity_provider(factory):
-                resolved = Path(path)
-                paths.append(
-                    resolved.resolve()
-                    if resolved.is_absolute()
-                    else (root / resolved).resolve()
-                )
-    if protocol is not None:
-        protocol_path = protocol.get("_path")
-        if protocol_path:
-            paths.append(root / str(protocol_path))
-    digest = hashlib.sha256()
-    for path in sorted(set(paths), key=lambda value: str(value)):
-        if not path.is_file():
-            raise FileNotFoundError(f"source-bundle identity file is missing: {path}")
-        try:
-            display = str(path.relative_to(root))
-        except ValueError:
-            display = path.name
-        digest.update(display.encode("utf-8"))
-        digest.update(path.read_bytes())
-    if protocol is not None and not protocol.get("_path"):
-        digest.update(sha256_json(protocol).encode("utf-8"))
-    return digest.hexdigest()
-
-
-def _factory_identity(factory: RampEnvironmentFactory) -> dict[str, str]:
-    source = inspect.getsourcefile(factory)
-    if source is None:
-        raise ValueError("environment factory must have an inspectable source file")
-    path = Path(source).resolve()
-    root = Path(__file__).resolve().parent.parent
-    try:
-        display_path = str(path.relative_to(root))
-    except ValueError:
-        display_path = path.name
-    return {
-        "callable": f"{factory.__module__}:{factory.__qualname__}",
-        "source_path": display_path,
-        "source_sha256": sha256_file(path),
-    }
-
-
-def _repository_path(path: Path) -> str:
-    root = Path(__file__).resolve().parent.parent
-    resolved = path.resolve()
-    try:
-        return resolved.relative_to(root).as_posix()
-    except ValueError:
-        return resolved.name
-
-
-def _assert_artifact_hash(path: Path, expected: dict[str, Any], label: str) -> None:
-    if not path.exists():
-        raise RuntimeError(f"resume requires {label}: {path}")
-    actual = sha256_file(path)
-    if actual != expected.get("sha256"):
-        raise RuntimeError(f"resume {label} hash mismatch")
-
-
-def _make_model(
-    algorithm: str,
-    env: VecNormalize,
+def _training_identity(
+    *,
     seed: int,
-    config: dict[str, Any],
-) -> PPO | SAC:
-    common = {
-        "policy": "MlpPolicy",
-        "env": env,
-        "gamma": 1.0,
-        "seed": seed,
-        "device": "cpu",
-        "verbose": 0,
-        "policy_kwargs": {"net_arch": list(config.get("net_arch", [64, 64]))},
+    target_timesteps: int,
+    effective_interactions: int,
+    n_envs: int,
+    action_steps: int,
+    ppo_config: dict[str, Any],
+    safe_quantum: int,
+) -> dict[str, Any]:
+    """Return the plain fields that identify a completed training run."""
+    return {
+        "seed": int(seed),
+        "requested_interactions": int(target_timesteps),
+        "effective_interactions": int(effective_interactions),
+        "n_envs": int(n_envs),
+        "action_steps": int(action_steps),
+        "ppo_config": ppo_config,
+        "safe_quantum": int(safe_quantum),
     }
-    if algorithm == "ppo":
-        return PPO(
-            **common,
-            n_steps=int(config["n_steps"]),
-            batch_size=int(config["batch_size"]),
-            n_epochs=int(config["n_epochs"]),
-            gae_lambda=float(config["gae_lambda"]),
-            learning_rate=float(config["learning_rate"]),
-        )
-    if algorithm == "sac":
-        return SAC(
-            **common,
-            n_steps=int(config["n_steps"]),
-            buffer_size=int(config["buffer_size"]),
-            learning_starts=int(config["learning_starts"]),
-            batch_size=int(config["batch_size"]),
-            train_freq=int(config["train_freq"]),
-            gradient_steps=int(config["gradient_steps"]),
-            learning_rate=float(config["learning_rate"]),
-        )
-    raise ValueError(f"unsupported pure-RL algorithm: {algorithm}")
+
+
+def training_identity(summary: dict[str, Any]) -> dict[str, Any]:
+    """Extract the plain fields that identify a completed training run."""
+    return {field: summary[field] for field in TRAINING_IDENTITY_FIELDS}
+
+
+def validate_completed_training_summary(
+    summary_path: Path, expected_identity: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise RuntimeError(f"invalid completed training summary: {summary_path}") from error
+    if not isinstance(summary, dict):
+        raise RuntimeError(f"invalid completed training summary: {summary_path}")
+    for field, expected in expected_identity.items():
+        actual = summary.get(field)
+        if isinstance(expected, int) and (isinstance(actual, bool) or not isinstance(actual, int)):
+            raise RuntimeError(
+                f"completed training summary has invalid {field}: {summary_path}"
+            )
+        if actual != expected:
+            raise RuntimeError(
+                f"completed training summary does not match current {field}: {summary_path}"
+            )
+    return summary
 
 
 def run_training(
     *,
     factory: RampEnvironmentFactory,
     protocol: dict[str, Any],
-    algorithm: str,
     seed: int,
     target_timesteps: int,
     output_dir: Path,
+    curve_path: Path | None = None,
+    progress_path: Path | None = None,
     n_envs: int | None = None,
-    resume: bool = True,
     fixture_profile: bool = False,
-    epsilon_pct: float | None = None,
 ) -> dict[str, Any]:
+    """Train one PPO policy and persist raw learning metrics at rollout boundaries."""
+    configure_single_thread_runtime()
     if sb3.__version__ != EXPECTED_SB3_VERSION:
         raise RuntimeError(f"expected SB3 {EXPECTED_SB3_VERSION}, found {sb3.__version__}")
-    if algorithm not in {"ppo", "sac"}:
-        raise ValueError("algorithm must be ppo or sac")
     if target_timesteps <= 0:
         raise ValueError("target timesteps must be positive")
-    protocol_n_envs = int(protocol["training"]["vectorized_environments"])
-    if n_envs is None:
-        n_envs = 2 if fixture_profile else protocol_n_envs
-    if n_envs <= 0:
-        raise ValueError("n_envs must be positive")
-    if not fixture_profile and n_envs != protocol_n_envs:
-        raise ValueError(
-            f"integrated jobs require protocol vectorized_environments={protocol_n_envs}"
-        )
-    allowed_epsilons = {
-        float(value) for value in protocol["multiobjective"]["epsilon_sensitivity_pct"]
-    }
-    if epsilon_pct is None:
-        epsilon_pct = float(protocol["multiobjective"]["primary_energy_budget_pct"])
-    if float(epsilon_pct) not in allowed_epsilons:
-        raise ValueError(f"epsilon_pct must be one of {sorted(allowed_epsilons)}")
-
+    configured_envs = int(protocol["training"]["vectorized_environments"])
+    n_envs = (2 if fixture_profile else configured_envs) if n_envs is None else n_envs
+    if n_envs <= 0 or (not fixture_profile and n_envs != configured_envs):
+        raise ValueError("n_envs must match the protocol")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    config = dict(protocol["algorithms"][algorithm])
+    config = dict(protocol["training"]["ppo"])
     if fixture_profile:
-        config.update(
-            {
-                "net_arch": [32, 32],
-                "learning_rate": 5e-4,
-                "batch_size": 16,
-                "n_steps": 16 if algorithm == "ppo" else 36,
-                "n_epochs": 2,
-                "buffer_size": 2048,
-                "learning_starts": 8,
-                "train_freq": 1,
-                "gradient_steps": 1,
-            }
-        )
+        config.update({"net_arch": [32, 32], "learning_rate": 5e-4, "batch_size": 16, "n_steps": 16, "n_epochs": 2})
     output_dir.mkdir(parents=True, exist_ok=True)
     model_path = output_dir / "model.zip"
     normalization_path = output_dir / "vecnormalize.pkl"
-    replay_path = output_dir / "replay_buffer.pkl"
-    manifest_path = output_dir / "training_manifest.json"
-    required_checkpoint_paths = [model_path, normalization_path, manifest_path]
-    if algorithm == "sac":
-        required_checkpoint_paths.append(replay_path)
-    if resume and any(path.exists() for path in required_checkpoint_paths) and not all(
-        path.exists() for path in required_checkpoint_paths
-    ):
-        raise RuntimeError("refusing to resume a partial checkpoint")
-    resumed = bool(
-        resume and all(path.exists() for path in required_checkpoint_paths)
-    )
-    prior_manifest: dict[str, Any] | None = (
-        json.loads(manifest_path.read_text(encoding="utf-8")) if resumed else None
-    )
-    dual_config = dict(protocol["multiobjective"]["lagrangian"])
-    lagrangian = (
-        float(prior_manifest["multiobjective"]["final_lagrangian_multiplier"])
-        if prior_manifest
-        else float(dual_config["initial_multiplier"])
-    )
-    base_vec = _make_base_vec_env(
-        factory,
-        seed=seed,
-        n_envs=n_envs,
-        epsilon_pct=float(epsilon_pct),
-        lagrangian_multiplier=lagrangian,
-    )
-    decision_steps = int(base_vec.envs[0].contract["decision_steps"])
-    if any(int(env.contract["decision_steps"]) != decision_steps for env in base_vec.envs):
-        base_vec.close()
-        raise RuntimeError("all vector environments must use the same decision_steps")
-    factory_identity = _factory_identity(factory)
-    environment_contract = dict(base_vec.envs[0].contract)
-    integrated_source_sha256 = source_bundle_hash(factory, protocol)
-    job_identity = {
-        "protocol_sha256": protocol["_sha256"],
-        "algorithm": algorithm,
-        "seed": int(seed),
-        "n_envs": int(n_envs),
-        "epsilon_pct": float(epsilon_pct),
-        "config_sha256": sha256_json(config),
-        "factory": factory_identity,
-        "source_bundle_sha256": integrated_source_sha256,
-        "decision_steps": decision_steps,
-        "semantic_action_id": environment_contract["semantic_action_id"],
-        "action_shape": environment_contract["action_shape"],
-        "action_low": environment_contract["action_low"],
-        "action_high": environment_contract["action_high"],
-    }
-    if resumed:
-        if prior_manifest.get("job_identity") != job_identity:
+    summary_path = output_dir / "training_summary.json"
+    curve_path = curve_path or output_dir / "learning_curve.csv"
+    progress_path = progress_path or output_dir / "progress.json"
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    base_vec = _make_vec_env(factory, seed=seed, n_envs=n_envs)
+    callback: TrainingCallback | None = None
+    vec_env: VecNormalize | None = None
+    try:
+        decision_steps = int(base_vec.envs[0].contract["decision_steps"])
+        if any(int(env.contract["decision_steps"]) != decision_steps for env in base_vec.envs):
+            raise RuntimeError("all vector environments must have equal decision steps")
+        rollout_quantum = n_envs * int(config["n_steps"])
+        episode_quantum = n_envs * decision_steps
+        safe_quantum = safe_boundary_quantum(
+            action_steps=decision_steps, n_envs=n_envs, n_steps=int(config["n_steps"])
+        )
+        if safe_quantum != math.lcm(rollout_quantum, episode_quantum):
+            raise RuntimeError("safe checkpoint geometry is inconsistent")
+        effective_interactions = math.ceil(target_timesteps / safe_quantum) * safe_quantum
+        identity = _training_identity(
+            seed=seed,
+            target_timesteps=target_timesteps,
+            effective_interactions=effective_interactions,
+            n_envs=n_envs,
+            action_steps=decision_steps,
+            ppo_config=config,
+            safe_quantum=safe_quantum,
+        )
+        completed_paths = (model_path, normalization_path, summary_path)
+        if all(path.exists() for path in completed_paths):
+            return validate_completed_training_summary(summary_path, identity)
+        if summary_path.exists():
+            raise RuntimeError(
+                "completed training summary is missing required artifacts: "
+                f"{summary_path}"
+            )
+        selected_checkpoint = select_latest_checkpoint(output_dir)
+        resumed_from_interactions = 0
+        if selected_checkpoint is None:
+            # A crash before the first safe checkpoint leaves no resumable model state.
+            # The curve is rebuilt from zero below, so the seed remains retryable.
+            vec_env = VecNormalize(base_vec, norm_obs=True, norm_reward=True, gamma=1.0)
+            model = PPO(
+                "MlpPolicy", vec_env, gamma=1.0, seed=seed, device="cpu", verbose=0,
+                policy_kwargs={"net_arch": list(config["net_arch"])},
+                n_steps=int(config["n_steps"]), batch_size=int(config["batch_size"]),
+                n_epochs=int(config["n_epochs"]), gae_lambda=float(config["gae_lambda"]),
+                learning_rate=float(config["learning_rate"]),
+            )
+        else:
+            checkpoint_dir, state = selected_checkpoint
+            resumed_from_interactions = int(state["interaction_count"])
+            expected_geometry = {
+                "safe_quantum": safe_quantum,
+                "action_steps": decision_steps,
+                "n_envs": n_envs,
+                "n_steps": int(config["n_steps"]),
+            }
+            if any(int(state.get(key, -1)) != value for key, value in expected_geometry.items()):
+                raise RuntimeError(f"latest checkpoint geometry does not match current training: {checkpoint_dir}")
+            if resumed_from_interactions > effective_interactions:
+                raise RuntimeError("latest checkpoint exceeds requested training horizon")
+            vec_env = VecNormalize.load(checkpoint_dir / "vecnormalize.pkl", base_vec)
+            model = PPO.load(checkpoint_dir / "model.zip", env=vec_env, device="cpu")
+            if int(model.num_timesteps) != resumed_from_interactions:
+                raise RuntimeError("latest checkpoint model and state interaction counts differ")
+            # A saved PPO observation belongs to the retired vector environments.
+            # Restarting at an all-terminal boundary permits a fresh window reset.
+            model._last_obs = None
+        callback = TrainingCallback(
+            curve_path=curve_path,
+            progress_path=progress_path,
+            target_timesteps=target_timesteps,
+            output_dir=output_dir,
+            safe_quantum=safe_quantum,
+            action_steps=decision_steps,
+            n_steps=int(config["n_steps"]),
+            resumed_from_interactions=resumed_from_interactions,
+        )
+        remaining_interactions = effective_interactions - resumed_from_interactions
+        if remaining_interactions:
+            model.learn(
+                total_timesteps=remaining_interactions,
+                callback=callback,
+                reset_num_timesteps=False,
+                progress_bar=False,
+            )
+            if not callback.last_step_all_terminal:
+                raise RuntimeError("refusing to save incomplete trajectories")
+            callback.save_safe_boundary(int(model.num_timesteps))
+        model.save(model_path)
+        vec_env.save(normalization_path)
+        summary = {
+            **_training_identity(
+                seed=seed,
+                target_timesteps=target_timesteps,
+                effective_interactions=int(model.num_timesteps),
+                n_envs=n_envs,
+                action_steps=decision_steps,
+                ppo_config=config,
+                safe_quantum=safe_quantum,
+            ),
+            "resumed_from_interactions": resumed_from_interactions,
+            "safe_boundary_interactions": safe_quantum,
+            "update_count": int(model._n_updates),
+            "learning_curve_path": str(curve_path),
+        }
+        _write_json(summary_path, summary)
+        _write_json(
+            progress_path,
+            {
+                "status": "training_complete",
+                "interaction_count": int(model.num_timesteps),
+                "target_interactions": target_timesteps,
+                "resumed_from_interactions": resumed_from_interactions,
+                "episode_count": callback.terminals,
+            },
+        )
+        return summary
+    finally:
+        if callback is not None:
+            callback.close()
+        if vec_env is not None:
+            vec_env.close()
+        else:
             base_vec.close()
-            raise RuntimeError("resume job identity does not match the existing checkpoint")
-        prior_artifacts = prior_manifest["artifacts"]
-        _assert_artifact_hash(model_path, prior_artifacts["model"], "model")
-        _assert_artifact_hash(
-            normalization_path,
-            prior_artifacts["normalization"],
-            "normalization",
-        )
-        if algorithm == "sac":
-            if prior_artifacts.get("replay") is None:
-                base_vec.close()
-                raise RuntimeError("SAC resume manifest is missing replay provenance")
-            _assert_artifact_hash(replay_path, prior_artifacts["replay"], "replay buffer")
-        vec_env = VecNormalize.load(normalization_path, base_vec)
-        vec_env.training = True
-        model_class = PPO if algorithm == "ppo" else SAC
-        model = model_class.load(model_path, env=vec_env, device="cpu")
-        if algorithm == "sac":
-            model.load_replay_buffer(replay_path)
-    else:
-        vec_env = VecNormalize(base_vec, norm_obs=True, norm_reward=True, gamma=1.0)
-        model = _make_model(algorithm, vec_env, seed, config)
-    initial_hashes = model_hashes(model)
-    if resumed and prior_manifest:
-        if initial_hashes["policy"] != prior_manifest["final_policy_sha256"]:
-            vec_env.close()
-            raise RuntimeError("loaded policy does not match prior final policy hash")
-        if initial_hashes["critic"] != prior_manifest["final_critic_sha256"]:
-            vec_env.close()
-            raise RuntimeError("loaded critic does not match prior final critic hash")
-    start_timesteps = int(model.num_timesteps)
-    episode_quantum = int(n_envs) * decision_steps
-    rollout_quantum = (
-        int(n_envs) * int(config["n_steps"]) if algorithm == "ppo" else episode_quantum
-    )
-    boundary_quantum = math.lcm(episode_quantum, rollout_quantum)
-    if start_timesteps % boundary_quantum:
-        vec_env.close()
-        raise RuntimeError("checkpoint is not at a complete vector-episode boundary")
-    effective_target = int(
-        math.ceil(int(target_timesteps) / boundary_quantum) * boundary_quantum
-    )
-    remaining = max(effective_target - start_timesteps, 0)
-    callback = EvidenceCallback(
-        n_envs=int(n_envs),
-        epsilon_pct=float(epsilon_pct),
-        dual_config=dual_config,
-        initial_multiplier=lagrangian,
-    )
-    if remaining:
-        model.learn(
-            total_timesteps=remaining,
-            callback=callback,
-            reset_num_timesteps=not resumed,
-            progress_bar=False,
-        )
-    if (
-        remaining
-        and not callback.last_step_all_terminal
-    ):
-        vec_env.close()
-        raise RuntimeError("refusing to save a checkpoint with incomplete trajectories")
-    final_hashes = model_hashes(model)
-    model.save(model_path)
-    vec_env.save(normalization_path)
-    if algorithm == "sac":
-        model.save_replay_buffer(replay_path)
-    interaction_count = int(model.num_timesteps)
-    learning_starts = int(config.get("learning_starts", 0))
-    warmup = min(interaction_count, learning_starts) if algorithm == "sac" else 0
-    policy_rows = interaction_count - warmup
-    replay_provenance = {
-        "sources": (
-            ["safe_random_feasible_warmup", "randomly_initialized_policy"]
-            if algorithm == "sac" and warmup
-            else ["randomly_initialized_policy"]
-        ),
-        "safe_random_feasible_warmup_rows": warmup,
-        "randomly_initialized_policy_rows": policy_rows,
-        "external_rows": 0,
-        "teacher_rows": 0,
-        "optimizer_rows": 0,
-        "demonstration_rows": 0,
-    }
-    pure_assertions = {"random_initialization_only": True}
-    pure_assertions.update({key: False for key in FORBIDDEN_TRAINING_INPUTS})
-    manifest = {
-        "schema_version": "ramp-pure-rl-evidence-v1",
-        "protocol_id": protocol["protocol"]["id"],
-        "protocol_path": protocol["_path"],
-        "protocol_sha256": protocol["_sha256"],
-        "source_bundle_sha256": integrated_source_sha256,
-        "job_identity": job_identity,
-        "algorithm": algorithm,
-        "seed": seed,
-        "stable_baselines3_version": sb3.__version__,
-        "semantic_feasible_action": True,
-        "environment_contract": environment_contract,
-        "raw_redundant_projected_logits": False,
-        "gamma": 1.0,
-        "credit_assignment": {
-            "ppo_gae_lambda": float(config["gae_lambda"]) if algorithm == "ppo" else None,
-            "sac_n_steps": int(config["n_steps"]) if algorithm == "sac" else None,
-            "actual_terminals": True,
-            "bootstrap_across_terminal_or_tail": False,
-        },
-        "initial_policy_sha256": (
-            prior_manifest["initial_policy_sha256"] if prior_manifest else initial_hashes["policy"]
-        ),
-        "initial_critic_sha256": (
-            prior_manifest["initial_critic_sha256"] if prior_manifest else initial_hashes["critic"]
-        ),
-        "final_policy_sha256": final_hashes["policy"],
-        "final_critic_sha256": final_hashes["critic"],
-        "interaction_count": interaction_count,
-        "requested_target_timesteps": int(target_timesteps),
-        "effective_boundary_target_timesteps": effective_target,
-        "checkpoint_boundary_quantum": boundary_quantum,
-        "interaction_count_this_invocation": callback.interactions,
-        "update_count": int(model._n_updates),
-        "actual_terminal_count_this_invocation": callback.terminals,
-        "replay_provenance": replay_provenance,
-        "pure_rl_assertions": pure_assertions,
-        "data_split": protocol["data"]["split"],
-        "training_data_provenance": {
-            "episodes": (
-                prior_manifest.get("training_data_provenance", {}).get("episodes", [])
-                if prior_manifest
-                else []
-            )
-            + list(callback.episode_records.values()),
-            "split": "train",
-            "validation_or_test_rows": 0,
-            "environment_factory": factory_identity,
-        },
-        "normalization": _normalization_summary(vec_env),
-        "forecast_identity": {
-            "protocol": protocol["data"]["forecast"],
-            "observed_training_episodes": sorted(
-                {
-                    (
-                        row["forecast_model"],
-                        row["forecast_vintage"],
-                    )
-                    for row in callback.episode_records.values()
-                }
-            ),
-        },
-        "multiobjective": {
-            "training_epsilon_pct": float(epsilon_pct),
-            "primary_energy_budget_pct": float(
-                protocol["multiobjective"]["primary_energy_budget_pct"]
-            ),
-            "epsilon_sensitivity_pct": protocol["multiobjective"]["epsilon_sensitivity_pct"],
-            "lagrangian_update": protocol["multiobjective"]["lagrangian"],
-            "initial_lagrangian_multiplier_this_invocation": lagrangian,
-            "final_lagrangian_multiplier": callback.dual.multiplier,
-            "lagrangian_updates": (
-                prior_manifest.get("multiobjective", {}).get("lagrangian_updates", [])
-                if prior_manifest
-                else []
-            )
-            + callback.dual_updates,
-            "selection_data": "validation",
-            "test_used_for_selection": False,
-        },
-        "safety_telemetry": {
-            "emergency_count_this_invocation": callback.emergency,
-            "semantic_adjustment_l2_sum_this_invocation": callback.semantic_adjustment_sum,
-            "non_agent_action_count": callback.non_agent_actions,
-        },
-        "resume": {
-            "resumed": resumed,
-            "starting_interaction_count": start_timesteps,
-            "prior_final_policy_sha256": prior_manifest.get("final_policy_sha256") if prior_manifest else None,
-            "loaded_policy_sha256": initial_hashes["policy"] if resumed else None,
-            "loaded_critic_sha256": initial_hashes["critic"] if resumed else None,
-            "isolated_job_directory": _repository_path(output_dir),
-        },
-        "artifacts": {
-            "model": {
-                "path": _repository_path(model_path),
-                "sha256": sha256_file(model_path),
-            },
-            "normalization": {
-                "path": _repository_path(normalization_path),
-                "sha256": sha256_file(normalization_path),
-            },
-            "replay": (
-                {
-                    "path": _repository_path(replay_path),
-                    "sha256": sha256_file(replay_path),
-                }
-                if replay_path.exists()
-                else None
-            ),
-        },
-    }
-    errors = verify_pure_rl_manifest(manifest)
-    if callback.non_agent_actions:
-        errors.append("environment reported non-agent actions during training")
-    if not manifest["training_data_provenance"]["episodes"]:
-        errors.append("no per-window training data provenance was recorded")
-    if interaction_count % int(boundary_quantum) != 0:
-        errors.append("checkpoint is not on a terminal trajectory boundary")
-    manifest["pure_rl_verification"] = {"passed": not errors, "errors": errors}
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    vec_env.close()
-    if errors:
-        raise RuntimeError("pure-RL evidence verification failed: " + "; ".join(errors))
-    return manifest

@@ -28,31 +28,34 @@
 \addcontentsline{toc}{section}{TL;DR}
 
 \begin{enumerate}
-  \item Google ClusterData2019 supplies measured CPU workload for eight Borg
-        cells. Cells \(a\)--\(d\) form the active workload set; cells
-        \(e\)--\(h\) remain a disjoint holdout.
-  \item Google PowerData2019 supplies one affine CPU-to-power relationship per
-        cell. EIA and operator feeds supply four consistent physical-grid cases
-        and their day-ahead prices.
-  \item The experiment maps cells \(a\)--\(d\) to CAISO, MISO, SPP, and
-        ISO-NE, converts five-minute workload to repeated hourly arrivals,
-        assigns experimental deadlines, and gives each normalized-capacity
-        proxy site a 500 MW rating.
-  \item The single measured May 2019 workload month is repeated across the
-        energy calendar. Policy learning uses 114 October--January days so the
-        same workload encounters varied net-load, renewable, price, and
-        forecast conditions; 28 February days are held out for validation.
+  \item ClusterData2019 supplies measured five-minute CPU demand for eight Borg
+        cells. The active runtime retains only \codepath{data/cells/cell_X_tiers.csv}:
+        cells \(a\)--\(d\) are the four workload cases and cells \(e\)--\(h\) are a
+        disjoint holdout.
+  \item PowerData2019 supplies one fitted affine CPU-to-power relationship per
+        cell. EIA and operator feeds provide four physical-grid cases and their
+        day-ahead prices; Q95 gross-demand scaling permits equal-market ramp
+        comparisons.
+  \item The experiment maps cells \(a\)--\(d\) to CAISO, MISO, SPP, and ISO-NE,
+        converts the measured five-minute curves to repeated hourly arrivals,
+        uses raw workload and provisional deadlines \([2,1,2,3]\), and assigns
+        each normalized-capacity proxy site a 500 MW rating.
+  \item \codepath{data/four_market_v2/calendar.json} defines 114 October--January
+        training windows and the exact 28 February validation windows. A single
+        factory references source panels and generates daily fixtures with three
+        warm hours, 24 active hours, and a three-hour tail; it has no test split.
   \item The scheduling problem chooses service destinations, batch execution,
-        and batch destinations while preserving work, capacity, deadlines, and
-        causal information.
-  \item The attempted Proximal Policy Optimization (PPO) solution uses nine
-        preferences and is rewarded when fleet power reduces the grid's native
-        1 h and 3 h squared net-load ramps, subject to a day-ahead cost
-        guardrail.
-  \item A paired three-seed, 100k-interaction validation compared the original
-        admission envelope with the raw measured service/batch split. Both were
-        feasible and improved mean grid-ramp impact, but removing the envelope
-        did not improve PPO consistently.
+        and batch destinations subject to immediate service, EDF, conservation,
+        hard capacity, terminal completion, and causal-information constraints.
+  \item PPO receives nine action preferences from exactly 100 observations. Its
+        pure reward is the negative equal-market weighted 1 h/3 h incremental
+        squared net-load-ramp impact. Day-ahead cost is reported only post hoc
+        against status quo.
+  \item In the completed ten-seed validation, every PPO policy beat status quo
+        on the equal-market macro metric. The mean paired improvement was
+        \(-6.6161\times10^{-5}\) (exact Wilcoxon \(p=0.001953\)); however,
+        MISO worsened in all ten seeds and remains the principal market-specific
+        limitation.
 \end{enumerate}
 
 \section{Google ClusterData2019 Workload Trace}
@@ -82,11 +85,12 @@ a property of Google's data.
 
 For a cell \(c\), the upstream dataset is
 \codepath{google.com:google-cluster-data.clusterdata_2019_c}, where the final
-character is replaced by the cell letter. Four BigQuery tables appear in the
-repository's extraction workflow:
+character is replaced by the cell letter. The active extraction's three
+BigQuery inputs are listed below. They document how the retained tier curves
+were formed; none is a runtime dependency.
 
 \begin{longtable}{@{}L{0.20\textwidth}L{0.32\textwidth}L{0.40\textwidth}@{}}
-  \caption{ClusterData2019 tables queried by the repository.}
+  \caption{ClusterData2019 tables used to produce the retained tier curves.}
   \label{tab:clusterdata-upstream-fields}\\
   \toprule
   BigQuery table & Fields used & Role \\
@@ -99,25 +103,19 @@ repository's extraction workflow:
   \codepath{machine_events}
     & \codepath{machine_id}, \codepath{capacity.cpus},
       \codepath{capacity.memory}
-    & Defines the CPU-capacity denominator for normalized utilization and
-      produces the machine inventory. \\
+    & Defines the CPU-capacity denominator for normalized utilization. The
+      denominator is an extraction input, not a committed runtime artifact. \\
   \codepath{instance_usage}
     & \codepath{start_time}, \codepath{end_time},
       \codepath{average_usage.cpus}, \codepath{collection_id},
       \codepath{alloc_collection_id}
-    & Supplies measured five-minute CPU use. This is the direct source of the
-      aggregate, service, and batch demand curves. \\
+    & Supplies measured five-minute CPU use and the direct input to the
+      aggregate, service/residual, and batch curves. \\
   \codepath{collection_events}
     & \codepath{collection_id}, \codepath{type}, \codepath{time},
       \codepath{priority}
-    & Supplies collection priority for the service/batch split and submit and
-      terminal events for completed no-SLO duration statistics. \\
-  \codepath{instance_events}
-    & \codepath{collection_id}, \codepath{instance_index},
-      \codepath{resource_request.cpus},
-      \codepath{resource_request.memory}
-    & Supplies task counts and resource-request metadata in the comprehensive
-      job extract. \\
+    & Supplies priority matching for the service/residual versus no-SLO batch
+      classification. \\
   \bottomrule
 \end{longtable}
 
@@ -155,9 +153,11 @@ duration. The tradeoff is that short-lived work is underrepresented. A more
 complete future extraction could retain partial records by weighting each
 record by its actual overlap with the five-minute bucket.
 
-The result is one normalized aggregate CPU time series per cell in
-\codepath{data/cells/cell_X.csv}. Each row contains a five-minute
-\codepath{timestep} and \codepath{cpu_demand_norm}.
+The retained output is the tier curve
+\codepath{data/cells/cell_X_tiers.csv}. It preserves the five-minute
+\codepath{timestep}, \codepath{cpu_demand_norm}, \codepath{batch_share},
+\codepath{service_demand_norm}, and \codepath{batch_demand_norm}; no separate
+aggregate curve is an active artifact.
 
 \subsection{Service and deferrable-batch decomposition}
 \label{subsec:clusterdata-tier-split}
@@ -199,42 +199,42 @@ extraction logic is applied to cells \(e\)--\(h\) by
 \subsection{Measured cell characteristics}
 \label{subsec:clusterdata-cell-characteristics}
 
-Table~\ref{tab:clusterdata-cell-summary} summarizes measurements retained from
-the trace. Batch share is the fraction of measured CPU usage assigned to the
-no-SLO tiers. Mean duration uses collections that ended normally with a FINISH
-event; it is a measured duration, not a scheduling deadline.
+Table~\ref{tab:clusterdata-cell-summary} is calculated directly from the
+retained tier CSVs. Mean and peak CPU use \codepath{cpu_demand_norm}; batch
+share is the mean \codepath{batch_share}, i.e., the fraction of measured CPU
+classified to the no-SLO tiers. These are the only cell-summary columns that
+the active files themselves verify.
 
 \begin{table}[htbp]
   \centering
   \small
-  \caption{Measured ClusterData2019 cell characteristics retained by the
-  repository.}
+  \caption{Characteristics calculated from retained ClusterData2019 tier curves.}
   \label{tab:clusterdata-cell-summary}
-  \begin{tabular}{@{}cL{0.16\textwidth}rrrrr@{}}
+  \begin{tabular}{@{}cL{0.16\textwidth}rrr@{}}
     \toprule
-    Cell & Study role & Machines & Mean CPU & Peak CPU & Batch share
-         & Mean duration (s) \\
+    Cell & Study role & Mean CPU & Peak CPU & Batch share \\
     \midrule
-    \(a\) & active  & 10,001 & 0.561 & 0.693 & 16.618\% & 2,551.8 \\
-    \(b\) & active  & 10,047 & 0.537 & 0.671 & 15.728\% & 1,154.9 \\
-    \(c\) & active  & 13,245 & 0.547 & 0.699 & 22.328\% & 2,082.1 \\
-    \(d\) & active  & 12,576 & 0.534 & 0.660 & 26.374\% & 3,865.3 \\
-    \(e\) & holdout & 14,122 & 0.549 & 0.725 & 23.489\% & 5,407.2 \\
-    \(f\) & holdout & 12,201 & 0.552 & 0.728 &  8.366\% & 4,958.8 \\
-    \(g\) & holdout & 12,796 & 0.631 & 0.750 & 37.736\% & 5,246.4 \\
-    \(h\) & holdout & 11,592 & 0.582 & 0.772 & 29.125\% & 8,093.7 \\
+    \(a\) & active  & 0.5608 & 0.6931 & 17.15\% \\
+    \(b\) & active  & 0.5374 & 0.6712 & 15.70\% \\
+    \(c\) & active  & 0.5470 & 0.6989 & 21.97\% \\
+    \(d\) & active  & 0.5342 & 0.6599 & 26.11\% \\
+    \(e\) & holdout & 0.5489 & 0.7248 & 23.40\% \\
+    \(f\) & holdout & 0.5519 & 0.7279 &  8.26\% \\
+    \(g\) & holdout & 0.6315 & 0.7497 & 37.93\% \\
+    \(h\) & holdout & 0.5824 & 0.7720 & 28.48\% \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The machine files contain 96,580 records across all eight cells. They are
-provenance metadata; machine count is not itself a runtime workload multiplier.
+The table deliberately reports neither machine counts nor completed-duration
+statistics. Those quantities are not in the retained tier CSVs and are not
+used to derive the active workload or its provisional scheduling deadlines.
 
 \subsection{Committed extraction artifacts}
 \label{subsec:clusterdata-artifacts}
 
 \begin{longtable}{@{}L{0.34\textwidth}L{0.19\textwidth}L{0.39\textwidth}@{}}
-  \caption{ClusterData2019 extraction artifacts retained by the repository.}
+  \caption{ClusterData2019 lineage retained by the active repository.}
   \label{tab:clusterdata-artifact-lineage}\\
   \toprule
   Repository path & Status & What it establishes \\
@@ -244,34 +244,17 @@ provenance metadata; machine count is not itself a runtime workload multiplier.
   Repository path & Status & What it establishes \\
   \midrule
   \endhead
-  \codepath{extract_clusterdata2019_full.ipynb}
-    & extraction source
-    & Queries cells \(a\)--\(d\) for aggregate CPU, machine inventory, and full
-      job metadata. \\
   \codepath{extract_tier_curves.ipynb}
-    & authoritative extraction
-    & Produces measured five-minute service/residual and no-SLO batch curves for
-      cells \(a\)--\(d\). \\
+    & active extraction
+    & Produces measured five-minute service/residual and no-SLO batch tier curves
+      for cells \(a\)--\(d\). \\
   \codepath{extract_cells_eh.ipynb}
-    & authoritative extraction
-    & Produces aggregate and measured tier curves, machine inventories, and
-      completed no-SLO duration summaries for cells \(e\)--\(h\). \\
+    & active extraction
+    & Applies the same tier-curve method to holdout cells \(e\)--\(h\). \\
   \codepath{data/cells/cell_X_tiers.csv}
-    & measured decomposition
-    & Supplies five-minute aggregate, service/residual, and no-SLO batch CPU. \\
-  \codepath{data/cells/cell_X.csv}
-    & measured aggregate
-    & Supplies five-minute normalized aggregate CPU. \\
-  \codepath{data/jobs/batch_distributions_X.json}
-    & duration summary
-    & Retains completed no-SLO duration statistics and supporting fitted
-      metadata. \\
-  \codepath{data/jobs/durations_eh.json}
-    & intermediate artifact
-    & Records the direct BigQuery duration summaries for cells \(e\)--\(h\). \\
-  \codepath{data/machines/machines_X.csv}
-    & provenance metadata
-    & Records per-machine CPU and memory capacities. \\
+    & retained measured output
+    & Supplies the active five-minute aggregate, service/residual, and no-SLO
+      batch CPU values. \\
   \bottomrule
 \end{longtable}
 
@@ -279,20 +262,18 @@ provenance metadata; machine count is not itself a runtime workload multiplier.
 \label{subsec:clusterdata-limitations}
 
 Re-extraction requires a Google Cloud project with BigQuery billing enabled.
-Run \codepath{extract_clusterdata2019_full.ipynb} for the \(a\)--\(d\)
-aggregate, machine, and full-job artifacts;
-\codepath{extract_tier_curves.ipynb} for the authoritative \(a\)--\(d\)
-measured tier curves; and \codepath{extract_cells_eh.ipynb} for \(e\)--\(h\).
-
-A fresh clone contains the committed curves and compact duration summaries,
-but not the full BigQuery tables or the large
-\codepath{data/jobs/jobs_X.csv} extracts.
+Use \codepath{extract_tier_curves.ipynb} for the active \(a\)--\(d\) tier
+curves and \codepath{extract_cells_eh.ipynb} for the separate holdout curves.
+The repository retains the resulting compact tier CSVs, not the full BigQuery
+tables, machine inventories, job extracts, or duration summaries.
 
 The trace represents one company's workload during one month in 2019. Its
-resource units and identifiers are normalized or anonymized, and the full
-job-level extracts are not committed. The eight cells are useful production
-workload samples, but they are not a representative sample of the wider
-data-center industry.
+resource units and identifiers are normalized or anonymized, and the eight
+cells are useful production-workload samples rather than a representative
+sample of the wider data-center industry. The 300-second complete-window filter
+also underrepresents short-lived work. Priority matching has no canonical audit
+of unmatched rows, so ``service/residual'' must not be interpreted as an
+observed production priority for every observation.
 
 \section{Google PowerData2019 Power Model}
 \label{sec:powerdata2019}
@@ -458,9 +439,8 @@ Reproduction requires BigQuery billing and access to both public datasets.
 Run \codepath{extract_clusterdata2019_full.ipynb} for cells \(a\)--\(d\) and
 \codepath{extract_cells_eh.ipynb} for cells \(e\)--\(h\), then merge the
 \(e\)--\(h\) per-cell records into
-\codepath{data/power_model_params.json}. The repository does not currently
-provide a dedicated merge command, so the committed all-cell JSON and its hash
-are the reproducibility boundary.
+\codepath{data/power_model_params.json}. The committed all-cell JSON is the
+ordinary reproducibility boundary.
 
 \subsection{Model limitations}
 \label{subsec:powerdata-limitations}
@@ -484,15 +464,15 @@ The electricity input has two distinct roles. The \emph{physical} layer
 describes gross demand, wind, solar, and net load in MW. It defines the native
 grid ramps that the data-center schedule may increase or decrease. The
 \emph{economic} layer is hourly day-ahead locational marginal price (LMP) in
-USD/MWh. It supplies a separate wholesale-cost guardrail and does not represent
-physical utilization, congestion loading, or a retail bill.
+USD/MWh. It supplies economic context and a post-hoc comparison outcome; it
+does not represent physical utilization, congestion loading, or a retail bill.
 
 Day-ahead price is used because it is published before the operating hour and
 is therefore compatible with causal workload planning. It provides one
 standardized wholesale energy price for each scheduled market-hour. The policy
 does not receive realized future real-time price, and price is not the physical
-ramp objective; it is used to account for the economic consequence of moving
-work and to enforce the later cost guardrail.
+ramp objective; it is used to account for the economic consequence of moving work in post-hoc
+policy/status-quo comparisons.
 
 The active design uses four market cases: CAISO NP15, MISO Minnesota, SPP
 North, and ISO-NE NEMA. Their physical data all come from the same EIA
@@ -642,7 +622,7 @@ The physical table requires:
         \codepath{solar_mw}, and \codepath{net_load_mw};
   \item the method used to produce net load;
   \item the training-only market scale; and
-  \item source-quality flags.
+  \item explicit interval and source semantics needed for ordinary validation.
 \end{itemize}
 
 The price table retains total day-ahead LMP and, where supplied, real-time LMP
@@ -695,7 +675,7 @@ the committed acquisition this affects 2,780 CAISO solar hours, with a raw
 minimum of \(-66\) MW; no other retained wind or solar series required this
 normalization. This is a disclosed non-negativity rule, not interpolation.
 
-\subsection{Training-only scales and penetration}
+\subsection{Training-only Q95 scales}
 \label{subsec:energy-scales}
 
 The four balancing areas are not the same size: their training-period Q95
@@ -733,9 +713,8 @@ This division changes neither the source data nor the simulated MW assigned to
 a market; it only puts ramp magnitudes on a comparable relative scale before
 the four market results are averaged.
 
-The training partition also supplies gross/net level normalizers and the
-training Q90 native absolute-ramp thresholds. February cannot influence any
-scale, threshold, normalization, or forecast fit.
+The training partition also supplies gross/net level normalizers. February
+cannot influence any scale, normalization, or forecast fit.
 
 \begin{figure}[htbp]
   \centering
@@ -743,8 +722,8 @@ scale, threshold, normalization, or forecast fit.
   \caption{Hourly net load for all four active market cases on one shared axis,
   normalized by each market's training-only Q95 gross-demand scale \(S_m\).
   The figure contains 3,408 active decision hours per market from the 142
-  hash-bound active daily windows. Values are hourly and unsmoothed; warm and
-  terminal-tail rows are not plotted.}
+  calendar windows. Values are hourly and unsmoothed; warm and terminal-tail
+  rows are not plotted.}
   \label{fig:energy-normalized-net-load}
 \end{figure}
 
@@ -760,21 +739,11 @@ scale, threshold, normalization, or forecast fit.
   \label{fig:energy-single-day-duck-curve}
 \end{figure}
 
-Each mapped site has a nominal 500 MW capacity. Its fitted peak proxy is only
+Each mapped site has a nominal 500 MW capacity. Its fitted peak proxy is
 0.505\%--2.704\% of the associated market scale, as
-Table~\ref{tab:energy-market-scales} shows. The protocol additionally requires:
-\begin{equation}
-  \frac{P_m^{\mathrm{peak}}}{S_m}
-  \leq
-  0.05,
-  \label{eq:energy-penetration-gate}
-\end{equation}
-where \(P_m^{\mathrm{peak}}\) is the site's fitted peak proxy power. The 5\%
-limit is a conservative experiment-design choice, not a value estimated from
-these four markets. It keeps each simulated site small relative to its
-balancing area so the experiment can treat price and native grid conditions as
-external rather than claiming to model market feedback from a very large new
-load.
+Table~\ref{tab:energy-market-scales} shows. These realized ratios are a design
+note, not a penetration gate or a model of market feedback. They support the
+stated price-taking interpretation only as a small-load approximation.
 
 \subsection{Causal forecast construction}
 \label{subsec:energy-forecasts}
@@ -797,78 +766,30 @@ The staged forecast files contain one-hour and three-hour records. The final
 factory uses the three-hour model to assemble a causal trajectory with
 endpoints at \(t+1\), \(t+2\), and \(t+3\). The corresponding forecasts were
 issued at \(t-2\), \(t-1\), and \(t\), respectively, so the latest issue time
-never follows the scheduling-decision timestamp. Each bundle records model identity,
-vintage, issue time, horizon, and quality. Realized future load or real-time
-price is never used as a feature.
+never follows the scheduling-decision timestamp. A single model fitted on the
+full October--February panel would leak later targets backward into earlier
+decisions, so it is not used. Realized future load or real-time price is never
+used as a feature. Forecast age, vintage, and quality are not policy
+observations.
 
 The resulting panel supplies the physical baseline, causal forecast state, and
 price context used by the system model in
 Section~\ref{sec:problem-statement}. These quantities are data inputs; the
 optimization objective is defined only after the system boundary.
 
-\subsection{Quality gates and provenance}
-\label{subsec:energy-quality}
-
-The source snapshot was produced with fail-closed acquisition and validation
-rules. A record set was rejected for:
-\begin{itemize}
-  \item missing or duplicate rows;
-  \item incomplete native-to-hourly aggregation;
-  \item mixed preliminary/final products;
-  \item unit or interval ambiguity;
-  \item price/physical geography mismatches not declared in metadata;
-  \item missing physical demand, wind, solar, or net load;
-  \item an incomplete common calendar; and
-  \item synthetic substitution or interpolation.
-\end{itemize}
-
-The active repository begins at the validated canonical source boundary.
-\codepath{data/four_market_v2/source_manifest.json} hash-binds all retained
-physical, price, forecast, scale, and quality rows. The two generated factories
-then combine those rows with the measured workload and power fits.
-
-\begin{longtable}{@{}L{0.36\textwidth}L{0.16\textwidth}L{0.40\textwidth}@{}}
-  \caption{Active four-market data and provenance artifacts.}
-  \label{tab:energy-lineage}\\
-  \toprule
-  Repository path & Status & Role \\
-  \midrule
-  \endfirsthead
-  \toprule
-  Repository path & Status & Role \\
-  \midrule
-  \endhead
-  \codepath{data/four_market_v2/source_manifest.json}
-    & active source
-    & Hash-binds 114 learning panels, 28 February validation panels, frozen
-      statistics, and forecast identities. \\
-  \codepath{env/protocols/four_market_v2_envelope_on.yaml} and
-  \codepath{env/protocols/four_market_v2_envelope_off.yaml}
-    & paired designs
-    & Hold markets, fleet, deadlines, objective, and PPO settings fixed while
-      changing only the admission-envelope rule. \\
-  \codepath{energy_model_v3/four_market_v2.py}
-    & runtime factory
-    & Loads either active variant and prohibits test access. \\
-  \codepath{output/four_market_v2/campaign/paired_aggregation.json}
-    & validation evidence
-    & Aggregates three paired PPO seeds evaluated on all 28 February days. \\
-  \codepath{scripts/build_energy_thesis_figures.py}
-    & figure builder
-    & Verifies every daily panel hash, selects active decision hours, and
-      renders Figures~\ref{fig:energy-normalized-net-load} and
-      \ref{fig:energy-single-day-duck-curve}. \\
-  \codepath{docs/figures/four_market_v2/figure_manifest.json}
-    & figure provenance
-    & Binds both figures to the active source manifest, market order, plotted
-      periods, selection rule, row counts, and output hashes. \\
-  \bottomrule
-\end{longtable}
-
-\subsection{Reproduction boundary}
+\subsection{Artifact and reproduction boundary}
 \label{subsec:energy-reproduction}
 
-The active factory and figures can be validated from the repository root:
+The active data boundary is deliberately plain. \codepath{data/four_market_v2/calendar.json}
+selects 114 training paths and 28 validation paths; \codepath{data/four_market_v2/frozen_stats.json}
+contains the fixed training-only normalization values. The factory reads the
+referenced canonical source panels rather than copying them into a second
+source store. Ordinary validation checks interval completeness, duplicate rows,
+units, common-calendar membership, and the required physical tuple before a
+fixture is generated; it rejects incomplete native-hour aggregation and does
+not forward-fill or interpolate missing observations.
+
+The active factory and figures can be checked from the repository root:
 
 \begin{verbatim}
 python scripts\build_four_market_v2_factory.py
@@ -876,9 +797,11 @@ python scripts\run_four_market_v2_campaign.py preflight
 python scripts\build_energy_thesis_figures.py
 \end{verbatim}
 
-The factory builder reads only the v2 source manifest, cells \(a\)--\(d\), and
-the PowerData coefficient file. It can regenerate both admission variants
-without any earlier experiment.
+There is one factory \codepath{output/four_market_v2/factory/factory.json} and
+one set of daily \codepath{fixture.json} files. The figure builder renders
+Figures~\ref{fig:energy-normalized-net-load} and
+\ref{fig:energy-single-day-duck-curve} from the same calendar and source
+panels. This is ordinary file-and-content validation.
 
 \subsection{Limitations}
 \label{subsec:energy-limitations}
@@ -900,8 +823,8 @@ will be required after the four-market design is finalized.
 
 The preceding sections describe measured source data. The remaining steps are
 experimental choices: they map sources together, change temporal resolution,
-assign deadlines, test workload-admission rules, and set facility scale. None
-of those choices is a property claimed by Google, EIA, or the market operators.
+assign provisional deadlines, and set facility scale. None of those choices is a
+property claimed by Google, EIA, or the market operators.
 
 \subsection{Cell-to-market mapping}
 \label{subsec:transform-mapping}
@@ -953,61 +876,29 @@ growth, seasonality, and rare workload regimes.
 \subsection{Coarse experimental batch deferral windows}
 \label{subsec:transform-deadlines}
 
-ClusterData2019 supplies observed completion durations for completed no-SLO
-work, but it does not report when that work was actually required to finish.
-The experiment therefore cannot recover the jobs' true urgency or customer
-deadlines. Instead, each cell receives one fixed, synthetic maximum deferral
-window:
-\begin{equation}
-  H_c
-  =
-  \max\left(
-    1,
-    \left\lceil \frac{2\bar d_c}{3600} \right\rceil
-  \right),
-  \label{eq:transform-deadline}
-\end{equation}
-where \(\bar d_c\) is mean completed no-SLO duration in seconds. For cells
-\(a\)--\(d\), the resulting horizons are 2, 1, 2, and 3 hours. These are
-experimental control deadlines, not Borg SLOs or customer commitments.
+ClusterData2019 measures CPU use and the tier classification, but it does not
+report a job's actual required completion time. The active protocol therefore
+sets the four maximum batch deferral windows explicitly to
+\([H_a,H_b,H_c,H_d]=[2,1,2,3]\) hours. They are provisional protocol
+parameters, not derived from deleted duration statistics, Borg SLOs, or customer
+commitments.
 
-At the hourly decision resolution, \(H_c=1\) means batch work arriving in hour
-\(t\) must be executed during that same one-hour scheduling interval, before
-the \(t+1\) boundary. \(H_c=2\) permits execution during hour \(t\) or the next
-hour, and \(H_c=3\) permits one of three consecutive hourly intervals. The
-model therefore does not distinguish, for example, a job that needed to finish
-in 10 minutes from one that could wait 50 minutes. Doubling the observed mean
-completion duration and rounding upward is a modeling heuristic for coarse
-flexibility, not evidence of the jobs' actual deadlines.
+At hourly resolution, \(H_m=1\) means batch arriving in hour \(t\) must execute
+within that same scheduling interval, before the \(t+1\) boundary. A two-hour
+window permits execution in \(t\) or \(t+1\); a three-hour window permits any of
+three consecutive hourly intervals. Thus a deadline is an inclusive number of
+hourly execution opportunities, not a claim of subhour precision. The model
+cannot distinguish a task that could wait ten minutes from one that could wait
+fifty minutes within the same hour. This deliberately coarse semantics matches
+the hourly price, grid, forecast, and decision data, while leaving five-minute
+workload spikes and within-hour scheduling outside the model.
 
-\subsection{Admission-envelope ablation}
-\label{subsec:transform-admission}
-
-The raw four-cell workload never exceeds the available four normalized work
-units in one hour: the largest simultaneous service-plus-batch arrival is
-2.4244025972. It is therefore possible to retain the measured service/batch split
-without an additional admission cap. The validation campaign nevertheless
-constructs two otherwise identical factories to test the earlier feasibility
-rule.
-
-The \emph{envelope-on} variant applies:
-\begin{itemize}
-  \item immediate service may occupy at most 75\% of fleet capacity;
-  \item newly admitted batch may occupy at most 10\%; and
-  \item the remaining capacity is reserved for batch already carried in the
-        deadline queue.
-\end{itemize}
-
-If measured batch exceeds the 10\% arrival bound, it is not dropped. The excess
-is conserved and reclassified as immediate service. Across the 744-hour Borg
-profile, the batch cap binds in 500 hours and reclassifies 13.6\% of measured
-batch work.
-
-The \emph{envelope-off} variant preserves the raw service and batch columns
-exactly. Both retain the same hard site capacity, work conservation, batch
-deadlines, and terminal completion. This paired construction asks whether the
-extra restriction improves PPO learning; it is not treated as a property of
-ClusterData2019.
+The active workload is raw: its service and batch columns are passed through
+without an admission envelope, reclassification, or paired workload variant.
+The largest simultaneous fleet-wide service-plus-batch arrival is
+2.4244025972 normalized work units, below the total capacity of four. This
+checks raw-arrival feasibility; EDF, capacity, and terminal constraints still
+govern which batch work may be deferred.
 
 \subsection{Direct 500 MW proxy rating}
 \label{subsec:transform-scaling}
@@ -1056,21 +947,24 @@ profile.
 \subsection{Active factory boundary}
 \label{subsec:transform-factory}
 
-The transformation is implemented in
-\codepath{energy_model_v3/four_market_v2.py}. Its generated artifacts are under
-\codepath{output/four_market_v2/factory}. Each variant manifest binds:
-\begin{itemize}
-  \item the four retained market panels and forecast identities;
-  \item cells \(a\)--\(d\), their measured tier curves, and deadline summaries;
-  \item four direct \(K=1\), 500 MW site definitions and fitted warm power;
-  \item 114 training days and 28 February validation days; and
-  \item an empty test split.
-\end{itemize}
+The transformation is implemented in \codepath{energy_model_v3/four_market_v2.py}
+and governed by the single protocol
+\codepath{env/protocols/four_market_v2.yaml}. There is one factory descriptor,
+\codepath{output/four_market_v2/factory/factory.json}, and one fixture set under
+\codepath{output/four_market_v2/factory/windows}. The factory uses
+\codepath{data/four_market_v2/calendar.json} to select 114 randomized training
+windows and the named, exact 28-window February validation set. It has no test
+split.
 
-The two design contracts are
-\codepath{env/protocols/four_market_v2_envelope_on.yaml} and
-\codepath{env/protocols/four_market_v2_envelope_off.yaml}. They differ only in
-the admission rule described in Section~\ref{subsec:transform-admission}.
+The factory references the selected canonical source panels rather than copying
+them. For each daily window it generates a \codepath{fixture.json} containing
+the raw hourly workload arrivals, deadlines, warm power history, and site
+parameters; its corresponding factory record supplies the canonical-panel
+reference. An episode has three warm hours, 24 active decision hours, and a
+three-hour terminal tail. The factory builder constructs the selected fixtures;
+preflight validates their ordinary structural, capacity, calendar, and
+causal-boundary conditions before a campaign uses them. There are no parallel
+factories or alternate workload variants.
 
 \section{Problem Statement and System Boundary}
 \label{sec:problem-statement}
@@ -1118,13 +1012,14 @@ the same index \(m\). Let \(t\) denote an hourly decision.
       Section~\ref{subsec:clusterdata-tier-split}
     & Work that must be completed during its arrival hour. \\
   Hourly batch arrivals \(q_{m,t}\)
-    & Same measured tier curves, either raw or transformed by the paired rule in
-      Section~\ref{subsec:transform-admission}
-    & Work that may wait and move, but must finish by its assigned deadline. \\
+    & Same raw measured tier curves
+    & Work that may wait and move, but must finish by its assigned provisional
+      deadline. \\
   Batch deadline \(H_m\)
-    & \codepath{data/jobs/batch_distributions_X.json};
-      Equation~\eqref{eq:transform-deadline}
-    & Maximum modeled deferral horizon for arrivals associated with cell \(m\). \\
+    & \codepath{env/protocols/four_market_v2.yaml};
+      Section~\ref{subsec:transform-deadlines}
+    & Explicit provisional maximum hourly deferral horizon for arrivals
+      associated with cell \(m\). \\
   Compute capacity \(K_m\)
     & Active v2 protocols
     & Maximum service plus batch work executable at site \(m\) in one hour;
@@ -1139,13 +1034,13 @@ the same index \(m\). Let \(t\) denote an hourly decision.
     & Defines the exogenous physical grid trajectory before modeled fleet power. \\
   Day-ahead LMP \(L^{\mathrm{DA}}_{m,t}\)
     & Canonical price panel; Table~\ref{tab:energy-sources}
-    & Supplies wholesale economic context and the cost guardrail. \\
+    & Supplies wholesale economic context and a post-hoc cost comparison. \\
   Causal forecast trajectory
     & Active canonical panel;
       Section~\ref{subsec:energy-forecasts}
     & Provides estimates of upcoming gross and net load available at decision
       time. \\
-  Training-only scales and thresholds
+  Training-only scales and normalizers
     & \codepath{data/four_market_v2/frozen_stats.json};
       Equation~\eqref{eq:energy-market-scale}
     & Makes market states and later ramp comparisons commensurate without using
@@ -1153,15 +1048,16 @@ the same index \(m\). Let \(t\) denote an hourly decision.
   Three-hour warm power history
     & Active daily fixtures;
       \codepath{energy_model_v3/four_market_v2.py}
-    & Supplies real preceding fleet power for the first 1 h and 3 h ramp windows
-      of each daily episode. \\
+    & Supplies modeled preceding fleet power, derived from raw warm arrivals, for
+      the first 1 h and 3 h ramp windows of each daily episode. \\
   \bottomrule
 \end{longtable}
 
-The authoritative assembly of these inputs is recorded in
-\codepath{output/four_market_v2/factory}. Each generated daily fixture contains
-site parameters, service and batch arrivals, deadline horizons, warm power, the
-canonical market panel, and hashes of all upstream inputs.
+The authoritative assembly of these inputs is recorded in the single
+\codepath{output/four_market_v2/factory/factory.json}. Each generated daily
+fixture contains the required site parameters, raw service and batch arrivals,
+deadline horizons, and warm power; its factory record references the canonical
+market panel. The factory uses ordinary validation.
 
 \subsection{Proxy-fleet interpretation}
 \label{subsec:problem-proxy-fleet}
@@ -1242,10 +1138,8 @@ no later than that deadline, and all admitted batch work must be complete at
 the episode terminal. The implementation is the
 \codepath{EDFQueue} ledger in \codepath{env/ramp_v6/models.py}.
 
-The arrival envelope in Section~\ref{subsec:transform-admission} is part of
-the current problem instance: service is limited to 75\% of fleet capacity,
-new batch to 10\%, and excess measured batch is conserved by reclassifying it
-as immediate service.
+The raw measured service and batch columns are the current problem instance.
+No arrival cap reclassifies batch work as immediate service.
 
 \subsection{Capacity and transport feasibility}
 \label{subsec:problem-feasibility}
@@ -1275,17 +1169,22 @@ For batch work drained from origin \(i\), transport accounting requires
 where \(o_{i,t}\) is the EDF-selected batch amount from origin \(i\). This
 matrix enforces conservation only. It is not a network-flow model.
 
-Routing is otherwise unrestricted. The model imposes no latency, wide-area
-bandwidth, data-residency, transfer-energy, replication, or movement-cost
-constraint. Consequently, spatial flexibility is an optimistic upper bound on
-what a real operator could use.
+Routing is otherwise unrestricted. The decoder nevertheless calculates a
+conservative future-batch capacity requirement from the data-derived raw batch
+arrivals and their provisional deadlines, reserving capacity needed to make the
+EDF ledger feasible. It does not use grid forecasts to waive a deadline.
+
+The model imposes no latency, wide-area bandwidth, data-residency,
+transfer-energy, replication, or movement-cost constraint. Consequently,
+spatial flexibility is an optimistic upper bound on what a real operator could
+use.
 
 \subsection{Episode and terminal boundary}
 \label{subsec:problem-episode}
 
 Each episode represents one UTC day with:
 \begin{itemize}
-  \item three real preceding hours for ramp history;
+  \item three preceding canonical-panel hours for ramp history;
   \item 24 active arrival and decision hours; and
   \item a three-hour terminal tail with no new arrivals.
 \end{itemize}
@@ -1306,9 +1205,9 @@ A decision at hour \(t\) may depend only on information available by \(t\):
   \item native 1 h and 3 h ramps that have already closed;
   \item forecast endpoints whose issue time is no later than \(t\);
   \item current service and batch arrivals, queued work, and deadlines;
-  \item previous modeled site power and fixed site parameters;
+  \item previous modeled site power;
   \item current day-ahead LMP; and
-  \item hour, day-of-week, episode-progress, and quality metadata.
+  \item hour, day-of-week, and episode-progress features.
 \end{itemize}
 
 Realized future load, realized future real-time price, and forecasts issued
@@ -1334,10 +1233,10 @@ generation, unit commitment, reserves, congestion, or the source forecasts.
 Fleet power is added to native net load for counterfactual evaluation, but the
 source grid trajectory itself is unchanged.
 
-The price-taking approximation is bounded by the 5\% peak-power-to-scale gate
-in Equation~\eqref{eq:energy-penetration-gate}. Even so, market-level net load
-does not represent the local
-substation, feeder, nodal constraint, or utility tariff faced by a real
+The price-taking approximation is an experimental caveat, not a penetration
+gate or a simulated market response. The realized fitted peak/site-scale ratios
+are 0.505\%--2.704\%, but market-level net load still does not represent the
+local substation, feeder, nodal constraint, or utility tariff faced by a real
 facility.
 
 \subsection{Three comparison systems}
@@ -1376,39 +1275,37 @@ unusually favorable grid day or month. They do not contain many independent
 months of workload: one measured May 2019 Borg profile is repeated while net
 load, renewable output, day-ahead price, and causal forecasts change. The 114
 October--January days supply varied conditions for learning a schedule; the 28
-later February days test whether it transfers to unseen energy dates. The
-separate cells \(e\)--\(h\) holdout would test transfer to unseen workload and
-is outside the current experiment.
+later February days assess it on unseen energy dates. The separate cells
+\(e\)--\(h\) holdout would assess transfer to unseen workload and is outside the
+current experiment.
 
 \begin{quote}
 \textbf{Problem statement.}
-Given four hourly service and batch arrival streams, batch deadlines, four
-capacity and power models, causal physical-grid and forecast information, and
-day-ahead prices, construct a causal hourly schedule for service destination,
-batch execution volume, and batch destination such that:
+Given four hourly raw service and batch arrival streams, provisional batch
+deadlines, four capacity and power models, causal physical-grid and forecast
+information, and day-ahead prices, construct a causal hourly schedule for
+service destination, batch execution volume, and batch destination such that:
 \begin{enumerate}
   \item all immediate service is completed in its arrival hour;
   \item all batch work is conserved and completed by its deadline;
-  \item no site exceeds compute capacity and the terminal queue is empty;
+  \item no site exceeds compute capacity and the terminal queue is empty; and
   \item the fleet's added power reduces, or at minimum does not amplify, the
-        native grid's rapid net-load changes across the four market cases; and
-  \item modeled day-ahead cost does not increase excessively relative to the
-        same fleet under the status-quo comparator.
+        native grid's rapid net-load changes across the four market cases.
 \end{enumerate}
 \end{quote}
 
 This statement does not prescribe reinforcement learning, a neural policy, the
 1 h/3 h weights, or a scalar reward. Those choices constitute the attempted
-solution defined next.
+solution defined next. Day-ahead cost remains a post-hoc outcome for comparing
+policy and status quo, not a feasibility constraint or problem-statement gate.
 
 \section{Optimization Objective and Policy Inputs}
 \label{sec:optimization-objective}
 
 \noindent
 Within the feasible system defined in Section~\ref{sec:problem-statement}, the
-active four-market design
-chooses a specific ramp objective, cost guardrail, policy representation, and
-constraint decoder. This section therefore describes the attempted solution,
+active four-market design chooses a pure ramp objective, policy representation,
+and constraint decoder. This section therefore describes the attempted solution,
 not an additional data source or a restatement of the problem.
 
 \subsection{What is decided each hour}
@@ -1516,228 +1413,251 @@ the experiment does not convert ramp impact into dollars.
 
 For one market, one endpoint, and one horizon, the incremental impact is
 \begin{equation}
-  I_{m,t,h}
-  =
-  a_{m,t,h}^2-b_{m,t,h}^2.
+  I_{m,t,h}=a_{m,t,h}^2-b_{m,t,h}^2.
   \label{eq:energy-incremental-impact}
 \end{equation}
-
-Its interpretation is direct:
-\begin{itemize}
-  \item \(I_{m,t,h}<0\): fleet power reduced the squared native ramp;
-  \item \(I_{m,t,h}=0\): fleet power was ramp-neutral; and
-  \item \(I_{m,t,h}>0\): fleet power worsened the squared native ramp.
-\end{itemize}
-
-The primary impact at hour \(t\) is the equal-market mean of the weighted
-horizons:
+A negative value means fleet power reduced the squared native ramp, zero is
+ramp-neutral, and a positive value worsened it. The active impact at hour
+\(t\) is the equal-market mean of the two weighted horizons:
 \begin{equation}
-  \overline{I}_t
-  =
-  \frac{1}{4}
-  \sum_{m=1}^{4}
-  \left(
-    0.40 I_{m,t,1}
-    +
-    0.60 I_{m,t,3}
-  \right).
+  \overline{I}_t=
+  \frac{1}{4}\sum_{m=1}^{4}
+  \left(0.40I_{m,t,1}+0.60I_{m,t,3}\right).
   \label{eq:objective-primary-impact}
 \end{equation}
-
-This is the quantity accumulated for the primary reported native-relative
-impact. A smaller tail term focuses learning on unusually large absolute
-ramps. Let \(\tau_{m,h}\) be market \(m\)'s training-only Q90 absolute native
-ramp threshold for horizon \(h\). The incremental tail burden is
+The pure PPO reward is exactly
 \begin{equation}
-  T_{m,t,h}
-  =
-  \max\left(|a_{m,t,h}|-\tau_{m,h},0\right)^2
-  -
-  \max\left(|b_{m,t,h}|-\tau_{m,h},0\right)^2,
-  \label{eq:objective-tail-impact}
-\end{equation}
-and its equal-market, horizon-weighted aggregate is
-\begin{equation}
-  \overline{T}_t
-  =
-  \frac{1}{4}
-  \sum_{m=1}^{4}
-  \left(
-    0.40T_{m,t,1}
-    +
-    0.60T_{m,t,3}
-  \right).
-  \label{eq:objective-tail-aggregate}
-\end{equation}
-The ramp objective and reward are then
-\begin{align}
-  J_t^{\mathrm{ramp}}
-    &= \overline{I}_t + 0.15\overline{T}_t, \\
-  r_t^{\mathrm{ramp}}
-    &= -J_t^{\mathrm{ramp}}.
+  r_t=-\overline{I}_t.
   \label{eq:objective-ramp-reward}
-\end{align}
-
-PPO receives this scalar after each executed hourly action. It therefore learns
-which routing and timing preferences tend to make future rewards larger---that
-is, which actions tend to make incremental ramp impact more negative. The
-0.15 tail term shapes learning, while the headline reported impact remains
-\(\overline{I}_t\) without that shaping term.
+\end{equation}
+Squaring in Equation~\eqref{eq:energy-incremental-impact} already weights large
+ramps more heavily while treating upward and downward changes symmetrically.
+PPO receives this scalar after the executed hourly action, so its learned
+routing and timing preferences are rewarded only for making the incremental
+impact more negative. There is no Lagrangian, constraint-violation penalty,
+cost term, or separate terminal-tail reward: feasibility is enforced by the
+decoder, and the no-arrival terminal-tail steps use this same scalar reward.
 
 \subsection{Purpose of day-ahead energy cost}
 \label{subsec:objective-energy-cost}
 
-Ramp smoothing could be achieved by moving work into extremely expensive
-hours. Day-ahead cost is retained to detect and constrain that behavior:
+Day-ahead cost is a post-hoc outcome, not a reward component or pass/fail
+constraint. It is calculated for the policy and status quo on identical hours:
 \begin{align}
-  C_{m,t}
-    &= L^{\mathrm{DA}}_{m,t}P_{m,t}(1\ \mathrm{hour}), \\
-  C_t
-    &= \sum_{m=1}^{4} C_{m,t},
+  C_{m,t}&=L^{\mathrm{DA}}_{m,t}P_{m,t}(1\ \mathrm{hour}), \\
+  C_t&=\sum_{m=1}^{4}C_{m,t}, \qquad
+  \rho_C=\frac{\sum_t C_t^{\mathrm{policy}}}
+                 {\sum_t C_t^{\mathrm{status\ quo}}}.
   \label{eq:energy-cost}
 \end{align}
-where \(L^{\mathrm{DA}}\) is in USD/MWh and \(P\) is in MW.
-
-The environment compares policy cost with a status-quo schedule on the same
-hours. A configurable Lagrangian penalty can reduce reward when the policy
-exceeds its cost budget. The active design currently retains an aggregate
-day-ahead cost-ratio gate of 1.02. Whether that guardrail and its Lagrangian
-implementation remain unchanged is still part of design refinement.
-
-This cost is only a wholesale proxy. It is not used as physical grid stress and
-does not include retail rates, demand charges, taxes, ratchets, or contractual
-terms.
+Here \(L^{\mathrm{DA}}\) is USD/MWh and \(P\) is MW. The ratio describes the
+wholesale cost consequence of a policy relative to the same fleet under status
+quo; it does not alter training or constitute a feasibility condition.
+It remains a wholesale proxy, excluding retail rates, demand charges, taxes,
+ratchets, and contractual terms.
 
 \subsection{How observations affect policy behavior}
 \label{subsec:objective-observations}
 
 Observations do not mechanically force an action. They are inputs to the PPO
-network from which it learns its 9 preferences. Their intended decision roles
-are:
+network from which it learns the nine preferences described above. The active
+observation vector has exactly 100 entries, counted in
+Table~\ref{tab:objective-observations}. It deliberately retains causal market,
+site, queue, and time state while excluding fixed site constants, forecast age,
+vintage, quality metadata, and forecast bins beyond three hours.
 
-\begin{longtable}{@{}L{0.31\textwidth}L{0.61\textwidth}@{}}
-  \caption{Why each energy-related observation is available to the policy.}
+\begin{longtable}{@{}L{0.29\textwidth}rL{0.53\textwidth}@{}}
+  \caption{The exactly 100 retained observations and their decision roles.}
   \label{tab:objective-observations}\\
   \toprule
-  Observation & Scheduling information it provides \\
+  Observation family & Count & Scheduling information it provides \\
   \midrule
   \endfirsthead
   \toprule
-  Observation & Scheduling information it provides \\
+  Observation family & Count & Scheduling information it provides \\
   \midrule
   \endhead
-  Current and trailing gross/net levels
-    & Locates each market within its recent demand trajectory and identifies
-      whether current conditions are relatively high or low. \\
-  Native 1 h and 3 h ramps
-    & Indicates the direction and speed at which each grid is already changing. \\
-  Causal \(t+1,t+2,t+3\) forecast endpoints
-    & Allows the policy to execute deferrable work before a forecast upward ramp,
-      defer it toward a forecast valley, or route work to a market with a more
-      favorable trajectory. \\
-  Forecast age, vintage, and quality
-    & Lets the policy distinguish a current, valid trajectory from older or
-      lower-quality forecast context. \\
-  Previous modeled site power
-    & Provides the starting point for the data-center power change that will
-      enter Equations~\eqref{eq:energy-ramps}. \\
-  Day-ahead LMP
-    & Provides economic context so ramp smoothing need not blindly concentrate
-      work in costly hours or markets. \\
-  Current arrivals, queued batch, deadlines, capacity, and power parameters
-    & Describes what work can be moved, how urgently it must execute, and how a
-      unit of work translates into site power. \\
+  Current plus three lags of gross and net load, for four markets
+    & 32 & Locates each market in its recent physical demand and residual-load
+      trajectory. \\
+  Native 1 h and 3 h ramps, for four markets
+    & 8 & Indicates the already observed direction and rate of grid change. \\
+  Causal gross/net forecasts at \(t+1,t+2,t+3\), plus a maximum-up summary
+  for each trajectory and market
+    & 32 & Lets the policy anticipate a forecast rise or valley without observing
+      realized future load. \\
+  Current day-ahead LMP, for four markets
+    & 4 & Supplies known wholesale economic context; it does not enter reward or
+      create a cost constraint. \\
+  Service arrival, batch arrival, queued batch, and previous power, for four
+  sites
+    & 16 & Describes available work, backlog, and the data-center power state that
+      enters the next ramp calculation. \\
+  Fleet EDF urgency: work due within at most 1 h and 3 h
+    & 2 & Summarizes near-term queue pressure and the need to retain feasible
+      batch capacity. \\
+  Episode progress, terminal-tail state, hour sine/cosine, and day-of-week
+  sine/cosine
+    & 6 & Identifies the recurring hourly context and approach to the terminal
+      boundary. \\
+  \midrule
+  \textbf{Total} & \textbf{100} & \\
   \bottomrule
 \end{longtable}
 
-The forecast affects the action choice, not the reward calculation. Reward is
-computed later from realized net load and executed fleet power when a ramp
-window closes. This separation allows anticipatory control without leaking
-future realized values.
+The forecast affects action choice, not reward calculation. Reward is computed
+when a ramp window closes from realized net load and executed fleet power; this
+separation permits anticipatory control without leaking future realized values.
+Fixed site parameters are already part of the factory, quality and forecast-age
+fields do not describe a decision-relevant changing state here, and bins beyond
+three hours are intentionally outside the protocol horizon.
 
-\subsection{Paired admission-envelope validation campaign}
-\label{subsec:objective-campaign}
+\section{Ten-Seed Validation Campaign and Results}
+\label{sec:campaign}
 
-The direct \(K=1\), 500 MW design was trained from scratch under both admission
-variants from Section~\ref{subsec:transform-admission}. Seeds 4101, 4102, and
-4103 were paired across variants. Each of the six PPO runs requested 100,000
-interactions and stopped at the first complete rollout and episode boundary,
-at 110,592 interactions. Every run sampled all 114 learning days and was then
-evaluated on all 28 February validation days. Cells \(e\)--\(h\) and a test
-calendar were not accessed.
+Seeds 4101--4110 each request 2,000,000 interactions. All ten complete
+uninterrupted (\codepath{resumed_from_interactions=0}); the safe rollout and
+complete-episode boundary give 2,045,952 effective interactions per seed. All
+seeds train on the same 114 calendar-selected October--January windows and
+evaluate on the exact same named 28 February validation windows. The protocol,
+raw workload, factory, observations, reward, and comparator are unchanged
+across seeds. Cells \(e\)--\(h\) and any test calendar are not accessed.
 
-Before training, the status-quo baseline completed every permitted window in
-both factories. The largest simultaneous raw service-plus-batch arrival was
-2.4244025972 work units against fleet capacity four. This confirms that the
-envelope-off workload is feasible without reclassification.
+Policy and status quo are paired within each optimizer seed, making the
+optimizer seed (\(n=10\)), rather than individual hours or days, the statistical
+unit. The primary paired outcome is policy minus status-quo mean incremental
+ramp impact. The analysis uses an exact two-sided Wilcoxon signed-rank test,
+explicitly not a t-test. Matched-pairs rank-biserial correlation is oriented so
+that a positive value favors the policy. The summary also reports the
+Hodges--Lehmann paired shift and 95\% seed-bootstrap intervals from 10,000
+resamples.
+
+\subsection{Overall paired result}
+\label{subsec:campaign-overall}
+
+All ten paired differences are negative: every trained policy has lower mean
+incremental ramp impact than status quo on the same 28 validation days. The
+policy's mean native-relative impact is
+\(-7.2618\times10^{-5}\), compared with
+\(-6.4573\times10^{-6}\) for status quo. The mean additional policy improvement
+is therefore \(-6.6161\times10^{-5}\).
 
 \begin{table}[htbp]
   \centering
   \small
-  \caption{Three-seed February means for the paired 100k PPO validation.
-  Negative ramp impact is an improvement.}
-  \label{tab:four-market-campaign}
-  \begin{tabular}{@{}lrr@{}}
+  \caption{Locked ten-seed February validation result. Negative impact and
+  negative policy-minus-status-quo differences are improvements.}
+  \label{tab:ten-seed-result}
+  \begin{tabular}{@{}lr@{}}
     \toprule
-    Metric & Envelope on & Envelope off \\
+    Quantity & Result \\
     \midrule
-    Native-relative incremental ramp impact
-      & \(-1.4058\times10^{-5}\) & \(-1.3983\times10^{-5}\) \\
-    Policy minus status-quo impact
-      & \(-7.6006\times10^{-6}\) & \(-7.5253\times10^{-6}\) \\
-    Day-ahead cost ratio
-      & \(0.97481\) & \(0.97465\) \\
-    Seeds with negative native-relative impact
-      & \(2/3\) & \(2/3\) \\
-    Seeds passing all recorded development gates
-      & \(1/3\) & \(1/3\) \\
-    Unserved / expired / terminal work
-      & \(0/0/0\) & \(0/0/0\) \\
-    Emergency fallback / certificate violations
-      & \(0/0\) & \(0/0\) \\
+    Policy mean native-relative impact & \(-7.2618\times10^{-5}\) \\
+    Status-quo mean native-relative impact & \(-6.4573\times10^{-6}\) \\
+    Mean paired difference & \(-6.6161\times10^{-5}\) \\
+    Mean-difference 95\% seed-bootstrap interval
+      & \([-6.6486,-6.5861]\times10^{-5}\) \\
+    Hodges--Lehmann paired shift & \(-6.6084\times10^{-5}\) \\
+    Hodges--Lehmann 95\% seed-bootstrap interval
+      & \([-6.6472,-6.5679]\times10^{-5}\) \\
+    Exact two-sided Wilcoxon \(p\) & \(0.001953125\) \\
+    Matched-pairs rank-biserial correlation & \(1.0\) \\
+    Seeds favoring policy & \(10/10\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Removing the envelope produced a lower impact in two paired seeds, but not in
-the third. Its mean impact was \(7.53\times10^{-8}\) less favorable than the
-envelope-on mean. The difference between variants is therefore negligible
-relative to optimizer-seed variation: the paired-difference sample standard
-deviation was \(9.88\times10^{-7}\). It does not support the claim that removing
-the envelope improves PPO.
+With ten nonzero differences of the same sign, \(0.001953125\) is the minimum
+possible two-sided exact Wilcoxon \(p\)-value for \(n=10\). Rank-biserial
+correlation and the common-language seed-win effect are both 1.0. These results
+show a stable optimizer-seed-level macro advantage on the fixed February
+validation calendar. They do not establish transfer to cells \(e\)--\(h\), a
+new year, or a sealed test calendar.
 
-Seed variation is the more important finding. Seed 4102 slightly worsened the
-native ramp under both variants, seed 4101 produced a small improvement, and
-seed 4103 produced most of the aggregate gain
-(\(-4.0632\times10^{-5}\) with the envelope and
-\(-3.9531\times10^{-5}\) without it). Across-seed means were negative in all
-four markets for both variants, but their across-seed standard deviations
-(\(2.31\times10^{-5}\) and \(2.22\times10^{-5}\)) exceeded the magnitude of
-their means. Envelope-off also narrowly beat status quo in
-all four per-market means, whereas envelope-on was slightly worse than status
-quo in MISO; individual-seed market results were not consistent.
+\subsection{Market heterogeneity}
+\label{subsec:campaign-markets}
 
-All six policies met the 2\% cost guardrail and completed work exactly without
-emergency fallback. The campaign therefore establishes that both workload
-representations are operationally trainable and that the raw measured split
-does not require the admission envelope for feasibility. It does not establish
-a robust performance advantage for either representation. Cells \(e\)--\(h\)
-remain untouched until the design and optimization procedure are frozen.
+The macro result is not uniform across markets.
+Table~\ref{tab:ten-seed-markets} reports equal-seed means. PPO beats status quo
+in all ten seeds for CAISO, SPP, and ISO-NE, but in zero of ten for MISO.
 
-The campaign directory \codepath{output/four_market_v2/campaign} contains the
-compact \codepath{paired_aggregation.json} result. PPO model containers remain
-local; tracked training manifests and validation evidence record the run.
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Per-market mean incremental impact across ten optimizer seeds.}
+  \label{tab:ten-seed-markets}
+  \begin{tabular}{@{}lrrrr@{}}
+    \toprule
+    Market & Policy & Status quo & Policy minus status quo & Wins \\
+    \midrule
+    CAISO NP15
+      & \(-1.0951\times10^{-4}\) & \(-8.8483\times10^{-6}\)
+      & \(-1.0067\times10^{-4}\) & \(10/10\) \\
+    MISO Minnesota
+      & \( 2.8800\times10^{-7}\) & \(-4.8263\times10^{-6}\)
+      & \( 5.1143\times10^{-6}\) & \(0/10\) \\
+    SPP North
+      & \(-2.2077\times10^{-5}\) & \(-2.8778\times10^{-6}\)
+      & \(-1.9199\times10^{-5}\) & \(10/10\) \\
+    ISO-NE NEMA
+      & \(-1.5917\times10^{-4}\) & \(-9.2771\times10^{-6}\)
+      & \(-1.4989\times10^{-4}\) & \(10/10\) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-The executable sources are:
-\begin{itemize}
-  \item ramp-window terms: \codepath{env/ramp_v6/reward.py};
-  \item reward aggregation and observations:
-        \codepath{env/ramp_v6/environment.py};
-  \item feasibility decoding: \codepath{env/ramp_v6/projection.py}; and
-  \item paired weights and semantics:
-        \codepath{env/protocols/four_market_v2_envelope_on.yaml} and
-        \codepath{env/protocols/four_market_v2_envelope_off.yaml}.
-\end{itemize}
+MISO is not merely weaker: its policy mean is slightly positive relative to the
+native grid while status quo remains negative. The large CAISO and ISO-NE gains
+outweigh that loss in the equal-market macro average. Any claim that the
+learned schedule improves every market would therefore be false; improving or
+separately constraining MISO remains necessary.
+
+\subsection{Learning curve and training duration}
+\label{subsec:campaign-learning}
+
+Figure~\ref{fig:campaign-learning-curve} aggregates 999 aligned PPO rollouts
+per seed using raw, unnormalized incremental ramp impact. At the earlier
+110,592-interaction comparison point, mean impact is
+\(-5.3904\times10^{-5}\). It reaches \(-7.5263\times10^{-5}\) at
+2,045,952 interactions, a 39.6\% increase in improvement magnitude. The
+descriptive slope around 110,592 interactions is
+\(-1.0754\times10^{-10}\) impact units per interaction, confirming that the
+objective was still improving materially at that point.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.90\textwidth]{../output/four_market_v2/campaign/learning_curve_aggregate.png}
+  \caption{Ten-seed mean raw incremental ramp impact at each aligned PPO
+  rollout. More-negative values are better. The dashed line marks 110,592
+  interactions, when learning was still progressing.}
+  \label{fig:campaign-learning-curve}
+\end{figure}
+
+Over the final 20\% of interactions, the slope remains negative but falls to
+\(-1.2654\times10^{-12}\) per interaction, nearly two orders of magnitude
+smaller. Training is therefore close to a plateau by 2M interactions, whereas
+110,592 interactions was clearly premature. This curve is descriptive and
+does not add another significance test.
+
+\subsection{Post-hoc cost and operational safety}
+\label{subsec:campaign-cost-safety}
+
+Mean policy day-ahead cost is 1.001233 times status quo, a 0.123\% increase.
+Seed ratios range from 0.995687 to 1.007319. Cost is not part of reward and no
+budget gate is applied, so this is an outcome rather than a pass/fail result.
+
+Across all ten policies and all 280 policy-validation episodes, service
+unserved, unfinished batch, expired batch, terminal work, certificate
+violations, and emergency feasibility use are all zero. The macro ramp benefit
+was therefore not obtained by dropping work or violating the modeled
+constraints.
+
+The compact result is
+\codepath{output/four_market_v2/campaign/aggregation.json}; aligned learning
+curves are in \codepath{learning_curve_aggregate.csv} and
+\codepath{learning_curve_aggregate.png} in the same directory. The executable
+entry points are \codepath{scripts/run_four_market_v2_campaign.py} and
+\codepath{scripts/aggregate_four_market_v2_campaign.py}.
 
 \begin{thebibliography}{9}
 \raggedright
@@ -1807,11 +1727,19 @@ U.S. Energy Information Administration.
 
 \end{document}
 
-% Verification Summary (2026-08-11; active cleaned repository only)
-% Total claims checked: 142
-% Confirmed: 125
-% Corrections: 2
-% - Replaced the two rounded raw simultaneous-arrival values with
-%   2.4244025972, the active campaign-manifest maximum.
-% Unverifiable: 15 external-source/product and acquisition descriptions;
-% retained as cited claims because their upstream records are not local.
+% Verification (2026-08-13): 157 active code/data/result claims checked; 151
+% confirmed and 6 corrected (none in this result-verification pass). Checked tier
+% metrics (8 cells), PowerData coefficients/R2
+% (8 cells), Q95 scales (4 markets), the 114/28 calendar, K=1/500 MW geometry,
+% raw-arrival maximum 2.4244025972 against capacity four, [2,1,2,3] deadlines,
+% the 9-action/100-observation schemas, pure reward, post-hoc cost, and the
+% 10-seed campaign: all 10 compact summaries have 2,000,000 requested,
+% 2,045,952 effective, resumed_from_interactions=0, and 28 February episodes;
+% the aggregation, 999-point CSV/PNG, paired statistics, market results, cost
+% range, and zero safety totals agree. Corrections distinguish fixture contents
+% from factory panel references, factory construction from preflight validation,
+% and modeled warm power from canonical-panel history; they also state the
+% absence of Lagrangian, penalty, cost, and separate terminal-tail reward terms.
+% No source-manifest hash, workload envelope, deleted data artifact, or campaign
+% result is claimed. External-source acquisition history remains cited rather
+% than independently revalidated here.
