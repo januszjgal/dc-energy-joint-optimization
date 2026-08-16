@@ -1,76 +1,54 @@
 # Four-Market Grid-Ramp Smoothing for Geo-Distributed Data Centers
 
-This repository models four 500 MW data-center sites attached to CAISO, MISO,
-SPP, and ISO-NE. PPO schedules immediate and deferrable compute so changes in
-data-center demand counter changes in grid net load. The objective compares the
-combined trajectory \(N+P\) with the native grid trajectory \(N\); it does not
-try to smooth data-center power \(P\) by itself.
-
-The active thesis source is [`latex/thesis.tex`](latex/thesis.tex).
+The active experiment schedules raw measured service and batch CPU curves from
+ClusterData2019 cells a-d against four hourly market panels. It is a single,
+fixed-workload proxy experiment, not a claim about identified Google facilities.
+The thesis source is [`latex/thesis.tex`](latex/thesis.tex).
 
 ## Active design
 
-- Google ClusterData2019 cells a-d supply measured workload.
-- Cells e-h remain untouched as a future workload-generalization test.
-- Each site has normalized compute capacity 1 and 500 MW rated power.
-- Cell-specific PowerData2019 fits convert utilization to power as
-  `500 * (idle_fraction + dynamic_fraction * utilization)`.
-- Hourly decisions retain synthetic 2, 1, 2, and 3 hour batch windows for
-  cells a-d.
-- The action space has 9 preferences; the observation has 128 causal features.
-- The factory contains 114 October-January learning days and 28 February
-  development-validation days.
-- No test split is exposed.
+- One protocol: [`env/protocols/four_market_v2.yaml`](env/protocols/four_market_v2.yaml).
+- Four normalized-capacity sites, 500 MW each, map cells a-d to CAISO NP15, MISO
+  Minnesota, SPP North, and ISO-NE NEMA.
+- The raw service/batch tier curves are used unchanged. Hard capacity, EDF
+  deadlines `[2, 1, 2, 3]`, and conservative data-derived future batch capacity
+  enforce feasibility.
+- The action shape is 9 and the observation shape is 100. The reward is negative
+  equal-market, 1 h/3 h weighted incremental squared ramp impact.
+- [`data/four_market_v2/calendar.json`](data/four_market_v2/calendar.json) lists
+  114 October-January training dates, 28 February validation dates, daily panel
+  paths, and the central frozen-statistics path. There is no test split.
+- The factory creates one fixture set and
+  [`factory.json`](output/four_market_v2/factory/factory.json); it references
+  panels in `data/four_market_v2/windows/` rather than copying them.
 
-Two protocols differ only in workload admission:
+Day-ahead cost is reported post-hoc against status quo. It is not part of the
+reward or a pass/fail rule.
 
-- [`four_market_v2_envelope_on.yaml`](env/protocols/four_market_v2_envelope_on.yaml)
-  caps newly admitted batch at 10% of fleet capacity and reclassifies excess
-  measured batch as immediate service.
-- [`four_market_v2_envelope_off.yaml`](env/protocols/four_market_v2_envelope_off.yaml)
-  preserves the measured service/batch split without reclassification.
+## Locked ten-seed validation campaign
 
-Both variants retain hard capacity, conservation, earliest-deadline-first
-completion, causal forecasts, and the same ramp reward.
+Seeds 4101-4110 each request 2,000,000 interactions and complete uninterrupted
+(`resumed_from_interactions=0`) at the safe boundary of 2,045,952 interactions.
+Each trains on the same 114 days and is paired with
+status quo on the exact same 28 February validation days. The optimizer seed is
+the statistical unit (`n=10`). Aggregation uses exact two-sided Wilcoxon
+signed-rank testing, matched-pairs rank-biserial correlation (positive favors the
+policy), Hodges-Lehmann shift, 10,000-draw seed-bootstrap intervals, post-hoc
+cost/safety summaries, raw rollout learning curves, and descriptive slopes around
+110,592 interactions and in the final 20%.
 
-## Paired PPO validation
+All ten policies beat status quo on the equal-market macro metric. The mean
+policy-minus-status-quo impact was `-6.6161e-05` with a 95% seed-bootstrap
+interval of `[-6.6486e-05, -6.5861e-05]`. The exact two-sided Wilcoxon result
+was `p=0.001953125`; rank-biserial correlation was `1.0`.
 
-Each variant was trained from random initialization with paired seeds 4101,
-4102, and 4103. Each run requested 100,000 interactions and ended on the first
-complete rollout/episode boundary at 110,592 interactions. Every policy was
-evaluated on all 28 February days.
+The result is heterogeneous: CAISO, SPP, and ISO-NE improved in 10/10 seeds,
+while MISO worsened in 10/10. Mean day-ahead cost was 0.123% above status quo
+and all modeled work/safety violations were zero. Learning was still improving
+at 110,592 interactions and was near a plateau by 2,045,952.
 
-| Mean February metric | Envelope on | Envelope off |
-|---|---:|---:|
-| Native-relative incremental ramp impact | -1.4058e-05 | -1.3983e-05 |
-| Policy minus status-quo impact | -7.6006e-06 | -7.5253e-06 |
-| Day-ahead cost ratio | 0.97481 | 0.97465 |
-| Unserved, expired, or terminal work | 0 | 0 |
-| Emergency fallback rate | 0 | 0 |
-
-Negative impact means the data-center schedule reduced the grid's squared
-net-load ramp. Removing the envelope won two of three paired seeds but did not
-improve results consistently; its mean native-relative impact was
-`7.53e-08` less favorable. The ablation therefore establishes that the raw
-workload is feasible without reclassification, not that envelope removal
-improves PPO performance. These results are development evidence, not a final
-sealed experiment.
-
-The compact comparison is
-[`paired_aggregation.json`](output/four_market_v2/campaign/paired_aggregation.json).
-
-## Data and calendar
-
-The active market source is
-[`data/four_market_v2/source_manifest.json`](data/four_market_v2/source_manifest.json).
-Its four physical tuples use EIA balancing-authority demand, wind, and solar;
-operator day-ahead LMP supplies separate economic context. Net load is demand
-minus wind and solar.
-
-The single measured May 2019 workload month is repeated across energy dates.
-Grid conditions, prices, and causal forecasts vary across the 114 learning
-days. February provides development-validation evidence on unseen energy dates,
-while cells e-h remain unseen workload.
+See [`aggregation.json`](output/four_market_v2/campaign/aggregation.json) and
+[`learning_curve_aggregate.png`](output/four_market_v2/campaign/learning_curve_aggregate.png).
 
 ## Reproduce
 
@@ -80,7 +58,7 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Build and validate both factories:
+Build and preflight the one factory:
 
 ```powershell
 python scripts\build_four_market_v2_factory.py
@@ -88,38 +66,32 @@ python scripts\run_four_market_v2_campaign.py preflight
 python -m unittest tests.energy_model_v3.test_four_market_v2 tests.ramp_v6.test_ramp_math -v
 ```
 
-Run the complete paired campaign and aggregate it:
+Run and aggregate the locked campaign (only aggregate after all ten summaries
+exist):
 
 ```powershell
-python scripts\run_four_market_v2_campaign.py run
+python scripts\run_four_market_v2_campaign.py run --workers 5
 python scripts\aggregate_four_market_v2_campaign.py
 ```
 
-The six training runs took about 2 hours 39 minutes on the development machine.
-PPO model containers remain local; tracked manifests and validation evidence
-record the run.
-
-Rebuild figures and the thesis:
+Rebuild the two electricity figures:
 
 ```powershell
 python scripts\build_energy_thesis_figures.py
-Push-Location latex
-xelatex -interaction=nonstopmode -halt-on-error thesis.tex
-xelatex -interaction=nonstopmode -halt-on-error thesis.tex
-Pop-Location
 ```
 
 ## Repository map
 
 | Path | Role |
 |---|---|
-| `data/cells/` | ClusterData2019 aggregate and service/batch curves |
-| `data/jobs/` | Per-cell completed no-SLO duration summaries |
-| `data/four_market_v2/` | Hash-bound physical, price, and forecast source panels |
-| `data/power_model_params.json` | Cell-specific CPU-to-power fits |
-| `energy_model_v3/four_market_v2.py` | Active two-variant runtime factory |
-| `env/ramp_v6/` | Reusable hourly scheduler, queue, reward, and constraint decoder |
-| `ramp_rl/` | PPO training, evaluation, and evidence harness |
-| `output/four_market_v2/campaign/` | Paired campaign evidence and aggregate findings |
+| `data/cells/cell_X_tiers.csv` | Retained measured CPU/service/batch tier curves |
+| `data/four_market_v2/calendar.json` | Date split, daily panel paths, and frozen-statistics path |
+| `data/four_market_v2/windows/` | Referenced canonical daily electricity panels |
+| `data/power_model_params.json` | Committed CPU-to-power coefficients |
+| `env/protocols/four_market_v2.yaml` | Sole active protocol |
+| `energy_model_v3/four_market_v2.py` | One-factory runtime |
+| `env/ramp_v6/` | Scheduler, queue, observation, and reward implementation |
+| `output/four_market_v2/factory/` | Generated one-factory fixtures and `factory.json` |
+| `output/four_market_v2/campaign/` | Ten-seed validation summaries, statistics, and learning curves |
 | `scripts/` | Factory, campaign, aggregation, and figure commands |
-| `latex/thesis.tex` | Sole publication source |
+| `latex/thesis.tex` | Publication source |

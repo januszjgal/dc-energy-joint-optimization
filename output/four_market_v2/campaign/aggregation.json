@@ -1,0 +1,206 @@
+{
+  "learning_curves": {
+    "aggregate_csv": "output\\four_market_v2\\campaign\\learning_curve_aggregate.csv",
+    "aggregate_png": "output\\four_market_v2\\campaign\\learning_curve_aggregate.png",
+    "aligned_rollout_count": 999,
+    "convergence_diagnostic": {
+      "around_110592": {
+        "impact_slope_per_interaction": -1.075410180002522e-10,
+        "interpretation": "negative slope means continued raw incremental-impact improvement; this descriptive learning-curve diagnostic makes no significance claim",
+        "point_count": 21,
+        "window": "90,112 to 131,072 interactions around the prespecified 110,592 comparison point"
+      },
+      "final_20_percent": {
+        "impact_slope_per_interaction": -1.2653965006664725e-12,
+        "interpretation": "negative slope means continued raw incremental-impact improvement; this descriptive learning-curve diagnostic makes no significance claim",
+        "point_count": 200,
+        "window": "final 20 percent of aligned interactions"
+      }
+    }
+  },
+  "maximum_day_ahead_cost_ratio": 1.007319172483173,
+  "mean_day_ahead_cost_ratio": 1.0012330336883322,
+  "mean_emergency_feasibility_rate": 0.0,
+  "mean_incremental_ramp_impact": -7.261812660452637e-05,
+  "minimum_day_ahead_cost_ratio": 0.9956871592032803,
+  "paired_policy_minus_status_quo": {
+    "common_language_effect": {
+      "definition": "share of optimizer seeds with lower policy impact than status quo, with ties counted as one half",
+      "value": 1.0
+    },
+    "difference_definition": "policy minus status-quo mean incremental ramp impact; negative favors policy because lower impact is better",
+    "hodges_lehmann_paired_shift": -6.608437904991027e-05,
+    "mean_paired_difference": -6.616078106503416e-05,
+    "median_paired_difference": -6.608437904991027e-05,
+    "paired_bootstrap_95": {
+      "draws": 10000,
+      "hodges_lehmann_paired_shift": {
+        "estimate": -6.608437904991027e-05,
+        "lower_95": -6.647190440441137e-05,
+        "upper_95": -6.567864571547289e-05
+      },
+      "mean_difference": {
+        "estimate": -6.616078106503416e-05,
+        "lower_95": -6.648639355117633e-05,
+        "upper_95": -6.586138622126352e-05
+      },
+      "method": "seed-level paired percentile bootstrap",
+      "seed": 20260811
+    },
+    "rank_biserial_correlation": {
+      "definition": "(negative-difference rank sum minus positive-difference rank sum) / total nonzero rank sum; positive favors policy",
+      "value": 1.0
+    },
+    "seed_count": 10,
+    "seed_loss_count": 0,
+    "seed_tie_count": 0,
+    "seed_win_count": 10,
+    "wilcoxon_signed_rank": {
+      "method": "exact two-sided Wilcoxon signed-rank",
+      "negative_rank_sum": 55.0,
+      "nonzero_pair_count": 10,
+      "p_value": 0.001953125,
+      "positive_rank_sum": 0.0
+    }
+  },
+  "per_market": {
+    "CAISO_NP15": {
+      "mean_policy_minus_status_quo_incremental_ramp_impact": -0.00010066590716934286,
+      "mean_policy_native_relative_incremental_ramp_impact": -0.00010951416623998277,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -8.8482590706399e-06,
+      "policy_seed_win_count": 10
+    },
+    "ISONE_NEMA": {
+      "mean_policy_minus_status_quo_incremental_ramp_impact": -0.0001498925214422762,
+      "mean_policy_native_relative_incremental_ramp_impact": -0.00015916960976728882,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -9.277088325012608e-06,
+      "policy_seed_win_count": 10
+    },
+    "MISO_MINN_HUB": {
+      "mean_policy_minus_status_quo_incremental_ramp_impact": 5.114264958489186e-06,
+      "mean_policy_native_relative_incremental_ramp_impact": 2.8799785486305106e-07,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -4.826267103626135e-06,
+      "policy_seed_win_count": 0
+    },
+    "SPP_NORTH_HUB": {
+      "mean_policy_minus_status_quo_incremental_ramp_impact": -1.9198960607006782e-05,
+      "mean_policy_native_relative_incremental_ramp_impact": -2.2076728265696985e-05,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -2.877767658690203e-06,
+      "policy_seed_win_count": 10
+    }
+  },
+  "requested_interactions_per_seed": 2000000,
+  "safety_totals": {
+    "batch_expired": 0.0,
+    "batch_unfinished": 0.0,
+    "certificate_violations": 0.0,
+    "service_unserved": 0.0,
+    "terminal_work": 0.0
+  },
+  "sample_standard_deviation_incremental_ramp_impact": 5.318036466203556e-07,
+  "seed_count": 10,
+  "seeds": [
+    {
+      "day_ahead_cost_ratio": 1.007319172483173,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.565485197255253e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.211219751204474e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4101,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 57657.50315649994
+    },
+    {
+      "day_ahead_cost_ratio": 1.0026364368429441,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.617938752291564e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.263673306240786e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4102,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 57503.942258100025
+    },
+    {
+      "day_ahead_cost_ratio": 0.9982014788810412,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.638796022230107e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.284530576179328e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4103,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 57562.01127430005
+    },
+    {
+      "day_ahead_cost_ratio": 1.006537162704936,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.647190440441137e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.292924994390358e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4104,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 57592.21758179995
+    },
+    {
+      "day_ahead_cost_ratio": 1.001266831799788,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.694843046104495e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.340577600053716e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4105,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 57634.373938200064
+    },
+    {
+      "day_ahead_cost_ratio": 1.0017804631071783,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.598937057690489e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.24467161163971e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4106,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 25241.623602699954
+    },
+    {
+      "day_ahead_cost_ratio": 1.0013580310583938,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.564393848784288e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.210128402733509e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4107,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 25298.146393999923
+    },
+    {
+      "day_ahead_cost_ratio": 0.9989279375414337,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.56424707656024e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.209981630509461e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4108,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 23006.582417000085
+    },
+    {
+      "day_ahead_cost_ratio": 0.9986156632611538,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.567864571547289e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.21359912549651e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4109,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 25349.198504799977
+    },
+    {
+      "day_ahead_cost_ratio": 0.9956871592032803,
+      "effective_interactions": 2045952,
+      "policy_minus_status_quo_incremental_ramp_impact": -6.701085052129303e-05,
+      "policy_native_relative_incremental_ramp_impact": -7.346819606078524e-05,
+      "resumed_from_interactions": 0,
+      "seed": 4110,
+      "status_quo_native_relative_incremental_ramp_impact": -6.457345539492212e-06,
+      "training_elapsed_seconds": 25379.226961000124
+    }
+  ],
+  "statistical_unit": "optimizer seed",
+  "validation_days_per_seed": 28
+}

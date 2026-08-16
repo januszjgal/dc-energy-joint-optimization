@@ -17,16 +17,24 @@ from env.ramp_v6.reward import closed_window_terms
 
 class RampMathTests(unittest.TestCase):
     def test_constant_power_has_zero_incremental_impact(self) -> None:
-        terms = closed_window_terms(110.0, 100.0, 25.0, 25.0, 200.0, 1, 0.02)
+        terms = closed_window_terms(110.0, 100.0, 25.0, 25.0, 200.0, 1)
         self.assertAlmostEqual(terms.incremental_squared_impact, 0.0)
+        self.assertEqual(
+            tuple(terms.__dict__),
+            (
+                "native_fraction_s_per_hour",
+                "adjusted_fraction_s_per_hour",
+                "incremental_squared_impact",
+            ),
+        )
 
     def test_lowering_power_on_upward_native_ramp_earns_credit(self) -> None:
-        terms = closed_window_terms(110.0, 100.0, 10.0, 15.0, 200.0, 1, 0.02)
+        terms = closed_window_terms(110.0, 100.0, 10.0, 15.0, 200.0, 1)
         self.assertLess(terms.incremental_squared_impact, 0.0)
 
     def test_overshoot_and_symmetric_square_are_penalized(self) -> None:
-        upward = closed_window_terms(110.0, 100.0, 40.0, 10.0, 200.0, 1, 0.02)
-        downward = closed_window_terms(90.0, 100.0, 10.0, 40.0, 200.0, 1, 0.02)
+        upward = closed_window_terms(110.0, 100.0, 40.0, 10.0, 200.0, 1)
+        downward = closed_window_terms(90.0, 100.0, 10.0, 40.0, 200.0, 1)
         self.assertGreater(upward.incremental_squared_impact, 0.0)
         self.assertGreater(downward.incremental_squared_impact, 0.0)
         self.assertAlmostEqual(

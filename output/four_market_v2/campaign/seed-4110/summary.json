@@ -1,0 +1,174 @@
+{
+  "effective_interactions": 2045952,
+  "requested_interactions": 2000000,
+  "resumed_from_interactions": 0,
+  "safe_boundary_interactions": 55296,
+  "seed": 4110,
+  "training_elapsed_seconds": 25379.226961000124,
+  "training_identity": {
+    "action_steps": 27,
+    "effective_interactions": 2045952,
+    "n_envs": 4,
+    "ppo_config": {
+      "batch_size": 256,
+      "gae_lambda": 0.95,
+      "learning_rate": 0.0003,
+      "n_epochs": 10,
+      "n_steps": 512,
+      "net_arch": [
+        64,
+        64
+      ]
+    },
+    "requested_interactions": 2000000,
+    "safe_quantum": 55296,
+    "seed": 4110
+  },
+  "training_interactions_per_second": 80.61522138337719,
+  "update_count": 9990,
+  "validation": {
+    "abs_adjusted_ramp_h1_fraction_s_per_hour_max": 0.3025081522437354,
+    "abs_adjusted_ramp_h1_fraction_s_per_hour_p95": 0.09741411422307568,
+    "abs_adjusted_ramp_h3_fraction_s_per_hour_max": 0.16350130868307297,
+    "abs_adjusted_ramp_h3_fraction_s_per_hour_p95": 0.07676006855790893,
+    "batch_expired": 0.0,
+    "batch_unfinished": 0.0,
+    "behavior_audit": {
+      "deferrable_pre_service": 268.06241545237367,
+      "policy_ramp_power": 441732.8711996311,
+      "status_quo_ramp_power": 454625.25263261516
+    },
+    "bootstrap_by_day": {
+      "estimable": true,
+      "group_count": 28,
+      "lower_95": -7.936405200705659e-05,
+      "mean": -7.346819606078524e-05,
+      "unit": "day",
+      "upper_95": -6.857793433661493e-05
+    },
+    "bootstrap_by_month": {
+      "estimable": false,
+      "group_count": 1,
+      "mean": -7.346819606078524e-05,
+      "reason": "at least two independent groups are required",
+      "unit": "month"
+    },
+    "certificate_violations": 0,
+    "emergency_feasibility_rate": 0.0,
+    "energy_cost_ratio": 0.9956871592032803,
+    "episode_count": 28,
+    "evaluation_seed_interval": {
+      "maximum": -7.346819606078524e-05,
+      "mean": -7.346819606078524e-05,
+      "minimum": -7.346819606078524e-05,
+      "seed_count": 1
+    },
+    "future_leakage_detected": false,
+    "mean_incremental_ramp_impact": -7.346819606078524e-05,
+    "mean_policy_native_relative_incremental_ramp_impact": -7.346819606078524e-05,
+    "per_market_macro": {
+      "CAISO_NP15": -0.00011134502149734396,
+      "ISONE_NEMA": -0.0001586714186323554,
+      "MISO_MINN_HUB": 2.5223878323615826e-07,
+      "SPP_NORTH_HUB": -2.4108582896677744e-05
+    },
+    "per_market_policy_native_relative_incremental_ramp_impact": {
+      "CAISO_NP15": -0.00011134502149734396,
+      "ISONE_NEMA": -0.0001586714186323554,
+      "MISO_MINN_HUB": 2.5223878323615826e-07,
+      "SPP_NORTH_HUB": -2.4108582896677744e-05
+    },
+    "physical_ramp_metric_contract": {
+      "cross_market_signed_averaging": false,
+      "input": "absolute adjusted ramp magnitude",
+      "pooling": "all market-timestep values with equal weight",
+      "units": "fraction_of_market_training_q95_gross_demand_per_hour"
+    },
+    "ramp_h1_adjusted_max": 0.3025081522437354,
+    "ramp_h1_adjusted_p95": 0.09741411422307568,
+    "ramp_h3_adjusted_max": 0.16350130868307297,
+    "ramp_h3_adjusted_p95": 0.07676006855790893,
+    "semantic_adjustment": {
+      "adjustment_rate": 0.8518518518518519,
+      "coordinate_id": "decoded-work-allocation-service-batch-total-destination-2n-plus-1-v1",
+      "decision_count": 756,
+      "emergency_fallback_rate": 0.0,
+      "max_l2": 0.8337937270474365,
+      "mean_l2": 0.1786364342770509,
+      "p50_l2": 0.15216275601098753,
+      "p95_l2": 0.47446063443286496,
+      "positive_adjustment_count": 644,
+      "sum_l2": 135.04914431345048,
+      "units": "compute_work_units_per_hourly_decision"
+    },
+    "semantic_adjustment_l2": 135.04914431345048,
+    "service_unserved": 0.0,
+    "split": "validation",
+    "status_quo_comparison": {
+      "every_market_outperforms_status_quo": false,
+      "market_count": 4,
+      "markets_better_count": 3,
+      "markets_better_share": 0.75,
+      "per_market": {
+        "CAISO_NP15": {
+          "policy_minus_status_quo_incremental_ramp_impact": -0.00010249676242670406,
+          "policy_native_relative_incremental_ramp_impact": -0.00011134502149734396,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -8.8482590706399e-06
+        },
+        "ISONE_NEMA": {
+          "policy_minus_status_quo_incremental_ramp_impact": -0.0001493943303073428,
+          "policy_native_relative_incremental_ramp_impact": -0.0001586714186323554,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -9.277088325012608e-06
+        },
+        "MISO_MINN_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": 5.078505886862293e-06,
+          "policy_native_relative_incremental_ramp_impact": 2.5223878323615826e-07,
+          "policy_outperforms_status_quo": false,
+          "status_quo_native_relative_incremental_ramp_impact": -4.826267103626135e-06
+        },
+        "SPP_NORTH_HUB": {
+          "policy_minus_status_quo_incremental_ramp_impact": -2.123081523798754e-05,
+          "policy_native_relative_incremental_ramp_impact": -2.4108582896677744e-05,
+          "policy_outperforms_status_quo": true,
+          "status_quo_native_relative_incremental_ramp_impact": -2.877767658690203e-06
+        }
+      },
+      "policy_minus_status_quo_mean_incremental_ramp_impact": -6.701085052129303e-05,
+      "policy_native_relative_mean_incremental_ramp_impact": -7.346819606078524e-05,
+      "status_quo_native_relative_mean_incremental_ramp_impact": -6.457345539492212e-06
+    },
+    "terminal_work": 0.0
+  },
+  "validation_window_ids": [
+    "2026-02-01-daily",
+    "2026-02-02-daily",
+    "2026-02-03-daily",
+    "2026-02-04-daily",
+    "2026-02-05-daily",
+    "2026-02-06-daily",
+    "2026-02-07-daily",
+    "2026-02-08-daily",
+    "2026-02-09-daily",
+    "2026-02-10-daily",
+    "2026-02-11-daily",
+    "2026-02-12-daily",
+    "2026-02-13-daily",
+    "2026-02-14-daily",
+    "2026-02-15-daily",
+    "2026-02-16-daily",
+    "2026-02-17-daily",
+    "2026-02-18-daily",
+    "2026-02-19-daily",
+    "2026-02-20-daily",
+    "2026-02-21-daily",
+    "2026-02-22-daily",
+    "2026-02-23-daily",
+    "2026-02-24-daily",
+    "2026-02-25-daily",
+    "2026-02-26-daily",
+    "2026-02-27-daily",
+    "2026-02-28-daily"
+  ]
+}

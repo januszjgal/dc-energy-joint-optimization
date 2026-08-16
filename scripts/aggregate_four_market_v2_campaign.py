@@ -1,156 +1,250 @@
-"""Aggregate paired seed-level four-market v2 validation outcomes."""
+"""Aggregate the locked ten-seed one-factory PPO campaign."""
 
 from __future__ import annotations
 
+import argparse
+import csv
 import json
 import sys
 from pathlib import Path
 from statistics import mean, stdev
 from typing import Any
 
+import matplotlib
+import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from ramp_rl.campaign_statistics import paired_seed_summary, slope_diagnostic  # noqa: E402
+from ramp_rl.runner import LEARNING_CURVE_COLUMNS  # noqa: E402
+from scripts.run_four_market_v2_campaign import (  # noqa: E402
+    _campaign_training_geometry,
+    _load_completed_seed_summary,
+    _validate_campaign_geometry,
+)
+
+
 OUTPUT_ROOT = ROOT / "output" / "four_market_v2" / "campaign"
-SEEDS = (4101, 4102, 4103)
-VARIANTS = ("envelope_on", "envelope_off")
+SEEDS = tuple(range(4101, 4111))
+
+def _require_complete_summaries(output_root: Path) -> list[dict[str, Any]]:
+    missing = [
+        seed for seed in SEEDS
+        if not (output_root / f"seed-{seed}" / "summary.json").is_file()
+    ]
+    if missing:
+        raise FileNotFoundError(
+            "campaign aggregation requires completed summaries for all 10 seeds; "
+            f"missing: {', '.join(map(str, missing))}"
+        )
+    geometry = _validate_campaign_geometry()
+    training_geometry = _campaign_training_geometry()
+    return [
+        _load_completed_seed_summary(
+            seed, geometry, training_geometry, output_root=output_root
+        )
+        for seed in SEEDS
+    ]
 
 
-def _summary(variant: str, seed: int) -> dict[str, Any]:
-    return json.loads(
-        (OUTPUT_ROOT / variant / f"seed-{seed}" / "summary.json").read_text()
-    )
+def _read_curve(path: Path) -> list[dict[str, float]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if tuple(reader.fieldnames or ()) != LEARNING_CURVE_COLUMNS:
+            raise ValueError(f"unexpected learning curve columns in {path}")
+        return [{key: float(row[key]) for key in LEARNING_CURVE_COLUMNS} for row in reader]
 
 
-def _seed_row(summary: dict[str, Any]) -> dict[str, Any]:
-    validation = summary["validation"]
-    comparison = validation["status_quo_comparison"]
-    return {
-        "seed": summary["seed"],
-        "native_relative_incremental_ramp_impact": validation[
-            "mean_policy_native_relative_incremental_ramp_impact"
-        ],
-        "policy_minus_status_quo_impact": comparison[
-            "policy_minus_status_quo_mean_incremental_ramp_impact"
-        ],
-        "day_ahead_cost_ratio": validation["energy_cost_ratio"],
-        "service_unserved": validation["service_unserved"],
-        "batch_unfinished": validation["batch_unfinished"],
-        "batch_expired": validation["batch_expired"],
-        "terminal_work": validation["terminal_work"],
-        "certificate_violations": validation["certificate_violations"],
-        "emergency_fallback_rate": validation["emergency_feasibility_rate"],
-        "behavior_audit": validation["behavior_audit"],
-        "per_market": comparison["per_market"],
-        "success_gate": validation["success_gate"],
-        "elapsed_seconds": summary["training_elapsed_seconds"],
-        "throughput_interactions_per_second": summary[
-            "training_throughput_interactions_per_second"
-        ],
-    }
-
-
-def _mean(rows: list[dict[str, Any]], field: str) -> float:
-    return float(mean(float(row[field]) for row in rows))
-
-
-def _per_market_mean(rows: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+def aggregate_learning_curves(output_root: Path) -> dict[str, Any]:
+    curves: dict[int, dict[int, dict[str, float]]] = {}
+    for seed in SEEDS:
+        path = output_root / f"seed-{seed}" / "learning_curve.csv"
+        if not path.is_file():
+            raise FileNotFoundError(f"campaign aggregation requires learning curve: {path}")
+        rows = _read_curve(path)
+        curves[seed] = {int(row["interaction_count"]): row for row in rows}
+    aligned_counts = sorted(set.intersection(*(set(curve) for curve in curves.values())))
+    if not aligned_counts:
+        raise ValueError("learning curves have no common rollout interaction counts")
+    aggregate_path = output_root / "learning_curve_aggregate.csv"
     fields = (
-        "policy_native_relative_incremental_ramp_impact",
-        "status_quo_native_relative_incremental_ramp_impact",
-        "policy_minus_status_quo_incremental_ramp_impact",
+        "interaction_count", "seed_count", "mean_raw_ramp_reward",
+        "median_raw_ramp_reward", "mean_raw_incremental_ramp_impact",
+        "median_raw_incremental_ramp_impact", "mean_episode_count",
+        "mean_elapsed_seconds",
     )
+    rows: list[dict[str, float | int]] = []
+    for interaction_count in aligned_counts:
+        values = [curves[seed][interaction_count] for seed in SEEDS]
+        rows.append({
+            "interaction_count": interaction_count,
+            "seed_count": len(values),
+            "mean_raw_ramp_reward": float(mean(row["mean_raw_ramp_reward"] for row in values)),
+            "median_raw_ramp_reward": float(np.median([row["mean_raw_ramp_reward"] for row in values])),
+            "mean_raw_incremental_ramp_impact": float(mean(row["mean_raw_incremental_ramp_impact"] for row in values)),
+            "median_raw_incremental_ramp_impact": float(np.median([row["mean_raw_incremental_ramp_impact"] for row in values])),
+            "mean_episode_count": float(mean(row["episode_count"] for row in values)),
+            "mean_elapsed_seconds": float(mean(row["elapsed_seconds"] for row in values)),
+        })
+    with aggregate_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+    figure_path = output_root / "learning_curve_aggregate.png"
+    x = [int(row["interaction_count"]) for row in rows]
+    y = [float(row["mean_raw_incremental_ramp_impact"]) for row in rows]
+    fig, axis = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
+    axis.plot(x, y, color="#0078d4", linewidth=1.8)
+    axis.axvline(110_592, color="#666666", linestyle="--", linewidth=1, label="110,592 comparison point")
+    axis.set(xlabel="environment interactions", ylabel="mean raw incremental ramp impact")
+    axis.set_title("Ten-seed aligned PPO learning curve")
+    axis.legend()
+    fig.savefig(figure_path, dpi=160)
+    plt.close(fig)
+    x_array = np.asarray(x)
+    y_array = np.asarray(y)
     return {
-        market: {
-            field: float(mean(row["per_market"][market][field] for row in rows))
-            for field in fields
-        }
-        for market in rows[0]["per_market"]
+        "aligned_rollout_count": len(rows),
+        "aggregate_csv": str(aggregate_path.relative_to(ROOT)),
+        "aggregate_png": str(figure_path.relative_to(ROOT)),
+        "convergence_diagnostic": {
+            "around_110592": slope_diagnostic(
+                x_array, y_array,
+                selector=lambda counts: (counts >= 90_112) & (counts <= 131_072),
+                label="90,112 to 131,072 interactions around the prespecified 110,592 comparison point",
+            ),
+            "final_20_percent": slope_diagnostic(
+                x_array, y_array,
+                selector=lambda counts: counts >= 0.8 * counts.max(),
+                label="final 20 percent of aligned interactions",
+            ),
+        },
     }
+
+
+def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
+    rows = _require_complete_summaries(output_root)
+    differences = [
+        float(row["validation"]["status_quo_comparison"]["policy_minus_status_quo_mean_incremental_ramp_impact"])
+        for row in rows
+    ]
+    markets = sorted(
+        rows[0]["validation"]["status_quo_comparison"]["per_market"]
+    )
+    per_market = {}
+    for market in markets:
+        market_rows = [
+            row["validation"]["status_quo_comparison"]["per_market"][market]
+            for row in rows
+        ]
+        per_market[market] = {
+            "mean_policy_native_relative_incremental_ramp_impact": float(
+                mean(
+                    item["policy_native_relative_incremental_ramp_impact"]
+                    for item in market_rows
+                )
+            ),
+            "mean_status_quo_native_relative_incremental_ramp_impact": float(
+                mean(
+                    item["status_quo_native_relative_incremental_ramp_impact"]
+                    for item in market_rows
+                )
+            ),
+            "mean_policy_minus_status_quo_incremental_ramp_impact": float(
+                mean(
+                    item["policy_minus_status_quo_incremental_ramp_impact"]
+                    for item in market_rows
+                )
+            ),
+            "policy_seed_win_count": int(
+                sum(item["policy_outperforms_status_quo"] for item in market_rows)
+            ),
+        }
+    cost_ratios = [
+        float(row["validation"]["energy_cost_ratio"]) for row in rows
+    ]
+    safety_fields = (
+        "service_unserved",
+        "batch_unfinished",
+        "batch_expired",
+        "terminal_work",
+        "certificate_violations",
+    )
+    seed_summaries = [
+        {
+            "seed": int(row["seed"]),
+            "effective_interactions": int(row["effective_interactions"]),
+            "resumed_from_interactions": int(row["resumed_from_interactions"]),
+            "training_elapsed_seconds": float(row["training_elapsed_seconds"]),
+            "policy_native_relative_incremental_ramp_impact": float(
+                row["validation"]["mean_incremental_ramp_impact"]
+            ),
+            "status_quo_native_relative_incremental_ramp_impact": float(
+                row["validation"]["status_quo_comparison"][
+                    "status_quo_native_relative_mean_incremental_ramp_impact"
+                ]
+            ),
+            "policy_minus_status_quo_incremental_ramp_impact": float(
+                row["validation"]["status_quo_comparison"][
+                    "policy_minus_status_quo_mean_incremental_ramp_impact"
+                ]
+            ),
+            "day_ahead_cost_ratio": float(row["validation"]["energy_cost_ratio"]),
+        }
+        for row in rows
+    ]
+    result = {
+        "seed_count": len(rows),
+        "requested_interactions_per_seed": 2_000_000,
+        "validation_days_per_seed": 28,
+        "statistical_unit": "optimizer seed",
+        "mean_incremental_ramp_impact": float(mean(
+            float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows
+        )),
+        "sample_standard_deviation_incremental_ramp_impact": float(stdev(
+            float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows
+        )),
+        "mean_day_ahead_cost_ratio": float(mean(
+            cost_ratios
+        )),
+        "minimum_day_ahead_cost_ratio": float(min(cost_ratios)),
+        "maximum_day_ahead_cost_ratio": float(max(cost_ratios)),
+        "per_market": per_market,
+        "safety_totals": {
+            field: float(
+                sum(float(row["validation"][field]) for row in rows)
+            )
+            for field in safety_fields
+        },
+        "mean_emergency_feasibility_rate": float(
+            mean(
+                float(row["validation"]["emergency_feasibility_rate"])
+                for row in rows
+            )
+        ),
+        "paired_policy_minus_status_quo": paired_seed_summary(differences),
+        "learning_curves": aggregate_learning_curves(output_root),
+        "seeds": seed_summaries,
+    }
+    path = output_root / "aggregation.json"
+    path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return result
 
 
 def main() -> None:
-    seed_results = {
-        variant: [_seed_row(_summary(variant, seed)) for seed in SEEDS]
-        for variant in VARIANTS
-    }
-    aggregates = {
-        variant: {
-            "seed_count": len(rows),
-            "mean_native_relative_incremental_ramp_impact": _mean(
-                rows, "native_relative_incremental_ramp_impact"
-            ),
-            "sample_standard_deviation_native_relative_incremental_ramp_impact": stdev(
-                float(row["native_relative_incremental_ramp_impact"]) for row in rows
-            ),
-            "minimum_native_relative_incremental_ramp_impact": min(
-                float(row["native_relative_incremental_ramp_impact"]) for row in rows
-            ),
-            "maximum_native_relative_incremental_ramp_impact": max(
-                float(row["native_relative_incremental_ramp_impact"]) for row in rows
-            ),
-            "mean_policy_minus_status_quo_impact": _mean(
-                rows, "policy_minus_status_quo_impact"
-            ),
-            "mean_day_ahead_cost_ratio": _mean(rows, "day_ahead_cost_ratio"),
-            "mean_emergency_fallback_rate": _mean(rows, "emergency_fallback_rate"),
-            "mean_training_elapsed_seconds": _mean(rows, "elapsed_seconds"),
-            "mean_throughput_interactions_per_second": _mean(
-                rows, "throughput_interactions_per_second"
-            ),
-            "per_market_mean": _per_market_mean(rows),
-            "all_feasible": all(
-                row["service_unserved"] == 0.0
-                and row["batch_unfinished"] == 0.0
-                and row["batch_expired"] == 0.0
-                and row["terminal_work"] == 0.0
-                and row["certificate_violations"] == 0
-                for row in rows
-            ),
-        }
-        for variant, rows in seed_results.items()
-    }
-    pairs = []
-    for on, off in zip(seed_results["envelope_on"], seed_results["envelope_off"]):
-        difference = (
-            off["native_relative_incremental_ramp_impact"]
-            - on["native_relative_incremental_ramp_impact"]
-        )
-        pairs.append(
-            {
-                "seed": on["seed"],
-                "envelope_off_minus_envelope_on_native_relative_impact": difference,
-                "envelope_off_outperforms_envelope_on": difference < 0.0,
-            }
-        )
-    paired_differences = [
-        pair["envelope_off_minus_envelope_on_native_relative_impact"]
-        for pair in pairs
-    ]
-    result = {
-        "schema_version": "four-market-v2-paired-aggregation-v1",
-        "classification": "large_non_final_validation_only",
-        "seed_results": seed_results,
-        "variant_aggregates": aggregates,
-        "paired_variant_comparison": {
-            "pairs": pairs,
-            "envelope_off_outperforms_envelope_on_seed_count": sum(
-                pair["envelope_off_outperforms_envelope_on"] for pair in pairs
-            ),
-            "envelope_off_outperforms_envelope_on_consistently": all(
-                pair["envelope_off_outperforms_envelope_on"] for pair in pairs
-            ),
-            "mean_envelope_off_minus_envelope_on_native_relative_impact": float(
-                mean(paired_differences)
-            ),
-            "sample_standard_deviation_of_paired_difference": float(
-                stdev(paired_differences)
-            ),
-        },
-        "sealed_test_accessed": False,
-    }
-    path = OUTPUT_ROOT / "paired_aggregation.json"
-    path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
-    print(json.dumps(result["paired_variant_comparison"], indent=2, sort_keys=True))
+    argparse.ArgumentParser(
+        description="Aggregate completed summaries from the locked ten-seed PPO campaign."
+    ).parse_args()
+    result = aggregate()
+    print(json.dumps({
+        "seed_count": result["seed_count"],
+        "mean_day_ahead_cost_ratio": result["mean_day_ahead_cost_ratio"],
+        "wilcoxon_p_value": result["paired_policy_minus_status_quo"]["wilcoxon_signed_rank"]["p_value"],
+    }, indent=2))
 
 
 if __name__ == "__main__":

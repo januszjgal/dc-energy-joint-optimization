@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -15,13 +15,15 @@ import matplotlib.dates as mdates  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
-
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_MANIFEST = ROOT / "data" / "four_market_v2" / "source_manifest.json"
+sys.path.insert(0, str(ROOT))
+
+from env.ramp_v6.panel import CanonicalMarketPanel  # noqa: E402
+
+CALENDAR_PATH = ROOT / "data" / "four_market_v2" / "calendar.json"
 OUTPUT_DIR = ROOT / "docs" / "figures" / "four_market_v2"
 FIGURE_PATH = OUTPUT_DIR / "four_market_normalized_net_load.png"
 DAILY_FIGURE_PATH = OUTPUT_DIR / "single_day_normalized_net_load.png"
-MANIFEST_PATH = OUTPUT_DIR / "figure_manifest.json"
 CAISO_TIMEZONE = ZoneInfo("America/Los_Angeles")
 
 MARKET_ORDER = (
@@ -44,39 +46,20 @@ MARKET_COLORS = {
 }
 
 
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def text_sha256_candidates(path: Path) -> set[str]:
-    payload = path.read_bytes().replace(b"\r\n", b"\n")
-    crlf = payload.replace(b"\n", b"\r\n")
-    return {
-        hashlib.sha256(path.read_bytes()).hexdigest(),
-        hashlib.sha256(payload).hexdigest(),
-        hashlib.sha256(crlf).hexdigest(),
-    }
-
-
 def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
-    manifest = json.loads(SOURCE_MANIFEST.read_text(encoding="utf-8"))
+    calendar = json.loads(CALENDAR_PATH.read_text(encoding="utf-8"))
     frames: list[pd.DataFrame] = []
     window_count = 0
 
     for split in ("train", "validation"):
-        for window_id, record in sorted(manifest["windows"][split].items()):
-            panel_path = (
-                ROOT / Path(record["artifact_root"]) / "canonical_panel.csv"
-            )
-            expected_hash = record["canonical_panel_sha256"]
-            if expected_hash not in text_sha256_candidates(panel_path):
-                raise ValueError(f"{window_id} canonical panel hash mismatch")
+        for record in calendar[split]:
+            window_id = record["window_id"]
+            panel_path = ROOT / record["panel_path"]
+            if not panel_path.is_file():
+                raise FileNotFoundError(f"{window_id} canonical panel is missing")
 
             panel = pd.read_csv(panel_path)
+            CanonicalMarketPanel(panel)
             panel["timestamp_utc"] = pd.to_datetime(
                 panel["timestamp_utc"], utc=True, errors="raise"
             )
@@ -186,7 +169,7 @@ def plot_normalized_net_load(frame: pd.DataFrame) -> None:
     figure.text(
         0.01,
         0.01,
-        "Source: hash-bound four-market daily panels; raw hourly values, "
+        "Source: four-market daily panels; raw hourly values, "
         "no smoothing.",
         ha="left",
         va="bottom",
@@ -347,7 +330,7 @@ def plot_single_day(
     figure.text(
         0.01,
         0.01,
-        "Source: simultaneous hash-bound four-market rows; CAISO highlighted. "
+        "Source: simultaneous four-market rows; CAISO highlighted. "
         "Yellow band marks 08:00-18:00 Pacific.",
         ha="left",
         va="bottom",
@@ -366,38 +349,10 @@ def main() -> None:
     daily_frame, daily_selection = select_duck_curve_day(frame)
     plot_single_day(daily_frame, daily_selection)
 
-    manifest = {
-        "schema_version": "four-market-thesis-figures-v2",
-        "source_manifest": {
-            "path": str(SOURCE_MANIFEST.relative_to(ROOT)).replace("\\", "/"),
-            "sha256": sha256_file(SOURCE_MANIFEST),
-        },
-        "source_scope": {
-            **metadata,
-            "rows": len(frame),
-            "value": "net_load_mw / market_scale_mw",
-            "smoothing": False,
-            "active_decision_hours_only": True,
-        },
-        "single_day_selection": daily_selection,
-        "outputs": {
-            str(FIGURE_PATH.relative_to(ROOT)).replace("\\", "/"): sha256_file(
-                FIGURE_PATH
-            ),
-            str(DAILY_FIGURE_PATH.relative_to(ROOT)).replace(
-                "\\", "/"
-            ): sha256_file(DAILY_FIGURE_PATH),
-        },
-    }
-    MANIFEST_PATH.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
     print(
         f"Wrote {FIGURE_PATH.relative_to(ROOT)} and "
         f"{DAILY_FIGURE_PATH.relative_to(ROOT)} from "
-        f"{metadata['window_count']} verified windows"
+        f"{metadata['window_count']} active windows"
     )
 
 

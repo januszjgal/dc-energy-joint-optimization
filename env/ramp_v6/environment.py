@@ -49,8 +49,6 @@ class RampAwareEnv(gym.Env):
         protocol: RampProtocol | None = None,
         *,
         episode_context: Mapping[str, Any] | None = None,
-        epsilon_pct: float = 2.0,
-        lagrangian_multiplier: float = 0.0,
     ):
         super().__init__()
         self.panel = panel
@@ -89,6 +87,16 @@ class RampAwareEnv(gym.Env):
         self._capacity = np.asarray(
             [site.compute_capacity for site in self.sites], dtype=np.float64
         )
+        fleet_capacity = float(self._capacity.sum())
+        max_raw_arrivals = float(
+            (workload.service_arrivals[: self.main_steps]
+             + workload.batch_arrivals[: self.main_steps]).sum(axis=1).max()
+        )
+        if max_raw_arrivals > fleet_capacity + self.protocol.tolerance:
+            raise ValueError("raw arrivals exceed hard fleet capacity")
+        self._future_batch_capacity_fraction = max(
+            0.0, 1.0 - max_raw_arrivals / fleet_capacity
+        )
         self._market_site_indices = {
             market: np.asarray(
                 [
@@ -126,10 +134,6 @@ class RampAwareEnv(gym.Env):
         self._market_power_history: dict[str, list[float]] = {}
         self._episode_history: list[dict[str, Any]] = []
         self._episode_context = dict(episode_context or {})
-        self._epsilon_pct = float(epsilon_pct)
-        self._lagrangian_multiplier = 0.0
-        self.set_lagrangian_multiplier(lagrangian_multiplier)
-        self._next_action_provenance = "agent_semantic"
         self._reset_count = 0
 
     def ramp_rl_contract(self) -> dict[str, Any]:
@@ -137,7 +141,6 @@ class RampAwareEnv(gym.Env):
             "version": CONTRACT_VERSION,
             "semantic_feasible_action": True,
             "semantic_action_id": SEMANTIC_ACTION_ID,
-            "raw_redundant_projected_logits": False,
             "history_hours": self.protocol.history_hours,
             "terminal_tail_hours": self.protocol.terminal_tail_hours,
             "terminal_tail_emitted_in_step_metrics": True,
@@ -154,31 +157,16 @@ class RampAwareEnv(gym.Env):
                 "units": "fraction_of_market_training_q95_gross_demand_per_hour",
                 "cross_market_signed_averaging": False,
             },
-            "metric_compatibility_aliases": {
-                "ramp_h1_adjusted": (
-                    "legacy_signed_cross_market_mean_adjusted_ramp_h1_fraction_s_per_hour"
-                ),
-                "ramp_h3_adjusted": (
-                    "legacy_signed_cross_market_mean_adjusted_ramp_h3_fraction_s_per_hour"
-                ),
-            },
             "semantic_adjustment_coordinate_id": (
                 SEMANTIC_ADJUSTMENT_COORDINATE_ID
             ),
             "semantic_adjustment_units": SEMANTIC_ADJUSTMENT_UNITS,
         }
 
-    def set_lagrangian_multiplier(self, value: float) -> None:
-        multiplier = float(value)
-        if not math.isfinite(multiplier) or multiplier < 0.0:
-            raise ValueError("Lagrangian multiplier must be finite and non-negative")
-        self._lagrangian_multiplier = multiplier
-
     def evaluation_action(self, name: str) -> np.ndarray:
         if name != "status_quo":
             raise ValueError("only the status-quo comparator is implemented")
         self._load_current_arrivals()
-        self._next_action_provenance = "evaluation_status_quo"
         return self._status_quo_action(self.queue).astype(np.float32)
 
     @property
@@ -200,8 +188,6 @@ class RampAwareEnv(gym.Env):
             names.extend(
                 [
                     f"{market}:da_lmp_usd_per_mwh_scaled",
-                    f"{market}:forecast_vintage_age_hours",
-                    f"{market}:quality_ok",
                 ]
             )
         for index, site in enumerate(self.sites):
@@ -211,27 +197,14 @@ class RampAwareEnv(gym.Env):
                     f"{site.site_id}:batch_arrival_capacity_fraction",
                     f"{site.site_id}:queued_batch_capacity_fraction",
                     f"{site.site_id}:previous_power_rated_fraction",
-                    f"{site.site_id}:compute_capacity",
-                    f"{site.site_id}:rated_power_100mw_units",
-                    f"{site.site_id}:idle_power_fraction",
-                    f"{site.site_id}:dynamic_power_fraction",
                 ]
             )
         names.extend(
             f"batch_queue_deadline_le_{edge}h_capacity_fraction"
             for edge in self.protocol.deadline_bucket_hours
         )
-        names.extend(
-            [
-                "batch_queue_deadline_beyond_24h_capacity_fraction",
-                "episode_progress",
-                "terminal_tail_active",
-                "hour_sin",
-                "hour_cos",
-                "day_of_week_sin",
-                "day_of_week_cos",
-            ]
-        )
+        names.extend(["episode_progress", "terminal_tail_active", "hour_sin", "hour_cos",
+                      "day_of_week_sin", "day_of_week_cos"])
         return names
 
     def reset(
@@ -260,7 +233,6 @@ class RampAwareEnv(gym.Env):
             for market, site_indices in self._market_site_indices.items()
         }
         self._episode_history = []
-        self._next_action_provenance = "agent_semantic"
         self._load_current_arrivals()
         context = dict(self._episode_context)
         split = requested.get("split", context.get("split", "fixture"))
@@ -279,18 +251,10 @@ class RampAwareEnv(gym.Env):
                 "decision_steps": self.action_steps,
                 "active_arrival_steps": self.main_steps,
                 "future_realized_features_exposed": False,
+                "future_batch_capacity_fraction": self._future_batch_capacity_fraction,
             }
         )
         context.setdefault("forecast_model", "caller-supplied-causal-forecast")
-        context.setdefault(
-            "forecast_vintage",
-            ",".join(
-                sorted(
-                    self.panel.frame["forecast_vintage_id"].astype(str).unique()
-                )
-            ),
-        )
-        context.setdefault("source_hashes", {"panel": "unhashed-direct-construction"})
         self._active_episode_context = context
         self._reset_count += 1
         return self._observation(), {
@@ -427,11 +391,6 @@ class RampAwareEnv(gym.Env):
             values.extend(
                 [
                     float(row["da_lmp_usd_per_mwh"]) / 100.0,
-                    (
-                        self.current_timestamp - row["forecast_issue_time_utc"]
-                    ).total_seconds()
-                    / 3600.0,
-                    float(bool(row["quality_ok"])),
                 ]
             )
 
@@ -447,18 +406,12 @@ class RampAwareEnv(gym.Env):
                     / capacity,
                     float(queued_by_origin[index]) / capacity,
                     float(previous_power[index]) / site.rated_power_mw,
-                    capacity,
-                    site.rated_power_mw / 100.0,
-                    site.idle_power_fraction,
-                    site.dynamic_power_fraction,
                 ]
             )
         total_capacity = float(self._capacity.sum())
         values.extend(
-            self.queue.histogram(
-                self._step, self.protocol.deadline_bucket_hours
-            )
-            / total_capacity
+            self.queue.due_by(self._step + edge) / total_capacity
+            for edge in self.protocol.deadline_bucket_hours
         )
         timestamp = self.current_timestamp
         hour_angle = 2.0 * math.pi * timestamp.hour / 24.0
@@ -486,10 +439,6 @@ class RampAwareEnv(gym.Env):
     ) -> dict[int, float]:
         queue = queue or self.queue
         total_capacity = float(self._capacity.sum())
-        carried_fraction = (
-            self.protocol.guaranteed_batch_capacity_fraction
-            - self.protocol.batch_arrival_envelope_fraction_of_fleet
-        )
         result: dict[int, float] = {}
         for deadline in queue.deadlines:
             capacity = 0.0
@@ -498,7 +447,7 @@ class RampAwareEnv(gym.Env):
                 capacity += (
                     total_capacity
                     if future_step >= self.main_steps
-                    else total_capacity * carried_fraction
+                    else total_capacity * self._future_batch_capacity_fraction
                 )
             result[deadline] = capacity
         return result
@@ -516,30 +465,7 @@ class RampAwareEnv(gym.Env):
         ):
             raise ValueError("action is outside the frozen [-6, 6] bounds")
         self._load_current_arrivals()
-        action_provenance = self._next_action_provenance
-        self._next_action_provenance = "agent_semantic"
         service_total = float(self.workload.service_arrivals[self._step].sum())
-        fleet_capacity = float(self._capacity.sum())
-        if self.protocol.admission_envelope_enabled and self._step < self.main_steps:
-            service_limit = (
-                fleet_capacity
-                * self.protocol.service_envelope_fraction_of_fleet
-            )
-            batch_arrival = float(
-                self.workload.batch_arrivals[self._step].sum()
-            )
-            batch_arrival_limit = (
-                fleet_capacity
-                * self.protocol.batch_arrival_envelope_fraction_of_fleet
-            )
-            if service_total > service_limit + self.protocol.tolerance:
-                raise ValueError(
-                    "service arrival exceeds frozen causal feasibility envelope"
-                )
-            if batch_arrival > batch_arrival_limit + self.protocol.tolerance:
-                raise ValueError(
-                    "batch arrival exceeds frozen causal feasibility envelope"
-                )
         projected = project_action(
             action,
             service_total,
@@ -573,7 +499,6 @@ class RampAwareEnv(gym.Env):
             work,
             site_power,
             market_power,
-            action_provenance=action_provenance,
         )
         self._episode_history.append(info)
 
@@ -619,14 +544,11 @@ class RampAwareEnv(gym.Env):
         work: np.ndarray,
         site_power: np.ndarray,
         market_power: dict[str, float],
-        *,
-        action_provenance: str,
     ) -> tuple[dict[str, Any], float]:
         panel_index = self.protocol.history_hours + self._step
         current = self.panel.observation_rows(panel_index)
         per_market: dict[str, dict[str, Any]] = {}
         weighted_impact = 0.0
-        weighted_tail = 0.0
         total_da_cost = 0.0
         ramp_h1: list[float] = []
         ramp_h3: list[float] = []
@@ -652,11 +574,6 @@ class RampAwareEnv(gym.Env):
                     ],
                     gross_q95_scale_mw=scale,
                     horizon_hours=horizon,
-                    tail_q90_fraction_s_per_hour=(
-                        self.stats.native_abs_ramp_q90_fraction_s_per_hour[
-                            market
-                        ][horizon]
-                    ),
                 )
                 windows[f"{horizon}h"] = {
                     "native_ramp_mw": (
@@ -677,10 +594,6 @@ class RampAwareEnv(gym.Env):
                 weighted_impact += (
                     self.protocol.ramp_weights[horizon]
                     * terms.incremental_squared_impact
-                )
-                weighted_tail += (
-                    self.protocol.ramp_weights[horizon]
-                    * terms.incremental_tail_burden
                 )
                 if horizon == 1:
                     ramp_h1.append(terms.adjusted_fraction_s_per_hour)
@@ -747,17 +660,9 @@ class RampAwareEnv(gym.Env):
             }
         macro_divisor = len(self.panel.markets)
         weighted_impact /= macro_divisor
-        weighted_tail /= macro_divisor
-        scalar_objective = weighted_impact + self.protocol.tail_weight * weighted_tail
-        ramp_reward = -self.protocol.ramp_reward_scale * scalar_objective
+        ramp_reward = -self.protocol.ramp_reward_scale * weighted_impact
         status_quo_cost = self._status_quo_energy_cost(current)
-        energy_budget = status_quo_cost + (
-            self._epsilon_pct / 100.0
-        ) * abs(status_quo_cost)
-        lagrangian_penalty = self._lagrangian_multiplier * (
-            total_da_cost - energy_budget
-        )
-        reward = ramp_reward - lagrangian_penalty
+        reward = ramp_reward
         service_unserved = max(
             float(self.workload.service_arrivals[self._step].sum())
             - float(projected.service.sum()),
@@ -782,19 +687,10 @@ class RampAwareEnv(gym.Env):
             ),
             "scalar_reward": reward,
             "ramp_reward": ramp_reward,
-            "lagrangian_multiplier": self._lagrangian_multiplier,
-            "lagrangian_penalty": lagrangian_penalty,
             "weighted_incremental_ramp_impact": weighted_impact,
-            "weighted_incremental_tail_burden": weighted_tail,
             "da_energy_cost_usd": total_da_cost,
             "ramp_h1_adjusted": float(np.mean(ramp_h1)),
             "ramp_h3_adjusted": float(np.mean(ramp_h3)),
-            "legacy_signed_cross_market_mean_adjusted_ramp_h1_fraction_s_per_hour": float(
-                np.mean(ramp_h1)
-            ),
-            "legacy_signed_cross_market_mean_adjusted_ramp_h3_fraction_s_per_hour": float(
-                np.mean(ramp_h3)
-            ),
             "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": abs_ramp_h1,
             "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": abs_ramp_h3,
             "physical_ramp_market_order": list(self.panel.markets),
@@ -814,7 +710,6 @@ class RampAwareEnv(gym.Env):
                 SEMANTIC_ADJUSTMENT_COORDINATE_ID
             ),
             "semantic_adjustment_units": SEMANTIC_ADJUSTMENT_UNITS,
-            "action_provenance": action_provenance,
             "terminal_work": batch_unfinished,
             "deferrable_pre_service": deferrable_pre_service,
             "dc_power_during_realized_ramp": realized_ramp_power,
