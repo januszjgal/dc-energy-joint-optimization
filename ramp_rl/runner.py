@@ -23,6 +23,23 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
 
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _repo_path(path: Path) -> str:
+    """Render a path relative to the repository root, POSIX style.
+
+    Recorded artifact paths must not embed the absolute working directory:
+    runs executed from a worktree would otherwise bake that checkout's location
+    into committed evidence. Falls back to the absolute path when the target
+    lies outside the repository.
+    """
+    resolved = Path(path).resolve()
+    try:
+        return str(resolved.relative_to(ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(resolved)
+
 
 EXPECTED_SB3_VERSION = "2.9.0"
 LEARNING_CURVE_COLUMNS = (
@@ -336,7 +353,7 @@ class TrainingCallback(BaseCallback):
             index["milestones"][str(target)] = {
                 "requested_interactions": target,
                 "actual_interactions": actual,
-                "path": str(snapshot),
+                "path": _repo_path(snapshot),
             }
             self._saved_milestones.add(target)
         _write_json(self.milestone_index_path, index)
@@ -624,7 +641,7 @@ def run_training(
             "resumed_from_interactions": resumed_from_interactions,
             "safe_boundary_interactions": safe_quantum,
             "update_count": int(model._n_updates),
-            "learning_curve_path": str(curve_path),
+            "learning_curve_path": _repo_path(curve_path),
         }
         _write_json(summary_path, summary)
         _write_json(
