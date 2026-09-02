@@ -1,11 +1,48 @@
 {
-  "fit_description": "gross-demand Q95 over 2025 excluding the holdout month",
+  "fit_end_utc": "2025-12-31T23:00:00+00:00",
+  "fit_months": [
+    "2025-01",
+    "2025-02",
+    "2025-03",
+    "2025-04",
+    "2025-06",
+    "2025-07",
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12"
+  ],
+  "fit_start_utc": "2025-01-01T00:00:00+00:00",
+  "gross_level_mean_mw": {
+    "CAISO_NP15": 25673.880489021954,
+    "ISONE_NEMA": 13371.743013972056,
+    "MISO_MINN_HUB": 76494.0881986028,
+    "SPP_NORTH_HUB": 34529.81948602795
+  },
+  "gross_level_std_mw": {
+    "CAISO_NP15": 4195.393573268614,
+    "ISONE_NEMA": 2696.807821624646,
+    "MISO_MINN_HUB": 12144.523003795804,
+    "SPP_NORTH_HUB": 5689.205537540698
+  },
   "gross_q95_mw": {
     "CAISO_NP15": 33983.0,
     "ISONE_NEMA": 18007.25,
     "MISO_MINN_HUB": 101249.75,
     "SPP_NORTH_HUB": 46366.75
   },
-  "stats_id": "four-market-2025-train-only-stats-v1",
-  "validation_month": 5
+  "net_level_mean_mw": {
+    "CAISO_NP15": 17948.558882235528,
+    "ISONE_NEMA": 12664.493512974052,
+    "MISO_MINN_HUB": 61741.80102295409,
+    "SPP_NORTH_HUB": 21571.02794411178
+  },
+  "net_level_std_mw": {
+    "CAISO_NP15": 6571.854614586348,
+    "ISONE_NEMA": 2762.010624601815,
+    "MISO_MINN_HUB": 13949.98183225892,
+    "SPP_NORTH_HUB": 8189.178454805996
+  },
+  "stats_id": "four-market-2025-train-only-stats-v1"
 }

@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 
 from env.ramp_v6.panel import CanonicalMarketPanel  # noqa: E402
 
-CALENDAR_PATH = ROOT / "data" / "four_market_v2" / "calendar.json"
+CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 OUTPUT_DIR = ROOT / "docs" / "figures" / "four_market_v2"
 FIGURE_PATH = OUTPUT_DIR / "four_market_normalized_net_load.png"
 DAILY_FIGURE_PATH = OUTPUT_DIR / "single_day_normalized_net_load.png"

@@ -1,13 +1,14 @@
 {
-  "forecast_model": "persistence-placeholder",
+  "forecast_model": "causal-ridge-shortlag-v2",
   "frozen_stats_path": "data/four_market_2025/frozen_stats.json",
   "hour_label_convention": "panel timestamps are hour-beginning UTC",
   "markets": [
     "CAISO_NP15",
-    "ISONE_NEMA",
     "MISO_MINN_HUB",
-    "SPP_NORTH_HUB"
+    "SPP_NORTH_HUB",
+    "ISONE_NEMA"
   ],
+  "test": [],
   "train": [
     {
       "day": "2025-01-01",

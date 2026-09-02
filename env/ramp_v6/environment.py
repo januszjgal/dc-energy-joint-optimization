@@ -185,11 +185,6 @@ class RampAwareEnv(gym.Env):
                 for hour in FORECAST_HOURS:
                     names.append(f"{market}:forecast_{quantity}_h{hour}_z")
                 names.append(f"{market}:forecast_{quantity}_max_up_3h_fraction_s")
-            names.extend(
-                [
-                    f"{market}:da_lmp_usd_per_mwh_scaled",
-                ]
-            )
         for index, site in enumerate(self.sites):
             names.extend(
                 [
@@ -281,34 +276,6 @@ class RampAwareEnv(gym.Env):
             ]
         )
 
-    def _status_quo_energy_cost(self, current: pd.DataFrame) -> float:
-        projected = project_action(
-            self._status_quo_action(self._status_quo_queue),
-            float(self.workload.service_arrivals[self._step].sum()),
-            self._capacity,
-            self._status_quo_queue,
-            self._step,
-            self.action_steps - 1,
-            self.n_sites,
-            guaranteed_future_batch_capacity_by_deadline=(
-                self._guaranteed_future_batch_capacity_by_deadline(
-                    self._status_quo_queue
-                )
-            ),
-        )
-        work = projected.service + projected.batch_by_destination
-        site_power = np.asarray(
-            [site.power_mw(work[index]) for index, site in enumerate(self.sites)],
-            dtype=np.float64,
-        )
-        return float(
-            sum(
-                site_power[site_indices].sum()
-                * float(current.loc[market, "da_lmp_usd_per_mwh"])
-                for market, site_indices in self._market_site_indices.items()
-            )
-        )
-
     def _load_current_arrivals(self) -> None:
         if self._arrivals_loaded:
             return
@@ -388,11 +355,6 @@ class RampAwareEnv(gym.Env):
                     for index in range(3)
                 )
                 values.append(max_up)
-            values.extend(
-                [
-                    float(row["da_lmp_usd_per_mwh"]) / 100.0,
-                ]
-            )
 
         queued_by_origin = self.queue.by_origin(self.n_sites)
         previous_power = self._site_power_history[-1]
@@ -514,8 +476,6 @@ class RampAwareEnv(gym.Env):
                 "ramp_h1_adjusted",
                 "ramp_h3_adjusted",
                 "incremental_ramp_impact",
-                "energy_cost",
-                "status_quo_energy_cost",
                 "service_unserved",
                 "batch_unfinished",
                 "batch_expired",
@@ -549,7 +509,6 @@ class RampAwareEnv(gym.Env):
         current = self.panel.observation_rows(panel_index)
         per_market: dict[str, dict[str, Any]] = {}
         weighted_impact = 0.0
-        total_da_cost = 0.0
         ramp_h1: list[float] = []
         ramp_h3: list[float] = []
         abs_ramp_h1: list[float] = []
@@ -607,10 +566,6 @@ class RampAwareEnv(gym.Env):
                     abs_ramp_h3.append(
                         abs(terms.adjusted_fraction_s_per_hour)
                     )
-            da_cost = (
-                market_power[market] * float(row["da_lmp_usd_per_mwh"])
-            )
-            total_da_cost += da_cost
             forecast_errors = {}
             for horizon in HORIZONS:
                 issue_index = panel_index - horizon
@@ -653,15 +608,12 @@ class RampAwareEnv(gym.Env):
                 "power_over_market_scale": (
                     market_power[market] / float(row["market_scale_mw"])
                 ),
-                "da_lmp_usd_per_mwh": float(row["da_lmp_usd_per_mwh"]),
-                "da_energy_cost_usd": da_cost,
                 "windows": windows,
                 "forecast_errors": forecast_errors,
             }
         macro_divisor = len(self.panel.markets)
         weighted_impact /= macro_divisor
         ramp_reward = -self.protocol.ramp_reward_scale * weighted_impact
-        status_quo_cost = self._status_quo_energy_cost(current)
         reward = ramp_reward
         service_unserved = max(
             float(self.workload.service_arrivals[self._step].sum())
@@ -688,15 +640,12 @@ class RampAwareEnv(gym.Env):
             "scalar_reward": reward,
             "ramp_reward": ramp_reward,
             "weighted_incremental_ramp_impact": weighted_impact,
-            "da_energy_cost_usd": total_da_cost,
             "ramp_h1_adjusted": float(np.mean(ramp_h1)),
             "ramp_h3_adjusted": float(np.mean(ramp_h3)),
             "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": abs_ramp_h1,
             "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": abs_ramp_h3,
             "physical_ramp_market_order": list(self.panel.markets),
             "incremental_ramp_impact": weighted_impact,
-            "energy_cost": total_da_cost,
-            "status_quo_energy_cost": status_quo_cost,
             "service_unserved": service_unserved,
             "batch_unfinished": batch_unfinished,
             "batch_expired": 0.0,
@@ -718,10 +667,6 @@ class RampAwareEnv(gym.Env):
             "step_abs_adjusted_ramp_h1_fraction_s_per_hour": abs_ramp_h1,
             "step_abs_adjusted_ramp_h3_fraction_s_per_hour": abs_ramp_h3,
             "step_incremental_ramp_impact": incremental_by_market,
-            "step_energy_cost": [
-                per_market[market]["da_energy_cost_usd"]
-                for market in self.panel.markets
-            ],
             "step_service_unserved": [service_unserved],
             "step_batch_unfinished": [batch_unfinished],
             "step_batch_expired": [0.0],

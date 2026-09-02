@@ -19,8 +19,6 @@ REQUIRED_STEP_INFO = (
     "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market",
     "physical_ramp_market_order",
     "incremental_ramp_impact",
-    "energy_cost",
-    "status_quo_energy_cost",
     "service_unserved",
     "batch_unfinished",
     "batch_expired",

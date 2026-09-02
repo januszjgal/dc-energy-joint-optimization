@@ -20,7 +20,6 @@ BASE_COLUMNS = (
     "wind_mw",
     "solar_mw",
     "market_scale_mw",
-    "da_lmp_usd_per_mwh",
     "forecast_issue_time_utc",
     "forecast_vintage_id",
     "quality_ok",

@@ -80,8 +80,6 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": [0.0],
             "physical_ramp_market_order": ["tiny"],
             "incremental_ramp_impact": 0.0,
-            "energy_cost": 0.0,
-            "status_quo_energy_cost": 0.0,
             "service_unserved": 0.0,
             "batch_unfinished": 0.0,
             "batch_expired": 0.0,
@@ -145,10 +143,9 @@ def _completed_campaign_summary(
         "safe_boundary_interactions": training_geometry["safe_quantum"],
         "validation_window_ids": windows,
         "validation": {
-            "episode_count": 28,
+            "episode_count": 31,
             "mean_policy_native_relative_incremental_ramp_impact": 1.0,
             "mean_incremental_ramp_impact": 1.0,
-            "energy_cost_ratio": 1.0,
             "status_quo_comparison": {
                 "policy_native_relative_mean_incremental_ramp_impact": 1.0,
                 "status_quo_native_relative_mean_incremental_ramp_impact": 2.0,

@@ -220,21 +220,40 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
         (validation if day.month == VALIDATION_MONTH else train).append(entry)
 
     calendar = {
-        "markets": sorted(MARKETS),
+        "markets": list(MARKETS),  # canonical order, matches MARKET_TO_CELL
         "frozen_stats_path": "data/four_market_2025/frozen_stats.json",
         "forecast_model": "persistence-placeholder",
         "hour_label_convention": "panel timestamps are hour-beginning UTC",
         "validation_month": VALIDATION_MONTH,
         "train": train,
         "validation": validation,
+        "test": [],
     }
     (OUT_ROOT / "calendar.json").write_text(
         json.dumps(calendar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    stats = {"gross_q95_mw": scales,
-             "fit_description": "gross-demand Q95 over 2025 excluding the holdout month",
-             "validation_month": VALIDATION_MONTH,
-             "stats_id": "four-market-2025-train-only-stats-v1"}
+    # The environment also standardizes its level and forecast features, so
+    # the frozen statistics carry means and standard deviations alongside the
+    # ramp normalizer. All are fitted on training hours only.
+    mask = training_mask(frame["timestamp_utc"])
+    training = frame[mask]
+    grouped = training.groupby("market_id")
+    stats = {
+        "fit_start_utc": YEAR_START.isoformat(),
+        "fit_end_utc": YEAR_END.isoformat(),
+        "fit_months": [f"2025-{month:02d}" for month in range(1, 13)
+                       if month != VALIDATION_MONTH],
+        "gross_q95_mw": scales,
+        "gross_level_mean_mw": {k: float(v) for k, v in
+                                grouped["gross_demand_mw"].mean().items()},
+        "gross_level_std_mw": {k: float(v) for k, v in
+                               grouped["gross_demand_mw"].std().items()},
+        "net_level_mean_mw": {k: float(v) for k, v in
+                              grouped["net_load_mw"].mean().items()},
+        "net_level_std_mw": {k: float(v) for k, v in
+                             grouped["net_load_mw"].std().items()},
+        "stats_id": "four-market-2025-train-only-stats-v1",
+    }
     (OUT_ROOT / "frozen_stats.json").write_text(
         json.dumps(stats, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

@@ -55,8 +55,8 @@ def _factory() -> dict[str, Any]:
 
 def _validate_campaign_geometry() -> dict[str, list[str]]:
     windows = _factory()["windows"]
-    if len(windows["train"]) != 114 or len(windows["validation"]) != 28:
-        raise RuntimeError("campaign requires exactly 114 train windows and 28 February validation days")
+    if len(windows["train"]) != 334 or len(windows["validation"]) != 31:
+        raise RuntimeError("campaign requires exactly 334 train windows and 31 May validation days")
     return {
         "train": sorted(windows["train"]),
         "validation": sorted(windows["validation"]),
@@ -181,7 +181,7 @@ def _load_completed_seed_summary(
     if (
         isinstance(episode_count, bool)
         or not isinstance(episode_count, int)
-        or episode_count != 28
+        or episode_count != 31
     ):
         raise RuntimeError(
             f"completed seed summary has invalid validation episode count for seed {seed}: "
@@ -190,7 +190,6 @@ def _load_completed_seed_summary(
     metric_paths = (
         ("mean_policy_native_relative_incremental_ramp_impact",),
         ("mean_incremental_ramp_impact",),
-        ("energy_cost_ratio",),
         ("status_quo_comparison", "policy_native_relative_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "status_quo_native_relative_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "policy_minus_status_quo_mean_incremental_ramp_impact"),
@@ -272,8 +271,8 @@ def train_and_evaluate(seed: int) -> dict[str, Any]:
             factory=make_four_market_env, checkpoint_dir=checkpoint, split="validation",
             seeds=[seed], windows=geometry["validation"],
         )
-        if validation["episode_count"] != 28:
-            raise RuntimeError("each seed must evaluate exactly the 28 February validation days")
+        if validation["episode_count"] != 31:
+            raise RuntimeError("each seed must evaluate exactly the 31 May validation days")
         compact_validation = {
             key: value
             for key, value in validation.items()

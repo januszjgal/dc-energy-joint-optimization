@@ -20,7 +20,7 @@ from scripts.run_four_market_v2_campaign import preflight
 
 ROOT = Path(__file__).resolve().parents[2]
 FACTORY_ROOT = ROOT / "output" / "four_market_v2" / "factory"
-CALENDAR_PATH = ROOT / "data" / "four_market_v2" / "calendar.json"
+CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 
 
 class FourMarketV2DesignTests(unittest.TestCase):
@@ -42,9 +42,9 @@ class FourMarketV2DesignTests(unittest.TestCase):
             self.assertEqual(tuple((site.market_id, site.site_id[-1]) for site in env._current.sites), MARKET_TO_CELL)
             self.assertEqual(tuple(env._current.panel.markets), tuple(sorted(MARKETS)))
             self.assertEqual(env.action_space.shape, (9,))
-            self.assertEqual(observation.shape, (100,))
+            self.assertEqual(observation.shape, (96,))
             schema = env._current.observation_schema
-            self.assertEqual(len(schema), 100)
+            self.assertEqual(len(schema), 96)
             self.assertEqual(
                 [name for name in schema if name.startswith("batch_queue_deadline")],
                 [
@@ -83,8 +83,8 @@ class FourMarketV2DesignTests(unittest.TestCase):
 
     def test_only_train_validation_and_cells_a_to_d_are_accessible(self) -> None:
         calendar = json.loads(CALENDAR_PATH.read_text())
-        self.assertEqual(len(calendar["train"]), 114)
-        self.assertEqual(len(calendar["validation"]), 28)
+        self.assertEqual(len(calendar["train"]), 334)
+        self.assertEqual(len(calendar["validation"]), 31)
         self.assertEqual(calendar["test"], [])
         self.assertEqual(calendar["markets"], list(MARKETS))
         rendered = json.dumps(calendar)
@@ -100,7 +100,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
         rendered = yaml.safe_dump(protocol)
         for forbidden in ("envelope", "tail", "multiobjective", "lagrangian", "epsilon", "hash"):
             self.assertNotIn(forbidden, rendered)
-        stats = json.loads((ROOT / "data" / "four_market_v2" / "frozen_stats.json").read_text())
+        stats = json.loads((ROOT / "data" / "four_market_2025" / "frozen_stats.json").read_text())
         self.assertFalse(any("q90" in key.lower() or "tail" in key.lower() for key in stats))
         self.assertFalse((ROOT / "ramp_rl" / "evidence.py").exists())
         self.assertFalse((ROOT / "ramp_rl" / "schema.py").exists())
@@ -113,7 +113,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
         self.assertFalse(list(FACTORY_ROOT.rglob("canonical_panel.csv")))
         for split in ("train", "validation"):
             for record in factory["windows"][split].values():
-                self.assertTrue(record["panel_path"].startswith("data/four_market_v2/windows/"))
+                self.assertTrue(record["panel_path"].startswith("data/four_market_2025/windows/"))
                 self.assertTrue((ROOT / record["fixture_path"]).is_file())
 
     def test_adapter_and_status_quo_complete(self) -> None:
@@ -121,7 +121,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
         adapter = RampEnvAdapter(make_four_market_env(request), request)
         try:
             observation, _ = adapter.reset(seed=4101)
-            self.assertEqual(observation.shape, (100,))
+            self.assertEqual(observation.shape, (96,))
             while True:
                 _, reward, terminated, truncated, info = adapter.step(adapter.evaluation_action("status_quo"))
                 self.assertFalse(truncated)
@@ -135,8 +135,8 @@ class FourMarketV2DesignTests(unittest.TestCase):
 
     def test_all_window_preflight(self) -> None:
         result = preflight()
-        self.assertEqual(result["train"], 114)
-        self.assertEqual(result["validation"], 28)
+        self.assertEqual(result["train"], 334)
+        self.assertEqual(result["validation"], 31)
         self.assertGreater(result["steps"], 0)
 
 

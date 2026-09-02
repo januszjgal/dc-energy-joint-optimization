@@ -28,17 +28,32 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-PANEL_ROOT = ROOT / "data" / "four_market_v2" / "windows"
-CALENDAR_PATH = ROOT / "data" / "four_market_v2" / "calendar.json"
+PANEL_ROOT = ROOT / "data" / "four_market_2025" / "windows"
+CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 
 HORIZONS = (1, 2, 3)
 QUANTITIES = ("gross", "net")
 QUANTITY_COLUMN = {"gross": "gross_demand_mw", "net": "net_load_mw"}
 
-# Fit period. Chosen to match the training calendar exactly, so that no
-# validation hour influences any coefficient.
-TRAIN_START = pd.Timestamp("2025-10-10T00:00:00Z")
-TRAIN_END = pd.Timestamp("2026-01-31T23:00:00Z")
+# Fit period. Matches the training calendar exactly, so that no validation
+# hour influences any coefficient. The holdout month sits in the middle of the
+# year, so the training set is not contiguous: models must not be fitted on
+# the months either side of the holdout and then scored on it.
+YEAR_START = pd.Timestamp("2025-01-01T00:00:00Z")
+YEAR_END = pd.Timestamp("2025-12-31T23:00:00Z")
+VALIDATION_MONTH = 5
+
+
+def is_training(index: pd.DatetimeIndex) -> np.ndarray:
+    """True for hours inside the simulated year but outside the holdout month."""
+    inside = (index >= YEAR_START) & (index <= YEAR_END)
+    return inside & (index.month != VALIDATION_MONTH)
+
+
+def is_validation(index: pd.DatetimeIndex) -> np.ndarray:
+    """True for hours in the holdout month."""
+    inside = (index >= YEAR_START) & (index <= YEAR_END)
+    return inside & (index.month == VALIDATION_MONTH)
 
 # Ridge penalties searched by rolling-origin cross-validation.
 ALPHA_GRID = (0.01, 0.1, 1.0, 10.0, 100.0, 1000.0)
@@ -190,7 +205,7 @@ def fit_market_quantity_horizon(
     """
     aligned_target = target.shift(-horizon)
     usable = features.notna().all(axis=1) & aligned_target.notna()
-    in_window = (features.index >= TRAIN_START) & (features.index <= TRAIN_END)
+    in_window = is_training(features.index)
     mask = usable & in_window
 
     x_raw = features.loc[mask].to_numpy(dtype=float)
@@ -253,8 +268,7 @@ def build_all(panel: pd.DataFrame) -> tuple[dict[tuple[str, str, int], FittedMod
                 # forecasts, which is the one thing the split exists to prevent.
                 scored = (
                     actual.notna()
-                    & (out.index >= TRAIN_START)
-                    & (out.index <= TRAIN_END)
+                    & is_training(out.index)
                 )
                 model_mae = float((out[column][scored] - actual[scored]).abs().mean())
                 persist_mae = float((target[scored] - actual[scored]).abs().mean())
@@ -281,7 +295,7 @@ def report(panel: pd.DataFrame, predictions: pd.DataFrame) -> None:
           f"{'new(val)':>9s}{'persist(val)':>13s}")
     for market, group in merged.groupby("market_id", sort=True):
         group = group.sort_values("timestamp_utc").set_index("timestamp_utc")
-        is_val = group.index > TRAIN_END
+        is_val = pd.Series(is_validation(group.index), index=group.index)
         for quantity in QUANTITIES:
             actual_series = group[QUANTITY_COLUMN[quantity]]
             for horizon in HORIZONS:
@@ -335,7 +349,8 @@ def main() -> int:
     models, predictions = build_all(panel)
 
     chosen = sorted({model.alpha for model in models.values()})
-    print(f"fitted {len(models)} models on {TRAIN_START.date()}..{TRAIN_END.date()}"
+    print(f"fitted {len(models)} models on {YEAR_START.date()}..{YEAR_END.date()}"
+          f" excluding month {VALIDATION_MONTH}"
           f"  alphas chosen: {chosen}")
     report(panel, predictions)
 

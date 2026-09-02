@@ -23,8 +23,7 @@ from energy_model_v3.four_market_v2 import (  # noqa: E402
 from env.ramp_v6.models import SiteConfig  # noqa: E402
 
 
-CALENDAR_PATH = ROOT / "data" / "four_market_v2" / "calendar.json"
-TRACE_START = pd.Timestamp("2025-09-01T00:00:00Z")
+CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -57,7 +56,14 @@ def _site_configs() -> list[SiteConfig]:
 
 
 def _raw_arrivals(times: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
-    offsets = np.asarray((times - TRACE_START) / pd.Timedelta(hours=1), dtype=np.int64)
+    """Map each hour onto the workload trace, restarting the trace every month.
+
+    Day D of any calendar month draws on trace day D, so the pairing is
+    stateless: no epoch, no running offset, nothing to drift. Months shorter
+    than 31 days simply stop early, so February never reaches trace days 29-31
+    and the 30-day months never reach day 31.
+    """
+    offsets = ((times.day - 1) * 24 + times.hour).to_numpy(dtype=np.int64)
     service_columns, batch_columns = [], []
     for cell in CELLS:
         service, batch = _hourly_curve(cell)
@@ -90,8 +96,8 @@ def _load_calendar() -> dict[str, Any]:
     calendar = json.loads(CALENDAR_PATH.read_text(encoding="utf-8"))
     if tuple(calendar["markets"]) != MARKETS or calendar.get("test") != []:
         raise ValueError("calendar market or test split contract is invalid")
-    if len(calendar["train"]) != 114 or len(calendar["validation"]) != 28:
-        raise ValueError("calendar must contain 114 train and 28 validation days")
+    if len(calendar["train"]) != 334 or len(calendar["validation"]) != 31:
+        raise ValueError("calendar must contain 334 train and 31 validation days")
     if not (ROOT / calendar["frozen_stats_path"]).is_file():
         raise FileNotFoundError("calendar frozen statistics are missing")
     return calendar
@@ -141,7 +147,7 @@ def validate() -> dict[str, Any]:
     if factory["windows"].get("test") != {}:
         raise ValueError("factory must not contain a test split")
     result = {"factory": str(factory_path.relative_to(ROOT)).replace("\\", "/")}
-    for split, expected in (("train", 114), ("validation", 28)):
+    for split, expected in (("train", 334), ("validation", 31)):
         records = factory["windows"][split]
         if len(records) != expected:
             raise ValueError(f"factory has wrong {split} count")

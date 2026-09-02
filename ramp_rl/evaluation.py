@@ -204,14 +204,6 @@ def _episode(
         if tail_emitted_in_steps
         else infos[-1]["terminal_tail_incremental_ramp_impact"]
     )
-    tail_energy = (
-        [] if tail_emitted_in_steps else infos[-1]["terminal_tail_energy_cost"]
-    )
-    tail_status_quo_energy = (
-        []
-        if tail_emitted_in_steps
-        else infos[-1]["terminal_tail_status_quo_energy_cost"]
-    )
     tail_service_unserved = (
         []
         if tail_emitted_in_steps
@@ -282,12 +274,6 @@ def _episode(
         "per_market_incremental": dict(per_market_incremental),
         "abs_adjusted_ramp_h1_by_market": abs_adjusted_h1_by_market,
         "abs_adjusted_ramp_h3_by_market": abs_adjusted_h3_by_market,
-        "energy_cost": sum(float(info["energy_cost"]) for info in infos)
-        + sum(float(value) for value in tail_energy),
-        "status_quo_energy_cost": sum(
-            float(info["status_quo_energy_cost"]) for info in infos
-        )
-        + sum(float(value) for value in tail_status_quo_energy),
         "service_unserved": sum(float(info["service_unserved"]) for info in infos)
         + sum(float(value) for value in tail_service_unserved),
         "batch_unfinished": (
@@ -345,10 +331,6 @@ def _aggregate(
         raise ValueError(
             "evaluation episodes are missing ramp metric observations"
         )
-    policy_cost = sum(episode["energy_cost"] for episode in policy)
-    baseline_cost = sum(episode["energy_cost"] for episode in baseline)
-    if baseline_cost == 0.0:
-        raise ValueError("status quo energy cost must be non-zero")
     policy_market_values = _market_series(policy)
     status_quo_market_values = _market_series(baseline)
     if set(policy_market_values) != set(status_quo_market_values):
@@ -460,7 +442,6 @@ def _aggregate(
             ),
             "per_market": per_market_status_quo_comparison,
         },
-        "energy_cost_ratio": float(policy_cost / baseline_cost),
         "emergency_feasibility_rate": float(
             sum(episode["emergency_count"] for episode in policy)
             / sum(episode["step_count"] for episode in policy)

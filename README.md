@@ -15,12 +15,12 @@ The thesis source is [`latex/thesis.tex`](latex/thesis.tex).
   enforce feasibility.
 - The action shape is 9 and the observation shape is 100. The reward is negative
   equal-market, 1 h/3 h weighted incremental squared ramp impact.
-- [`data/four_market_v2/calendar.json`](data/four_market_v2/calendar.json) lists
-  114 October-January training dates, 28 February validation dates, daily panel
+- [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json) lists
+  334 training dates spanning 2025 outside May, 31 May validation dates, daily panel
   paths, and the central frozen-statistics path. There is no test split.
 - The factory creates one fixture set and
   [`factory.json`](output/four_market_v2/factory/factory.json); it references
-  panels in `data/four_market_v2/windows/` rather than copying them.
+  panels in `data/four_market_2025/windows/` rather than copying them.
 
 Day-ahead cost is reported post-hoc against status quo. It is not part of the
 reward or a pass/fail rule.
@@ -29,8 +29,8 @@ reward or a pass/fail rule.
 
 Seeds 4101-4110 each request 2,000,000 interactions and complete uninterrupted
 (`resumed_from_interactions=0`) at the safe boundary of 2,045,952 interactions.
-Each trains on the same 114 days and is paired with
-status quo on the exact same 28 February validation days. The optimizer seed is
+Each trains on the same 334 days and is paired with
+status quo on the exact same 31 May validation days. The optimizer seed is
 the statistical unit (`n=10`). Aggregation uses exact two-sided Wilcoxon
 signed-rank testing, matched-pairs rank-biserial correlation (positive favors the
 policy), Hodges-Lehmann shift, 10,000-draw seed-bootstrap intervals, post-hoc
@@ -85,8 +85,10 @@ python scripts\build_energy_thesis_figures.py
 | Path | Role |
 |---|---|
 | `data/cells/cell_X_tiers.csv` | Retained measured CPU/service/batch tier curves |
-| `data/four_market_v2/calendar.json` | Date split, daily panel paths, and frozen-statistics path |
-| `data/four_market_v2/windows/` | Referenced canonical daily electricity panels |
+| `data/four_market_2025/calendar.json` | Date split, daily panel paths, and frozen-statistics path |
+| `data/four_market_2025/windows/` | Referenced canonical daily electricity panels (EIA grid, hour-beginning UTC) |
+| `scripts/fetch_eia_panels.py` | Rebuilds the panels from the EIA API |
+| `scripts/build_causal_forecasts.py` | Fits and writes the causal forecast columns |
 | `data/power_model_params.json` | Committed CPU-to-power coefficients |
 | `env/protocols/four_market_v2.yaml` | Sole active protocol |
 | `energy_model_v3/four_market_v2.py` | One-factory runtime |

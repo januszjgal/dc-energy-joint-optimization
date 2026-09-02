@@ -164,9 +164,6 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
                 sum(item["policy_outperforms_status_quo"] for item in market_rows)
             ),
         }
-    cost_ratios = [
-        float(row["validation"]["energy_cost_ratio"]) for row in rows
-    ]
     safety_fields = (
         "service_unserved",
         "batch_unfinished",
@@ -193,7 +190,6 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
                     "policy_minus_status_quo_mean_incremental_ramp_impact"
                 ]
             ),
-            "day_ahead_cost_ratio": float(row["validation"]["energy_cost_ratio"]),
         }
         for row in rows
     ]
@@ -208,11 +204,6 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
         "sample_standard_deviation_incremental_ramp_impact": float(stdev(
             float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows
         )),
-        "mean_day_ahead_cost_ratio": float(mean(
-            cost_ratios
-        )),
-        "minimum_day_ahead_cost_ratio": float(min(cost_ratios)),
-        "maximum_day_ahead_cost_ratio": float(max(cost_ratios)),
         "per_market": per_market,
         "safety_totals": {
             field: float(
@@ -242,7 +233,6 @@ def main() -> None:
     result = aggregate()
     print(json.dumps({
         "seed_count": result["seed_count"],
-        "mean_day_ahead_cost_ratio": result["mean_day_ahead_cost_ratio"],
         "wilcoxon_p_value": result["paired_policy_minus_status_quo"]["wilcoxon_signed_rank"]["p_value"],
     }, indent=2))
 
