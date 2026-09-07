@@ -3,52 +3,83 @@
 The active experiment schedules raw measured service and batch CPU curves from
 ClusterData2019 cells a-d against four hourly market panels. It is a single,
 fixed-workload proxy experiment, not a claim about identified Google facilities.
-The thesis source is [`latex/thesis.tex`](latex/thesis.tex).
+The current problem-statement chapter is
+[`latex/problemstatement_ieee_revised.tex`](latex/problemstatement_ieee_revised.tex);
+[`latex/thesis.tex`](latex/thesis.tex) is an older draft.
 
 ## Active design
 
 - One protocol: [`env/protocols/four_market_v2.yaml`](env/protocols/four_market_v2.yaml).
 - Four normalized-capacity sites, 500 MW each, map cells a-d to CAISO NP15, MISO
   Minnesota, SPP North, and ISO-NE NEMA.
-- The raw service/batch tier curves are used unchanged. Hard capacity, EDF
-  deadlines `[2, 1, 2, 3]`, and conservative data-derived future batch capacity
-  enforce feasibility.
-- The action shape is 9 and the observation shape is 100. The reward is negative
-  equal-market, 1 h/3 h weighted incremental squared ramp impact.
-- [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json) lists
-  334 training dates spanning 2025 outside May, 31 May validation dates, daily panel
-  paths, and the central frozen-statistics path. There is no test split.
-- The factory creates one fixture set and
+- **Continuous months.** Each calendar month of 2025 is one episode. Batch queues
+  and site-power history carry across every midnight inside the month and reset
+  only at the month boundary. Four warm hours before the month give the first
+  decisions their lookback and the first ramps their starting point. Every hour
+  of the month is scored. Work arriving in the last hours has its execution
+  window cut at the month's final hour, so the month closes with empty queues and
+  nothing escapes the objective.
+- **Causal timeline inside hour t.** Grid rows through hour t-1, and the
+  forecasts issued at t-1 (covering t, t+1, t+2), are observed; the hour-t
+  arrivals are revealed; the policy chooses service destinations, the batch
+  volume to run now, and batch destinations; the realized hour-t grid values are
+  revealed; site power, adjusted net load, and the reward are computed.
+  [`tests/ramp_v6/test_continuous_month.py`](tests/ramp_v6/test_continuous_month.py)
+  perturbs every row at or after hour t and asserts the hour-t observation is
+  unchanged.
+- **Batch windows** `[2, 1, 2, 3]` slots for cells a-d, counted inclusively of
+  the arrival slot: a window of 1 allows no delay and a window of 3 allows at
+  most two hours. Earliest-deadline-first drainage breaks ties by lowest origin
+  index, then arrival order. Hard capacity and the window rule are enforced by
+  the projection layer, so nothing is ever dropped or late.
+- The action shape is 9 and the observation shape is 94. The reward is the
+  negative equal-market, 1 h/3 h weighted incremental squared ramp impact.
+- [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json)
+  lists the eleven training months (2025 outside May), the May validation month,
+  the monthly panel paths, and the frozen-statistics path. There is no test split.
+- The factory creates one fixture per month and
   [`factory.json`](output/four_market_v2/factory/factory.json); it references
-  panels in `data/four_market_2025/windows/` rather than copying them.
+  the panels in `data/four_market_2025/months/` rather than copying them.
 
-Day-ahead cost is reported post-hoc against status quo. It is not part of the
-reward or a pass/fail rule.
+Day-ahead prices are not fetched and cost is not part of the study.
 
-## Locked ten-seed validation campaign
+## The one baseline
 
-Seeds 4101-4110 each request 2,000,000 interactions and complete uninterrupted
-(`resumed_from_interactions=0`) at the safe boundary of 2,045,952 interactions.
-Each trains on the same 334 days and is paired with
-status quo on the exact same 31 May validation days. The optimizer seed is
-the statistical unit (`n=10`). Aggregation uses exact two-sided Wilcoxon
-signed-rank testing, matched-pairs rank-biserial correlation (positive favors the
-policy), Hodges-Lehmann shift, 10,000-draw seed-bootstrap intervals, post-hoc
-cost/safety summaries, raw rollout learning curves, and descriptive slopes around
-110,592 interactions and in the final 20%.
+Exactly one comparison policy is implemented, called `status_quo` in the code
+and the no-flexibility baseline in the paper: every service and batch arrival
+executes at its origin site in its arrival hour, with no deferral and no
+routing, on the same arrivals, power models, grid trajectory, forecasts, and
+evaluation window as PPO. The reported improvement is
 
-All ten policies beat status quo on the equal-market macro metric. The mean
-policy-minus-status-quo impact was `-6.6161e-05` with a 95% seed-bootstrap
-interval of `[-6.6486e-05, -6.5861e-05]`. The exact two-sided Wilcoxon result
-was `p=0.001953125`; rank-biserial correlation was `1.0`.
+    improvement = J(status quo) - J(PPO)
 
-The result is heterogeneous: CAISO, SPP, and ISO-NE improved in 10/10 seeds,
-while MISO worsened in 10/10. Mean day-ahead cost was 0.123% above status quo
-and all modeled work/safety violations were zero. Learning was still improving
-at 110,592 interactions and was near a plateau by 2,045,952.
+so a positive value means PPO left the four regions with gentler ramps. The
+evaluation JSON also keeps `policy_minus_status_quo_mean_incremental_ramp_impact`,
+which is the same quantity with the opposite sign. The native grid without the
+fleet is the reference built into the impact term itself, not a second
+scheduling baseline.
 
-See [`aggregation.json`](output/four_market_v2/campaign/aggregation.json) and
-[`learning_curve_aggregate.png`](output/four_market_v2/campaign/learning_curve_aggregate.png).
+## Ten-seed validation campaign
+
+Seeds 4101-4110 each request 2,000,000 interactions and stop at the first
+checkpoint boundary at or beyond it (2,048,000 interactions at 4 environments,
+512 steps per rollout, and a checkpoint every 25 rollouts). PPO uses gamma 0.99.
+Each seed trains on the same eleven months and is evaluated on the single
+continuous May episode (744 hourly decisions, 31 UTC days), paired with the
+status quo on exactly the same hours. The optimizer seed is the statistical
+unit (`n=10`). Aggregation uses exact two-sided Wilcoxon signed-rank testing,
+matched-pairs rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw
+seed-bootstrap intervals, per-UTC-day tables, safety totals, and learning-curve
+slopes.
+
+**Results: pending a rerun.** The previous ten-seed result (August 2026) was
+trained on October 2025 to January 2026 and validated on February 2026 using
+30-hour daily panels. It is superseded and not comparable: under that design
+the three post-midnight hours, in which arrivals were zeroed and every site
+collapsed to idle, carried 59% of the scored impact for the status quo alone
+and flipped the sign of the daily objective. Continuous months remove that
+artifact. The old `output/four_market_v2/campaign/` files are kept only as a
+record of the earlier design.
 
 ## Reproduce
 
@@ -58,12 +89,20 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Build and preflight the one factory:
+Rebuild the data (optional; the committed monthly panels already carry the
+causal forecast columns):
+
+```powershell
+python scripts\fetch_eia_panels.py --write
+python scripts\build_causal_forecasts.py --write
+```
+
+Build and preflight the one factory, then run the tests:
 
 ```powershell
 python scripts\build_four_market_v2_factory.py
 python scripts\run_four_market_v2_campaign.py preflight
-python -m unittest tests.energy_model_v3.test_four_market_v2 tests.ramp_v6.test_ramp_math -v
+python -m pytest -q tests
 ```
 
 Run and aggregate the locked campaign (only aggregate after all ten summaries
@@ -85,15 +124,16 @@ python scripts\build_energy_thesis_figures.py
 | Path | Role |
 |---|---|
 | `data/cells/cell_X_tiers.csv` | Retained measured CPU/service/batch tier curves |
-| `data/four_market_2025/calendar.json` | Date split, daily panel paths, and frozen-statistics path |
-| `data/four_market_2025/windows/` | Referenced canonical daily electricity panels (EIA grid, hour-beginning UTC) |
-| `scripts/fetch_eia_panels.py` | Rebuilds the panels from the EIA API |
+| `data/four_market_2025/calendar.json` | Month split, monthly panel paths, and frozen-statistics path |
+| `data/four_market_2025/months/` | One continuous hourly EIA panel per month (four warm hours plus the month, hour-beginning UTC) |
+| `scripts/fetch_eia_panels.py` | Rebuilds the monthly panels from the EIA API |
 | `scripts/build_causal_forecasts.py` | Fits and writes the causal forecast columns |
 | `data/power_model_params.json` | Committed CPU-to-power coefficients |
 | `env/protocols/four_market_v2.yaml` | Sole active protocol |
-| `energy_model_v3/four_market_v2.py` | One-factory runtime |
+| `energy_model_v3/four_market_v2.py` | One-factory runtime (one continuous episode per month) |
 | `env/ramp_v6/` | Scheduler, queue, observation, and reward implementation |
-| `output/four_market_v2/factory/` | Generated one-factory fixtures and `factory.json` |
-| `output/four_market_v2/campaign/` | Ten-seed validation summaries, statistics, and learning curves |
-| `scripts/` | Factory, campaign, aggregation, and figure commands |
-| `latex/thesis.tex` | Publication source |
+| `ramp_rl/` | Trainer boundary, PPO runner, evaluation, and campaign statistics |
+| `output/four_market_v2/factory/` | Generated monthly fixtures and `factory.json` |
+| `output/four_market_v2/campaign/` | Ten-seed summaries, statistics, and learning curves (pending rerun) |
+| `scripts/` | Data, factory, campaign, aggregation, and figure commands |
+| `tests/` | Unit and integration tests, including causality, continuity, and deadline checks |

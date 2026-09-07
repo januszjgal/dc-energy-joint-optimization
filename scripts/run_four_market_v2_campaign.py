@@ -1,4 +1,9 @@
-"""Run the locked ten-seed raw-workload four-market PPO campaign."""
+"""Run the locked ten-seed raw-workload four-market PPO campaign.
+
+Training episodes are the eleven continuous calendar months of 2025 outside
+May. Validation is the single continuous May episode, evaluated once per seed
+for the policy and once for the status-quo comparator on the same hours.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +26,7 @@ from energy_model_v3.four_market_v2 import make_four_market_env  # noqa: E402
 from ramp_rl.contract import EnvRequest  # noqa: E402
 from ramp_rl.evaluation import evaluate_checkpoint  # noqa: E402
 from ramp_rl.runner import (  # noqa: E402
+    DEFAULT_CHECKPOINT_ROLLOUTS,
     configure_single_thread_runtime,
     run_training,
     safe_boundary_quantum,
@@ -34,6 +40,9 @@ MODEL_ROOT = ROOT / "models" / "four_market_v2" / "campaign"
 SEEDS = tuple(range(4101, 4111))
 REQUESTED_TIMESTEPS = 2_000_000
 DEFAULT_WORKERS = 5
+TRAIN_MONTHS = 11
+VALIDATION_WINDOWS = ("2025-05",)
+VALIDATION_DAYS = 31
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -55,8 +64,11 @@ def _factory() -> dict[str, Any]:
 
 def _validate_campaign_geometry() -> dict[str, list[str]]:
     windows = _factory()["windows"]
-    if len(windows["train"]) != 334 or len(windows["validation"]) != 31:
-        raise RuntimeError("campaign requires exactly 334 train windows and 31 May validation days")
+    if len(windows["train"]) != TRAIN_MONTHS or sorted(windows["validation"]) != list(VALIDATION_WINDOWS):
+        raise RuntimeError(
+            f"campaign requires exactly {TRAIN_MONTHS} training months and the "
+            f"{VALIDATION_WINDOWS[0]} validation month"
+        )
     return {
         "train": sorted(windows["train"]),
         "validation": sorted(windows["validation"]),
@@ -64,23 +76,20 @@ def _validate_campaign_geometry() -> dict[str, list[str]]:
 
 
 def _campaign_training_geometry() -> dict[str, int]:
-    """Derive the locked safe boundary from the current protocol and environment."""
+    """Derive the locked checkpoint geometry from the current protocol."""
     protocol = _protocol()
     n_envs = int(protocol["training"]["vectorized_environments"])
     n_steps = int(protocol["training"]["ppo"]["n_steps"])
-    env = make_four_market_env(
-        EnvRequest(split="train", seed=SEEDS[0], rank=0, training=True)
+    checkpoint_rollouts = int(
+        protocol["training"].get("checkpoint_rollouts", DEFAULT_CHECKPOINT_ROLLOUTS)
     )
-    try:
-        action_steps = int(env.ramp_rl_contract()["decision_steps"])
-    finally:
-        env.close()
     safe_quantum = safe_boundary_quantum(
-        action_steps=action_steps, n_envs=n_envs, n_steps=n_steps
+        n_envs=n_envs, n_steps=n_steps, checkpoint_rollouts=checkpoint_rollouts
     )
     return {
-        "action_steps": action_steps,
         "n_envs": n_envs,
+        "n_steps": n_steps,
+        "checkpoint_rollouts": checkpoint_rollouts,
         "safe_quantum": safe_quantum,
         "effective_interactions": (
             math.ceil(REQUESTED_TIMESTEPS / safe_quantum) * safe_quantum
@@ -97,7 +106,6 @@ def _campaign_training_identity(
         "requested_interactions": REQUESTED_TIMESTEPS,
         "effective_interactions": training_geometry["effective_interactions"],
         "n_envs": training_geometry["n_envs"],
-        "action_steps": training_geometry["action_steps"],
         "ppo_config": dict(_protocol()["training"]["ppo"]),
         "safe_quantum": training_geometry["safe_quantum"],
     }
@@ -177,22 +185,23 @@ def _load_completed_seed_summary(
     validation = summary.get("validation")
     if not isinstance(validation, dict):
         raise RuntimeError(f"completed seed summary has invalid validation for seed {seed}: {summary_path}")
-    episode_count = validation.get("episode_count")
-    if (
-        isinstance(episode_count, bool)
-        or not isinstance(episode_count, int)
-        or episode_count != 31
+    for field, expected in (
+        ("episode_count", len(geometry["validation"])),
+        ("day_count", VALIDATION_DAYS),
     ):
-        raise RuntimeError(
-            f"completed seed summary has invalid validation episode count for seed {seed}: "
-            f"{summary_path}"
-        )
+        value = validation.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+            raise RuntimeError(
+                f"completed seed summary has invalid validation {field} for seed {seed}: "
+                f"{summary_path}"
+            )
     metric_paths = (
         ("mean_policy_native_relative_incremental_ramp_impact",),
         ("mean_incremental_ramp_impact",),
         ("status_quo_comparison", "policy_native_relative_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "status_quo_native_relative_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "policy_minus_status_quo_mean_incremental_ramp_impact"),
+        ("status_quo_comparison", "improvement"),
     )
     for path in metric_paths:
         value: Any = validation
@@ -213,7 +222,7 @@ def _load_completed_seed_summary(
 
 
 def preflight() -> dict[str, Any]:
-    """Exercise the status quo across every active window once."""
+    """Exercise the status quo across every active month once."""
     geometry = _validate_campaign_geometry()
     counts = {"train": 0, "validation": 0, "steps": 0, "max_immediate_arrival_work": 0.0}
     for split in ("train", "validation"):
@@ -271,8 +280,8 @@ def train_and_evaluate(seed: int) -> dict[str, Any]:
             factory=make_four_market_env, checkpoint_dir=checkpoint, split="validation",
             seeds=[seed], windows=geometry["validation"],
         )
-        if validation["episode_count"] != 31:
-            raise RuntimeError("each seed must evaluate exactly the 31 May validation days")
+        if validation["episode_count"] != len(geometry["validation"]) or validation["day_count"] != VALIDATION_DAYS:
+            raise RuntimeError("each seed must evaluate the single continuous May validation month")
         compact_validation = {
             key: value
             for key, value in validation.items()

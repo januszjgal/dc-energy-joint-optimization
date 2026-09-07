@@ -52,8 +52,9 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "version": CONTRACT_VERSION,
             "semantic_feasible_action": True,
             "semantic_action_id": SEMANTIC_ACTION_ID,
-            "history_hours": 3,
-            "terminal_tail_hours": 3,
+            "history_hours": 4,
+            "terminal_tail_hours": 0,
+            "grid_observation_lag_hours": 1,
             "actual_terminal": True,
             "decision_steps": 3,
             "action_shape": (1,),
@@ -90,7 +91,6 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "semantic_adjustment_coordinate_id": "tiny",
             "semantic_adjustment_units": 0.0,
             "terminal_work": 0.0,
-            "tail_complete": terminal,
             "actual_terminal": terminal,
             "ramp_reward": -1.0,
         }
@@ -105,6 +105,7 @@ def _tiny_protocol() -> dict[str, object]:
     return {
         "training": {
             "vectorized_environments": 2,
+            "checkpoint_rollouts": 3,
             "ppo": {
                 "net_arch": [32, 32],
                 "learning_rate": 5e-4,
@@ -112,6 +113,7 @@ def _tiny_protocol() -> dict[str, object]:
                 "n_steps": 16,
                 "n_epochs": 2,
                 "gae_lambda": 0.95,
+                "gamma": 0.99,
             },
         }
     }
@@ -124,7 +126,6 @@ def _tiny_training_summary(seed: int, target: int = 96) -> dict[str, object]:
         "requested_interactions": target,
         "effective_interactions": 96,
         "n_envs": 2,
-        "action_steps": 3,
         "ppo_config": config,
         "safe_quantum": 96,
     }
@@ -143,13 +144,15 @@ def _completed_campaign_summary(
         "safe_boundary_interactions": training_geometry["safe_quantum"],
         "validation_window_ids": windows,
         "validation": {
-            "episode_count": 31,
+            "episode_count": 1,
+            "day_count": 31,
             "mean_policy_native_relative_incremental_ramp_impact": 1.0,
             "mean_incremental_ramp_impact": 1.0,
             "status_quo_comparison": {
                 "policy_native_relative_mean_incremental_ramp_impact": 1.0,
                 "status_quo_native_relative_mean_incremental_ramp_impact": 2.0,
                 "policy_minus_status_quo_mean_incremental_ramp_impact": -1.0,
+                "improvement": 1.0,
             },
         },
     }
@@ -166,7 +169,6 @@ def _campaign_training_identity(
         "requested_interactions": REQUESTED_TIMESTEPS,
         "effective_interactions": training_geometry["effective_interactions"],
         "n_envs": training_geometry["n_envs"],
-        "action_steps": training_geometry["action_steps"],
         "ppo_config": ppo_config,
         "safe_quantum": training_geometry["safe_quantum"],
     }
@@ -249,22 +251,23 @@ class CampaignInstrumentationTests(unittest.TestCase):
         finally:
             shutil.rmtree(directory, ignore_errors=True)
 
-    def test_safe_boundary_and_milestone_mapping_preserve_27_step_geometry(self) -> None:
-        quantum = safe_boundary_quantum(action_steps=27, n_envs=4, n_steps=512)
-        self.assertEqual(quantum, 55_296)
+    def test_safe_boundary_and_milestone_mapping_follow_rollout_geometry(self) -> None:
+        quantum = safe_boundary_quantum(n_envs=4, n_steps=512, checkpoint_rollouts=25)
+        self.assertEqual(quantum, 51_200)
         self.assertEqual(
             milestone_interactions(
                 (110_592, 500_000, 1_000_000, 1_500_000, 2_000_000),
                 safe_quantum=quantum,
             ),
             {
-                110_592: 110_592,
-                500_000: 552_960,
-                1_000_000: 1_050_624,
-                1_500_000: 1_548_288,
-                2_000_000: 2_045_952,
+                110_592: 153_600,
+                500_000: 512_000,
+                1_000_000: 1_024_000,
+                1_500_000: 1_536_000,
+                2_000_000: 2_048_000,
             },
         )
+        self.assertEqual(safe_boundary_quantum(n_envs=2, n_steps=16, checkpoint_rollouts=3), 96)
 
     def test_resume_selection_accepts_complete_interrupted_swap(self) -> None:
         directory = ROOT / ".test-latest-selection"
@@ -336,13 +339,14 @@ class CampaignInstrumentationTests(unittest.TestCase):
     def test_full_campaign_restarts_from_a_valid_completed_subset(self) -> None:
         directory = ROOT / ".test-campaign-subset-restart"
         shutil.rmtree(directory, ignore_errors=True)
-        windows = [f"2026-02-{day:02d}-daily" for day in range(1, 29)]
+        windows = ["2025-05"]
         geometry = {"train": [], "validation": windows}
         training_geometry = {
-            "action_steps": 27,
             "n_envs": 4,
-            "safe_quantum": 55_296,
-            "effective_interactions": 2_045_952,
+            "n_steps": 512,
+            "checkpoint_rollouts": 25,
+            "safe_quantum": 51_200,
+            "effective_interactions": 2_048_000,
         }
         submitted: list[int] = []
 
@@ -400,10 +404,11 @@ class CampaignInstrumentationTests(unittest.TestCase):
         directory = ROOT / ".test-campaign-ppo-identity"
         shutil.rmtree(directory, ignore_errors=True)
         seed = SEEDS[0]
-        windows = [f"2026-02-{day:02d}-daily" for day in range(1, 29)]
+        windows = ["2025-05"]
         training_geometry = {
-            "action_steps": 3,
             "n_envs": 2,
+            "n_steps": 16,
+            "checkpoint_rollouts": 3,
             "safe_quantum": 96,
             "effective_interactions": 2_000_064,
         }
@@ -442,11 +447,12 @@ class CampaignInstrumentationTests(unittest.TestCase):
         directory = ROOT / ".test-stale-identity-aggregation"
         shutil.rmtree(directory, ignore_errors=True)
         model_root = directory / "models"
-        windows = [f"2026-02-{day:02d}-daily" for day in range(1, 29)]
+        windows = ["2025-05"]
         geometry = {"train": [], "validation": windows}
         training_geometry = {
-            "action_steps": 3,
             "n_envs": 2,
+            "n_steps": 16,
+            "checkpoint_rollouts": 3,
             "safe_quantum": 96,
             "effective_interactions": 2_000_064,
         }

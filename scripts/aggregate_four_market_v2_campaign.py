@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 from ramp_rl.campaign_statistics import paired_seed_summary, slope_diagnostic  # noqa: E402
 from ramp_rl.runner import LEARNING_CURVE_COLUMNS  # noqa: E402
 from scripts.run_four_market_v2_campaign import (  # noqa: E402
+    REQUESTED_TIMESTEPS,
     _campaign_training_geometry,
     _load_completed_seed_summary,
     _validate_campaign_geometry,
@@ -190,13 +191,21 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
                     "policy_minus_status_quo_mean_incremental_ramp_impact"
                 ]
             ),
+            "improvement": float(
+                row["validation"]["status_quo_comparison"]["improvement"]
+            ),
         }
         for row in rows
     ]
     result = {
         "seed_count": len(rows),
-        "requested_interactions_per_seed": 2_000_000,
-        "validation_days_per_seed": 28,
+        "requested_interactions_per_seed": REQUESTED_TIMESTEPS,
+        "validation_month_ids": list(rows[0]["validation_window_ids"]),
+        "validation_days_per_seed": int(rows[0]["validation"]["day_count"]),
+        "improvement_definition": (
+            "status-quo minus policy mean incremental ramp impact; positive favors the policy"
+        ),
+        "mean_improvement": float(-mean(differences)),
         "statistical_unit": "optimizer seed",
         "mean_incremental_ramp_impact": float(mean(
             float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows

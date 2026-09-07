@@ -50,6 +50,7 @@ def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
     calendar = json.loads(CALENDAR_PATH.read_text(encoding="utf-8"))
     frames: list[pd.DataFrame] = []
     window_count = 0
+    active_hours = 0
 
     for split in ("train", "validation"):
         for record in calendar[split]:
@@ -63,17 +64,18 @@ def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
             panel["timestamp_utc"] = pd.to_datetime(
                 panel["timestamp_utc"], utc=True, errors="raise"
             )
-            day = pd.Timestamp(record["day"], tz="UTC")
+            start = pd.Timestamp(f"{record['month_id']}-01T00:00:00Z")
+            end = start + pd.offsets.MonthBegin(1)
             active = panel.loc[
-                (panel["timestamp_utc"] >= day)
-                & (panel["timestamp_utc"] < day + pd.Timedelta(days=1))
+                (panel["timestamp_utc"] >= start) & (panel["timestamp_utc"] < end)
             ].copy()
 
             if set(active["market_id"]) != set(MARKET_ORDER):
                 raise ValueError(f"{window_id} does not cover all four markets")
             counts = active.groupby("market_id").size()
-            if not (counts == 24).all():
-                raise ValueError(f"{window_id} lacks 24 active hours per market")
+            if not (counts == int(record["hours"])).all():
+                raise ValueError(f"{window_id} lacks a full month of active hours per market")
+            active_hours += int(record["hours"])
             if active["quality_ok"].astype(bool).eq(False).any():
                 raise ValueError(f"{window_id} contains a failed quality row")
 
@@ -87,7 +89,7 @@ def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
     if combined.duplicated(key).any():
         raise ValueError("active decision rows contain duplicate market-hours")
 
-    expected_rows = window_count * 24 * len(MARKET_ORDER)
+    expected_rows = active_hours * len(MARKET_ORDER)
     if len(combined) != expected_rows:
         raise ValueError(
             f"expected {expected_rows} active rows, found {len(combined)}"
@@ -100,7 +102,7 @@ def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
     )
     metadata = {
         "window_count": window_count,
-        "active_hours_per_market": window_count * 24,
+        "active_hours_per_market": active_hours,
         "start_utc": combined["timestamp_utc"].min().isoformat(),
         "end_utc": combined["timestamp_utc"].max().isoformat(),
         "market_order": list(MARKET_ORDER),

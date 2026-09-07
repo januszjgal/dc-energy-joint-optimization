@@ -1,4 +1,4 @@
-"""Mathematical identity and action-projection tests for ramp v6."""
+"""Mathematical identity and action-projection tests for the ramp environment."""
 
 from __future__ import annotations
 
@@ -81,6 +81,31 @@ class RampMathTests(unittest.TestCase):
         )
         self.assertAlmostEqual(result.mandatory_batch, 1.0)
         self.assertAlmostEqual(float(result.batch_by_destination.sum()), 1.0)
+
+    def test_inclusive_window_forces_execution_in_its_last_slot(self) -> None:
+        # An arrival in slot 0 with window H = 2 has deadline_step 2: it may
+        # wait through slot 0 but is forced in slot 1, never later.
+        hold = np.asarray([0.0, -6.0, 0.0])
+        for current_step, expected in ((0, 0.0), (1, 0.2)):
+            queue = EDFQueue()
+            queue.add(0.2, origin=0, deadline_step=0 + 2)
+            result = project_action(
+                hold, service_total=0.0, capacity=np.asarray([1.0]), queue=queue,
+                current_step=current_step, final_step=10, n_origins=1,
+                guaranteed_future_batch_capacity_by_deadline={2: 1.0},
+            )
+            self.assertAlmostEqual(result.mandatory_batch, expected)
+            self.assertAlmostEqual(float(result.batch_by_destination.sum()), expected)
+
+    def test_final_slot_forces_everything_regardless_of_window(self) -> None:
+        queue = EDFQueue()
+        queue.add(0.3, origin=0, deadline_step=12)
+        result = project_action(
+            np.asarray([0.0, -6.0, 0.0]), service_total=0.0, capacity=np.asarray([1.0]),
+            queue=queue, current_step=9, final_step=9, n_origins=1,
+        )
+        self.assertAlmostEqual(float(result.batch_by_destination.sum()), 0.3)
+        self.assertAlmostEqual(queue.total, 0.0)
 
 
 if __name__ == "__main__":

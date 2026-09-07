@@ -1,0 +1,109 @@
+{
+  "episode_unit": "one continuous calendar month",
+  "forecast_model": "causal-ridge-shortlag-v2",
+  "frozen_stats_path": "data/four_market_2025/frozen_stats.json",
+  "history_hours": 4,
+  "markets": [
+    "CAISO_NP15",
+    "MISO_MINN_HUB",
+    "SPP_NORTH_HUB",
+    "ISONE_NEMA"
+  ],
+  "windows": {
+    "test": {},
+    "train": {
+      "2025-01": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-01/fixture.json",
+        "hours": 744,
+        "month": 1,
+        "month_id": "2025-01",
+        "panel_path": "data/four_market_2025/months/2025-01/canonical_panel.csv"
+      },
+      "2025-02": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-02/fixture.json",
+        "hours": 672,
+        "month": 2,
+        "month_id": "2025-02",
+        "panel_path": "data/four_market_2025/months/2025-02/canonical_panel.csv"
+      },
+      "2025-03": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-03/fixture.json",
+        "hours": 744,
+        "month": 3,
+        "month_id": "2025-03",
+        "panel_path": "data/four_market_2025/months/2025-03/canonical_panel.csv"
+      },
+      "2025-04": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-04/fixture.json",
+        "hours": 720,
+        "month": 4,
+        "month_id": "2025-04",
+        "panel_path": "data/four_market_2025/months/2025-04/canonical_panel.csv"
+      },
+      "2025-06": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-06/fixture.json",
+        "hours": 720,
+        "month": 6,
+        "month_id": "2025-06",
+        "panel_path": "data/four_market_2025/months/2025-06/canonical_panel.csv"
+      },
+      "2025-07": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-07/fixture.json",
+        "hours": 744,
+        "month": 7,
+        "month_id": "2025-07",
+        "panel_path": "data/four_market_2025/months/2025-07/canonical_panel.csv"
+      },
+      "2025-08": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-08/fixture.json",
+        "hours": 744,
+        "month": 8,
+        "month_id": "2025-08",
+        "panel_path": "data/four_market_2025/months/2025-08/canonical_panel.csv"
+      },
+      "2025-09": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-09/fixture.json",
+        "hours": 720,
+        "month": 9,
+        "month_id": "2025-09",
+        "panel_path": "data/four_market_2025/months/2025-09/canonical_panel.csv"
+      },
+      "2025-10": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-10/fixture.json",
+        "hours": 744,
+        "month": 10,
+        "month_id": "2025-10",
+        "panel_path": "data/four_market_2025/months/2025-10/canonical_panel.csv"
+      },
+      "2025-11": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-11/fixture.json",
+        "hours": 720,
+        "month": 11,
+        "month_id": "2025-11",
+        "panel_path": "data/four_market_2025/months/2025-11/canonical_panel.csv"
+      },
+      "2025-12": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-12/fixture.json",
+        "hours": 744,
+        "month": 12,
+        "month_id": "2025-12",
+        "panel_path": "data/four_market_2025/months/2025-12/canonical_panel.csv"
+      }
+    },
+    "validation": {
+      "2025-05": {
+        "fixture_path": "output/four_market_v2/factory/windows/2025-05/fixture.json",
+        "hours": 744,
+        "month": 5,
+        "month_id": "2025-05",
+        "panel_path": "data/four_market_2025/months/2025-05/canonical_panel.csv"
+      }
+    }
+  },
+  "workload_cells": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}

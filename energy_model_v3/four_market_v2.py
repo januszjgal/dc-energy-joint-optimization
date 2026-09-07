@@ -1,4 +1,4 @@
-"""One raw-workload four-market factory."""
+"""One raw-workload four-market factory: one continuous episode per calendar month."""
 
 from __future__ import annotations
 
@@ -8,9 +8,16 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
+import pandas as pd
 
 from env.ramp_v6.environment import RampAwareEnv
-from env.ramp_v6.models import FrozenRampStats, RampProtocol, SiteConfig, WorkloadTrace
+from env.ramp_v6.models import (
+    HISTORY_HOURS,
+    FrozenRampStats,
+    RampProtocol,
+    SiteConfig,
+    WorkloadTrace,
+)
 from env.ramp_v6.panel import CanonicalMarketPanel
 from ramp_rl.contract import EnvRequest
 
@@ -28,6 +35,14 @@ CELLS = tuple(cell for _, cell in MARKET_TO_CELL)
 RATED_POWER_MW = 500.0
 COMPUTE_CAPACITY = 1.0
 TOTAL_RATED_POWER_MW = 2_000.0
+DEADLINE_WINDOW_SLOTS = (2, 1, 2, 3)
+
+
+def month_hours(month_id: str) -> int:
+    """Number of hourly decision slots in a calendar month such as ``2025-05``."""
+    start = pd.Timestamp(f"{month_id}-01T00:00:00Z")
+    end = start + pd.offsets.MonthBegin(1)
+    return int((end - start) / pd.Timedelta(hours=1))
 
 
 def _load_window(
@@ -53,7 +68,7 @@ def _load_window(
 
 
 class FourMarketV2WindowEnv(gym.Env):
-    """Factory wrapper that chooses a raw-workload train or validation day."""
+    """Factory wrapper that chooses a raw-workload train or validation month."""
 
     metadata = {"render_modes": []}
 
@@ -101,22 +116,27 @@ class FourMarketV2WindowEnv(gym.Env):
             for site in sites
         ):
             raise ValueError("four-market factory requires four direct 500 MW / K=1 sites")
-        if tuple(workload.batch_deadline_hours[0]) != (2, 1, 2, 3):
-            raise ValueError("batch deadline semantics are invalid")
-        active = panel.timestamps[3:-3]
-        if set(active.strftime("%Y-%m-%d")) != {record["day"]}:
-            raise ValueError("window day is invalid")
+        if tuple(workload.batch_deadline_hours[0]) != DEADLINE_WINDOW_SLOTS:
+            raise ValueError("batch execution-window semantics are invalid")
+        month_id = str(record["month_id"])
+        hours = month_hours(month_id)
+        if len(panel.timestamps) != HISTORY_HOURS + hours:
+            raise ValueError("window panel must hold the warm history plus the whole month")
+        active = panel.timestamps[HISTORY_HOURS:]
+        if len(active) != hours or set(active.strftime("%Y-%m")) != {month_id}:
+            raise ValueError("window month is invalid")
         return RampAwareEnv(
             panel,
             sites,
             workload,
             stats,
-            RampProtocol(protocol_id="four-market-v2-raw-workload"),
+            RampProtocol(protocol_id="four-market-v2-continuous-month"),
             episode_context={
                 "split": self.request.split,
                 "window_id": window_id,
+                "month_id": month_id,
                 "month": int(record["month"]),
-                "day": record["day"],
+                "hours": hours,
                 "chronological": True,
                 "forecast_model": self.payload["forecast_model"],
                 "future_realized_features_exposed": False,

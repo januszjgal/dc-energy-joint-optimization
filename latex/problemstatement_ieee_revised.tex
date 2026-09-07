@@ -38,12 +38,17 @@ geo-distributed operator may also have more than one site capable of running the
 
 The question we ask here is:
 \begin{quote}
-\emph{How much can temporal and geographic workload flexibility
-reduce regional net-load ramps while satisfying
-immediate-service, batch-deadline, and site-capacity constraints?}
+\emph{Relative to running every job where and when it arrived, how much can a
+causal scheduler reduce normalized one-hour and three-hour regional net-load
+ramps by jointly using temporal deferral and geographic routing, while
+satisfying immediate-service, batch-window, and site-capacity constraints?}
 \end{quote}
 
-To do this, we leverage data from a Google data center workload trace and EIA grid and energy data, to create a synthetic four-site data center fleet with real demand and workloads, to optimize. 
+To do this, we leverage data from a Google data center workload trace and EIA grid and energy data, to create a synthetic four-site data center fleet with real demand and workloads, to optimize.
+
+At the centre of that fleet sits a \emph{hypothetical scheduler}. Every hour it makes two kinds of decision: where the work that must run immediately should run, and how much of the deferrable backlog to release and to which sites. This paper defines that decision problem. It sets out the data the scheduler is given, the constraints it has to respect, and the quantity by which its choices are judged. It does not optimize those choices; that is planned for a later chapter using reinforcement learning (PPO).
+
+Taken as a whole, the thesis will do five things: build a trace-driven synthetic model that joins the workload, data-center power, and balancing-authority grid data; define a causal scheduling environment with hard capacity and completion-window constraints; train a PPO scheduler that uses both temporal and geographic flexibility; compare it against one clearly defined operating policy, running every job where and when it arrived; and check whether the conclusion survives when a small set of the modeling assumptions is varied. This chapter covers the first two.
 
 Note we are specifically targeting net-load ramps rather than electricity cost. What determines how much fast-moving generation an operator must keep available is not the price of power but the rate at which net load changes, so that is the quantity this study works with.
 
@@ -65,6 +70,11 @@ for the CPU reference capacity, \codepath{instance_usage} for measured CPU
 execution, and \codepath{collection_events} for
 priority.\footnote{The full trace is approximately 2.4 TiB, so the extraction
 queries it through BigQuery rather than downloading it.}
+
+One point of clarification worth noting: rather than scheduling individual jobs, we are scheduling  \emph{CPU utilization} (specifically how much of a cell was busy in
+each five-minute window, and the fraction that was service/batch demand). A priority split is applied to the utilization itself, so a cell that is 60\% busy with a quarter of that work deferrable becomes 45\% service and 15\% batch, not a list of tasks.
+
+This is a deliberate simplification. While there is data to track requested CPU usage per individual job, the resultant demand we schedule is the same total work being placed at a site. Essentially - we don't carry through which job contributed to what usage, but still deliver the same end usage.  
 
 \begin{figure}[!ht]
   \centering
@@ -273,14 +283,12 @@ fraction rather than in watts, nothing in the data says how big these sites
 actually are. We pick 500 MW per site ourselves, and the last three columns
 of the table show what that choice implies: an idle site sits somewhere
 between 191 and 274 MW, and running it flat out adds another 170 to 285 MW
-on top. That difference is the entire physical lever this problem has.
+on top. 
 
 \begin{table*}[htbp]
   \centering
   \small
-  \caption{Active CPU-only fits and their power interpretation under the
-  500 MW reference scale. Observed \(u\) is the hourly range on which each
-  fit was estimated.}
+  \caption{Active CPU-only fits and their power interpretation under the  500 MW reference scale.}
   \label{tab:powerdata-coefficients}
   \begin{tabular}{@{}crrrcrrr@{}}
     \toprule
@@ -311,27 +319,9 @@ on top. That difference is the entire physical lever this problem has.
 Each modeled site is placed in a real electricity market, and what we need
 from each one is what its regional grid was actually doing hour by hour. All
 four come from the same source, the EIA hourly grid monitor, which reports
-demand and generation by fuel for every United States balancing authority.
-Table~\ref{tab:energy-sources} lists which authority stands in for which
-market case.
-
-\begin{table*}[t]
-  \centering
-  \small
-  \caption{Source products used in the four market cases.}
-  \label{tab:energy-sources}
-  \begin{tabular}{@{}L{0.22\textwidth}L{0.62\textwidth}@{}}
-  \toprule
-  Market case & Physical demand and renewables \\
-  \midrule
-  CAISO NP15     & EIA CISO balancing-authority demand, wind, and solar
-                   \cite{eiaGridMonitor}. \\
-  MISO Minnesota & EIA MISO balancing-authority demand, wind, and solar. \\
-  SPP North      & EIA SWPP balancing-authority demand, wind, and solar. \\
-  ISO-NE NEMA    & EIA ISNE balancing-authority demand, wind, and solar. \\
-  \bottomrule
-  \end{tabular}
-\end{table*}
+demand and generation by fuel for every United States balancing authority
+\cite{eiaGridMonitor}. CAISO NP15 draws on the CISO balancing authority,
+MISO Minnesota on MISO, SPP North on SWPP, and ISO-NE NEMA on ISNE.
 
 All four regions report the same three physical quantities, so they can be
 handled identically.\footnote{The EIA fields \codepath{D},
@@ -367,9 +357,9 @@ observed wind and solar output, all in MW,
 
 
 
-\begin{table*}[t]
+\begin{table}[htbp]
   \centering
-  \small
+  \footnotesize
   \caption{The four market cases at 2025-07-19 16:00 UTC, in MW. This is the
   hour followed through Sections~\ref{subsec:transform-worked-example}
   and~\ref{subsec:problem-worked-objective}.}
@@ -378,24 +368,19 @@ observed wind and solar output, all in MW,
     \toprule
     Market case & Demand & Wind & Solar & Net load \\
     \midrule
-    CAISO NP15     & 29,214 & 2,096 & 15,279 & 11,839 \\
-    MISO Minnesota & 89,047 & 3,238 &  7,577 & 78,232 \\
-    SPP North      & 43,158 & 16,032 &   801 & 26,325 \\
-    ISO-NE NEMA    & 11,312 &   160 &   857 & 10,295 \\
+    CAISO NP15     & 29,214 &  2,096 & 15,279 & 11,839 \\
+    MISO Minnesota & 89,047 &  3,238 &  7,577 & 78,232 \\
+    SPP North      & 43,158 & 16,032 &    801 & 26,325 \\
+    ISO-NE NEMA    & 11,312 &    160 &    857 & 10,295 \\
     \bottomrule
   \end{tabular}
-\end{table*}
+\end{table}
 
 \subsection{Calendar and frozen statistics}
 \label{subsec:energy-calendar}
 
 The study covers the whole of 2025. Eleven of its months train the
-scheduler, giving 334 UTC days, and May is held back to test it on, giving
-31. May was chosen rather than a month at either end of the year because its
-long days and mild temperatures give California the deepest midday solar
-trough of the year, which makes it the hardest month for the thing we are
-trying to reduce.\footnote{With warm and tail support, the retained panels
-run from 2024-12-31 at 21:00 UTC to 2026-01-01 at 02:00 UTC.}
+scheduler, giving 334 UTC days, and May is held back to test its performance, giving 31 UTC days. Each month is run as one continuous stretch of hourly decisions, as Section~\ref{subsec:transform-pairing} describes.
 
 The ramp objective in Section~\ref{sec:problem-statement} compares markets of
 very different size, so we also define a fixed scale \(S_m\): the
@@ -432,7 +417,7 @@ absolute megawatts.
 \subsection{Forecasts}
 \label{subsec:energy-forecasts}
 
-Each row also carries a prediction at what gross demand and net load will be one, two, and three hours later. These are not real forecasts from the system operator; they are generated based on the existing data. For every row we run a linear regression: it takes what has already happened by that hour, multiplies each by a weight, and adds them up to get the prediction. It uses the last few hours of demand, the same hour yesterday and a week earlier, how much demand has already moved over the past one and three hours, and how much wind and solar are running.\footnote{Generated by \codepath{scripts/build_causal_forecasts.py}. Each market gets its own model for each quantity and each of the three lead times. The models are built from the eleven training months only, never May, so May stays a fair test of conditions they were not tuned on. As a safety check, models that guess worse than no change at all, over the training months, are discarded in favor of forecasting no change; on this data none of the twenty-four are. Across the held-out month they land between 24 and 70 percent below the error of that no-change guess, with the larger gains three hours out.} Because the model never looks past the row it sits on, a scheduler reading that row cannot see into its own future.
+Each row also carries a prediction of what gross demand and net load will be one, two, and three hours later. Three hours is as far ahead as the scheduler ever needs to look: the longest batch window is three slots, so the furthest it can push any work is two hours. These are not real forecasts from the system operator; they are generated from the existing data so that a scheduler has some view of where net load is heading rather than only where it has been. For every row we run a linear regression: it takes what has already happened by that hour, multiplies each by a weight, and adds them up to get the prediction. It uses the last few hours of demand, the same hour yesterday and a week earlier, how much demand has already moved over the past one and three hours, and how much wind and solar are running.\footnote{Generated by \codepath{scripts/build_causal_forecasts.py}. Each market gets its own model for each quantity and each of the three lead times. The models are built from the eleven training months only, never May, so May stays a fair test of conditions they were not tuned on.} Because the model never looks past the row it sits on, a scheduler that reads the previous hour's row sees only forecasts built from hours that have already finished; Section~\ref{subsec:problem-causality} spells out exactly which row it reads.
 
 
 Table~\ref{tab:panel-columns} shows what all of the above produces: one row
@@ -443,12 +428,11 @@ Sections~\ref{subsec:transform-worked-example}
 and~\ref{subsec:problem-worked-objective}. Everything the grid side
 contributes comes from rows of this shape, four per hour (one for each market).
 
-The panel is stored as one file per simulated day, each holding the thirty
-hours that day needs: the three warm hours before it, its own twenty-four,
-and the three-hour tail. There are 365 of them, one for every day of 2025.
-Each file is grid data only. The workload for that day is attached separately
-by the month-reset rule of Section~ef{subsec:transform-pairing}, which is
-what lets the same grid day be paired with a different slice of the trace
+The panel is stored as one file per calendar month, each holding the four
+hours before the month and every hour of the month itself. There are twelve
+of them. Each file is grid data only. The workload for the month is attached
+separately by the rule of Section~\ref{subsec:transform-pairing}, which is
+what lets the same grid month be paired with a different slice of the trace
 without refetching anything.
 
 \begin{table*}[t]
@@ -513,13 +497,14 @@ assigned the same total compute capacity \(K_m=1\) and the same reference power
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Which Borg cell supplies each site's workload, and how many hours
-  of deferral its batch work is given. Each site is named by its market case
-  throughout.}
+  \caption{Which Borg cell supplies each site's workload, and the length
+  \(H_m\) of its batch execution window in hourly slots, counting the arrival
+  slot. A window of 1 allows no delay; a window of 3 allows at most two hours.
+  Each site is named by its market case throughout.}
   \label{tab:active-market-map}
   \begin{tabular}{@{}llr@{}}
     \toprule
-    Market case & Source cell & \(H_m\) (example) \\
+    Market case & Source cell & \(H_m\) (slots) \\
     \midrule
     CAISO NP15     & \(a\) & 2 \\
     MISO Minnesota & \(b\) & 1 \\
@@ -540,11 +525,26 @@ carried forward. Months shorter than 31 days simply stop early, which means
 February never reaches the last three days of the trace and the 30-day months
 never reach the last one.
 
-Each simulated day runs a little longer than 24 hours. Work arrives during
-the 24 hours \(\mathcal A=\{0,\ldots,23\}\); the scheduler keeps acting for
-three more, \(\mathcal T=\{0,\ldots,26\}\), so late batch work can still
-finish; and three hours before the day starts, \(\mathcal W=\{-3,-2,-1\}\),
-are carried along so the first ramps have something to be measured against.
+The scheduler runs each calendar month as one continuous stretch of hourly
+decisions. Nothing resets at midnight: batch that arrives late in the evening
+can still run in the small hours of the next day, and the first ramp of a new
+day is measured against the last hours of the day before, exactly as it would
+be for a fleet that never switches off. This matters more than it might seem,
+because midnight UTC is late afternoon in California and early evening on the
+East Coast, in the middle of the evening ramp rather than at a quiet moment.
+A \emph{simulated month} therefore consists of every hour of the month,
+preceded by the four hours before it, which are carried along so that the
+first decisions have something to look back on and the first one-hour and
+three-hour ramps have a starting point.
+
+In symbols, the decision hours of a month with \(T_e\) hours are
+\(\mathcal T=\{0,\ldots,T_e-1\}\), which is 744 for May, and the four hours
+before it are \(\mathcal W=\{-4,\ldots,-1\}\). Work arrives in every hour of
+\(\mathcal T\). Queues start empty at the first hour of the month and must be
+empty again at its last, which is arranged by shortening the window of
+anything that arrives in the final two hours;
+Section~\ref{subsec:problem-batch} gives the rule.
+
 Two quantities need names, because they are what the scheduler is actually
 handed each hour. Write \(s_{m,t}\) for the \emph{service} work that shows up
 at site \(m\) in hour \(t\), the part that has to run immediately, and
@@ -555,66 +555,60 @@ what the scheduler does with these two numbers.
 Both are built from the five-minute curves of
 Section~\ref{sec:clusterdata2019} in two moves: average the twelve windows
 that make up an hour, then multiply by what a site can get through in an
-hour, which turns a fraction of a cell into an amount of work. Write
-\(\tau_e\) for the UTC hour a day begins, \(t\) for the hour within it, and
-\(h\) for the trace hour that slot draws from. Work
-arrives only during the 24 arrival hours; the tail gets nothing:
+hour, which turns a fraction of a cell into an amount of work. Writing \(t\)
+for the hour within the month and \(h\) for the trace hour it draws from, then
+for each hour of the month,
 \begin{align}
   s_{m,t}
   &=
-  \begin{cases}
-    \dfrac{K_m\Delta t}{12}
-    \displaystyle\sum_{b=0}^{11} u^{\mathrm{svc}}_{m,12h+b},
-      & t\in\mathcal A,\\[2ex]
-    0, & t\in\mathcal T\setminus\mathcal A,
-  \end{cases}
+  \frac{K_m\Delta t}{12}
+  \sum_{b=0}^{11} u^{\mathrm{svc}}_{m,12h+b},
   \label{eq:synthetic-service-arrivals}\\
   q_{m,t}
   &=
-  \begin{cases}
-    \dfrac{K_m\Delta t}{12}
-    \displaystyle\sum_{b=0}^{11} u^{\mathrm{bat}}_{m,12h+b},
-      & t\in\mathcal A,\\[2ex]
-    0, & t\in\mathcal T\setminus\mathcal A.
-  \end{cases}
+  \frac{K_m\Delta t}{12}
+  \sum_{b=0}^{11} u^{\mathrm{bat}}_{m,12h+b}.
   \label{eq:synthetic-batch-arrivals}
 \end{align}
+Because the trace restarts with the month, \(h\) and \(t\) are the same
+number: hour \(t\) of the month reads trace hour \(h=t\).
+
 Because every site can do \(K_m=1\) work unit per hour and \(\Delta t=1\) h,
 the factor \(K_m\Delta t\) is exactly one, so \(s_{m,t}\) and \(q_{m,t}\) are
 numerically just the hourly averages themselves. The multiplication is there
 to carry the units, not to change the number.
-Table~\ref{tab:arrival-example} shows what a day of arrivals actually looks
-like.
+Table~\ref{tab:arrival-example} shows what one day of arrivals actually looks
+like inside a month.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Arrivals for the day beginning 2025-07-19 00:00 UTC, in work
-  units. The trace hour \(h\) keeps advancing through the tail, but
-  Equations~\eqref{eq:synthetic-service-arrivals}
-  and~\eqref{eq:synthetic-batch-arrivals} take no arrivals from it.}
+  \caption{Arrivals on 2025-07-19, in work units. Hour \(t\) counts from the
+  start of the month, so this day occupies \(t=432,\ldots,455\), and the
+  trace hour \(h\) is the same number because the trace restarts with the
+  month. The hours before and after belong to 18 and 20 July and are
+  scheduled in the same continuous run.}
   \label{tab:arrival-example}
-  \begin{tabular}{@{}rrrrrr@{}}
+  \begin{tabular}{@{}rrrrr@{}}
     \toprule
-    & & \multicolumn{2}{c}{MISO Minnesota} & \multicolumn{2}{c}{CAISO NP15} \\
-    \cmidrule(lr){3-4}\cmidrule(l){5-6}
-    \(t\) & \(h\) & \(s_{m,t}\) & \(q_{m,t}\) & \(s_{m,t}\) & \(q_{m,t}\) \\
+    & \multicolumn{2}{c}{MISO Minnesota} & \multicolumn{2}{c}{CAISO NP15} \\
+    \cmidrule(lr){2-3}\cmidrule(l){4-5}
+    \(t=h\) & \(s_{m,t}\) & \(q_{m,t}\) & \(s_{m,t}\) & \(q_{m,t}\) \\
     \midrule
-     0 & 432 & 0.4225 & 0.1267 & 0.4248 & 0.1184 \\
-     1 & 433 & 0.4351 & 0.1034 & 0.3958 & 0.1237 \\
-     2 & 434 & 0.4233 & 0.0620 & 0.3876 & 0.1191 \\
-    \multicolumn{6}{c}{\(\vdots\)} \\
-    16 & 448 & 0.3982 & 0.0708 & 0.5521 & 0.0199 \\
-    \multicolumn{6}{c}{\(\vdots\)} \\
-    23 & 455 & 0.4289 & 0.0688 & 0.4014 & 0.1215 \\
-    24 & 456 & 0      & 0      & 0      & 0      \\
-    25 & 457 & 0      & 0      & 0      & 0      \\
-    26 & 458 & 0      & 0      & 0      & 0      \\
+    432 & 0.4225 & 0.1267 & 0.4248 & 0.1184 \\
+    433 & 0.4351 & 0.1034 & 0.3958 & 0.1237 \\
+    434 & 0.4233 & 0.0620 & 0.3876 & 0.1191 \\
+    \multicolumn{5}{c}{\(\vdots\)} \\
+    448 & 0.3982 & 0.0708 & 0.5521 & 0.0199 \\
+    \multicolumn{5}{c}{\(\vdots\)} \\
+    455 & 0.4289 & 0.0688 & 0.4014 & 0.1215 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The grid series are read off at those same hours:
+The grid series are read off at those same hours. Writing \(\tau_e\) for the
+absolute UTC hour a simulated month begins, so that hour \(t\) of that month
+is the absolute time \(\tau_e+t\Delta t\),
 \begin{equation}
   \begin{aligned}
     D_{m,t} &= D_m(\tau_e+t\Delta t), \\
@@ -622,48 +616,8 @@ The grid series are read off at those same hours:
   \end{aligned}
   \label{eq:episode-grid-map}
 \end{equation}
-These apply for every \(t\in\mathcal W\cup\mathcal T\), so the three warm
-hours carry grid data even though no work arrives in them. 
-
-\subsection{Scenario assumptions}
-\label{subsec:transform-assumptions}
-
-Table~\ref{tab:assumption-register} separates data-derived quantities from
-choices made to create the scheduling problem.
-
-\begin{table*}[t]
-  \centering
-  \small
-  \caption{Register of measured inputs, derived quantities, assumptions, and
-  evaluation outputs.}
-  \label{tab:assumption-register}
-  \begin{tabular}{@{}L{0.16\textwidth}L{0.32\textwidth}L{0.44\textwidth}@{}}
-    \toprule
-    Type & Item & Meaning in this study \\
-    \midrule
-    Observed
-      & CPU execution, priority, normalized power, grid demand, wind, and
-        solar
-      & Values read from the retained source records. \\
-    Derived
-      & Five-minute tier curves, hourly synthetic arrivals, net load,
-        forecasts, and affine power coefficients
-      & Quantities calculated from the observed source records. \\
-    Assumed
-      & \(K_m=1\), \(\overline P_m=500\) MW, mapping \(a\)--\(d\) to four
-        markets, and inclusive completion windows \(H_m=(2,1,2,3)\)
-      & Scenario parameters not supplied by Google or EIA. \\
-    Idealized
-      & Divisible work, immediate service mobility, costless batch transfer,
-        no latency, no bandwidth, and no data-residency restrictions
-      & Makes the geographic result an optimistic upper bound. \\
-    Evaluation only
-      & The no-flexibility comparison
-      & Reported alongside ramp performance but not optimized by the active
-        reward. \\
-    \bottomrule
-  \end{tabular}
-\end{table*}
+These apply to the four warm hours as well, so every hour of a simulated
+month carries grid data.
 
 \subsection{Available control scale}
 \label{subsec:transform-control-authority}
@@ -762,12 +716,25 @@ are one-hour native ramps of \(-0.0621\) and \(+0.0279\) per hour. The two
 regions are moving in opposite directions in the same hour, which is exactly
 the situation the geographic lever exists for.
 
-Moving 0.15 work units of Minnesota's service to CAISO NP15 would drop
-Minnesota's power to 334 MW and raise NP15's to 387 MW. Minnesota sheds 28 MW
-into a market that is climbing, and NP15 picks up 25 MW into a market that is
+One caveat about what the scheduler knows. When it decides hour 16, it has
+not seen 11,839 MW yet. What it has is the 15:00 row's forecast of it,
+10,837 MW, and for MISO a forecast of 78,530 MW against an eventual
+78,232 MW. The numbers below use the realized values because they are what
+the hour is scored on; the decision itself is made on the forecasts.
+
+How much of Minnesota's service could be moved to CAISO NP15? Two things
+bound it. NP15 is already 57\% busy, so it has 0.4281 work units of capacity
+left; and Minnesota only has 0.3982 units of service to give in the first
+place. Minnesota runs out before NP15 fills up, so the largest possible
+transfer is its whole service load, 0.3982 units, which would leave Minnesota
+running only its batch work.
+
+Making that move drops Minnesota's power from 362 MW to 287 MW and raises
+NP15's from 361 MW to 429 MW. Minnesota sheds 75 MW into a market that is
+climbing, and NP15 picks up 68 MW into a market that is
 falling.\footnote{The two numbers differ because the sites have different
-power slopes \(\beta_m\); moving work between sites changes total fleet
-power slightly, in this case by \(-3\) MW.}
+power slopes \(\beta_m\); moving work between sites changes total fleet power
+slightly, in this case by \(-7\) MW.}
 
 That last comparison is the honest scale of this problem. The fleet's whole
 authority in a given hour is tens of megawatts per site, against regional
@@ -783,11 +750,10 @@ right hour produces a measurable improvement.
 Let \(\mathcal M=\{1,\ldots,4\}\) be the modeled sites and their paired market
 cases. Indices \(i\) and \(j\) identify batch origin and execution
 destination, respectively. Let
-\(\mathcal T=\{0,\ldots,26\}\) be the 27 dimensionless decision-slot indices
-in an episode, \(\mathcal A=\{0,\ldots,23\}\) the slots with new arrivals,
-\(\mathcal W=\{-3,-2,-1\}\) the fixed warm-support slots, and
-\(\mathcal H=\{1,3\}\) the ramp horizons measured in intervals. One interval
-has duration \(\Delta t=1\) h.
+\(\mathcal T=\{0,\ldots,T_e-1\}\) be the decision-slot indices of a simulated
+month with \(T_e\) hours, \(\mathcal W=\{-4,\ldots,-1\}\) the fixed
+warm-support slots before it, and \(\mathcal H=\{1,3\}\) the ramp horizons
+measured in intervals. One interval has duration \(\Delta t=1\) h.
 
 For each site and hour, the scheduler receives synthetic service arrivals
 \(s_{m,t}\), synthetic batch arrivals \(q_{m,t}\), standardized compute
@@ -864,7 +830,7 @@ The queue balance and availability rules are
   &\leq y_{i,t}\leq B_{i,t}+q_{i,t}.
   \label{eq:queue-availability}
 \end{align}
-All queues begin empty. How much temporal flexibility the problem contains is
+All queues begin empty at the first hour of the month. How much temporal flexibility the problem contains is
 set by one parameter per origin, \(H_i\), the number of hourly execution
 opportunities an arrival receives, counted inclusively: \(H_i=1\) requires
 execution in the arrival slot itself and therefore grants no deferral at all,
@@ -875,23 +841,27 @@ slot \(\nu\), its latest execution slot is
 \begin{equation}
   d_{i,\nu}
   =
-  \nu+H_i-1.
+  \min\{\nu+H_i-1,\;T_e-1\}.
   \label{eq:batch-deadline}
 \end{equation}
-The three-hour tail is long enough that this expression never exceeds the
-episode boundary for arrivals in \(\mathcal A\).
+The minimum only bites in the last two hours of a month: work arriving there
+loses part of its window so that the month can close with empty queues, an
+edge effect touching at most two of the 744 hours of May.
 Deadline feasibility can be written as
 \begin{equation}
   \sum_{\rho=0}^{t}y_{i,\rho}
   \geq
-  \sum_{\substack{\nu\in\mathcal A\\d_{i,\nu}\leq t}}q_{i,\nu},
+  \sum_{\substack{\nu\in\mathcal T\\d_{i,\nu}\leq t}}q_{i,\nu},
   \qquad i\in\mathcal M,\ t\in\mathcal T.
   \label{eq:deadline-feasibility}
 \end{equation}
 Because \(H_i\) differs by origin, EDF does not reduce to one global FIFO
-queue. At termination,
+queue.\footnote{When two parcels of work share a deadline, the one from the
+lower-numbered origin is drained first, and within an origin the earlier
+arrival goes first. The rule is a total order, so the same request always
+drains the same work.} At the end of the month,
 \begin{equation}
-  B_{i,27}=0,
+  B_{i,T_e}=0,
   \qquad i\in\mathcal M.
   \label{eq:terminal-queue}
 \end{equation}
@@ -943,7 +913,7 @@ The regional net load after adding modeled site power is
   N_{m,t}+P_{m,t}.
   \label{eq:adjusted-net-load}
 \end{equation}
-In the three warm hours \(P_{m,t}\) is fixed in advance; in the decision
+In the four warm hours \(P_{m,t}\) is fixed in advance; in the decision
 hours it comes from Equation~\eqref{eq:runtime-power}. Both ends of every
 ramp window are therefore defined, including the earliest ones.
 
@@ -998,7 +968,7 @@ horizon, \(\omega_1=0.40\) and \(\omega_3=0.60\):
   \qquad
   J(\mu)
   =
-  \sum_{t\in\mathcal A}
+  \sum_{t\in\mathcal T}
   \frac{1}{|\mathcal M|}
   \sum_{m\in\mathcal M}
   \sum_{\ell\in\mathcal H}
@@ -1016,12 +986,9 @@ they would have had on their own. A positive \(J\) means it made them
 steeper, which is not only possible but is what a fleet that ignores the grid
 will usually do.
 
-The sum runs over the 24 arrival hours rather than all 27 decision slots.
-Arrivals stop at \(t=24\) by construction, so fleet power falls over the tail
-by an amount no schedule can avoid; scoring those slots would add a large
-near-constant term to \(J\) and compress the differences between the
-schedules the objective is meant to separate. The tail hours are still
-simulated, and late batch work must still meet its deadline there.
+The sum runs over every hour of the month. There is no unscored stretch
+anywhere, so work cannot be pushed somewhere it does not count, and there is
+no artificial end of day in which the fleet drops to idle.
 
 Averaging over markets with equal weight is not the same as treating them
 equally.\footnote{Writing \(\delta N_{m,t,\ell}=N_{m,t}-N_{m,t-\ell}\) and
@@ -1036,85 +1003,110 @@ because the cross-term also scales with the native ramp
 than a market-neutral result. Alternative weightings belong in the
 sensitivity analysis.}
 
-\subsection{Baselines}
+\subsection{Reference signal and the one baseline}
 \label{subsec:problem-baselines}
 
-Two references serve different purposes:
-\begin{itemize}
-  \item The \emph{native-grid baseline} has \(P_{m,t}=0\) and is already
-        represented by \(\Delta^0_{m,t,\ell}\). It answers whether adding the
-        scheduled fleet helps or hurts the pre-existing grid ramp.
-  \item The \emph{no-flexibility baseline} runs service and batch at their
-        source in the arrival hour, with no geographic movement or deferral.
-        It answers what is gained specifically from flexible scheduling.
-\end{itemize}
+Two comparisons appear in this study, and they play different roles.
 
-For the conceptual no-flexibility baseline,
+The \emph{native grid}, with \(P_{m,t}=0\), is the background signal the
+ramps are measured against. It is already built into
+Equation~\eqref{eq:incremental-impact} through \(\Delta^0_{m,t,\ell}\), and
+it is not a way of operating the fleet: the experiment adds a synthetic
+fleet to historical grid demand and compares two ways of running that same
+fleet.
+
+The \emph{no-flexibility baseline}, written \(\mu_{\mathrm{NF}}\), is the
+one operating policy the scheduler is compared against. It runs every
+arrival where and when it arrived, with no deferral and no routing, on
+exactly the same arrivals, power models, grid trajectory, forecasts, and
+month:
 \begin{equation}
   x^{\mathrm{svc},\mathrm{NF}}_{m,t}=s_{m,t},
   \qquad
   x^{\mathrm{bat},\mathrm{NF}}_{m,t}=q_{m,t}.
   \label{eq:no-flex-baseline}
 \end{equation}
+The headline number of a later chapter is the difference
+\begin{equation}
+  \text{Improvement}
+  =
+  J(\mu_{\mathrm{NF}})-J(\mu),
+  \label{eq:improvement}
+\end{equation}
+which is positive when the scheduler \(\mu\) leaves the four regions with
+gentler ramps than running work in place would have. Because
+\(\mu_{\mathrm{NF}}\) is itself a feasible schedule, a scheduler that does
+worse than it is making a mistake the problem allows it to avoid. No other
+scheduling method is used as a comparison in this thesis.
 
-\subsection{Episode construction}
+\subsection{The two ends of a simulated month}
 \label{subsec:problem-episode}
 
-Each sample is a 30-hour UTC panel containing:
-\begin{itemize}
-  \item fixed warm support at hours \(-3,-2,-1\);
-  \item 24 active arrival hours \(t=0,\ldots,23\); and
-  \item three decision-tail hours \(t=24,25,26\), with no new arrivals.
-\end{itemize}
+Section~\ref{subsec:transform-pairing} laid out the shape of a simulated
+month. Two details of its two ends matter to the objective.
 
-Warm power is calculated by running the preceding repeated raw service and
-batch profiles in place through each site's affine power model. It supplies
-the power history needed to score the first one-hour and three-hour ramps,
-but warm workload is not placed in the queue. During the tail, the scheduler
-continues acting so late batch work can finish, but those slots are not
-scored; the three warm slots and the three tail slots are the two ends of the
-same construction, and neither is part of \(J(\mu)\).
+The four warm hours carry power but no queue. Their power is obtained by
+running the preceding workload in place through each site's power model,
+which supplies the history the first one-hour and three-hour ramps are
+measured against and the lookback the first decisions read; that workload is
+never added to the batch queue, so the scheduler cannot defer it. The last
+two hours are the other end: anything arriving there has its window cut at
+the final hour by Equation~\eqref{eq:batch-deadline}, so the month closes
+with every queue empty and every hour scored.
 
-Every UTC day is simulated independently. The queue starts empty, and no
-schedule state or workload carries between episodes. This makes each day a
-separate sample of grid conditions rather than a continuous multi-day
-operation. A common UTC timeline keeps the four market cases synchronized.
+Inside the month nothing resets. Queues and site power carry across every
+midnight, so a day's first ramp is measured against the previous evening and
+batch from one day can run in the next. Months are simulated independently
+of one another: the queue starts empty at each month boundary and the
+workload trace restarts with it. A common UTC timeline keeps the four market
+cases synchronized.
 
 \subsection{Causal information}
 \label{subsec:problem-causality}
 
-A feasible scheduling rule must be causal. Let \(\mathcal I_t\) contain only
-information available when the hour-\(t\) decision is made:
+A feasible scheduling rule must be causal. The order of events inside one
+hour is fixed. At the start of hour \(t\) the scheduler is handed the grid
+rows through hour \(t-1\), the forecasts issued at \(t-1\), and the hour-\(t\)
+arrivals; it then chooses where service runs, how much batch to release, and
+where; only after that is the realized hour-\(t\) net load revealed, and site
+power, adjusted net load, and the ramp terms for hour \(t\) are computed from
+it. Let \(\mathcal I_t\) contain only what is available at the moment of
+choice:
 \begin{itemize}
-  \item the latest completed gross-demand and net-load observations;
-  \item one-hour and three-hour native ramps that have already closed;
-  \item the gross-demand and net-load forecasts carried on the hour-\(t\)
-        row;
-  \item current service and batch arrivals, queue totals, and urgency;
+  \item gross demand and net load for hours \(t-1\) down to \(t-4\);
+  \item the one-hour and three-hour native ramps that closed at hour
+        \(t-1\);
+  \item the gross-demand and net-load forecasts issued at hour \(t-1\),
+        which cover hours \(t\), \(t+1\), and \(t+2\);
+  \item the hour-\(t\) service and batch arrivals, queue totals, and urgency;
   \item previously modeled site power; and
-  \item UTC hour, UTC day of week, and episode progress.
+  \item UTC hour and UTC day of week.
 \end{itemize}
 
 A scheduling rule \(\mu\) is admissible only if every decision it makes at
-hour \(t\) is a function of \(\mathcal I_t\) alone. Realized future load is
-never among it. The exact feature encoding and solution algorithm are left
-for the later methods chapter.
+hour \(t\) is a function of \(\mathcal I_t\) alone. The realized net load of
+hour \(t\) itself is never among it: the scheduler is scored against a ramp
+it could only forecast, which is the position a real operator is in. The
+exact feature encoding and solution algorithm are left for the later methods
+chapter.
 
 \subsection{Formal problem statement}
 \label{subsec:problem-formal-statement}
 
 \begin{quote}
-Given four synthetic hourly service and batch arrival streams, origin-specific
-batch deadlines, four standardized site capacities and power models, four
-regional net-load trajectories, and causal forecast information, construct a
-causal hourly schedule for service destination, batch
-execution volume, and batch destination. All immediate service must execute
-in its arrival hour, all batch work must be conserved and completed by its
-assumed deadline, no site may exceed compute capacity, and all terminal
-queues must be empty. Subject to those constraints, minimize the
-equal-market, weighted incremental squared one-hour and three-hour ramps in
-regional net load after modeled server power is added, as stated in
-Equation~\eqref{eq:objective}.
+Given four synthetic hourly service and batch arrival streams over one
+continuous month, origin-specific batch windows, four standardized site
+capacities and power models, four regional net-load trajectories, and causal
+forecast information, construct a causal hourly schedule for service
+destination, batch execution volume, and batch destination. All immediate
+service must execute in its arrival hour, all batch work must be conserved
+and completed within its assumed window, no site may exceed compute
+capacity, and every queue must be empty at the end of the month. Subject to
+those constraints, minimize the equal-market, weighted incremental squared
+one-hour and three-hour ramps in regional net load after modeled server
+power is added, as stated in Equation~\eqref{eq:objective}, and report the
+result relative to the no-flexibility baseline as in
+Equation~\eqref{eq:improvement}.
 \end{quote}
 
 
@@ -1170,15 +1162,16 @@ workload's own daily shape, and that shape has nothing to do with what the
 grid happens to be doing.
 
 Now let the scheduler act. Take the move from
-Section~\ref{subsec:transform-worked-example}: shift 0.15 work units of
-service out of Minnesota and into CAISO NP15. NP15 now rises to 387 MW
-instead of falling to 361, which partly fills the hole its region's net load
-is digging as the morning solar climbs, and its impact falls from
-\(-0.05\times10^{-5}\) to \(-9.31\times10^{-5}\). Minnesota, whose net
-load is climbing, sheds 28 MW and improves too, from
-\(+0.09\times10^{-5}\) to \(-1.45\times10^{-5}\). Across all four
-markets the hour moves from \(+0.96\times10^{-5}\) to
-\(-1.74\times10^{-5}\).
+Section~\ref{subsec:transform-worked-example}: shift all 0.3982 work units of
+Minnesota's service into CAISO NP15, the most that can be moved before
+Minnesota has no service left to give. NP15 now rises to 429 MW instead of
+falling to 361, which fills much of the hole its region's net load is digging
+as the morning solar climbs, and its impact falls from
+\(-0.05\times10^{-5}\) to \(-24.39\times10^{-5}\). Minnesota, whose net load
+is climbing, sheds 75 MW and improves too, from \(+0.09\times10^{-5}\) to
+\(-3.98\times10^{-5}\). SPP North and ISO-NE NEMA are untouched, so their
+impacts are unchanged, and across all four markets the hour moves from
+\(+0.96\times10^{-5}\) to \(-6.15\times10^{-5}\).
 
 That change of sign is the whole problem in miniature. The fleet cannot move
 a regional ramp by much; these are tens of megawatts set against thousands.
@@ -1210,8 +1203,9 @@ they bound what any later number can be said to mean:
   \item Work is divisible and movement has no latency, bandwidth,
         data-residency, or transfer-energy cost, making geographic
         flexibility an optimistic upper bound.
-  \item Daily episodes are independent samples and do not represent
-        continuous multi-day operation.
+  \item Each month is simulated as one continuous run, but months are
+        independent of one another: queues restart at each month boundary
+        and the workload trace restarts with them.
 \end{itemize}
 
 None of this makes the problem useless. It does fix what a later result is
@@ -1244,10 +1238,11 @@ save at any particular facility.
   \(b\) & Five-minute offset within one trace hour & -- \\
   \(h\) & Hour index in the 744-hour source workload & -- \\
   \(\tau\) & Absolute UTC timestamp & time \\
-  \(\tau_e\) & Absolute UTC start of episode \(e\) & time \\
+  \(\tau_e\) & Absolute UTC start of simulated month \(e\) & time \\
   \(\mathcal{R}\) & Training hours: every hour of 2025 outside May & -- \\
-  \(e\) & Episode index & -- \\
-  \(t\) & Episode decision-slot index & -- \\
+  \(e\) & Simulated-month index & -- \\
+  \(T_e\) & Number of hours in simulated month \(e\) (744 for May) & -- \\
+  \(t\) & Decision-hour index within a simulated month & -- \\
   \(\nu,\rho\) & Dummy arrival-slot and decision-slot indices & -- \\
   \(\ell\) & Ramp horizon, 1 or 3 intervals & -- \\
   \(i,j,m\) & Modeled origin, destination, or site/market index & -- \\
@@ -1255,9 +1250,8 @@ save at any particular facility.
   \(\mathcal U_{c,k}\) & Retained usage rows for cell \(c\), bucket \(k\) & -- \\
   \(\mathcal U^{\mathrm{bat}}_{c,k}\) & Rows in \(\mathcal U_{c,k}\) matched to priority \(\leq115\) & -- \\
   \(\mathcal M\) & Four modeled sites and market cases & -- \\
-  \(\mathcal A\) & Arrival-slot indices \(0,\ldots,23\) & -- \\
-  \(\mathcal T\) & Decision-slot indices \(0,\ldots,26\) & -- \\
-  \(\mathcal W\) & Warm-support slot indices \(-3,-2,-1\) & -- \\
+  \(\mathcal T\) & Decision-slot indices \(0,\ldots,T_e-1\) of a month & -- \\
+  \(\mathcal W\) & Warm-support slot indices \(-4,\ldots,-1\) & -- \\
   \(\mathcal H\) & Ramp horizons \(\{1,3\}\) & -- \\
   \(\Delta t\) & Duration of one decision interval & h \\
   \(\kappa_n\) & Largest reported CPU capacity for machine \(n\) & normalized CPU \\
@@ -1276,8 +1270,8 @@ save at any particular facility.
   \(G^{\mathrm{wnd}}_m(\tau)\) & Regional wind-generation series at absolute UTC time & MW \\
   \(G^{\mathrm{sol}}_m(\tau)\) & Regional solar-generation series at absolute UTC time & MW \\
   \(N_m(\tau)\) & Native net-load series at absolute UTC time & MW \\
-  \(D_{m,t}\) & Episode-mapped gross demand & MW \\
-  \(N_{m,t}\) & Episode-mapped native net load & MW \\
+  \(D_{m,t}\) & Gross demand at hour \(t\) of a simulated month & MW \\
+  \(N_{m,t}\) & Native net load at hour \(t\) of a simulated month & MW \\
   \(K_m\) & Standardized compute capacity of site \(m\) & work/h \\
   \(\overline P_m\) & Reference power scale of site \(m\) & MW \\
   \(H_m,H_i\) & Inclusive execution-window length for a generic site or origin & intervals \\
@@ -1298,10 +1292,11 @@ save at any particular facility.
   \(\delta P_{m,t,\ell}\) & Modeled site-power change over a ramp window & MW \\
   \(I_{m,t,\ell}\) & Incremental squared ramp impact & h\(^{-2}\) \\
   \(\omega_\ell\) & Ramp-horizon weight & -- \\
-  \(J(\mu)\) & Episode ramp objective under policy \(\mu\) & h\(^{-2}\) \\
+  \(J(\mu)\) & Ramp objective for one simulated month under policy \(\mu\) & h\(^{-2}\) \\
   \(\mathcal I_t\) & Information available when the hour-\(t\) decision is made & mixed \\
   \(\mathfrak M\) & Feasible causal-policy set & -- \\
   \(\mu\) & Causal scheduling policy & -- \\
+  \(\mu_{\mathrm{NF}}\) & The no-flexibility baseline schedule & -- \\
   \bottomrule
 \end{longtable}
 
@@ -1341,13 +1336,13 @@ save at any particular facility.
     & Defines the training-only gross-demand Q95 scale
     & Cross-market ramp normalization \\
   \eqref{eq:synthetic-service-arrivals}
-    & Converts repeated service fractions to episode work arrivals
+    & Converts repeated service fractions to hourly work arrivals
     & Scheduling inputs \\
   \eqref{eq:synthetic-batch-arrivals}
-    & Converts repeated batch fractions to episode work arrivals
+    & Converts repeated batch fractions to hourly work arrivals
     & Queue inputs \\
   \eqref{eq:episode-grid-map}
-    & Maps absolute grid rows to episode slots
+    & Maps absolute grid rows to hours of a simulated month
     & Ramp inputs \\
   \eqref{eq:service-conservation}
     & Conserves immediate service within its arrival hour
@@ -1362,13 +1357,13 @@ save at any particular facility.
     & Prevents execution before arrival
     & Hard feasibility \\
   \eqref{eq:batch-deadline}
-    & Assigns origin-specific latest execution slots
+    & Assigns origin-specific latest execution slots, cut at the month's end
     & Deadline feasibility \\
   \eqref{eq:deadline-feasibility}
     & Requires all due work to be completed
     & Queue feasibility \\
   \eqref{eq:terminal-queue}
-    & Requires no unfinished batch at termination
+    & Requires no unfinished batch at the end of the month
     & Hard feasibility \\
   \eqref{eq:executed-work}
     & Adds service and batch at each destination
@@ -1392,10 +1387,13 @@ save at any particular facility.
     & Compares adjusted and native squared ramps
     & Objective \\
   \eqref{eq:objective}
-    & Defines equal-market, weighted minimization over arrival hours
+    & Defines equal-market, weighted minimization over every hour of the month
     & Scheduling objective \\
   \eqref{eq:no-flex-baseline}
-    & Defines exact in-place, no-deferral comparison
+    & Defines the exact in-place, no-deferral baseline
+    & Evaluation \\
+  \eqref{eq:improvement}
+    & Defines the reported improvement over the no-flexibility baseline
     & Evaluation \\
   \bottomrule
 \end{longtable}

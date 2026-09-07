@@ -11,7 +11,7 @@ only features observable at the issue hour, on the training calendar alone.
 Ridge is solved in closed form so the module needs nothing beyond numpy.
 
 Run with --report to print an accuracy comparison without touching any file.
-Run with --write to rewrite the forecast columns of every window panel.
+Run with --write to rewrite the forecast columns of every monthly panel.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-PANEL_ROOT = ROOT / "data" / "four_market_2025" / "windows"
+PANEL_ROOT = ROOT / "data" / "four_market_2025" / "months"
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 
 HORIZONS = (1, 2, 3)
@@ -79,10 +79,11 @@ class FittedModel:
 
 
 def load_hourly_series() -> pd.DataFrame:
-    """Assemble one continuous hourly frame per market from the window panels.
+    """Assemble one continuous hourly frame per market from the monthly panels.
 
-    Windows overlap, so the same (timestamp, market) appears several times.
-    Duplicates are identical by construction; the first is kept.
+    Each monthly panel also carries the four warm hours that close the month
+    before it, so a (timestamp, market) pair can appear twice. Duplicates are
+    identical by construction; the first is kept.
     """
     frames = [pd.read_csv(path) for path in sorted(PANEL_ROOT.glob("*/canonical_panel.csv"))]
     panel = pd.concat(frames, ignore_index=True)

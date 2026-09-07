@@ -1,4 +1,24 @@
-"""Gymnasium-compatible hourly ramp-aware pure-RL environment."""
+"""Gymnasium-compatible hourly ramp-aware pure-RL environment.
+
+One episode is one continuous hourly panel; in the active experiment that is
+a calendar month. Queues and site-power history persist across every midnight
+inside the episode and are reset only when a new episode starts.
+
+Event order inside decision hour ``t``:
+
+1. grid rows through hour ``t-1`` are available, together with the forecasts
+   issued at ``t-1``, which cover hours ``t``, ``t+1``, and ``t+2``;
+2. the hour-``t`` service and batch arrivals are revealed and queued;
+3. the policy chooses service destinations, the batch volume to execute now,
+   and batch destinations for hour ``t``;
+4. the realized hour-``t`` grid values are revealed;
+5. site power, adjusted net load, and the ramp reward for hour ``t`` are
+   computed and scored.
+
+Every decision slot is scored. Work arriving in the last slots of an episode
+has its execution window cut at the final slot, so the episode ends with
+empty queues and nothing escapes the objective.
+"""
 
 from __future__ import annotations
 
@@ -30,12 +50,15 @@ from env.ramp_v6.reward import closed_window_terms
 from ramp_rl.contract import CONTRACT_VERSION, SEMANTIC_ACTION_ID
 
 
+GRID_OBSERVATION_LAG_HOURS = 1
+
+
 class RampAwareEnv(gym.Env):
     """Hourly controller with preference-only actions and a hard decoder.
 
-    The policy never sees realized future market values. The only forward
-    signals are timestamped forecasts whose issue time is no later than the
-    current controller timestamp.
+    The policy never sees the realized grid value of the hour it is deciding
+    for, nor any later hour. Its only forward signals are the forecasts stored
+    on the previous hour's row, whose issue time is that previous hour.
     """
 
     metadata = {"render_modes": []}
@@ -69,28 +92,18 @@ class RampAwareEnv(gym.Env):
             raise ValueError("sites must cover every panel market")
         self.stats.validate(panel_markets)
         self.n_sites = len(self.sites)
-        self.action_steps = len(panel.timestamps) - self.protocol.history_hours
-        if self.action_steps <= self.protocol.terminal_tail_hours:
-            raise ValueError("panel must include history, active hours, and tail")
-        self.main_steps = self.action_steps - self.protocol.terminal_tail_hours
-        workload.validate(
-            self.action_steps,
-            self.n_sites,
-            self.protocol.history_hours,
-        )
-        tail = slice(self.main_steps, self.action_steps)
-        if np.any(workload.service_arrivals[tail] != 0.0) or np.any(
-            workload.batch_arrivals[tail] != 0.0
-        ):
-            raise ValueError("terminal 3h tail must contain no new arrivals")
+        self.history_hours = self.protocol.history_hours
+        self.action_steps = len(panel.timestamps) - self.history_hours
+        if self.action_steps < 1:
+            raise ValueError("panel must include the warm history and at least one decision hour")
+        workload.validate(self.action_steps, self.n_sites, self.history_hours)
 
         self._capacity = np.asarray(
             [site.compute_capacity for site in self.sites], dtype=np.float64
         )
         fleet_capacity = float(self._capacity.sum())
         max_raw_arrivals = float(
-            (workload.service_arrivals[: self.main_steps]
-             + workload.batch_arrivals[: self.main_steps]).sum(axis=1).max()
+            (workload.service_arrivals + workload.batch_arrivals).sum(axis=1).max()
         )
         if max_raw_arrivals > fleet_capacity + self.protocol.tolerance:
             raise ValueError("raw arrivals exceed hard fleet capacity")
@@ -127,7 +140,6 @@ class RampAwareEnv(gym.Env):
             dtype=np.float32,
         )
         self.queue = EDFQueue()
-        self._status_quo_queue = EDFQueue()
         self._step = 0
         self._arrivals_loaded = False
         self._site_power_history: list[np.ndarray] = []
@@ -141,13 +153,12 @@ class RampAwareEnv(gym.Env):
             "version": CONTRACT_VERSION,
             "semantic_feasible_action": True,
             "semantic_action_id": SEMANTIC_ACTION_ID,
-            "history_hours": self.protocol.history_hours,
+            "history_hours": self.history_hours,
             "terminal_tail_hours": self.protocol.terminal_tail_hours,
-            "terminal_tail_emitted_in_step_metrics": True,
+            "grid_observation_lag_hours": GRID_OBSERVATION_LAG_HOURS,
             "interval_minutes": 60,
             "actual_terminal": True,
             "decision_steps": self.action_steps,
-            "active_arrival_steps": self.main_steps,
             "action_shape": list(self.action_space.shape),
             "action_low": self.action_space.low.tolist(),
             "action_high": self.action_space.high.tolist(),
@@ -171,21 +182,23 @@ class RampAwareEnv(gym.Env):
 
     @property
     def current_timestamp(self) -> pd.Timestamp:
-        return self.panel.timestamps[self.protocol.history_hours + self._step]
+        return self.panel.timestamps[self.history_hours + self._step]
 
     def _build_observation_schema(self) -> list[str]:
         names: list[str] = []
         for market in self.panel.markets:
             for quantity in ("gross", "net"):
-                for lag in range(4):
+                for lag in range(1, self.history_hours + 1):
                     names.append(f"{market}:{quantity}_level_z_lag{lag}")
             for horizon in HORIZONS:
-                names.append(f"{market}:native_ramp_{horizon}h_fraction_s_per_hour")
+                names.append(
+                    f"{market}:native_ramp_{horizon}h_closed_fraction_s_per_hour"
+                )
             for quantity in ("gross", "net"):
-                for hour in FORECAST_HOURS:
-                    names.append(f"{market}:forecast_{quantity}_h{hour}_z")
-                names.append(f"{market}:forecast_{quantity}_max_up_3h_fraction_s")
-        for index, site in enumerate(self.sites):
+                for ahead in range(len(FORECAST_HOURS)):
+                    names.append(f"{market}:forecast_{quantity}_t+{ahead}_z")
+                names.append(f"{market}:forecast_{quantity}_max_up_fraction_s")
+        for site in self.sites:
             names.extend(
                 [
                     f"{site.site_id}:service_arrival_capacity_fraction",
@@ -198,8 +211,7 @@ class RampAwareEnv(gym.Env):
             f"batch_queue_deadline_le_{edge}h_capacity_fraction"
             for edge in self.protocol.deadline_bucket_hours
         )
-        names.extend(["episode_progress", "terminal_tail_active", "hour_sin", "hour_cos",
-                      "day_of_week_sin", "day_of_week_cos"])
+        names.extend(["hour_sin", "hour_cos", "day_of_week_sin", "day_of_week_cos"])
         return names
 
     def reset(
@@ -211,19 +223,16 @@ class RampAwareEnv(gym.Env):
         super().reset(seed=seed)
         requested = dict(options or {})
         self.queue = EDFQueue()
-        self._status_quo_queue = EDFQueue()
         self._step = 0
         self._arrivals_loaded = False
         self._site_power_history = [
             self.workload.warm_power_mw[index].astype(np.float64).copy()
-            for index in range(self.protocol.history_hours)
+            for index in range(self.history_hours)
         ]
         self._market_power_history = {
             market: [
-                float(
-                    self.workload.warm_power_mw[index, site_indices].sum()
-                )
-                for index in range(self.protocol.history_hours)
+                float(self.workload.warm_power_mw[index, site_indices].sum())
+                for index in range(self.history_hours)
             ]
             for market, site_indices in self._market_site_indices.items()
         }
@@ -233,18 +242,19 @@ class RampAwareEnv(gym.Env):
         split = requested.get("split", context.get("split", "fixture"))
         window_id = requested.get("window_id")
         if window_id is None:
-            window_id = context.get("window_id", "ramp-v6-local")
+            window_id = context.get("window_id", "ramp-v7-local")
             if split == "train":
                 window_id = f"{window_id}-episode-{self._reset_count:06d}"
         context.update(
             {
                 "split": split,
                 "window_id": window_id,
-                "history_hours": self.protocol.history_hours,
+                "history_hours": self.history_hours,
                 "terminal_tail_hours": self.protocol.terminal_tail_hours,
+                "grid_observation_lag_hours": GRID_OBSERVATION_LAG_HOURS,
                 "interval_minutes": 60,
                 "decision_steps": self.action_steps,
-                "active_arrival_steps": self.main_steps,
+                "episode_start_utc": self.current_timestamp.isoformat(),
                 "future_realized_features_exposed": False,
                 "future_batch_capacity_fraction": self._future_batch_capacity_fraction,
             }
@@ -266,6 +276,7 @@ class RampAwareEnv(gym.Env):
         return np.clip(scores, -bound, bound)
 
     def _status_quo_action(self, queue: EDFQueue) -> np.ndarray:
+        """Run every arrival where it arrived, in the hour it arrived."""
         return np.concatenate(
             [
                 self._bounded_preference_scores(
@@ -281,21 +292,20 @@ class RampAwareEnv(gym.Env):
             return
         for origin in range(self.n_sites):
             amount = float(self.workload.batch_arrivals[self._step, origin])
-            deadline = min(
-                self._step
-                + int(self.workload.batch_deadline_hours[self._step, origin]),
-                self.action_steps - 1,
-            )
+            window = int(self.workload.batch_deadline_hours[self._step, origin])
+            # deadline_step is the first late slot; the final slot of the
+            # episode caps it so the episode closes with empty queues.
+            deadline = min(self._step + window, self.action_steps)
             self.queue.add(amount, origin, deadline)
-            self._status_quo_queue.add(amount, origin, deadline)
         self._arrivals_loaded = True
 
     def _observation(self) -> np.ndarray:
-        panel_index = self.protocol.history_hours + self._step
-        current = self.panel.observation_rows(panel_index)
+        panel_index = self.history_hours + self._step
+        latest_index = panel_index - GRID_OBSERVATION_LAG_HOURS
+        latest = self.panel.observation_rows(latest_index)
         values: list[float] = []
         for market in self.panel.markets:
-            row = current.loc[market]
+            row = latest.loc[market]
             scale = self.stats.gross_q95_mw[market]
             for quantity, mean_map, std_map in (
                 (
@@ -309,7 +319,7 @@ class RampAwareEnv(gym.Env):
                     self.stats.net_level_std_mw,
                 ),
             ):
-                for lag in range(4):
+                for lag in range(1, self.history_hours + 1):
                     history_row = self.panel.observation_rows(panel_index - lag)
                     values.append(
                         (
@@ -319,7 +329,7 @@ class RampAwareEnv(gym.Env):
                         / std_map[market]
                     )
             for horizon in HORIZONS:
-                then = self.panel.observation_rows(panel_index - horizon)
+                then = self.panel.observation_rows(latest_index - horizon)
                 values.append(
                     (
                         float(row["net_load_mw"])
@@ -352,7 +362,7 @@ class RampAwareEnv(gym.Env):
                 path = [float(row[current_name]), *forecasts]
                 max_up = max(
                     (path[index + 1] - path[index]) / scale
-                    for index in range(3)
+                    for index in range(len(FORECAST_HOURS))
                 )
                 values.append(max_up)
 
@@ -380,8 +390,6 @@ class RampAwareEnv(gym.Env):
         day_angle = 2.0 * math.pi * timestamp.dayofweek / 7.0
         values.extend(
             [
-                self._step / max(self.action_steps - 1, 1),
-                float(self._step >= self.main_steps),
                 math.sin(hour_angle),
                 math.cos(hour_angle),
                 math.sin(day_angle),
@@ -399,19 +407,21 @@ class RampAwareEnv(gym.Env):
     def _guaranteed_future_batch_capacity_by_deadline(
         self, queue: EDFQueue | None = None
     ) -> dict[int, float]:
+        """Conservative batch capacity available in the usable future slots.
+
+        A queue entry with ``deadline_step`` D may still run in slots
+        ``step + 1 .. D - 1``; slot D itself is already late, so it is not
+        counted.
+        """
         queue = queue or self.queue
         total_capacity = float(self._capacity.sum())
         result: dict[int, float] = {}
         for deadline in queue.deadlines:
-            capacity = 0.0
-            stop = min(deadline, self.action_steps - 1)
-            for future_step in range(self._step + 1, stop + 1):
-                capacity += (
-                    total_capacity
-                    if future_step >= self.main_steps
-                    else total_capacity * self._future_batch_capacity_fraction
-                )
-            result[deadline] = capacity
+            stop = min(deadline - 1, self.action_steps - 1)
+            usable_slots = max(stop - self._step, 0)
+            result[deadline] = (
+                usable_slots * total_capacity * self._future_batch_capacity_fraction
+            )
         return result
 
     def step(
@@ -471,30 +481,12 @@ class RampAwareEnv(gym.Env):
             if self.queue.total > self.protocol.tolerance:
                 raise RuntimeError("terminal batch queue is not empty")
             observation = np.zeros(self.observation_space.shape, dtype=np.float32)
-            tail = self._episode_history[-self.protocol.terminal_tail_hours :]
-            terminal_fields = (
-                "ramp_h1_adjusted",
-                "ramp_h3_adjusted",
-                "incremental_ramp_impact",
-                "service_unserved",
-                "batch_unfinished",
-                "batch_expired",
-                "certificate_violations",
-                "emergency_feasibility",
-                "semantic_adjustment_l2",
-                "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market",
-                "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market",
-            )
-            for field in terminal_fields:
-                info[f"terminal_tail_{field}"] = [item[field] for item in tail]
-            info["tail_complete"] = True
             info["actual_terminal"] = True
         else:
             self._step += 1
             self._arrivals_loaded = False
             self._load_current_arrivals()
             observation = self._observation()
-            info["tail_complete"] = False
             info["actual_terminal"] = False
         return observation, reward, terminated, False, info
 
@@ -505,8 +497,11 @@ class RampAwareEnv(gym.Env):
         site_power: np.ndarray,
         market_power: dict[str, float],
     ) -> tuple[dict[str, Any], float]:
-        panel_index = self.protocol.history_hours + self._step
+        panel_index = self.history_hours + self._step
+        # Realized hour-t values, revealed only after the action was chosen.
         current = self.panel.observation_rows(panel_index)
+        # What the policy actually saw when it chose the action.
+        seen = self.panel.observation_rows(panel_index - GRID_OBSERVATION_LAG_HOURS)
         per_market: dict[str, dict[str, Any]] = {}
         weighted_impact = 0.0
         ramp_h1: list[float] = []
@@ -518,6 +513,7 @@ class RampAwareEnv(gym.Env):
         deferrable_pre_service = 0.0
         for market in self.panel.markets:
             row = current.loc[market]
+            seen_row = seen.loc[market]
             scale = self.stats.gross_q95_mw[market]
             windows: dict[str, dict[str, float]] = {}
             for horizon in HORIZONS:
@@ -568,13 +564,11 @@ class RampAwareEnv(gym.Env):
                     )
             forecast_errors = {}
             for horizon in HORIZONS:
-                issue_index = panel_index - horizon
-                if issue_index >= 0:
-                    issue = self.panel.observation_rows(issue_index).loc[market]
-                    forecast_errors[f"net_h{horizon}_abs_error_mw"] = abs(
-                        float(issue[f"forecast_net_h{horizon}_mw"])
-                        - float(row["net_load_mw"])
-                    )
+                issue = self.panel.observation_rows(panel_index - horizon).loc[market]
+                forecast_errors[f"net_h{horizon}_abs_error_mw"] = abs(
+                    float(issue[f"forecast_net_h{horizon}_mw"])
+                    - float(row["net_load_mw"])
+                )
             gross = float(row["gross_demand_mw"])
             market_incremental = sum(
                 self.protocol.ramp_weights[horizon]
@@ -582,16 +576,18 @@ class RampAwareEnv(gym.Env):
                 for horizon in HORIZONS
             )
             incremental_by_market.append(float(market_incremental))
+            # Did the policy execute batch into a market whose forecast, as
+            # seen at decision time, was about to climb?
             forecast_path = [
-                float(row["net_load_mw"]),
+                float(seen_row["net_load_mw"]),
                 *[
-                    float(row[f"forecast_net_h{hour}_mw"])
+                    float(seen_row[f"forecast_net_h{hour}_mw"])
                     for hour in FORECAST_HOURS
                 ],
             ]
             if max(
                 forecast_path[index + 1] - forecast_path[index]
-                for index in range(3)
+                for index in range(len(FORECAST_HOURS))
             ) > 0.0:
                 deferrable_pre_service += float(
                     projected.batch_by_destination[
@@ -628,11 +624,12 @@ class RampAwareEnv(gym.Env):
         batch_unfinished = (
             0.0 if self.queue.total <= self.protocol.tolerance else self.queue.total
         )
+        timestamp = self.current_timestamp
         info: dict[str, Any] = {
             "protocol_id": self.protocol.protocol_id,
-            "timestamp_utc": self.current_timestamp.isoformat(),
+            "timestamp_utc": timestamp.isoformat(),
+            "utc_date": timestamp.strftime("%Y-%m-%d"),
             "step": self._step,
-            "terminal_tail_active": self._step >= self.main_steps,
             "new_arrivals": float(
                 self.workload.service_arrivals[self._step].sum()
                 + self.workload.batch_arrivals[self._step].sum()

@@ -56,10 +56,10 @@ TRAINING_IDENTITY_FIELDS = (
     "requested_interactions",
     "effective_interactions",
     "n_envs",
-    "action_steps",
     "ppo_config",
     "safe_quantum",
 )
+DEFAULT_CHECKPOINT_ROLLOUTS = 25
 
 
 def configure_single_thread_runtime() -> None:
@@ -93,11 +93,17 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
-def safe_boundary_quantum(*, action_steps: int, n_envs: int, n_steps: int) -> int:
-    """Return the first interaction count aligned to vector episodes and rollouts."""
-    if action_steps <= 0 or n_envs <= 0 or n_steps <= 0:
-        raise ValueError("action_steps, n_envs, and n_steps must be positive")
-    return math.lcm(n_envs * action_steps, n_envs * n_steps)
+def safe_boundary_quantum(*, n_envs: int, n_steps: int, checkpoint_rollouts: int) -> int:
+    """Return the interaction count between crash-safe checkpoints.
+
+    Episodes are continuous months of unequal length, so checkpoints are
+    aligned to PPO rollout boundaries rather than to episode ends. A resumed
+    run starts fresh episodes; the partial episodes in flight at the
+    checkpoint were already used for learning and are simply not continued.
+    """
+    if n_envs <= 0 or n_steps <= 0 or checkpoint_rollouts <= 0:
+        raise ValueError("n_envs, n_steps, and checkpoint_rollouts must be positive")
+    return n_envs * n_steps * checkpoint_rollouts
 
 
 def milestone_interactions(
@@ -270,7 +276,6 @@ class TrainingCallback(BaseCallback):
         target_timesteps: int,
         output_dir: Path,
         safe_quantum: int,
-        action_steps: int,
         n_steps: int,
         resumed_from_interactions: int,
     ) -> None:
@@ -282,7 +287,6 @@ class TrainingCallback(BaseCallback):
         self.target_timesteps = target_timesteps
         self.output_dir = output_dir
         self.safe_quantum = safe_quantum
-        self.action_steps = action_steps
         self.n_steps = n_steps
         self.resumed_from_interactions = resumed_from_interactions
         self.milestone_map = milestone_interactions(
@@ -292,7 +296,6 @@ class TrainingCallback(BaseCallback):
         self.milestone_index_path = self.milestone_dir / "index.json"
         self.interactions = 0
         self.terminals = 0
-        self.last_step_all_terminal = False
         self._raw_rewards: list[float] = []
         self._raw_impacts: list[float] = []
         self._episode_returns: list[float] = []
@@ -318,7 +321,6 @@ class TrainingCallback(BaseCallback):
             "interaction_count": interaction_count,
             "requested_interactions": self.target_timesteps,
             "safe_quantum": self.safe_quantum,
-            "action_steps": self.action_steps,
             "n_envs": self.training_env.num_envs,
             "n_steps": self.n_steps,
         }
@@ -391,11 +393,6 @@ class TrainingCallback(BaseCallback):
     def _on_step(self) -> bool:
         infos = list(self.locals.get("infos", []))
         self.interactions += len(infos)
-        self.last_step_all_terminal = bool(infos) and all(
-            bool(info.get("actual_terminal", False)) for info in infos
-        )
-        if any(bool(info.get("actual_terminal", False)) for info in infos) and not self.last_step_all_terminal:
-            raise RuntimeError("vector environments reached asynchronous terminal boundaries")
         for index, info in enumerate(infos):
             raw_reward = float(info["ramp_reward"])
             self._raw_rewards.append(raw_reward)
@@ -435,10 +432,7 @@ class TrainingCallback(BaseCallback):
         self._raw_rewards.clear()
         self._raw_impacts.clear()
         self._episode_returns.clear()
-        self._safe_checkpoint_pending = (
-            self.last_step_all_terminal
-            and interaction_count % self.safe_quantum == 0
-        )
+        self._safe_checkpoint_pending = interaction_count % self.safe_quantum == 0
 
     def close(self) -> None:
         self.curve_writer.close()
@@ -462,7 +456,6 @@ def _training_identity(
     target_timesteps: int,
     effective_interactions: int,
     n_envs: int,
-    action_steps: int,
     ppo_config: dict[str, Any],
     safe_quantum: int,
 ) -> dict[str, Any]:
@@ -472,7 +465,6 @@ def _training_identity(
         "requested_interactions": int(target_timesteps),
         "effective_interactions": int(effective_interactions),
         "n_envs": int(n_envs),
-        "action_steps": int(action_steps),
         "ppo_config": ppo_config,
         "safe_quantum": int(safe_quantum),
     }
@@ -523,16 +515,25 @@ def run_training(
         raise RuntimeError(f"expected SB3 {EXPECTED_SB3_VERSION}, found {sb3.__version__}")
     if target_timesteps <= 0:
         raise ValueError("target timesteps must be positive")
-    configured_envs = int(protocol["training"]["vectorized_environments"])
+    training_section = protocol["training"]
+    configured_envs = int(training_section["vectorized_environments"])
     n_envs = (2 if fixture_profile else configured_envs) if n_envs is None else n_envs
     if n_envs <= 0 or (not fixture_profile and n_envs != configured_envs):
         raise ValueError("n_envs must match the protocol")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    config = dict(protocol["training"]["ppo"])
+    config = dict(training_section["ppo"])
+    checkpoint_rollouts = int(
+        training_section.get("checkpoint_rollouts", DEFAULT_CHECKPOINT_ROLLOUTS)
+    )
     if fixture_profile:
         config.update({"net_arch": [32, 32], "learning_rate": 5e-4, "batch_size": 16, "n_steps": 16, "n_epochs": 2})
+        config.setdefault("gamma", 0.99)
+        checkpoint_rollouts = 3
+    if "gamma" not in config:
+        raise ValueError("protocol ppo config must declare gamma")
+    gamma = float(config["gamma"])
     output_dir.mkdir(parents=True, exist_ok=True)
     model_path = output_dir / "model.zip"
     normalization_path = output_dir / "vecnormalize.pkl"
@@ -544,23 +545,15 @@ def run_training(
     callback: TrainingCallback | None = None
     vec_env: VecNormalize | None = None
     try:
-        decision_steps = int(base_vec.envs[0].contract["decision_steps"])
-        if any(int(env.contract["decision_steps"]) != decision_steps for env in base_vec.envs):
-            raise RuntimeError("all vector environments must have equal decision steps")
-        rollout_quantum = n_envs * int(config["n_steps"])
-        episode_quantum = n_envs * decision_steps
         safe_quantum = safe_boundary_quantum(
-            action_steps=decision_steps, n_envs=n_envs, n_steps=int(config["n_steps"])
+            n_envs=n_envs, n_steps=int(config["n_steps"]), checkpoint_rollouts=checkpoint_rollouts
         )
-        if safe_quantum != math.lcm(rollout_quantum, episode_quantum):
-            raise RuntimeError("safe checkpoint geometry is inconsistent")
         effective_interactions = math.ceil(target_timesteps / safe_quantum) * safe_quantum
         identity = _training_identity(
             seed=seed,
             target_timesteps=target_timesteps,
             effective_interactions=effective_interactions,
             n_envs=n_envs,
-            action_steps=decision_steps,
             ppo_config=config,
             safe_quantum=safe_quantum,
         )
@@ -577,9 +570,9 @@ def run_training(
         if selected_checkpoint is None:
             # A crash before the first safe checkpoint leaves no resumable model state.
             # The curve is rebuilt from zero below, so the seed remains retryable.
-            vec_env = VecNormalize(base_vec, norm_obs=True, norm_reward=True, gamma=1.0)
+            vec_env = VecNormalize(base_vec, norm_obs=True, norm_reward=True, gamma=gamma)
             model = PPO(
-                "MlpPolicy", vec_env, gamma=1.0, seed=seed, device="cpu", verbose=0,
+                "MlpPolicy", vec_env, gamma=gamma, seed=seed, device="cpu", verbose=0,
                 policy_kwargs={"net_arch": list(config["net_arch"])},
                 n_steps=int(config["n_steps"]), batch_size=int(config["batch_size"]),
                 n_epochs=int(config["n_epochs"]), gae_lambda=float(config["gae_lambda"]),
@@ -590,7 +583,6 @@ def run_training(
             resumed_from_interactions = int(state["interaction_count"])
             expected_geometry = {
                 "safe_quantum": safe_quantum,
-                "action_steps": decision_steps,
                 "n_envs": n_envs,
                 "n_steps": int(config["n_steps"]),
             }
@@ -602,8 +594,9 @@ def run_training(
             model = PPO.load(checkpoint_dir / "model.zip", env=vec_env, device="cpu")
             if int(model.num_timesteps) != resumed_from_interactions:
                 raise RuntimeError("latest checkpoint model and state interaction counts differ")
-            # A saved PPO observation belongs to the retired vector environments.
-            # Restarting at an all-terminal boundary permits a fresh window reset.
+            # The saved observation belongs to the retired vector environments.
+            # Resuming starts fresh episodes; the partial months in flight at the
+            # checkpoint were already learned from and are not continued.
             model._last_obs = None
         callback = TrainingCallback(
             curve_path=curve_path,
@@ -611,7 +604,6 @@ def run_training(
             target_timesteps=target_timesteps,
             output_dir=output_dir,
             safe_quantum=safe_quantum,
-            action_steps=decision_steps,
             n_steps=int(config["n_steps"]),
             resumed_from_interactions=resumed_from_interactions,
         )
@@ -623,8 +615,6 @@ def run_training(
                 reset_num_timesteps=False,
                 progress_bar=False,
             )
-            if not callback.last_step_all_terminal:
-                raise RuntimeError("refusing to save incomplete trajectories")
             callback.save_safe_boundary(int(model.num_timesteps))
         model.save(model_path)
         vec_env.save(normalization_path)
@@ -634,7 +624,6 @@ def run_training(
                 target_timesteps=target_timesteps,
                 effective_interactions=int(model.num_timesteps),
                 n_envs=n_envs,
-                action_steps=decision_steps,
                 ppo_config=config,
                 safe_quantum=safe_quantum,
             ),

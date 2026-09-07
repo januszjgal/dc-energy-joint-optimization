@@ -10,8 +10,9 @@ import numpy as np
 from gymnasium import spaces
 
 
-CONTRACT_VERSION = "ramp-v6-semantic-action-v2"
+CONTRACT_VERSION = "ramp-v7-semantic-action-v3"
 SEMANTIC_ACTION_ID = "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"
+HISTORY_HOURS = 4
 REQUIRED_STEP_INFO = (
     "ramp_h1_adjusted",
     "ramp_h3_adjusted",
@@ -73,10 +74,16 @@ class RampEnvAdapter(gym.Wrapper):
             raise RampContractError("trainer requires semantic feasible actions")
         if self.contract.get("semantic_action_id") != SEMANTIC_ACTION_ID:
             raise RampContractError("environment returned the wrong semantic action ID")
-        if int(self.contract.get("history_hours", -1)) != 3:
-            raise RampContractError("environment must supply 3h of warm history")
-        if int(self.contract.get("terminal_tail_hours", -1)) != 3:
-            raise RampContractError("environment must settle a 3h terminal tail")
+        if int(self.contract.get("history_hours", -1)) != HISTORY_HOURS:
+            raise RampContractError(
+                f"environment must supply {HISTORY_HOURS}h of warm history"
+            )
+        if int(self.contract.get("terminal_tail_hours", -1)) != 0:
+            raise RampContractError("continuous episodes must score every slot")
+        if int(self.contract.get("grid_observation_lag_hours", -1)) != 1:
+            raise RampContractError(
+                "the hour-t decision must observe grid rows through hour t-1 only"
+            )
         if self.contract.get("actual_terminal") is not True:
             raise RampContractError("finite windows must use actual terminal states")
         if int(self.contract.get("decision_steps", 0)) <= 0:
@@ -118,8 +125,8 @@ class RampEnvAdapter(gym.Wrapper):
             raise RampContractError(f"step info missing fields: {missing}")
         if truncated:
             raise RampContractError("chronological windows must terminate, not truncate")
-        if terminated and (info.get("tail_complete") is not True or info.get("actual_terminal") is not True):
-            raise RampContractError("terminal transition must include the completed tail")
+        if terminated and info.get("actual_terminal") is not True:
+            raise RampContractError("terminal transition must be the actual episode end")
         info = dict(info)
         info["ramp_episode_context"] = dict(self.episode_context)
         return np.asarray(observation, dtype=np.float32), float(reward), bool(terminated), False, info

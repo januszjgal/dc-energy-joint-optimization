@@ -1,4 +1,4 @@
-"""Frozen data structures for the additive v6 ramp environment."""
+"""Frozen data structures for the additive ramp environment (continuous-month protocol)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,10 @@ import numpy as np
 
 HORIZONS = (1, 3)
 FORECAST_HOURS = (1, 2, 3)
+# The hour-t decision reads grid rows through hour t-1. Level features use
+# four lags of that last completed hour, and the three-hour closed ramp needs
+# the hour four steps back, so four warm hours precede the first decision.
+HISTORY_HOURS = 4
 
 
 @dataclass(frozen=True)
@@ -103,11 +107,16 @@ class FrozenRampStats:
 
 @dataclass(frozen=True)
 class RampProtocol:
-    """Frozen environment and scalar-reward semantics."""
+    """Frozen environment and scalar-reward semantics.
 
-    protocol_id: str = "ramp-v6-pure-rl-frozen-v1"
-    history_hours: int = 3
-    terminal_tail_hours: int = 3
+    One episode is one continuous panel. There is no terminal run-out: work
+    that arrives in the last slots has its window cut at the final decision
+    slot, so every episode ends with empty queues and every slot is scored.
+    """
+
+    protocol_id: str = "ramp-v7-continuous-month-v1"
+    history_hours: int = HISTORY_HOURS
+    terminal_tail_hours: int = 0
     deadline_bucket_hours: tuple[int, ...] = (1, 3)
     ramp_weights: dict[int, float] = field(
         default_factory=lambda: {1: 0.40, 3: 0.60}
@@ -116,8 +125,12 @@ class RampProtocol:
     tolerance: float = 1e-9
 
     def validate(self) -> None:
-        if self.history_hours != 3 or self.terminal_tail_hours != 3:
-            raise ValueError("v6 requires exactly 3h warm history and terminal tail")
+        if self.history_hours != HISTORY_HOURS:
+            raise ValueError(
+                f"continuous-month protocol requires exactly {HISTORY_HOURS}h of warm history"
+            )
+        if self.terminal_tail_hours != 0:
+            raise ValueError("continuous-month protocol scores every slot; no terminal run-out")
         if set(self.ramp_weights) != set(HORIZONS):
             raise ValueError("ramp weights must contain exactly 1h and 3h")
         if not math.isclose(
@@ -136,6 +149,9 @@ class WorkloadTrace:
 
     Arrays use absolute compute-work units. Scaling a study multiplies arrivals,
     warm power, site compute capacity, and site rated power together.
+    ``batch_deadline_hours[t, i]`` is the inclusive execution-window length
+    ``H_i``: an arrival in slot ``t`` may run in slots ``t .. t + H_i - 1``,
+    so ``H_i = 1`` allows no delay and ``H_i = 3`` allows at most two hours.
     """
 
     service_arrivals: np.ndarray
@@ -143,7 +159,9 @@ class WorkloadTrace:
     batch_deadline_hours: np.ndarray
     warm_power_mw: np.ndarray
 
-    def validate(self, n_steps: int, n_sites: int, history_hours: int = 3) -> None:
+    def validate(
+        self, n_steps: int, n_sites: int, history_hours: int = HISTORY_HOURS
+    ) -> None:
         expected = (n_steps, n_sites)
         if self.service_arrivals.shape != expected:
             raise ValueError(f"service_arrivals must have shape {expected}")
@@ -163,7 +181,7 @@ class WorkloadTrace:
             if np.any(~np.isfinite(values)) or np.any(values < 0.0):
                 raise ValueError("workload and warm power must be finite/non-negative")
         if np.any(self.batch_deadline_hours < 1):
-            raise ValueError("batch deadlines must be at least one hour")
+            raise ValueError("batch execution windows must be at least one slot")
 
     def scaled(self, multiplier: float) -> WorkloadTrace:
         if not math.isfinite(multiplier) or multiplier <= 0.0:
@@ -180,12 +198,20 @@ class WorkloadTrace:
 class BatchEntry:
     amount: float
     origin: int
+    # First slot in which the work would be late. Work with ``deadline_step``
+    # D must execute in some slot <= D - 1, so an arrival in slot t with
+    # window H_i gets D = t + H_i, i.e. its last permitted slot is t + H_i - 1.
     deadline_step: int
     sequence: int
 
 
 class EDFQueue:
-    """Exact batch-work ledger with deterministic EDF origin drainage."""
+    """Exact batch-work ledger with deterministic EDF origin drainage.
+
+    Drainage order is earliest ``deadline_step`` first, then lowest origin
+    index, then arrival order (``sequence``). The rule is a total order, so
+    the same request always drains the same work.
+    """
 
     def __init__(self) -> None:
         self.entries: list[BatchEntry] = []
@@ -233,14 +259,15 @@ class EDFQueue:
     def deadlines(self) -> tuple[int, ...]:
         return tuple(sorted({entry.deadline_step for entry in self.entries}))
 
+    @staticmethod
+    def _drain_key(entry: BatchEntry) -> tuple[int, int, int]:
+        return (entry.deadline_step, entry.origin, entry.sequence)
+
     def drain(self, amount: float, n_origins: int) -> np.ndarray:
         target = min(max(float(amount), 0.0), self.total)
         drained = np.zeros(n_origins, dtype=np.float64)
         remaining: list[BatchEntry] = []
-        ordered = sorted(
-            self.entries,
-            key=lambda value: (value.deadline_step, value.origin, value.sequence),
-        )
+        ordered = sorted(self.entries, key=self._drain_key)
         amount_left = target
         for entry in ordered:
             take = min(entry.amount, amount_left)
@@ -250,10 +277,7 @@ class EDFQueue:
                 amount_left -= take
             if entry.amount > 1e-12:
                 remaining.append(entry)
-        self.entries = sorted(
-            remaining,
-            key=lambda value: (value.deadline_step, value.origin, value.sequence),
-        )
+        self.entries = sorted(remaining, key=self._drain_key)
         actual = float(drained.sum())
         self.completed += actual
         return drained

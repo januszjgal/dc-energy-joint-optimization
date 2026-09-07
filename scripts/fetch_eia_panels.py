@@ -1,4 +1,4 @@
-"""Fetch a full calendar year of EIA grid data and build canonical panels.
+"""Fetch a full calendar year of EIA grid data and build canonical monthly panels.
 
 Replaces the opaque pre-built panels with a reproducible pull from the EIA
 Open Data API. Three series per balancing authority -- demand, wind, and
@@ -20,6 +20,11 @@ and the count is reported.
 
 Prices are deliberately absent. Day-ahead cost is not part of this study.
 
+Panel layout. One file per calendar month, holding the four warm hours before
+the month and every hour of the month. The scheduler runs each month as one
+continuous episode; the warm hours give the first decisions their lookback
+and the first ramps their starting point.
+
     python scripts/fetch_eia_panels.py --report   # fetch and summarize only
     python scripts/fetch_eia_panels.py --write    # also write panels
 """
@@ -28,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -37,6 +43,10 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from env.ramp_v6.models import HISTORY_HOURS  # noqa: E402
+
 OUT_ROOT = ROOT / "data" / "four_market_2025"
 
 API = "https://api.eia.gov/v2/electricity/rto/"
@@ -53,14 +63,15 @@ MARKETS = {
 HOUR_LABEL_IS_ENDING = True
 
 # The simulated year, in panel (hour-beginning) terms.
-YEAR_START = pd.Timestamp("2025-01-01T00:00:00Z")
-YEAR_END = pd.Timestamp("2025-12-31T23:00:00Z")
+YEAR = 2025
+YEAR_START = pd.Timestamp(f"{YEAR}-01-01T00:00:00Z")
+YEAR_END = pd.Timestamp(f"{YEAR}-12-31T23:00:00Z")
 
-# Every episode needs three warm hours before its day and a three-hour tail
-# after it, so the retained span runs from 21:00 the day before the first
-# episode to 02:00 the day after the last.
-PANEL_START = YEAR_START - pd.Timedelta(hours=3)
-PANEL_END = YEAR_END + pd.Timedelta(hours=3)
+# Every month needs HISTORY_HOURS warm hours before it, so the retained span
+# starts that many hours before the year. Nothing after the year is needed:
+# each month closes with empty queues in its own final hour.
+PANEL_START = YEAR_START - pd.Timedelta(hours=HISTORY_HOURS)
+PANEL_END = YEAR_END
 
 VALIDATION_MONTH = 5  # May is held out; every other month trains.
 
@@ -180,8 +191,26 @@ def compute_scales(frame: pd.DataFrame) -> dict[str, float]:
     return scales
 
 
+def month_entries() -> list[dict]:
+    """Calendar entries for the twelve monthly panels, in order."""
+    entries = []
+    for month in range(1, 13):
+        start = pd.Timestamp(f"{YEAR}-{month:02d}-01T00:00:00Z")
+        end = start + pd.offsets.MonthBegin(1)
+        month_id = f"{YEAR}-{month:02d}"
+        entries.append({
+            "window_id": month_id,
+            "month_id": month_id,
+            "month": month,
+            "hours": int((end - start) / pd.Timedelta(hours=1)),
+            "history_hours": HISTORY_HOURS,
+            "panel_path": f"data/four_market_2025/months/{month_id}/canonical_panel.csv",
+        })
+    return entries
+
+
 def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, dict]:
-    """Write one 30-hour window per simulated day, plus the calendar."""
+    """Write one continuous panel per calendar month, plus the calendar."""
     frame = frame.copy()
     frame["market_scale_mw"] = frame["market_id"].map(scales)
 
@@ -195,35 +224,37 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
     frame["forecast_vintage_id"] = "persistence-placeholder"
     frame["quality_ok"] = True
 
-    windows_root = OUT_ROOT / "windows"
-    windows_root.mkdir(parents=True, exist_ok=True)
+    months_root = OUT_ROOT / "months"
+    months_root.mkdir(parents=True, exist_ok=True)
 
-    days = pd.date_range(YEAR_START, YEAR_END, freq="D", tz="UTC")
     indexed = frame.set_index("timestamp_utc").sort_index()
     train, validation = [], []
 
-    for day in days:
-        lo = day - pd.Timedelta(hours=3)
-        hi = day + pd.Timedelta(hours=26)
-        window = indexed.loc[lo:hi].reset_index()
-        expected = 30 * len(MARKETS)
-        if len(window) != expected:
-            raise RuntimeError(f"{day.date()}: {len(window)} rows, expected {expected}")
+    for entry in month_entries():
+        start = pd.Timestamp(f"{entry['month_id']}-01T00:00:00Z")
+        lo = start - pd.Timedelta(hours=HISTORY_HOURS)
+        hi = start + pd.Timedelta(hours=entry["hours"] - 1)
+        block = indexed.loc[lo:hi].reset_index()
+        expected = (entry["hours"] + HISTORY_HOURS) * len(MARKETS)
+        if len(block) != expected:
+            raise RuntimeError(f"{entry['month_id']}: {len(block)} rows, expected {expected}")
+        block = block.sort_values(["timestamp_utc", "market_id"])
 
-        window_id = f"{day.date()}-daily"
-        directory = windows_root / window_id
+        directory = months_root / entry["month_id"]
         directory.mkdir(parents=True, exist_ok=True)
-        window.to_csv(directory / "canonical_panel.csv", index=False)
-
-        entry = {"window_id": window_id, "day": str(day.date()), "month": int(day.month),
-                 "panel_path": f"data/four_market_2025/windows/{window_id}/canonical_panel.csv"}
-        (validation if day.month == VALIDATION_MONTH else train).append(entry)
+        block.to_csv(directory / "canonical_panel.csv", index=False)
+        (validation if entry["month"] == VALIDATION_MONTH else train).append(entry)
 
     calendar = {
         "markets": list(MARKETS),  # canonical order, matches MARKET_TO_CELL
         "frozen_stats_path": "data/four_market_2025/frozen_stats.json",
         "forecast_model": "persistence-placeholder",
         "hour_label_convention": "panel timestamps are hour-beginning UTC",
+        "episode_unit": (
+            "one continuous calendar month; queues and power history reset only "
+            "at the month boundary"
+        ),
+        "history_hours": HISTORY_HOURS,
         "validation_month": VALIDATION_MONTH,
         "train": train,
         "validation": validation,
@@ -241,7 +272,7 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
     stats = {
         "fit_start_utc": YEAR_START.isoformat(),
         "fit_end_utc": YEAR_END.isoformat(),
-        "fit_months": [f"2025-{month:02d}" for month in range(1, 13)
+        "fit_months": [f"{YEAR}-{month:02d}" for month in range(1, 13)
                        if month != VALIDATION_MONTH],
         "gross_q95_mw": scales,
         "gross_level_mean_mw": {k: float(v) for k, v in
@@ -257,7 +288,7 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
     (OUT_ROOT / "frozen_stats.json").write_text(
         json.dumps(stats, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    return len(days), {"train_days": len(train), "validation_days": len(validation)}
+    return len(train) + len(validation), {"train_months": len(train), "validation_months": len(validation)}
 
 
 def main() -> int:
@@ -288,9 +319,9 @@ def main() -> int:
           f"holdout month: {VALIDATION_MONTH}")
 
     if args.write:
-        days, counts = write_panels(frame, scales)
-        print(f"\nwrote {days} windows to {OUT_ROOT}")
-        print(f"  train days={counts['train_days']}  validation days={counts['validation_days']}")
+        months, counts = write_panels(frame, scales)
+        print(f"\nwrote {months} monthly panels to {OUT_ROOT}")
+        print(f"  train months={counts['train_months']}  validation months={counts['validation_months']}")
     return 0
 
 
