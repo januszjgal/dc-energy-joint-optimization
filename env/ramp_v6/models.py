@@ -10,7 +10,7 @@ import numpy as np
 
 
 HORIZONS = (1, 3)
-FORECAST_HOURS = (1, 2, 3)
+FORECAST_HOURS = (1, 3, 6, 12)
 # The hour-t decision reads grid rows through hour t-1. Level features use
 # four lags of that last completed hour, and the three-hour closed ramp needs
 # the hour four steps back, so four warm hours precede the first decision.
@@ -117,7 +117,7 @@ class RampProtocol:
     protocol_id: str = "ramp-v7-continuous-month-v1"
     history_hours: int = HISTORY_HOURS
     terminal_tail_hours: int = 0
-    deadline_bucket_hours: tuple[int, ...] = (1, 3)
+    deadline_bucket_hours: tuple[int, ...] = (1, 3, 6, 12, 24)
     ramp_weights: dict[int, float] = field(
         default_factory=lambda: {1: 0.40, 3: 0.60}
     )
@@ -139,8 +139,10 @@ class RampProtocol:
             raise ValueError("ramp weights must sum to one")
         if self.ramp_reward_scale <= 0.0 or self.tolerance <= 0.0:
             raise ValueError("reward scale and tolerance must be positive")
-        if self.deadline_bucket_hours != (1, 3):
-            raise ValueError("policy observations use only <=1h and <=3h urgency")
+        if self.deadline_bucket_hours != (1, 3, 6, 12, 24):
+            raise ValueError(
+                "policy observations use <=1h, <=3h, <=6h, <=12h and <=24h urgency"
+            )
 
 
 @dataclass(frozen=True)

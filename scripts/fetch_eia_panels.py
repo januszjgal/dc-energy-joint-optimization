@@ -45,7 +45,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from env.ramp_v6.models import HISTORY_HOURS  # noqa: E402
+from env.ramp_v6.models import FORECAST_HOURS, HISTORY_HOURS  # noqa: E402
 
 OUT_ROOT = ROOT / "data" / "four_market_2025"
 
@@ -218,7 +218,7 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
     # are written later by scripts/build_causal_forecasts.py.
     frame = frame.sort_values(["market_id", "timestamp_utc"])
     for quantity, column in (("gross", "gross_demand_mw"), ("net", "net_load_mw")):
-        for hour in (1, 2, 3):
+        for hour in FORECAST_HOURS:
             frame[f"forecast_{quantity}_h{hour}_mw"] = frame[column]
     frame["forecast_issue_time_utc"] = frame["timestamp_utc"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     frame["forecast_vintage_id"] = "persistence-placeholder"

@@ -22,7 +22,7 @@ from scripts.run_four_market_v2_campaign import preflight
 ROOT = Path(__file__).resolve().parents[2]
 FACTORY_ROOT = ROOT / "output" / "four_market_v2" / "factory"
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
-OBSERVATION_SIZE = 4 * 18 + 4 * 4 + 2 + 4
+OBSERVATION_SIZE = 4 * 20 + 4 * 4 + 5 + 4
 
 
 class FourMarketV2DesignTests(unittest.TestCase):
@@ -52,6 +52,9 @@ class FourMarketV2DesignTests(unittest.TestCase):
                 [
                     "batch_queue_deadline_le_1h_capacity_fraction",
                     "batch_queue_deadline_le_3h_capacity_fraction",
+                    "batch_queue_deadline_le_6h_capacity_fraction",
+                    "batch_queue_deadline_le_12h_capacity_fraction",
+                    "batch_queue_deadline_le_24h_capacity_fraction",
                 ],
             )
             self.assertFalse(any("lag0" in name or "episode_progress" in name or "terminal" in name for name in schema))
@@ -77,7 +80,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
             self.assertEqual(current.workload.service_arrivals.shape, (hours, 4))
             self.assertEqual(current.workload.warm_power_mw.shape, (HISTORY_HOURS, 4))
             np.testing.assert_array_equal(
-                current.workload.batch_deadline_hours[0], [2, 1, 2, 3]
+                current.workload.batch_deadline_hours[0], [24, 24, 24, 24]
             )
             max_arrivals = float((raw_service + raw_batch).sum(axis=1).max())
             expected = 1.0 - max_arrivals / float(current._capacity.sum())

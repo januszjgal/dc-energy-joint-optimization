@@ -35,7 +35,7 @@ CELLS = tuple(cell for _, cell in MARKET_TO_CELL)
 RATED_POWER_MW = 500.0
 COMPUTE_CAPACITY = 1.0
 TOTAL_RATED_POWER_MW = 2_000.0
-DEADLINE_WINDOW_SLOTS = (2, 1, 2, 3)
+DEADLINE_WINDOW_SLOTS = (24, 24, 24, 24)
 
 
 def month_hours(month_id: str) -> int:

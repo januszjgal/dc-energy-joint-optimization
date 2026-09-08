@@ -15,6 +15,7 @@ import pandas as pd
 
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.models import (
+    FORECAST_HOURS,
     HISTORY_HOURS,
     FrozenRampStats,
     RampProtocol,
@@ -58,7 +59,7 @@ def make_panel(hours: int, *, perturb_from_row: int | None = None, delta: float 
         "forecast_vintage_id": "persistence",
         "quality_ok": True,
     })
-    for hour in (1, 2, 3):
+    for hour in FORECAST_HOURS:
         frame[f"forecast_gross_h{hour}_mw"] = gross
         frame[f"forecast_net_h{hour}_mw"] = net
     return CanonicalMarketPanel(frame)
@@ -142,7 +143,7 @@ class CausalTimelineTests(unittest.TestCase):
     def test_observation_schema_uses_completed_hours_and_forecasts_only(self) -> None:
         env = make_env(12, {}, 2)
         schema = env.observation_schema
-        self.assertEqual(len(schema), 18 + 4 + 2 + 4)
+        self.assertEqual(len(schema), 20 + 4 + 5 + 4)
         self.assertEqual(env.observation_space.shape, (len(schema),))
         self.assertFalse(any("lag0" in name for name in schema))
         self.assertTrue(all(f"{MARKET}:{q}_level_z_lag{lag}" in schema for q in ("gross", "net") for lag in (1, 2, 3, 4)))

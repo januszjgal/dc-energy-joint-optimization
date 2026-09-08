@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 PANEL_ROOT = ROOT / "data" / "four_market_2025" / "months"
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 
-HORIZONS = (1, 2, 3)
+HORIZONS = (1, 3, 6, 12)
 QUANTITIES = ("gross", "net")
 QUANTITY_COLUMN = {"gross": "gross_demand_mw", "net": "net_load_mw"}
 
@@ -206,7 +206,11 @@ def fit_market_quantity_horizon(
     """
     aligned_target = target.shift(-horizon)
     usable = features.notna().all(axis=1) & aligned_target.notna()
-    in_window = is_training(features.index)
+    # Both ends must be training hours. Masking only the issue hour would let
+    # the last few rows of April carry May targets, which is exactly the
+    # leakage the holdout exists to prevent.
+    in_window = is_training(features.index) & is_training(features.index +
+                                                          pd.Timedelta(hours=horizon))
     mask = usable & in_window
 
     x_raw = features.loc[mask].to_numpy(dtype=float)
@@ -264,12 +268,13 @@ def build_all(panel: pd.DataFrame) -> tuple[dict[tuple[str, str, int], FittedMod
                 # observation could actively mislead the scheduler. Any model
                 # that fails in-sample is replaced by persistence outright.
                 actual = target.shift(-horizon)
-                # Judged on training hours only. Letting February decide which
-                # models to keep would leak the validation period into the
-                # forecasts, which is the one thing the split exists to prevent.
+                # Judged on training hours only, at both ends, matching the
+                # fitting mask. Letting the holdout month decide which models
+                # to keep would leak it back into the forecasts.
                 scored = (
                     actual.notna()
                     & is_training(out.index)
+                    & is_training(out.index + pd.Timedelta(hours=horizon))
                 )
                 model_mae = float((out[column][scored] - actual[scored]).abs().mean())
                 persist_mae = float((target[scored] - actual[scored]).abs().mean())
@@ -301,8 +306,13 @@ def report(panel: pd.DataFrame, predictions: pd.DataFrame) -> None:
             actual_series = group[QUANTITY_COLUMN[quantity]]
             for horizon in HORIZONS:
                 actual = actual_series.shift(-horizon)
-                new = group[f"forecast_{quantity}_h{horizon}_mw_new"]
-                old = group[f"forecast_{quantity}_h{horizon}_mw_old"]
+                # A horizon absent from the previous panels is not suffixed
+                # by the merge, so fall back to the bare name and report the
+                # old column as missing rather than crashing.
+                base = f"forecast_{quantity}_h{horizon}_mw"
+                new = group[base + "_new"] if base + "_new" in group else group[base]
+                old = (group[base + "_old"] if base + "_old" in group
+                       else pd.Series(np.nan, index=group.index))
                 valid = actual.notna()
 
                 def mae(series: pd.Series, mask: pd.Series) -> float:
@@ -324,6 +334,11 @@ def write_back(predictions: pd.DataFrame) -> int:
         frame = pd.read_csv(path)
         stamps = pd.to_datetime(frame["timestamp_utc"], utc=True)
         keys = pd.MultiIndex.from_arrays([stamps, frame["market_id"]])
+        # Drop any forecast columns from an earlier horizon set before
+        # writing the current one, so a changed HORIZONS leaves no orphans.
+        stale = [c for c in frame.columns
+                 if c.startswith("forecast_") and c.endswith("_mw")]
+        frame = frame.drop(columns=stale)
         for quantity in QUANTITIES:
             for horizon in HORIZONS:
                 column = f"forecast_{quantity}_h{horizon}_mw"

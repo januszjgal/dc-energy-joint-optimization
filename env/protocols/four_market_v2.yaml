@@ -20,8 +20,8 @@ fleet:
   rated_power_mw_per_site: 500.0
   total_rated_power_mw: 2000.0
 workload:
-  deadline_hours: [2, 1, 2, 3]
-  deadline_semantics: inclusive execution-window length H_i; an arrival in slot t may run in slots t .. t+H_i-1, so the longest delay is H_i-1 hours
+  deadline_hours: [24, 24, 24, 24]
+  deadline_semantics: inclusive execution-window length H; an arrival in slot t may run in slots t .. t+H-1, so the longest delay is H-1 hours. Uniform across sites.
   source: raw_measured_service_and_batch
 objective:
   ramp_horizons_hours: [1, 3]

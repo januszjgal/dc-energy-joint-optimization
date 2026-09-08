@@ -360,8 +360,14 @@ class RampAwareEnv(gym.Env):
                     for forecast in forecasts
                 )
                 path = [float(row[current_name]), *forecasts]
+                # Horizons are unevenly spaced, so each leg is divided by the
+                # hours it covers; the feature stays a per-hour climb rate.
+                spans = [FORECAST_HOURS[0]] + [
+                    FORECAST_HOURS[index + 1] - FORECAST_HOURS[index]
+                    for index in range(len(FORECAST_HOURS) - 1)
+                ]
                 max_up = max(
-                    (path[index + 1] - path[index]) / scale
+                    (path[index + 1] - path[index]) / (spans[index] * scale)
                     for index in range(len(FORECAST_HOURS))
                 )
                 values.append(max_up)
