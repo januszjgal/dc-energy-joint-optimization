@@ -5,7 +5,7 @@ data:
   markets: [CAISO_NP15, MISO_MINN_HUB, SPP_NORTH_HUB, ISONE_NEMA]
   workload_mapping: [a, b, c, d]
   episode_unit: one continuous calendar month; queues and power history reset only at the month boundary
-  history_hours: 4
+  history_hours: 1
   split:
     train: {months: [2025-01, 2025-02, 2025-03, 2025-04, 2025-06, 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12]}
     validation: {months: [2025-05]}
@@ -24,9 +24,9 @@ workload:
   deadline_semantics: inclusive execution-window length H; an arrival in slot t may run in slots t .. t+H-1, so the longest delay is H-1 hours. Uniform across sites.
   source: raw_measured_service_and_batch
 objective:
-  ramp_horizons_hours: [1, 3]
-  ramp_weights: {1: 0.40, 3: 0.60}
-  market_aggregation: equal_market_mean
+  ramp_horizons_hours: [1]
+  ramp_weights: {1: 1.0}
+  market_aggregation: sum
   scored_slots: every decision slot of the month
 training:
   vectorized_environments: 4

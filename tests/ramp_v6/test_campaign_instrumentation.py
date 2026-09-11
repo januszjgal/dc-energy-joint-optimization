@@ -52,7 +52,7 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "version": CONTRACT_VERSION,
             "semantic_feasible_action": True,
             "semantic_action_id": SEMANTIC_ACTION_ID,
-            "history_hours": 4,
+            "history_hours": 1,
             "terminal_tail_hours": 0,
             "grid_observation_lag_hours": 1,
             "actual_terminal": True,
@@ -76,9 +76,7 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
         terminal = self.step_count == 3
         info = {
             "ramp_h1_adjusted": 0.0,
-            "ramp_h3_adjusted": 0.0,
             "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": [0.0],
-            "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": [0.0],
             "physical_ramp_market_order": ["tiny"],
             "incremental_ramp_impact": 0.0,
             "service_unserved": 0.0,

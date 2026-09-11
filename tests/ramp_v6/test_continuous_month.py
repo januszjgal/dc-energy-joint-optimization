@@ -144,10 +144,13 @@ class CausalTimelineTests(unittest.TestCase):
     def test_observation_schema_uses_completed_hours_and_forecasts_only(self) -> None:
         env = make_env(12, {}, 2)
         schema = env.observation_schema
-        self.assertEqual(len(schema), 20 + 4 + 5 + 4)
+        # Per market: t-1 gross and net levels, four forecasts and one max-up
+        # rate per quantity. Nothing older than t-1 is observed.
+        self.assertEqual(len(schema), 12 + 4 + 5 + 4)
         self.assertEqual(env.observation_space.shape, (len(schema),))
-        self.assertFalse(any("lag0" in name for name in schema))
-        self.assertTrue(all(f"{MARKET}:{q}_level_z_lag{lag}" in schema for q in ("gross", "net") for lag in (1, 2, 3, 4)))
+        self.assertFalse(any("lag0" in name or "lag2" in name for name in schema))
+        self.assertFalse(any("native_ramp" in name for name in schema))
+        self.assertTrue(all(f"{MARKET}:{q}_level_z_lag1" in schema for q in ("gross", "net")))
         self.assertIn(f"{MARKET}:forecast_net_t+0_z", schema)
         self.assertIn(f"{MARKET}:forecast_net_t+2_z", schema)
         self.assertFalse(any("episode_progress" in name or "terminal_tail" in name for name in schema))

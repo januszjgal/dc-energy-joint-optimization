@@ -22,7 +22,7 @@ from scripts.run_four_market_v2_campaign import preflight
 ROOT = Path(__file__).resolve().parents[2]
 FACTORY_ROOT = ROOT / "output" / "four_market_v2" / "factory"
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
-OBSERVATION_SIZE = 4 * 20 + 4 * 4 + 5 + 4
+OBSERVATION_SIZE = 4 * 12 + 4 * 4 + 5 + 4
 
 
 class FourMarketV2DesignTests(unittest.TestCase):
@@ -149,6 +149,19 @@ class FourMarketV2DesignTests(unittest.TestCase):
                 dates.append(info["utc_date"])
                 self.assertFalse(truncated)
                 self.assertAlmostEqual(reward, -info["incremental_ramp_impact"])
+                # The reward is -sum_m I_{m,t} over one-hour windows only.
+                self.assertAlmostEqual(
+                    reward,
+                    -sum(
+                        row["windows"]["1h"]["incremental_squared_impact"]
+                        for row in info["per_market"].values()
+                    ),
+                    places=15,
+                )
+                self.assertEqual(
+                    {window for row in info["per_market"].values() for window in row["windows"]},
+                    {"1h"},
+                )
                 self.assertEqual(info["batch_queue"]["queued"], 0.0)
                 if terminated:
                     self.assertTrue(info["actual_terminal"])

@@ -24,11 +24,11 @@ from env.ramp_v6.projection import (
 from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
 
 
-RAMP_WEIGHTS = ((1, 0.4), (3, 0.6))
 IMPROVEMENT_DEFINITION = (
-    "status-quo mean incremental ramp impact minus policy mean incremental ramp "
-    "impact; positive means the policy left gentler ramps than running every "
-    "arrival in place"
+    "J(status quo) - J(policy), where J sums the one-hour incremental squared "
+    "ramp impact over every market and hour of the month; positive means the "
+    "policy left gentler ramps than running every arrival in place. The "
+    "'improvement' field is the same quantity divided by the scored hours"
 )
 
 
@@ -77,25 +77,18 @@ def _cluster_bootstrap_interval(
 
 def _collect_per_market_metrics(
     infos: list[dict[str, Any]],
-) -> tuple[dict[str, list[float]], dict[str, list[float]], dict[str, list[float]]]:
+) -> tuple[dict[str, list[float]], dict[str, list[float]]]:
     incremental: dict[str, list[float]] = defaultdict(list)
     abs_h1: dict[str, list[float]] = defaultdict(list)
-    abs_h3: dict[str, list[float]] = defaultdict(list)
     for info in infos:
         per_market = info.get("per_market", {})
         if not per_market:
             raise ValueError("evaluation requires per-market step metrics")
         for market, row in per_market.items():
-            key = str(market)
-            incremental[key].append(
-                sum(
-                    weight * float(row["windows"][f"{horizon}h"]["incremental_squared_impact"])
-                    for horizon, weight in RAMP_WEIGHTS
-                )
-            )
-            abs_h1[key].append(abs(float(row["windows"]["1h"]["adjusted_fraction_s_per_hour"])))
-            abs_h3[key].append(abs(float(row["windows"]["3h"]["adjusted_fraction_s_per_hour"])))
-    return dict(incremental), dict(abs_h1), dict(abs_h3)
+            window = row["windows"]["1h"]
+            incremental[str(market)].append(float(window["incremental_squared_impact"]))
+            abs_h1[str(market)].append(abs(float(window["adjusted_fraction_s_per_hour"])))
+    return dict(incremental), dict(abs_h1)
 
 
 def _daily_means(dates: list[str], values: list[float]) -> "OrderedDict[str, float]":
@@ -166,7 +159,8 @@ def _episode(
         model=model, normalization_path=normalization_path,
     )
     context = reset_info["episode_context"]
-    per_market_incremental, abs_h1_by_market, abs_h3_by_market = _collect_per_market_metrics(infos)
+    per_market_incremental, abs_h1_by_market = _collect_per_market_metrics(infos)
+    # Each step's impact is already summed over markets, so the month sum is J.
     incremental = [float(info["incremental_ramp_impact"]) for info in infos]
     dates = [str(info["utc_date"]) for info in infos]
     daily = _daily_means(dates, incremental)
@@ -180,12 +174,11 @@ def _episode(
         "day_count": len(daily),
         "utc_dates": dates,
         "ramp_h1": [float(info["ramp_h1_adjusted"]) for info in infos],
-        "ramp_h3": [float(info["ramp_h3_adjusted"]) for info in infos],
         "incremental": incremental,
+        "J": float(sum(incremental)),
         "daily_incremental": dict(daily),
         "per_market_incremental": per_market_incremental,
         "abs_adjusted_ramp_h1_by_market": abs_h1_by_market,
-        "abs_adjusted_ramp_h3_by_market": abs_h3_by_market,
         "service_unserved": sum(float(info["service_unserved"]) for info in infos),
         "batch_unfinished": float(infos[-1]["batch_unfinished"]),
         "batch_expired": sum(float(info["batch_expired"]) for info in infos),
@@ -253,13 +246,7 @@ def _aggregate(
         for values in episode["abs_adjusted_ramp_h1_by_market"].values()
         for value in values
     ]
-    abs_h3 = [
-        value
-        for episode in policy
-        for values in episode["abs_adjusted_ramp_h3_by_market"].values()
-        for value in values
-    ]
-    if not impacts or not abs_h1 or not abs_h3:
+    if not impacts or not abs_h1:
         raise ValueError("evaluation episodes are missing ramp metric observations")
     policy_market_values = _market_series(policy)
     status_quo_market_values = _market_series(baseline)
@@ -321,12 +308,8 @@ def _aggregate(
         },
         "abs_adjusted_ramp_h1_fraction_s_per_hour_p95": float(np.quantile(abs_h1, 0.95)),
         "abs_adjusted_ramp_h1_fraction_s_per_hour_max": float(max(abs_h1)),
-        "abs_adjusted_ramp_h3_fraction_s_per_hour_p95": float(np.quantile(abs_h3, 0.95)),
-        "abs_adjusted_ramp_h3_fraction_s_per_hour_max": float(max(abs_h3)),
         "ramp_h1_adjusted_p95": float(np.quantile(abs_h1, 0.95)),
         "ramp_h1_adjusted_max": float(max(abs_h1)),
-        "ramp_h3_adjusted_p95": float(np.quantile(abs_h3, 0.95)),
-        "ramp_h3_adjusted_max": float(max(abs_h3)),
         "status_quo_comparison": {
             "baseline_definition": (
                 "status quo: every service and batch arrival executes at its "
@@ -336,6 +319,12 @@ def _aggregate(
             "status_quo_native_relative_mean_incremental_ramp_impact": status_quo_mean,
             "policy_minus_status_quo_mean_incremental_ramp_impact": policy_mean - status_quo_mean,
             "improvement": status_quo_mean - policy_mean,
+            "policy_J": float(sum(episode["J"] for episode in policy)),
+            "status_quo_J": float(sum(episode["J"] for episode in baseline)),
+            "improvement_J": float(
+                sum(episode["J"] for episode in baseline)
+                - sum(episode["J"] for episode in policy)
+            ),
             "improvement_definition": IMPROVEMENT_DEFINITION,
             "markets_better_count": int(better_count),
             "market_count": int(market_count),

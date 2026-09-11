@@ -14,12 +14,12 @@ The current problem-statement chapter is
   Minnesota, SPP North, and ISO-NE NEMA.
 - **Continuous months.** Each calendar month of 2025 is one episode. Batch queues
   and site-power history carry across every midnight inside the month and reset
-  only at the month boundary. Four warm hours before the month give the first
-  decisions their lookback and the first ramps their starting point. Every hour
+  only at the month boundary. One warm hour before the month gives the first
+  decision its hour t-1 observation and the first ramp its starting point. Every hour
   of the month is scored. Work arriving in the last 23 hours has its execution
   window cut at the month's final hour, so the month closes with empty queues and
   nothing escapes the objective.
-- **Causal timeline inside hour t.** Grid rows through hour t-1, and the
+- **Causal timeline inside hour t.** The hour t-1 grid row, and the
   forecasts issued at t-1 with leads 1, 3, 6, and 12 (targeting t, t+2, t+5,
   and t+11: the current decision hour and 2, 5, and 11 hours later), are observed; the hour-t
   arrivals are revealed; the policy chooses service destinations, the batch
@@ -35,8 +35,9 @@ The current problem-statement chapter is
   arrival order. Month-end clipping can give different arrival hours the same
   deadline. The projection layer enforces capacity and deadlines, releasing
   batch earlier when necessary to leave enough capacity to finish the backlog.
-- The action shape is 9 and the observation shape is 105. The reward is the
-  negative equal-market, 1 h/3 h weighted incremental squared ramp impact.
+- The action shape is 9 and the observation shape is 73. The reward is the
+  negative one-hour incremental squared ramp impact summed over the four
+  markets, so a month's undiscounted return is exactly -J from the paper.
 - [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json)
   lists the eleven training months (2025 outside May), the May validation month,
   the monthly panel paths, and the frozen-statistics path. May has already been
@@ -130,7 +131,7 @@ python scripts\build_energy_thesis_figures.py
 |---|---|
 | `data/cells/cell_X_tiers.csv` | Retained measured CPU/service/batch tier curves |
 | `data/four_market_2025/calendar.json` | Month split, monthly panel paths, and frozen-statistics path |
-| `data/four_market_2025/months/` | One continuous hourly EIA panel per month (four warm hours plus the month, hour-beginning UTC) |
+| `data/four_market_2025/months/` | One continuous hourly EIA panel per month (one warm hour plus the month, hour-beginning UTC) |
 | `scripts/fetch_eia_panels.py` | Rebuilds the monthly panels from the EIA API |
 | `scripts/build_causal_forecasts.py` | Fits and writes the causal forecast columns |
 | `data/power_model_params.json` | Committed CPU-to-power coefficients |

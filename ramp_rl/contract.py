@@ -10,14 +10,12 @@ import numpy as np
 from gymnasium import spaces
 
 
-CONTRACT_VERSION = "ramp-v7-semantic-action-v3"
+CONTRACT_VERSION = "ramp-v8-one-hour-v1"
 SEMANTIC_ACTION_ID = "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"
-HISTORY_HOURS = 4
+HISTORY_HOURS = 1
 REQUIRED_STEP_INFO = (
     "ramp_h1_adjusted",
-    "ramp_h3_adjusted",
     "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market",
-    "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market",
     "physical_ramp_market_order",
     "incremental_ramp_impact",
     "service_unserved",

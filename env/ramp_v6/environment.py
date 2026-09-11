@@ -6,9 +6,9 @@ inside the episode and are reset only when a new episode starts.
 
 Event order inside decision hour ``t``:
 
-1. grid rows through hour ``t-1`` are available, together with the forecasts
-   issued at ``t-1`` with leads 1, 3, 6, and 12 hours, which predict
-   hours ``t``, ``t+2``, ``t+5``, and ``t+11``;
+1. the hour ``t-1`` grid row (gross demand and net load) is available,
+   together with the forecasts issued at ``t-1`` with leads 1, 3, 6, and 12
+   hours, which predict hours ``t``, ``t+2``, ``t+5``, and ``t+11``;
 2. the hour-``t`` service and batch arrivals are revealed and queued;
 3. the policy chooses service destinations, the batch volume to execute now,
    and batch destinations for hour ``t``;
@@ -191,10 +191,6 @@ class RampAwareEnv(gym.Env):
             for quantity in ("gross", "net"):
                 for lag in range(1, self.history_hours + 1):
                     names.append(f"{market}:{quantity}_level_z_lag{lag}")
-            for horizon in HORIZONS:
-                names.append(
-                    f"{market}:native_ramp_{horizon}h_closed_fraction_s_per_hour"
-                )
             for quantity in ("gross", "net"):
                 for lead in FORECAST_HOURS:
                     ahead = lead - GRID_OBSERVATION_LAG_HOURS
@@ -330,15 +326,6 @@ class RampAwareEnv(gym.Env):
                         )
                         / std_map[market]
                     )
-            for horizon in HORIZONS:
-                then = self.panel.observation_rows(latest_index - horizon)
-                values.append(
-                    (
-                        float(row["net_load_mw"])
-                        - float(then.loc[market, "net_load_mw"])
-                    )
-                    / (scale * horizon)
-                )
             for quantity, mean_map, std_map, current_name in (
                 (
                     "gross",
@@ -513,9 +500,7 @@ class RampAwareEnv(gym.Env):
         per_market: dict[str, dict[str, Any]] = {}
         weighted_impact = 0.0
         ramp_h1: list[float] = []
-        ramp_h3: list[float] = []
         abs_ramp_h1: list[float] = []
-        abs_ramp_h3: list[float] = []
         incremental_by_market: list[float] = []
         realized_ramp_power = 0.0
         deferrable_pre_service = 0.0
@@ -558,18 +543,10 @@ class RampAwareEnv(gym.Env):
                     self.protocol.ramp_weights[horizon]
                     * terms.incremental_squared_impact
                 )
-                if horizon == 1:
-                    ramp_h1.append(terms.adjusted_fraction_s_per_hour)
-                    abs_ramp_h1.append(
-                        abs(terms.adjusted_fraction_s_per_hour)
-                    )
-                    if terms.native_fraction_s_per_hour > 0.0:
-                        realized_ramp_power += market_power[market]
-                else:
-                    ramp_h3.append(terms.adjusted_fraction_s_per_hour)
-                    abs_ramp_h3.append(
-                        abs(terms.adjusted_fraction_s_per_hour)
-                    )
+                ramp_h1.append(terms.adjusted_fraction_s_per_hour)
+                abs_ramp_h1.append(abs(terms.adjusted_fraction_s_per_hour))
+                if terms.native_fraction_s_per_hour > 0.0:
+                    realized_ramp_power += market_power[market]
             forecast_errors = {}
             for horizon in HORIZONS:
                 issue = self.panel.observation_rows(panel_index - horizon).loc[market]
@@ -615,8 +592,8 @@ class RampAwareEnv(gym.Env):
                 "windows": windows,
                 "forecast_errors": forecast_errors,
             }
-        macro_divisor = len(self.panel.markets)
-        weighted_impact /= macro_divisor
+        # The objective sums I_{m,t} over markets (paper Eq. objective), so the
+        # undiscounted return of a month is exactly -J.
         ramp_reward = -self.protocol.ramp_reward_scale * weighted_impact
         reward = ramp_reward
         service_unserved = max(
@@ -646,9 +623,7 @@ class RampAwareEnv(gym.Env):
             "ramp_reward": ramp_reward,
             "weighted_incremental_ramp_impact": weighted_impact,
             "ramp_h1_adjusted": float(np.mean(ramp_h1)),
-            "ramp_h3_adjusted": float(np.mean(ramp_h3)),
             "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": abs_ramp_h1,
-            "abs_adjusted_ramp_h3_fraction_s_per_hour_by_market": abs_ramp_h3,
             "physical_ramp_market_order": list(self.panel.markets),
             "incremental_ramp_impact": weighted_impact,
             "service_unserved": service_unserved,
@@ -668,9 +643,7 @@ class RampAwareEnv(gym.Env):
             "deferrable_pre_service": deferrable_pre_service,
             "dc_power_during_realized_ramp": realized_ramp_power,
             "step_ramp_h1_adjusted": ramp_h1,
-            "step_ramp_h3_adjusted": ramp_h3,
             "step_abs_adjusted_ramp_h1_fraction_s_per_hour": abs_ramp_h1,
-            "step_abs_adjusted_ramp_h3_fraction_s_per_hour": abs_ramp_h3,
             "step_incremental_ramp_impact": incremental_by_market,
             "step_service_unserved": [service_unserved],
             "step_batch_unfinished": [batch_unfinished],

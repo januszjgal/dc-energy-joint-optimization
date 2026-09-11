@@ -9,14 +9,15 @@ from typing import Any
 import numpy as np
 
 
-HORIZONS = (1, 3)
+# The objective scores one-hour ramps only.
+HORIZONS = (1,)
 # Forecast lead times are measured from the previous observed row (t-1),
 # so the decision at t receives predictions for t, t+2, t+5, and t+11.
 FORECAST_HOURS = (1, 3, 6, 12)
-# The hour-t decision reads grid rows through hour t-1. Level features use
-# four lags of that last completed hour, and the three-hour closed ramp needs
-# the hour four steps back, so four warm hours precede the first decision.
-HISTORY_HOURS = 4
+# The hour-t decision reads only the hour t-1 grid row, and the first one-hour
+# ramp is measured against the hour before the month, so exactly one warm hour
+# precedes the first decision.
+HISTORY_HOURS = 1
 
 
 @dataclass(frozen=True)
@@ -116,13 +117,11 @@ class RampProtocol:
     slot, so every episode ends with empty queues and every slot is scored.
     """
 
-    protocol_id: str = "ramp-v7-continuous-month-v1"
+    protocol_id: str = "ramp-v8-one-hour-month-v1"
     history_hours: int = HISTORY_HOURS
     terminal_tail_hours: int = 0
     deadline_bucket_hours: tuple[int, ...] = (1, 3, 6, 12, 24)
-    ramp_weights: dict[int, float] = field(
-        default_factory=lambda: {1: 0.40, 3: 0.60}
-    )
+    ramp_weights: dict[int, float] = field(default_factory=lambda: {1: 1.0})
     ramp_reward_scale: float = 1.0
     tolerance: float = 1e-9
 
@@ -134,7 +133,7 @@ class RampProtocol:
         if self.terminal_tail_hours != 0:
             raise ValueError("continuous-month protocol scores every slot; no terminal run-out")
         if set(self.ramp_weights) != set(HORIZONS):
-            raise ValueError("ramp weights must contain exactly 1h and 3h")
+            raise ValueError("ramp weights must contain exactly the 1h horizon")
         if not math.isclose(
             sum(self.ramp_weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-12
         ):
