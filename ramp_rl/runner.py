@@ -21,7 +21,9 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
+from ramp_rl.contract import (
+    EnvRequest, RampEnvAdapter, RampEnvironmentFactory, environment_identity,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -44,7 +46,11 @@ def _repo_path(path: Path) -> str:
 EXPECTED_SB3_VERSION = "2.9.0"
 LEARNING_CURVE_COLUMNS = (
     "interaction_count",
+    "mean_raw_joint_reward",
     "mean_raw_ramp_reward",
+    "mean_raw_peak_reward",
+    "mean_raw_ramp_squared",
+    "mean_raw_peak_increment",
     "mean_raw_incremental_ramp_impact",
     "episode_count",
     "mean_completed_episode_return",
@@ -58,6 +64,7 @@ TRAINING_IDENTITY_FIELDS = (
     "n_envs",
     "ppo_config",
     "safe_quantum",
+    "environment_identity",
 )
 DEFAULT_CHECKPOINT_ROLLOUTS = 25
 
@@ -278,6 +285,9 @@ class TrainingCallback(BaseCallback):
         safe_quantum: int,
         n_steps: int,
         resumed_from_interactions: int,
+        environment: dict[str, Any],
+        ppo_config: dict[str, Any],
+        seed: int,
     ) -> None:
         super().__init__()
         self.curve_writer = LearningCurveWriter(
@@ -289,6 +299,9 @@ class TrainingCallback(BaseCallback):
         self.safe_quantum = safe_quantum
         self.n_steps = n_steps
         self.resumed_from_interactions = resumed_from_interactions
+        self.environment_identity = environment
+        self.ppo_config = ppo_config
+        self.seed = seed
         self.milestone_map = milestone_interactions(
             MILESTONE_TARGETS, safe_quantum=safe_quantum
         )
@@ -297,6 +310,10 @@ class TrainingCallback(BaseCallback):
         self.interactions = 0
         self.terminals = 0
         self._raw_rewards: list[float] = []
+        self._ramp_rewards: list[float] = []
+        self._peak_rewards: list[float] = []
+        self._ramp_squared: list[float] = []
+        self._peak_increments: list[float] = []
         self._raw_impacts: list[float] = []
         self._episode_returns: list[float] = []
         self._per_env_returns: list[float] = []
@@ -323,6 +340,9 @@ class TrainingCallback(BaseCallback):
             "safe_quantum": self.safe_quantum,
             "n_envs": self.training_env.num_envs,
             "n_steps": self.n_steps,
+            "environment_identity": self.environment_identity,
+            "ppo_config": self.ppo_config,
+            "seed": self.seed,
         }
 
     def _save_milestones(self, interaction_count: int) -> None:
@@ -394,8 +414,12 @@ class TrainingCallback(BaseCallback):
         infos = list(self.locals.get("infos", []))
         self.interactions += len(infos)
         for index, info in enumerate(infos):
-            raw_reward = float(info["ramp_reward"])
+            raw_reward = float(info["scalar_reward"])
             self._raw_rewards.append(raw_reward)
+            self._ramp_rewards.append(float(info["ramp_reward"]))
+            self._peak_rewards.append(float(info["peak_reward"]))
+            self._ramp_squared.append(float(info["ramp_squared_score"]))
+            self._peak_increments.append(float(info["peak_normalized_increment"]))
             self._raw_impacts.append(float(info["incremental_ramp_impact"]))
             self._per_env_returns[index] += raw_reward
             if bool(info.get("actual_terminal", False)):
@@ -409,7 +433,11 @@ class TrainingCallback(BaseCallback):
         interaction_count = int(self.num_timesteps)
         row = {
             "interaction_count": interaction_count,
-            "mean_raw_ramp_reward": float(np.mean(self._raw_rewards)),
+            "mean_raw_joint_reward": float(np.mean(self._raw_rewards)),
+            "mean_raw_ramp_reward": float(np.mean(self._ramp_rewards)),
+            "mean_raw_peak_reward": float(np.mean(self._peak_rewards)),
+            "mean_raw_ramp_squared": float(np.mean(self._ramp_squared)),
+            "mean_raw_peak_increment": float(np.mean(self._peak_increments)),
             "mean_raw_incremental_ramp_impact": float(np.mean(self._raw_impacts)),
             "episode_count": len(self._episode_returns),
             "mean_completed_episode_return": (
@@ -430,6 +458,10 @@ class TrainingCallback(BaseCallback):
             },
         )
         self._raw_rewards.clear()
+        self._ramp_rewards.clear()
+        self._peak_rewards.clear()
+        self._ramp_squared.clear()
+        self._peak_increments.clear()
         self._raw_impacts.clear()
         self._episode_returns.clear()
         self._safe_checkpoint_pending = interaction_count % self.safe_quantum == 0
@@ -458,6 +490,7 @@ def _training_identity(
     n_envs: int,
     ppo_config: dict[str, Any],
     safe_quantum: int,
+    environment: dict[str, Any],
 ) -> dict[str, Any]:
     """Return the plain fields that identify a completed training run."""
     return {
@@ -467,6 +500,7 @@ def _training_identity(
         "n_envs": int(n_envs),
         "ppo_config": ppo_config,
         "safe_quantum": int(safe_quantum),
+        "environment_identity": environment,
     }
 
 
@@ -545,6 +579,10 @@ def run_training(
     callback: TrainingCallback | None = None
     vec_env: VecNormalize | None = None
     try:
+        contracts = base_vec.get_attr("contract")
+        environment = environment_identity(contracts[0])
+        if any(environment_identity(contract) != environment for contract in contracts[1:]):
+            raise ValueError("training environments have different objective or input identities")
         safe_quantum = safe_boundary_quantum(
             n_envs=n_envs, n_steps=int(config["n_steps"]), checkpoint_rollouts=checkpoint_rollouts
         )
@@ -556,6 +594,7 @@ def run_training(
             n_envs=n_envs,
             ppo_config=config,
             safe_quantum=safe_quantum,
+            environment=environment,
         )
         completed_paths = (model_path, normalization_path, summary_path)
         if all(path.exists() for path in completed_paths):
@@ -588,6 +627,13 @@ def run_training(
             }
             if any(int(state.get(key, -1)) != value for key, value in expected_geometry.items()):
                 raise RuntimeError(f"latest checkpoint geometry does not match current training: {checkpoint_dir}")
+            for key, expected in (
+                ("environment_identity", environment), ("ppo_config", config), ("seed", seed)
+            ):
+                if state.get(key) != expected:
+                    raise RuntimeError(
+                        f"latest checkpoint {key} does not match current training: {checkpoint_dir}"
+                    )
             if resumed_from_interactions > effective_interactions:
                 raise RuntimeError("latest checkpoint exceeds requested training horizon")
             vec_env = VecNormalize.load(checkpoint_dir / "vecnormalize.pkl", base_vec)
@@ -606,6 +652,9 @@ def run_training(
             safe_quantum=safe_quantum,
             n_steps=int(config["n_steps"]),
             resumed_from_interactions=resumed_from_interactions,
+            environment=environment,
+            ppo_config=config,
+            seed=seed,
         )
         remaining_interactions = effective_interactions - resumed_from_interactions
         if remaining_interactions:
@@ -626,6 +675,7 @@ def run_training(
                 n_envs=n_envs,
                 ppo_config=config,
                 safe_quantum=safe_quantum,
+                environment=environment,
             ),
             "resumed_from_interactions": resumed_from_interactions,
             "safe_boundary_interactions": safe_quantum,

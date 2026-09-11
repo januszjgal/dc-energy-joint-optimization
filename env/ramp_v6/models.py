@@ -1,4 +1,4 @@
-"""Frozen data structures for the additive ramp environment (continuous-month protocol)."""
+"""Frozen data structures for continuous-month peak and ramp scheduling."""
 
 from __future__ import annotations
 
@@ -8,8 +8,10 @@ from typing import Any
 
 import numpy as np
 
+from env.ramp_v6.objective import JointObjective
 
-# The objective scores one-hour ramps only.
+
+# The ramp component uses one-hour changes.
 HORIZONS = (1,)
 # Forecast lead times are measured from the previous observed row (t-1),
 # so the decision at t receives predictions for t, t+2, t+5, and t+11.
@@ -117,12 +119,12 @@ class RampProtocol:
     slot, so every episode ends with empty queues and every slot is scored.
     """
 
-    protocol_id: str = "ramp-v8-one-hour-month-v1"
+    protocol_id: str = "joint-peak-ramp-month-v1"
     history_hours: int = HISTORY_HOURS
     terminal_tail_hours: int = 0
     deadline_bucket_hours: tuple[int, ...] = (1, 3, 6, 12, 24)
     ramp_weights: dict[int, float] = field(default_factory=lambda: {1: 1.0})
-    ramp_reward_scale: float = 1.0
+    objective: JointObjective = field(default_factory=JointObjective)
     tolerance: float = 1e-9
 
     def validate(self) -> None:
@@ -138,8 +140,9 @@ class RampProtocol:
             sum(self.ramp_weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-12
         ):
             raise ValueError("ramp weights must sum to one")
-        if self.ramp_reward_scale <= 0.0 or self.tolerance <= 0.0:
-            raise ValueError("reward scale and tolerance must be positive")
+        self.objective.validate()
+        if not math.isfinite(self.tolerance) or self.tolerance <= 0.0:
+            raise ValueError("tolerance must be finite and positive")
         if self.deadline_bucket_hours != (1, 3, 6, 12, 24):
             raise ValueError(
                 "policy observations use <=1h, <=3h, <=6h, <=12h and <=24h urgency"

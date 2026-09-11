@@ -22,8 +22,10 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from energy_model_v3.four_market_v2 import make_four_market_env  # noqa: E402
-from ramp_rl.contract import EnvRequest  # noqa: E402
+from energy_model_v3.four_market_v2 import (  # noqa: E402
+    ARTIFACT_NAMESPACE, FACTORY_ROOT, make_four_market_env,
+)
+from ramp_rl.contract import EnvRequest, environment_identity  # noqa: E402
 from ramp_rl.evaluation import evaluate_checkpoint  # noqa: E402
 from ramp_rl.runner import (  # noqa: E402
     DEFAULT_CHECKPOINT_ROLLOUTS,
@@ -35,8 +37,8 @@ from ramp_rl.runner import (  # noqa: E402
 )
 
 
-OUTPUT_ROOT = ROOT / "output" / "four_market_v2" / "campaign"
-MODEL_ROOT = ROOT / "models" / "four_market_v2" / "campaign"
+OUTPUT_ROOT = ROOT / "output" / ARTIFACT_NAMESPACE / "campaign"
+MODEL_ROOT = ROOT / "models" / ARTIFACT_NAMESPACE / "campaign"
 SEEDS = tuple(range(4101, 4111))
 REQUESTED_TIMESTEPS = 2_000_000
 DEFAULT_WORKERS = 5
@@ -59,10 +61,21 @@ def _protocol() -> dict[str, Any]:
 
 
 def _factory() -> dict[str, Any]:
-    return json.loads((ROOT / "output" / "four_market_v2" / "factory" / "factory.json").read_text())
+    return json.loads((FACTORY_ROOT / "factory.json").read_text())
+
+
+def _environment_identity() -> dict[str, Any]:
+    env = make_four_market_env(EnvRequest(split="train", seed=SEEDS[0], training=True))
+    try:
+        return environment_identity(env.ramp_rl_contract())
+    finally:
+        env.close()
 
 
 def _validate_campaign_geometry() -> dict[str, list[str]]:
+    from scripts.build_four_market_v2_factory import validate
+
+    validate()
     windows = _factory()["windows"]
     if len(windows["train"]) != TRAIN_MONTHS or sorted(windows["validation"]) != list(VALIDATION_WINDOWS):
         raise RuntimeError(
@@ -108,6 +121,7 @@ def _campaign_training_identity(
         "n_envs": training_geometry["n_envs"],
         "ppo_config": dict(_protocol()["training"]["ppo"]),
         "safe_quantum": training_geometry["safe_quantum"],
+        "environment_identity": _environment_identity(),
     }
 
 
@@ -185,9 +199,12 @@ def _load_completed_seed_summary(
     validation = summary.get("validation")
     if not isinstance(validation, dict):
         raise RuntimeError(f"completed seed summary has invalid validation for seed {seed}: {summary_path}")
+    if validation.get("objective") != validated_training["environment_identity"]["objective"]:
+        raise RuntimeError(f"completed seed summary has an incompatible validation objective: {summary_path}")
     for field, expected in (
         ("episode_count", len(geometry["validation"])),
         ("day_count", VALIDATION_DAYS),
+        ("step_count", VALIDATION_DAYS * 24),
     ):
         value = validation.get(field)
         if isinstance(value, bool) or not isinstance(value, int) or value != expected:
@@ -196,12 +213,17 @@ def _load_completed_seed_summary(
                 f"{summary_path}"
             )
     metric_paths = (
+        ("mean_joint_J",),
         ("mean_policy_native_relative_incremental_ramp_impact",),
         ("mean_incremental_ramp_impact",),
         ("status_quo_comparison", "policy_native_relative_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "status_quo_native_relative_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "policy_minus_status_quo_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "improvement"),
+        ("status_quo_comparison", "policy_J"),
+        ("status_quo_comparison", "status_quo_J"),
+        ("status_quo_comparison", "improvement_J"),
+        ("status_quo_comparison", "policy_minus_status_quo_joint_J"),
     )
     for path in metric_paths:
         value: Any = validation

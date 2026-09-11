@@ -145,8 +145,8 @@ class CausalTimelineTests(unittest.TestCase):
         env = make_env(12, {}, 2)
         schema = env.observation_schema
         # Per market: t-1 gross and net levels, four forecasts and one max-up
-        # rate per quantity. Nothing older than t-1 is observed.
-        self.assertEqual(len(schema), 12 + 4 + 5 + 4)
+        # rate per quantity, plus causal running peaks and remaining month fraction.
+        self.assertEqual(len(schema), 14 + 4 + 5 + 5)
         self.assertEqual(env.observation_space.shape, (len(schema),))
         self.assertFalse(any("lag0" in name or "lag2" in name for name in schema))
         self.assertFalse(any("native_ramp" in name for name in schema))

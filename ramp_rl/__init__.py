@@ -1,4 +1,4 @@
-"""PPO training utilities for the ramp-aware environment."""
+"""PPO training utilities for joint regional peak and ramp scheduling."""
 
 from ramp_rl.contract import (
     CONTRACT_VERSION,

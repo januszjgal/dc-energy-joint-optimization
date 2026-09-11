@@ -1,4 +1,4 @@
-"""Additive hourly ramp-aware pure-RL environment (protocol v6)."""
+"""Causal hourly environment for joint regional net-load peaks and ramps."""
 
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.models import (
@@ -8,10 +8,12 @@ from env.ramp_v6.models import (
     WorkloadTrace,
 )
 from env.ramp_v6.panel import CanonicalMarketPanel
+from env.ramp_v6.objective import JointObjective
 
 __all__ = [
     "CanonicalMarketPanel",
     "FrozenRampStats",
+    "JointObjective",
     "RampAwareEnv",
     "RampProtocol",
     "SiteConfig",

@@ -87,8 +87,10 @@ def paired_bootstrap_intervals(
     }
 
 
-def paired_seed_summary(differences: list[float] | np.ndarray) -> dict[str, Any]:
-    """Summarize policy-minus-status-quo impact; negative values favor the policy."""
+def paired_seed_summary(
+    differences: list[float] | np.ndarray, *, metric: str = "joint objective"
+) -> dict[str, Any]:
+    """Summarize a lower-is-better metric paired by optimizer seed."""
     values = np.asarray(differences, dtype=float)
     if values.size == 0:
         raise ValueError("at least one paired difference is required")
@@ -104,7 +106,7 @@ def paired_seed_summary(differences: list[float] | np.ndarray) -> dict[str, Any]
     losses = int(np.sum(values > 0.0))
     ties = int(np.sum(values == 0.0))
     return {
-        "difference_definition": "policy minus status-quo mean incremental ramp impact; negative favors policy because lower impact is better",
+        "difference_definition": f"policy minus status-quo {metric}; negative favors policy because lower is better",
         "seed_count": int(values.size),
         "mean_paired_difference": float(values.mean()),
         "median_paired_difference": float(np.median(values)),
@@ -113,7 +115,7 @@ def paired_seed_summary(differences: list[float] | np.ndarray) -> dict[str, Any]
         "seed_loss_count": losses,
         "seed_tie_count": ties,
         "common_language_effect": {
-            "definition": "share of optimizer seeds with lower policy impact than status quo, with ties counted as one half",
+            "definition": "share of optimizer seeds with lower policy score than status quo, with ties counted as one half",
             "value": float((wins + 0.5 * ties) / values.size),
         },
         "rank_biserial_correlation": {
@@ -140,16 +142,16 @@ def slope_diagnostic(
         return {
             "window": label,
             "point_count": int(mask.sum()),
-            "impact_slope_per_interaction": None,
+            "score_slope_per_interaction": None,
             "interpretation": "insufficient aligned rollout points; no inferential claim",
         }
     slope = float(np.polyfit(x[mask], y[mask], 1)[0])
     return {
         "window": label,
         "point_count": int(mask.sum()),
-        "impact_slope_per_interaction": slope,
+        "score_slope_per_interaction": slope,
         "interpretation": (
-            "negative slope means continued raw incremental-impact improvement; "
+            "negative slope means a decreasing raw objective contribution; "
             "this descriptive learning-curve diagnostic makes no significance claim"
         ),
     }

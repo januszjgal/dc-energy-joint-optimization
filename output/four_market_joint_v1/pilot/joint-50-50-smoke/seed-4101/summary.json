@@ -1,0 +1,188 @@
+{
+  "effective_interactions": 51200,
+  "seed": 4101,
+  "tag": "joint-50-50-smoke",
+  "training_elapsed_seconds": 404.97739849999925,
+  "training_identity": {
+    "effective_interactions": 51200,
+    "environment_identity": {
+      "action_shape": [
+        9
+      ],
+      "factory_id": "236ff3439fc84f5817cac9254a19ca701c2ab0c95e088ec5ee061107f056f603",
+      "objective": {
+        "normalization": "training-month-mean-no-flexibility-v1",
+        "peak_metric": "sum_of_regional_normalized_decision_month_net_load_maxima",
+        "peak_reference": 3.664598536383508,
+        "peak_weight": 0.5,
+        "ramp_metric": "mean_hourly_sum_of_regional_normalized_squared_adjusted_ramps",
+        "ramp_reference": 0.00826852375941476,
+        "ramp_weight": 0.5,
+        "version": "joint-net-load-peak-ramp-v1"
+      },
+      "observation_shape": [
+        82
+      ],
+      "version": "joint-peak-ramp-v1"
+    },
+    "learning_curve_path": "output/four_market_joint_v1/pilot/joint-50-50-smoke/seed-4101/learning_curve.csv",
+    "n_envs": 4,
+    "ppo_config": {
+      "batch_size": 256,
+      "gae_lambda": 0.95,
+      "gamma": 0.99,
+      "learning_rate": 0.0003,
+      "n_epochs": 10,
+      "n_steps": 512,
+      "net_arch": [
+        64,
+        64
+      ]
+    },
+    "requested_interactions": 51200,
+    "resumed_from_interactions": 0,
+    "safe_boundary_interactions": 51200,
+    "safe_quantum": 51200,
+    "seed": 4101,
+    "update_count": 250
+  },
+  "training_interactions_per_second": 126.42680848274573,
+  "training_invocation_elapsed_seconds": 3.246451300001354,
+  "training_reused": true,
+  "validation_by_interactions": {
+    "51200": {
+      "abs_adjusted_ramp_h1_p95": 0.08188027307224885,
+      "batch_expired": 0.0,
+      "batch_unfinished": 0.0,
+      "behavior_audit": {
+        "deferrable_pre_service": 285.07522764962937,
+        "policy_ramp_power": 506843.0078399269,
+        "status_quo_ramp_power": 509040.0449328206
+      },
+      "certificate_violations": 0,
+      "components": {
+        "net_load_peak": {
+          "improvement": -0.001919431048401865,
+          "policy": 3.221222334975234,
+          "relative_improvement": -0.0005962256754593012,
+          "status_quo": 3.219302903926832,
+          "training_reference": 3.664598536383508,
+          "weight": 0.5,
+          "weighted_improvement": -0.0002618883118225686
+        },
+        "ramp": {
+          "improvement": -1.0577210612823518e-06,
+          "policy": 0.007990557367916632,
+          "relative_improvement": -0.00013238889893419904,
+          "status_quo": 0.00798949964685535,
+          "training_reference": 0.00826852375941476,
+          "weight": 0.5,
+          "weighted_improvement": -6.3960695527905e-05
+        }
+      },
+      "decoder_adjustment_rate": 0.0013440860215053765,
+      "improvement_J": -0.0003258490073505538,
+      "markets_better_count": 1,
+      "objective": {
+        "normalization": "training-month-mean-no-flexibility-v1",
+        "peak_metric": "sum_of_regional_normalized_decision_month_net_load_maxima",
+        "peak_reference": 3.664598536383508,
+        "peak_weight": 0.5,
+        "ramp_metric": "mean_hourly_sum_of_regional_normalized_squared_adjusted_ramps",
+        "ramp_reference": 0.00826852375941476,
+        "ramp_weight": 0.5,
+        "version": "joint-net-load-peak-ramp-v1"
+      },
+      "per_market_joint_improvement": {
+        "CAISO_NP15": 0.00011007817712632706,
+        "ISONE_NEMA": -0.0003411205603719436,
+        "MISO_MINN_HUB": -5.056669862449348e-05,
+        "SPP_NORTH_HUB": -4.423992548036049e-05
+      },
+      "per_market_peak_reduction_mw": {
+        "CAISO_NP15": -5.696205239568371,
+        "ISONE_NEMA": 0.5881281843721808,
+        "MISO_MINN_HUB": -22.75474753396702,
+        "SPP_NORTH_HUB": -72.31977889163682
+      },
+      "policy_J": 0.9226967805355935,
+      "regional_metrics": {
+        "CAISO_NP15": {
+          "improvement": 0.00011007817712632706,
+          "native_peak_mw": 32925.0,
+          "peak_reduction_mw": -5.696205239568371,
+          "policy_joint_J": 0.493560693522161,
+          "policy_minus_status_quo_incremental_ramp_impact": -2.198571497766874e-06,
+          "policy_native_relative_incremental_ramp_impact": -8.330741335471994e-08,
+          "policy_outperforms_status_quo": true,
+          "policy_peak_mw": 33293.176060147896,
+          "policy_ramp_mean_squared": 0.005951513393968008,
+          "ramp_impact_improvement_mean_per_hour": 2.198571497766874e-06,
+          "ramp_mean_squared_improvement": 2.198571497767643e-06,
+          "status_quo_joint_J": 0.4936707716992873,
+          "status_quo_native_relative_incremental_ramp_impact": 2.115264084412154e-06,
+          "status_quo_peak_mw": 33287.47985490833,
+          "status_quo_ramp_mean_squared": 0.0059537119654657755
+        },
+        "ISONE_NEMA": {
+          "improvement": -0.0003411205603719436,
+          "native_peak_mw": 14004.0,
+          "peak_reduction_mw": 0.5881281843721808,
+          "policy_joint_J": 0.16552729332166147,
+          "policy_minus_status_quo_incremental_ramp_impact": 5.7148199057079124e-06,
+          "policy_native_relative_incremental_ramp_impact": 3.6159951836215894e-06,
+          "policy_outperforms_status_quo": false,
+          "policy_peak_mw": 14343.817783458626,
+          "policy_ramp_mean_squared": 0.0009400394773715361,
+          "ramp_impact_improvement_mean_per_hour": -5.7148199057079124e-06,
+          "ramp_mean_squared_improvement": -5.714819905707977e-06,
+          "status_quo_joint_J": 0.16518617276128952,
+          "status_quo_native_relative_incremental_ramp_impact": -2.0988247220863226e-06,
+          "status_quo_peak_mw": 14344.405911642998,
+          "status_quo_ramp_mean_squared": 0.0009343246574658281
+        },
+        "MISO_MINN_HUB": {
+          "improvement": -5.056669862449348e-05,
+          "native_peak_mw": 72750.0,
+          "peak_reduction_mw": -22.75474753396702,
+          "policy_joint_J": 0.1220417239734436,
+          "policy_minus_status_quo_incremental_ramp_impact": 3.291402142667076e-07,
+          "policy_native_relative_incremental_ramp_impact": 2.3807566768981149e-07,
+          "policy_outperforms_status_quo": false,
+          "policy_peak_mw": 73152.38530368789,
+          "policy_ramp_mean_squared": 0.00038802773716756846,
+          "ramp_impact_improvement_mean_per_hour": -3.291402142667076e-07,
+          "ramp_mean_squared_improvement": -3.291402142667141e-07,
+          "status_quo_joint_J": 0.1219911572748191,
+          "status_quo_native_relative_incremental_ramp_impact": -9.106454657689612e-08,
+          "status_quo_peak_mw": 73129.63055615392,
+          "status_quo_ramp_mean_squared": 0.00038769859695330175
+        },
+        "SPP_NORTH_HUB": {
+          "improvement": -4.423992548036049e-05,
+          "native_peak_mw": 33067.0,
+          "peak_reduction_mw": -72.31977889163682,
+          "policy_joint_J": 0.14156706971832742,
+          "policy_minus_status_quo_incremental_ramp_impact": -2.787667560924704e-06,
+          "policy_native_relative_incremental_ramp_impact": -2.548474688042436e-06,
+          "policy_outperforms_status_quo": false,
+          "policy_peak_mw": 33498.54023453845,
+          "policy_ramp_mean_squared": 0.0007109767594095193,
+          "ramp_impact_improvement_mean_per_hour": 2.787667560924704e-06,
+          "ramp_mean_squared_improvement": 2.787667560924696e-06,
+          "status_quo_joint_J": 0.14152282979284705,
+          "status_quo_native_relative_incremental_ramp_impact": 2.391928728822678e-07,
+          "status_quo_peak_mw": 33426.22045564681,
+          "status_quo_ramp_mean_squared": 0.000713764426970444
+        }
+      },
+      "service_unserved": 0.0,
+      "status_quo_J": 0.9223709315282429,
+      "step_count": 744,
+      "terminal_work": 0.0
+    }
+  },
+  "validation_window_ids": [
+    "2025-05"
+  ]
+}

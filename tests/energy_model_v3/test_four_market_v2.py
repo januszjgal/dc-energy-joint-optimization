@@ -6,23 +6,26 @@ import json
 import shutil
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import yaml
 
 from energy_model_v3.four_market_v2 import (
-    CELLS, COMPUTE_CAPACITY, MARKET_TO_CELL, MARKETS, make_four_market_env, month_hours,
+    CELLS, COMPUTE_CAPACITY, FACTORY_ROOT, MARKET_TO_CELL, MARKETS, make_four_market_env, month_hours,
 )
 from env.ramp_v6.models import HISTORY_HOURS
 from ramp_rl.contract import EnvRequest, RampEnvAdapter
-from scripts.build_four_market_v2_factory import _raw_arrivals, build, validate
+from scripts.build_four_market_v2_factory import (
+    _load_calendar, _raw_arrivals, _site_configs, build, calibrate_objective, validate,
+)
+from env.ramp_v6.panel import CanonicalMarketPanel
 from scripts.run_four_market_v2_campaign import preflight
 
 
 ROOT = Path(__file__).resolve().parents[2]
-FACTORY_ROOT = ROOT / "output" / "four_market_v2" / "factory"
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
-OBSERVATION_SIZE = 4 * 12 + 4 * 4 + 5 + 4
+OBSERVATION_SIZE = 4 * 14 + 4 * 4 + 5 + 5
 
 
 class FourMarketV2DesignTests(unittest.TestCase):
@@ -95,6 +98,57 @@ class FourMarketV2DesignTests(unittest.TestCase):
         finally:
             env.close()
 
+    def test_objective_calibration_uses_training_months_only(self) -> None:
+        with patch.object(
+            CanonicalMarketPanel, "from_csv", wraps=CanonicalMarketPanel.from_csv
+        ) as reader:
+            calibration = calibrate_objective(_load_calendar(), _site_configs())
+        self.assertEqual(calibration, self.factory["objective_calibration"])
+        self.assertEqual(len(reader.call_args_list), 11)
+        self.assertFalse(any("2025-05" in str(call.args[0]) for call in reader.call_args_list))
+        self.assertNotIn("2025-05", calibration["fit_months"])
+        scores = calibration["reference_scores_by_month"].values()
+        self.assertAlmostEqual(
+            np.mean([row["ramp_mean_squared"] / calibration["ramp_reference"] for row in scores]),
+            1.0,
+        )
+        self.assertAlmostEqual(
+            np.mean([row["normalized_peak"] / calibration["peak_reference"] for row in scores]),
+            1.0,
+        )
+
+    def test_objective_variants_share_fixed_references_and_workload(self) -> None:
+        for weight in (0.0, 0.5, 1.0):
+            env = make_four_market_env(
+                EnvRequest(split="validation", seed=4101, window_id=self.window),
+                ramp_weight=weight,
+            )
+            try:
+                objective = env._current.protocol.objective
+                self.assertEqual(objective.ramp_weight, weight)
+                self.assertEqual(objective.peak_weight, 1.0 - weight)
+                self.assertEqual(
+                    objective.ramp_reference,
+                    self.factory["objective_calibration"]["ramp_reference"],
+                )
+                self.assertEqual(
+                    objective.peak_reference,
+                    self.factory["objective_calibration"]["peak_reference"],
+                )
+                observation, _ = env.reset(seed=4101)
+                self.assertEqual(observation.shape, (82,))
+                self.assertEqual(float(observation[-1]), 1.0)
+            finally:
+                env.close()
+
+    def test_factory_rejects_changed_inputs_instead_of_reusing_old_scales(self) -> None:
+        with patch(
+            "scripts.build_four_market_v2_factory._input_digest",
+            return_value="different-inputs",
+        ):
+            with self.assertRaisesRegex(ValueError, "factory inputs changed"):
+                validate()
+
     def test_only_train_validation_and_cells_a_to_d_are_accessible(self) -> None:
         calendar = json.loads(CALENDAR_PATH.read_text())
         self.assertEqual(len(calendar["train"]), 11)
@@ -142,17 +196,20 @@ class FourMarketV2DesignTests(unittest.TestCase):
             self.assertEqual(observation.shape, (OBSERVATION_SIZE,))
             self.assertEqual(reset_info["episode_context"]["month_id"], self.window)
             steps = 0
+            total_reward = 0.0
+            total_ramp_squared = 0.0
             dates: list[str] = []
             while True:
                 _, reward, terminated, truncated, info = adapter.step(adapter.evaluation_action("status_quo"))
                 steps += 1
                 dates.append(info["utc_date"])
                 self.assertFalse(truncated)
-                self.assertAlmostEqual(reward, -info["incremental_ramp_impact"])
-                # The reward is -sum_m I_{m,t} over one-hour windows only.
+                total_reward += reward
+                total_ramp_squared += info["ramp_squared_score"]
+                self.assertAlmostEqual(reward, info["ramp_reward"] + info["peak_reward"])
                 self.assertAlmostEqual(
-                    reward,
-                    -sum(
+                    info["incremental_ramp_impact"],
+                    sum(
                         row["windows"]["1h"]["incremental_squared_impact"]
                         for row in info["per_market"].values()
                     ),
@@ -163,10 +220,26 @@ class FourMarketV2DesignTests(unittest.TestCase):
                     {"1h"},
                 )
                 self.assertEqual(info["batch_queue"]["queued"], 0.0)
+                np.testing.assert_allclose(
+                    info["service_allocation"],
+                    adapter.env._current.workload.service_arrivals[steps - 1],
+                    atol=1e-8,
+                )
+                np.testing.assert_allclose(
+                    info["batch_by_destination"],
+                    adapter.env._current.workload.batch_arrivals[steps - 1],
+                    atol=1e-8,
+                )
                 if terminated:
                     self.assertTrue(info["actual_terminal"])
                     self.assertEqual(info["batch_unfinished"], 0.0)
                     self.assertEqual(info["certificate_violations"], 0)
+                    objective = adapter.env._current.protocol.objective
+                    self.assertAlmostEqual(
+                        total_reward,
+                        -objective.score(total_ramp_squared / steps, info["running_peak_normalized_sum"]),
+                        places=12,
+                    )
                     break
             self.assertEqual(steps, month_hours(self.window))
             self.assertEqual(len(set(dates)), 31)

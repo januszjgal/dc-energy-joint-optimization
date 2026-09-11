@@ -18,7 +18,10 @@ from ramp_rl.campaign_statistics import (
     paired_bootstrap_intervals,
     paired_seed_summary,
 )
-from ramp_rl.contract import CONTRACT_VERSION, SEMANTIC_ACTION_ID, EnvRequest
+from ramp_rl.contract import (
+    CONTRACT_VERSION, SEMANTIC_ACTION_ID, EnvRequest, environment_identity,
+)
+from env.ramp_v6.objective import JointObjective
 from ramp_rl.runner import (
     LEARNING_CURVE_COLUMNS,
     LearningCurveWriter,
@@ -57,7 +60,10 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "grid_observation_lag_hours": 1,
             "actual_terminal": True,
             "decision_steps": 3,
-            "action_shape": (1,),
+            "action_shape": [1],
+            "observation_shape": [2],
+            "objective": JointObjective().as_dict(),
+            "factory_id": "tiny-test",
         }
 
     def reset(self, *, seed: int | None = None, options: dict[str, object] | None = None):
@@ -90,7 +96,11 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "semantic_adjustment_units": 0.0,
             "terminal_work": 0.0,
             "actual_terminal": terminal,
-            "ramp_reward": -1.0,
+            "scalar_reward": -1.0,
+            "ramp_reward": -0.5,
+            "peak_reward": -0.5,
+            "ramp_squared_score": 1.0,
+            "peak_normalized_increment": 1.0,
         }
         return np.zeros(2, dtype=np.float32), -1.0, terminal, False, info
 
@@ -126,6 +136,7 @@ def _tiny_training_summary(seed: int, target: int = 96) -> dict[str, object]:
         "n_envs": 2,
         "ppo_config": config,
         "safe_quantum": 96,
+        "environment_identity": environment_identity(_TinyRampEnv().ramp_rl_contract()),
     }
 
 
@@ -142,8 +153,11 @@ def _completed_campaign_summary(
         "safe_boundary_interactions": training_geometry["safe_quantum"],
         "validation_window_ids": windows,
         "validation": {
+            "objective": campaign._environment_identity()["objective"],
             "episode_count": 1,
             "day_count": 31,
+            "step_count": 744,
+            "mean_joint_J": 1.0,
             "mean_policy_native_relative_incremental_ramp_impact": 1.0,
             "mean_incremental_ramp_impact": 1.0,
             "status_quo_comparison": {
@@ -151,6 +165,10 @@ def _completed_campaign_summary(
                 "status_quo_native_relative_mean_incremental_ramp_impact": 2.0,
                 "policy_minus_status_quo_mean_incremental_ramp_impact": -1.0,
                 "improvement": 1.0,
+                "policy_J": 1.0,
+                "status_quo_J": 2.0,
+                "improvement_J": 1.0,
+                "policy_minus_status_quo_joint_J": -1.0,
             },
         },
     }
@@ -169,6 +187,7 @@ def _campaign_training_identity(
         "n_envs": training_geometry["n_envs"],
         "ppo_config": ppo_config,
         "safe_quantum": training_geometry["safe_quantum"],
+        "environment_identity": campaign._environment_identity(),
     }
 
 
@@ -185,6 +204,12 @@ def _write_completed_training(
 
 
 class CampaignInstrumentationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        from scripts.build_four_market_v2_factory import build
+
+        build()
+
     def test_locked_campaign_geometry(self) -> None:
         self.assertEqual(SEEDS, tuple(range(4101, 4111)))
         self.assertEqual(REQUESTED_TIMESTEPS, 2_000_000)
@@ -197,6 +222,7 @@ class CampaignInstrumentationTests(unittest.TestCase):
             path = directory / "learning_curve.csv"
             writer = LearningCurveWriter(path)
             writer.write({
+                **dict.fromkeys(LEARNING_CURVE_COLUMNS, 0.0),
                 "interaction_count": 2048,
                 "mean_raw_ramp_reward": -1.5,
                 "mean_raw_incremental_ramp_impact": 1.5,
@@ -224,6 +250,7 @@ class CampaignInstrumentationTests(unittest.TestCase):
                 writer.writeheader()
                 for interaction in (32, 64, 96):
                     writer.writerow({
+                        **dict.fromkeys(LEARNING_CURVE_COLUMNS, 0.0),
                         "interaction_count": interaction,
                         "mean_raw_ramp_reward": -1.0,
                         "mean_raw_incremental_ramp_impact": 0.0,
@@ -233,6 +260,7 @@ class CampaignInstrumentationTests(unittest.TestCase):
                     })
             writer = LearningCurveWriter(path, interaction_limit=64)
             writer.write({
+                **dict.fromkeys(LEARNING_CURVE_COLUMNS, 0.0),
                 "interaction_count": 96,
                 "mean_raw_ramp_reward": -1.0,
                 "mean_raw_incremental_ramp_impact": 0.0,
@@ -330,6 +358,37 @@ class CampaignInstrumentationTests(unittest.TestCase):
                     target_timesteps=96,
                     output_dir=directory,
                     fixture_profile=True,
+                )
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
+
+    def test_completed_and_resumable_training_reject_changed_objective(self) -> None:
+        class DifferentObjectiveEnv(_TinyRampEnv):
+            def ramp_rl_contract(self):
+                contract = super().ramp_rl_contract()
+                contract["objective"] = JointObjective(ramp_weight=1.0, peak_weight=0.0).as_dict()
+                return contract
+
+        directory = ROOT / ".test-changed-objective"
+        shutil.rmtree(directory, ignore_errors=True)
+        try:
+            run_training(
+                factory=_tiny_factory, protocol=_tiny_protocol(), seed=23,
+                target_timesteps=96, output_dir=directory, fixture_profile=True,
+            )
+            with self.assertRaisesRegex(RuntimeError, "current environment_identity"):
+                run_training(
+                    factory=lambda request: DifferentObjectiveEnv(),
+                    protocol=_tiny_protocol(), seed=23,
+                    target_timesteps=96, output_dir=directory, fixture_profile=True,
+                )
+            for name in ("model.zip", "vecnormalize.pkl", "training_summary.json"):
+                (directory / name).unlink()
+            with self.assertRaisesRegex(RuntimeError, "checkpoint environment_identity"):
+                run_training(
+                    factory=lambda request: DifferentObjectiveEnv(),
+                    protocol=_tiny_protocol(), seed=23,
+                    target_timesteps=96, output_dir=directory, fixture_profile=True,
                 )
         finally:
             shutil.rmtree(directory, ignore_errors=True)

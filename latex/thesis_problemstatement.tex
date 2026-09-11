@@ -18,7 +18,7 @@
 
 \begin{document}
 
-\title{Geo-Distributed Data Center Demand Scheduling to Reduce Grid Ramps}
+\title{Geo-Distributed Data Center Scheduling to Smooth Grid Ramps and Reduce Monthly Net-Load Peaks}
 
 \author{\IEEEauthorblockN{Janusz Gal}
 \IEEEauthorblockA{jgal@charlotte.edu}}
@@ -26,7 +26,7 @@
 \maketitle
 
 \begin{IEEEkeywords}
-data centers, demand response, grid ramp, net load, reinforcement learning,
+data centers, demand response, grid ramp, net-load peak, reinforcement learning,
 workload scheduling
 \end{IEEEkeywords}
 
@@ -40,21 +40,22 @@ multiple sites may also choose where that work runs.
 
 The question we ask here is:
 \begin{quote}
-\emph{How much can a
-causal scheduler reduce normalized one-hour regional net-load ramps over a
-full month by jointly using temporal deferral and geographic routing, while
-satisfying immediate-service, batch-window, and site-capacity constraints?}
+\emph{How much can a causal scheduler jointly smooth normalized one-hour
+regional net-load ramps and reduce regional monthly net-load peaks relative
+to the same fleet without flexibility, using temporal deferral and geographic
+routing while satisfying immediate-service, batch-window, and site-capacity
+constraints?}
 \end{quote}
 
 We use Google workload traces and EIA grid data to model a synthetic fleet
 of four data centers. Each hour, the scheduler chooses where service runs,
 how much batch work to execute, and where to execute it. We will use
-proximal policy optimization (PPO) to train a policy that minimizes
-total one-hour ramp impact across all markets and hours of each month while
-meeting workload deadlines and site-capacity limits.
+proximal policy optimization (PPO) to train a policy that minimizes an equally
+weighted combination of normalized monthly ramp and peak scores while meeting
+workload deadlines and site-capacity limits.
 
-We focus on net-load ramps (rather than cost) because rapid changes in net load require
-generation to adjust quickly.
+We focus on net load rather than cost: rapid changes require generation to
+adjust quickly, while high peaks require more supply at once.
 
 \section{Google ClusterData2019 Workload Trace}
 \label{sec:clusterdata2019}
@@ -277,7 +278,9 @@ MISO Minnesota on MISO, SPP North on SWPP, and ISO-NE NEMA on ISNE.
 For each region, we use demand, wind generation, and solar
 generation.\footnote{The EIA fields \codepath{D},
 \codepath{NG.WND}, and \codepath{NG.SUN} are stored as
-\codepath{gross_demand_mw}, \codepath{wind_mw}, and \codepath{solar_mw}.} All series use the UTC timestamps reported by EIA, giving one row per market per hour.
+\codepath{gross_demand_mw}, \codepath{wind_mw}, and \codepath{solar_mw}.}
+EIA labels each interval by its ending hour. We subtract one hour to store
+hour-beginning UTC timestamps, giving one row per market per hour.
 
 \subsection{Net load}
 \label{subsec:energy-net-load}
@@ -304,7 +307,7 @@ We use 2025 grid data: eleven months (334 UTC days) for training and May
 (31 UTC days) for validation. Each month is a continuous simulation, as
 described in Section~\ref{subsec:transform-pairing}.
 
-To compare ramps across markets of different sizes, we define a fixed scale
+To compare markets of different sizes, we define a fixed scale
 \(S_m\) for each market: the empirical 95th percentile of gross demand over
 the training months,
 \begin{equation}
@@ -315,13 +318,13 @@ the training months,
 \end{equation}
 where \(\mathcal{R}\) is every hour of 2025 outside May.
 The scales in Table~\ref{tab:frozen-stats} are held fixed throughout training
-and validation. We use them to express ramps as fractions of each market's
-demand scale.
+and validation. We use them to express net-load ramps and peaks relative to
+each market's demand scale.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Ramp normalization scale \(S_m\), in MW.}
+  \caption{Regional normalization scale \(S_m\), in MW.}
   \label{tab:frozen-stats}
   \begin{tabular}{@{}lr@{}}
     \toprule
@@ -410,7 +413,8 @@ month's length in hours. One preceding hour,
 \(\mathcal W=\{-1\}\), initializes the grid and site-power history for the
 first decision and ramp calculation.
 Its power is computed by executing the preceding workload in place;
-that warm-up work is not added to the queues.
+that warm-up work is not added to the queues. The warm-up hour is excluded
+from monthly peak maxima.
 
 Queues start empty and must be empty at month-end. Arrivals in the final
 23 hours receive shorter completion windows under
@@ -596,7 +600,8 @@ An arrival in slot \(\nu\) must therefore run by slot
   \min\{\nu+H-1,\;T_e-1\}.
   \label{eq:batch-deadline}
 \end{equation}
-Releases follow earliest-deadline order and are increased when necessary to
+Releases follow one global earliest-deadline-first queue, breaking ties by
+origin index and then arrival order. They are increased when necessary to
 leave enough capacity to complete the remaining work on time. For each
 origin, cumulative execution must cover all work due:
 \begin{equation}
@@ -642,12 +647,16 @@ Section~\ref{sec:powerdata2019} and the 500 MW reference scale:
 \end{equation}
 
 
+Service, deadlines, and capacity are hard constraints enforced by the action
+decoder, not reward penalties. The conservative deadline safety guard is
+part of the solution method and will be described in the methods chapter.
+
 Work may execute at any site with available capacity. Transfers have no
 modeled latency, bandwidth limit, data-residency restriction, energy cost,
 or movement charge. This gives the model an optimistic upper bound on
 geographic flexibility.
 
-\subsection{Adjusted net load and ramp objective}
+\subsection{Adjusted net load, ramps, and peaks}
 \label{subsec:problem-objective}
 
 The regional net load after adding modeled site power is
@@ -675,8 +684,8 @@ A 1,000 MW change represents a smaller fraction of MISO's demand scale than
 of ISO-NE's.
 
 Squaring penalizes larger ramps and treats upward and downward ramps
-equally. We measure the fleet's impact by subtracting the original grid's
-squared ramp:
+equally. As a diagnostic, we measure the fleet's incremental ramp impact by
+subtracting the original grid's squared ramp:
 \begin{equation}
   I_{m,t}
   =
@@ -686,44 +695,76 @@ squared ramp:
   \label{eq:incremental-impact}
 \end{equation}
 A negative value means the scheduled fleet reduced the squared ramp relative
-to the original grid; a positive value means it increased it. The objective
-does not require improvement in every market and hour. We write
-\(I_{m,t}(\mu)\) when showing its dependence on scheduling policy \(\mu\)
-through \(P_{m,t}\).
+to the original grid; a positive value means it increased it.
+\(I_{m,t}\) is not the joint objective.
 
-Each simulated month is one optimization episode. The objective adds the
-one-hour ramp impact for every market and every hour of that month.
-One hour defines the ramp measurement, not a one-hour
-planning horizon. Each action uses only the information then available, as
-defined in Section~\ref{subsec:problem-causality}. Let \(\mathfrak M\) be the
-set of causal scheduling policies that satisfy
-Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
-\begin{equation}
-  \min_{\mu\in\mathfrak M} J(\mu),
-  \qquad
-  J(\mu)
-  =
-  \sum_{t\in\mathcal T}
+Each simulated month \(e\) is one optimization episode. For scheduling policy
+\(\mu\), define the mean hourly fleet ramp score and the sum of regional
+normalized monthly net-load peaks:
+\begin{align}
+  R_e(\mu)
+  &=
+  \frac{1}{T_e}
+  \sum_{t\in\mathcal T}\sum_{m\in\mathcal M}
+  \left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu)\right)^2,
+  \label{eq:monthly-ramp-score}\\
+  Q_e(\mu)
+  &=
   \sum_{m\in\mathcal M}
-  I_{m,t}(\mu).
+  \max_{t\in\mathcal T}\frac{A_{m,t}(\mu)}{S_m}.
+  \label{eq:monthly-peak-score}
+\end{align}
+The warm-up hour contributes to the first ramp but never to a monthly peak.
+Each region has its own peak maximum; \(Q_e\) is not the maximum of the
+combined regions, a data-center power peak, or an hourly squared-load penalty.
+One hour defines the ramp measurement, not the planning horizon.
+
+\subsection{Joint objective and fixed reference scales}
+\label{subsec:problem-normalization}
+
+Let \(\mathcal E_{\mathrm{train}}\) be the eleven training months and
+\(\mu_{\mathrm{NF}}\) the no-flexibility policy defined below. We take the
+arithmetic mean of its monthly scores:
+\begin{align}
+  C_R
+  &=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}R_e(\mu_{\mathrm{NF}}),
+  \label{eq:ramp-reference-scale}\\
+  C_Q
+  &=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}Q_e(\mu_{\mathrm{NF}}).
+  \label{eq:peak-reference-scale}
+\end{align}
+For the current data, \(C_R\approx0.00826852\) and \(C_Q\approx3.66460\).
+These positive scales are frozen for all training and May validation.
+They use absolute adjusted-grid scores, never the signed incremental
+diagnostic \(I_{m,t}\).
+
+Let \(\mathfrak M\) be the causal scheduling policies satisfying
+Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}. The joint
+objective uses equal weights by default:
+\begin{equation}
+  \begin{aligned}
+    &\min_{\mu\in\mathfrak M} J_e(\mu),\\
+    &J_e(\mu)
+    =
+    0.5\,\frac{R_e(\mu)}{C_R}
+    +0.5\,\frac{Q_e(\mu)}{C_Q}.
+  \end{aligned}
   \label{eq:objective}
 \end{equation}
-
-Read from the inside out, that says: add the fleet's one-hour ramp impacts
-across all markets and hours of the month,
-and choose the causal policy with the smallest total. A negative \(J\)
-means the fleet reduced the month's total normalized squared ramp score
-relative to the original grid; a positive \(J\) means it increased it.
-
-Ramps are evaluated relative to each market's demand scale, so equal
-changes in MW need not receive equal scores.
+Equal weights give the same value to equal proportional changes relative to
+these fixed training references, not equal achieved savings or learned
+influence. A lower joint score need not improve both components.
+Comparison variants can replace the two weights with nonnegative
+\(\lambda_r,\lambda_p\), where \(\lambda_r+\lambda_p=1\); ramp-only and
+peak-only policies still use the same no-flexibility baseline.
 
 \subsection{Reference signal and the one baseline}
 \label{subsec:problem-baselines}
 
-The \emph{original grid}, with \(P_{m,t}=0\), provides the reference
-\(\Delta^{\mathrm{original}}_{m,t}\) in Equation~\eqref{eq:incremental-impact}. We compare
-scheduling policies using the same added fleet.
+The \emph{original grid}, with \(P_{m,t}=0\), provides the diagnostic reference
+\(\Delta^{\mathrm{original}}_{m,t}\) in Equation~\eqref{eq:incremental-impact}.
+It is not another scheduling baseline, and \(J_e\) is not a signed comparison
+with it. We compare scheduling policies using the same added fleet.
 
 The \emph{no-flexibility baseline}, \(\mu_{\mathrm{NF}}\), runs every arrival
 at its original site in its arrival hour. It uses the same arrivals, power
@@ -738,12 +779,18 @@ We report improvement as
 \begin{equation}
   \text{Improvement}
   =
-  J(\mu_{\mathrm{NF}})-J(\mu),
+  J_e(\mu_{\mathrm{NF}})-J_e(\mu),
   \label{eq:improvement}
 \end{equation}
 which is positive when the scheduler \(\mu\) improves on the baseline.
 The no-flexibility baseline is feasible and is currently the only scheduling
 comparison used in this thesis.
+
+We also report raw \(R_e\) and \(Q_e\), incremental ramp diagnostics
+\(I_{m,t}\), and regional adjusted peaks in MW with their reductions from
+the same no-flexibility fleet. Since site power is nonnegative, peak reduction
+means improvement over that fleet without flexibility, not a peak below the
+original grid without the fleet.
 
 \subsection{Causal information}
 \label{subsec:problem-causality}
@@ -757,8 +804,11 @@ Its available information, \(\mathcal I_t\), consists of:
         which target \(t\), \(t+2\), \(t+5\), and \(t+11\) (the current
         decision hour and two, five, and eleven hours later);
   \item the hour-\(t\) service and batch arrivals, queue totals, and urgency;
-  \item modeled site power from hour \(t-1\); and
-  \item UTC hour and UTC day of week.
+  \item modeled site power from hour \(t-1\);
+  \item each region's running adjusted and original net-load peaks over
+        completed decision hours, normalized by \(S_m\) (zero before the
+        first decision); and
+  \item UTC hour, UTC day of week, and the fraction of the month remaining.
 \end{itemize}
 
 Each decision under policy \(\mu\) must use only \(\mathcal I_t\). The methods
@@ -769,15 +819,20 @@ chapter will describe the observation features and solution algorithm.
 
 \begin{quote}
 Choose a causal policy for hourly service destinations, batch release
-volumes, and batch destinations to minimize total one-hour ramp impact
-across all markets and hours of the month in Equation~\eqref{eq:objective}. Use only the
+volumes, and batch destinations to minimize the joint monthly ramp and
+regional net-load peak score in Equation~\eqref{eq:objective}. Use only the
 information available at each decision and meet the service, deadline, and
 capacity constraints above. Report improvement over the no-flexibility
 baseline using Equation~\eqref{eq:improvement}.
 \end{quote}
 
-\subsection{Worked example: from workload to ramp impact}
-\label{subsec:problem-worked-objective}
+PPO is an approximate solution method, not a guarantee of global optimality.
+The raw, undiscounted monthly reward sums to \(-J_e\); training uses a
+discount factor of 0.99 and reward normalization. The methods chapter will
+describe the reward construction and training procedure.
+
+\subsection{Worked example: one-hour ramp diagnostic}
+\label{subsec:problem-worked-ramp}
 
 At 2025-07-19 16:00 UTC (trace hour 448), MISO Minnesota receives
 0.3982 work units of service and 0.0708 of batch. Under the no-flexibility
@@ -812,15 +867,16 @@ routing choice.
   \end{tabular}
 \end{table}
 
-Table~\ref{tab:objective-example} shows the baseline's one-hour ramp impact.
+Table~\ref{tab:incremental-ramp-example} shows the baseline's one-hour ramp
+diagnostic.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Contribution to Equation~\eqref{eq:objective} at
+  \caption{Incremental ramp diagnostic from Equation~\eqref{eq:incremental-impact} at
   2025-07-19 16:00 UTC, with every site running the work that arrived there.
   A positive \(I\) means the fleet made that market's ramp worse.}
-  \label{tab:objective-example}
+  \label{tab:incremental-ramp-example}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
     Market case & \(\Delta^{\mathrm{original}}\) & \(\Delta^{\mathrm{adjusted}}\) & \(I\ (\times10^{-5})\) \\
@@ -850,8 +906,9 @@ in the region with falling net load.
 CAISO's one-hour impact becomes \(-24.39\times10^{-5}\), and MISO's becomes
 \(-3.98\times10^{-5}\). With the other two sites unchanged, the total
 falls to \(-24.58\times10^{-5}\). This improves the score for this
-hour; the monthly objective also accounts for the effects of this decision
-on later hours.
+hour, not necessarily the joint monthly objective. The example does not
+establish a monthly peak reduction; evaluating \(J_e\) requires the full
+month's adjusted-load trajectory, including effects on later ramps.
 
 \section{Scope and Limitations}
 \label{sec:limitations}
@@ -949,7 +1006,7 @@ described in Section~\ref{subsec:transform-pairing}.
     \midrule
   \endhead
     \codepath{timestamp_utc}
-      & UTC hour the row describes.
+      & Beginning of the UTC hour the row describes.
       & 2025-07-19 16:00Z \\
     \codepath{market_id}
       & Market case.
@@ -969,7 +1026,7 @@ described in Section~\ref{subsec:transform-pairing}.
       & 11,839 \\
     \addlinespace
     \codepath{market_scale_mw}
-      & Ramp normalizer \(S_m\) from Equation~\eqref{eq:market-scale};
+      & Ramp and peak normalizer \(S_m\) from Equation~\eqref{eq:market-scale};
         constant within a market.
       & 33,983 \\
     \addlinespace

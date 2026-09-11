@@ -10,10 +10,15 @@ import numpy as np
 from gymnasium import spaces
 
 
-CONTRACT_VERSION = "ramp-v8-one-hour-v1"
+CONTRACT_VERSION = "joint-peak-ramp-v1"
 SEMANTIC_ACTION_ID = "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"
 HISTORY_HOURS = 1
 REQUIRED_STEP_INFO = (
+    "scalar_reward",
+    "ramp_reward",
+    "peak_reward",
+    "ramp_squared_score",
+    "peak_normalized_increment",
     "ramp_h1_adjusted",
     "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market",
     "physical_ramp_market_order",
@@ -33,6 +38,14 @@ REQUIRED_STEP_INFO = (
 
 class RampContractError(RuntimeError):
     """Raised when an environment violates the trainer boundary."""
+
+
+def environment_identity(contract: Mapping[str, Any]) -> dict[str, Any]:
+    """Stable across episode lengths, but not across data, objectives or schemas."""
+    return {
+        key: contract[key]
+        for key in ("version", "factory_id", "objective", "action_shape", "observation_shape")
+    }
 
 
 @dataclass(frozen=True)
@@ -92,6 +105,10 @@ class RampEnvAdapter(gym.Wrapper):
             raise RampContractError("semantic action bounds must be finite")
         if tuple(self.contract.get("action_shape", ())) != self.action_space.shape:
             raise RampContractError("declared action shape does not match the environment")
+        if tuple(self.contract.get("observation_shape", ())) != self.observation_space.shape:
+            raise RampContractError("declared observation shape does not match the environment")
+        if not isinstance(self.contract.get("objective"), Mapping) or not self.contract.get("factory_id"):
+            raise RampContractError("environment must declare its objective and input identity")
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None

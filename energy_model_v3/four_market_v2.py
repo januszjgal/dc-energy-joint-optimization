@@ -9,6 +9,7 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 import pandas as pd
+import yaml
 
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.models import (
@@ -19,11 +20,14 @@ from env.ramp_v6.models import (
     WorkloadTrace,
 )
 from env.ramp_v6.panel import CanonicalMarketPanel
+from env.ramp_v6.objective import JointObjective, NORMALIZATION_METHOD, OBJECTIVE_VERSION
 from ramp_rl.contract import EnvRequest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-FACTORY_ROOT = ROOT / "output" / "four_market_v2" / "factory"
+ARTIFACT_NAMESPACE = "four_market_joint_v1"
+FACTORY_ROOT = ROOT / "output" / ARTIFACT_NAMESPACE / "factory"
+PROTOCOL_PATH = ROOT / "env" / "protocols" / "four_market_v2.yaml"
 MARKET_TO_CELL = (
     ("CAISO_NP15", "a"),
     ("MISO_MINN_HUB", "b"),
@@ -36,6 +40,38 @@ RATED_POWER_MW = 500.0
 COMPUTE_CAPACITY = 1.0
 TOTAL_RATED_POWER_MW = 2_000.0
 DEADLINE_WINDOW_SLOTS = (24, 24, 24, 24)
+
+
+def objective_from_factory(
+    payload: dict[str, Any], ramp_weight: float | None = None
+) -> JointObjective:
+    if payload.get("version") != OBJECTIVE_VERSION:
+        raise ValueError("stale factory: rebuild the joint-objective factory")
+    calibration = payload["objective_calibration"]
+    if calibration["normalization"] != NORMALIZATION_METHOD:
+        raise ValueError("factory objective normalization is incompatible")
+    if sorted(calibration["fit_months"]) != sorted(payload["windows"]["train"]):
+        raise ValueError("objective references must use exactly the training months")
+    configuration = yaml.safe_load(PROTOCOL_PATH.read_text(encoding="utf-8"))["objective"]
+    if (
+        configuration["version"] != OBJECTIVE_VERSION
+        or configuration["normalization"] != NORMALIZATION_METHOD
+        or configuration["ramp_horizons_hours"] != [1]
+        or configuration["ramp_weights"] != {1: 1.0}
+        or configuration["market_aggregation"] != "sum"
+        or configuration["ramp_time_aggregation"] != "mean_over_month"
+        or configuration["peak_time_aggregation"] != "maximum_per_region_over_decision_month"
+    ):
+        raise ValueError("protocol objective is incompatible with the factory")
+    weights = configuration["component_weights"]
+    objective = JointObjective(
+        ramp_weight=float(weights["ramp"]) if ramp_weight is None else ramp_weight,
+        peak_weight=float(weights["net_load_peak"]) if ramp_weight is None else 1.0 - ramp_weight,
+        ramp_reference=float(calibration["ramp_reference"]),
+        peak_reference=float(calibration["peak_reference"]),
+    )
+    objective.validate()
+    return objective
 
 
 def month_hours(month_id: str) -> int:
@@ -72,10 +108,13 @@ class FourMarketV2WindowEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, payload: dict[str, Any], request: EnvRequest) -> None:
+    def __init__(
+        self, payload: dict[str, Any], request: EnvRequest, objective: JointObjective
+    ) -> None:
         super().__init__()
         self.payload = payload
         self.request = request
+        self.objective = objective
         self._window_ids = tuple(sorted(payload["windows"][request.split]))
         if request.window_id is not None and request.window_id not in self._window_ids:
             raise ValueError(f"factory has no {request.window_id!r} in {request.split}")
@@ -130,7 +169,10 @@ class FourMarketV2WindowEnv(gym.Env):
             sites,
             workload,
             stats,
-            RampProtocol(protocol_id="four-market-v2-continuous-month"),
+            RampProtocol(
+                protocol_id="four-market-joint-net-load-peak-ramp-v1",
+                objective=self.objective,
+            ),
             episode_context={
                 "split": self.request.split,
                 "window_id": window_id,
@@ -143,6 +185,7 @@ class FourMarketV2WindowEnv(gym.Env):
                 "markets": list(MARKETS),
                 "workload_cells": list(CELLS),
                 "total_rated_power_mw": TOTAL_RATED_POWER_MW,
+                "factory_id": self.payload["input_digest"],
             },
         )
 
@@ -172,11 +215,13 @@ class FourMarketV2WindowEnv(gym.Env):
         self._current.close()
 
 
-def make_four_market_env(request: EnvRequest) -> FourMarketV2WindowEnv:
+def make_four_market_env(
+    request: EnvRequest, *, ramp_weight: float | None = None
+) -> FourMarketV2WindowEnv:
     """Build the only active raw-workload four-market environment."""
     if request.split not in {"train", "validation"}:
         raise ValueError("four-market permits train and validation only")
     payload = json.loads((FACTORY_ROOT / "factory.json").read_text(encoding="utf-8"))
     if payload.get("windows", {}).get("test"):
         raise ValueError("four-market factory must not expose a test split")
-    return FourMarketV2WindowEnv(payload, request)
+    return FourMarketV2WindowEnv(payload, request, objective_from_factory(payload, ramp_weight))

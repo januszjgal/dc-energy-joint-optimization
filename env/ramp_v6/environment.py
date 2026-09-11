@@ -1,4 +1,4 @@
-"""Gymnasium-compatible hourly ramp-aware pure-RL environment.
+"""Causal hourly scheduling with a joint regional peak and ramp objective.
 
 One episode is one continuous hourly panel; in the active experiment that is
 a calendar month. Queues and site-power history persist across every midnight
@@ -13,7 +13,7 @@ Event order inside decision hour ``t``:
 3. the policy chooses service destinations, the batch volume to execute now,
    and batch destinations for hour ``t``;
 4. the realized hour-``t`` grid values are revealed;
-5. site power, adjusted net load, and the ramp reward for hour ``t`` are
+5. site power, adjusted net load, running peaks, and the joint reward are
    computed and scored.
 
 Every decision slot is scored. Work arriving in the last slots of an episode
@@ -41,6 +41,7 @@ from env.ramp_v6.models import (
     WorkloadTrace,
 )
 from env.ramp_v6.panel import CanonicalMarketPanel
+from env.ramp_v6.objective import update_peak
 from env.ramp_v6.projection import (
     SEMANTIC_ADJUSTMENT_COORDINATE_ID,
     SEMANTIC_ADJUSTMENT_UNITS,
@@ -92,6 +93,12 @@ class RampAwareEnv(gym.Env):
         if site_markets != panel_markets:
             raise ValueError("sites must cover every panel market")
         self.stats.validate(panel_markets)
+        for market, rows in panel.frame.groupby("market_id"):
+            if not np.allclose(
+                rows["market_scale_mw"], self.stats.gross_q95_mw[market],
+                rtol=0.0, atol=1e-8,
+            ):
+                raise ValueError("panel market scales must match the frozen ramp statistics")
         self.n_sites = len(self.sites)
         self.history_hours = self.protocol.history_hours
         self.action_steps = len(panel.timestamps) - self.history_hours
@@ -145,6 +152,8 @@ class RampAwareEnv(gym.Env):
         self._arrivals_loaded = False
         self._site_power_history: list[np.ndarray] = []
         self._market_power_history: dict[str, list[float]] = {}
+        self._adjusted_peaks_mw: dict[str, float | None] = {}
+        self._native_peaks_mw: dict[str, float | None] = {}
         self._episode_history: list[dict[str, Any]] = []
         self._episode_context = dict(episode_context or {})
         self._reset_count = 0
@@ -161,6 +170,9 @@ class RampAwareEnv(gym.Env):
             "actual_terminal": True,
             "decision_steps": self.action_steps,
             "action_shape": list(self.action_space.shape),
+            "observation_shape": list(self.observation_space.shape),
+            "objective": self.protocol.objective.as_dict(),
+            "factory_id": self._episode_context.get("factory_id", "synthetic-fixture"),
             "action_low": self.action_space.low.tolist(),
             "action_high": self.action_space.high.tolist(),
             "physical_ramp_metric_contract": {
@@ -196,6 +208,10 @@ class RampAwareEnv(gym.Env):
                     ahead = lead - GRID_OBSERVATION_LAG_HOURS
                     names.append(f"{market}:forecast_{quantity}_t+{ahead}_z")
                 names.append(f"{market}:forecast_{quantity}_max_up_fraction_s")
+            names.extend([
+                f"{market}:running_adjusted_peak_fraction_s",
+                f"{market}:running_native_peak_fraction_s",
+            ])
         for site in self.sites:
             names.extend(
                 [
@@ -210,6 +226,7 @@ class RampAwareEnv(gym.Env):
             for edge in self.protocol.deadline_bucket_hours
         )
         names.extend(["hour_sin", "hour_cos", "day_of_week_sin", "day_of_week_cos"])
+        names.append("remaining_month_fraction")
         return names
 
     def reset(
@@ -235,6 +252,8 @@ class RampAwareEnv(gym.Env):
             for market, site_indices in self._market_site_indices.items()
         }
         self._episode_history = []
+        self._adjusted_peaks_mw = {market: None for market in self.panel.markets}
+        self._native_peaks_mw = {market: None for market in self.panel.markets}
         self._load_current_arrivals()
         context = dict(self._episode_context)
         split = requested.get("split", context.get("split", "fixture"))
@@ -255,6 +274,7 @@ class RampAwareEnv(gym.Env):
                 "episode_start_utc": self.current_timestamp.isoformat(),
                 "future_realized_features_exposed": False,
                 "future_batch_capacity_fraction": self._future_batch_capacity_fraction,
+                "objective": self.protocol.objective.as_dict(),
             }
         )
         context.setdefault("forecast_model", "caller-supplied-causal-forecast")
@@ -360,6 +380,9 @@ class RampAwareEnv(gym.Env):
                     for index in range(len(FORECAST_HOURS))
                 )
                 values.append(max_up)
+            for peaks in (self._adjusted_peaks_mw, self._native_peaks_mw):
+                peak = peaks[market]
+                values.append(0.0 if peak is None else peak / scale)
 
         queued_by_origin = self.queue.by_origin(self.n_sites)
         previous_power = self._site_power_history[-1]
@@ -391,6 +414,7 @@ class RampAwareEnv(gym.Env):
                 math.cos(day_angle),
             ]
         )
+        values.append((self.action_steps - self._step) / self.action_steps)
         observation = np.asarray(values, dtype=np.float32)
         if observation.shape != self.observation_space.shape:
             raise RuntimeError(
@@ -499,6 +523,9 @@ class RampAwareEnv(gym.Env):
         seen = self.panel.observation_rows(panel_index - GRID_OBSERVATION_LAG_HOURS)
         per_market: dict[str, dict[str, Any]] = {}
         weighted_impact = 0.0
+        ramp_squared_score = 0.0
+        native_ramp_squared_score = 0.0
+        peak_normalized_increment = 0.0
         ramp_h1: list[float] = []
         abs_ramp_h1: list[float] = []
         incremental_by_market: list[float] = []
@@ -543,6 +570,8 @@ class RampAwareEnv(gym.Env):
                     self.protocol.ramp_weights[horizon]
                     * terms.incremental_squared_impact
                 )
+                ramp_squared_score += terms.adjusted_fraction_s_per_hour**2
+                native_ramp_squared_score += terms.native_fraction_s_per_hour**2
                 ramp_h1.append(terms.adjusted_fraction_s_per_hour)
                 abs_ramp_h1.append(abs(terms.adjusted_fraction_s_per_hour))
                 if terms.native_fraction_s_per_hour > 0.0:
@@ -592,10 +621,27 @@ class RampAwareEnv(gym.Env):
                 "windows": windows,
                 "forecast_errors": forecast_errors,
             }
-        # The objective sums I_{m,t} over markets (paper Eq. objective), so the
-        # undiscounted return of a month is exactly -J.
-        ramp_reward = -self.protocol.ramp_reward_scale * weighted_impact
-        reward = ramp_reward
+            adjusted_peak, peak_increase = update_peak(
+                self._adjusted_peaks_mw[market],
+                float(row["net_load_mw"]) + market_power[market],
+            )
+            native_peak, _ = update_peak(
+                self._native_peaks_mw[market], float(row["net_load_mw"])
+            )
+            self._adjusted_peaks_mw[market] = adjusted_peak
+            self._native_peaks_mw[market] = native_peak
+            peak_normalized_increment += peak_increase / scale
+            per_market[market].update({
+                "adjusted_net_load_mw": float(row["net_load_mw"]) + market_power[market],
+                "running_adjusted_peak_mw": adjusted_peak,
+                "running_native_peak_mw": native_peak,
+                "peak_normalized_increment": peak_increase / scale,
+            })
+        # Running-maximum increments telescope; every raw episode return is -J.
+        ramp_reward, peak_reward = self.protocol.objective.reward_components(
+            ramp_squared_score, peak_normalized_increment, self.action_steps
+        )
+        reward = ramp_reward + peak_reward
         service_unserved = max(
             float(self.workload.service_arrivals[self._step].sum())
             - float(projected.service.sum()),
@@ -621,6 +667,14 @@ class RampAwareEnv(gym.Env):
             ),
             "scalar_reward": reward,
             "ramp_reward": ramp_reward,
+            "peak_reward": peak_reward,
+            "ramp_squared_score": ramp_squared_score,
+            "native_ramp_squared_score": native_ramp_squared_score,
+            "peak_normalized_increment": peak_normalized_increment,
+            "running_peak_normalized_sum": sum(
+                row["running_adjusted_peak_mw"] / self.stats.gross_q95_mw[market]
+                for market, row in per_market.items()
+            ),
             "weighted_incremental_ramp_impact": weighted_impact,
             "ramp_h1_adjusted": float(np.mean(ramp_h1)),
             "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market": abs_ramp_h1,

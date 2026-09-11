@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -21,6 +23,10 @@ from energy_model_v3.four_market_v2 import (  # noqa: E402
     MARKET_TO_CELL, RATED_POWER_MW, month_hours,
 )
 from env.ramp_v6.models import HISTORY_HOURS, SiteConfig  # noqa: E402
+from env.ramp_v6.objective import (  # noqa: E402
+    JointObjective, NORMALIZATION_METHOD, OBJECTIVE_VERSION, trajectory_scores,
+)
+from env.ramp_v6.panel import CanonicalMarketPanel  # noqa: E402
 
 
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
@@ -82,6 +88,8 @@ def _workload(timestamps: pd.DatetimeIndex, sites: list[SiteConfig]) -> dict[str
     capacity = sum(site.compute_capacity for site in sites)
     if np.any((service + batch).sum(axis=1) > capacity + 1e-12):
         raise ValueError("raw hourly arrivals exceed hard fleet capacity")
+    if np.any(service + batch > np.asarray([site.compute_capacity for site in sites]) + 1e-12):
+        raise ValueError("no-flexibility arrivals exceed an origin site's capacity")
     warm_service, warm_batch = _raw_arrivals(history)
     warm_power = np.asarray([
         [site.power_mw(float(work)) for site, work in zip(sites, row)]
@@ -115,11 +123,69 @@ def _load_calendar() -> dict[str, Any]:
     return calendar
 
 
-def build() -> dict[str, Any]:
+def _input_digest(calendar: dict[str, Any]) -> str:
+    sources = [
+        CALENDAR_PATH,
+        ROOT / calendar["frozen_stats_path"],
+        ROOT / "data" / "power_model_params.json",
+        *(ROOT / "data" / "cells" / f"cell_{cell}_tiers.csv" for cell in CELLS),
+        *(ROOT / row["panel_path"] for split in ("train", "validation") for row in calendar[split]),
+    ]
+    digest = hashlib.sha256()
+    for path in sorted(sources):
+        digest.update(path.relative_to(ROOT).as_posix().encode("utf-8") + b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def calibrate_objective(
+    calendar: dict[str, Any], sites: list[SiteConfig]
+) -> dict[str, Any]:
+    """Freeze positive absolute baseline scores using training months only."""
+    stats = json.loads((ROOT / calendar["frozen_stats_path"]).read_text(encoding="utf-8"))
+    months = sorted(row["month_id"] for row in calendar["train"])
+    if months != sorted(stats["fit_months"]) or set(months) & {
+        row["month_id"] for row in calendar["validation"]
+    }:
+        raise ValueError("objective calibration training months are inconsistent")
+    scales = np.asarray([stats["gross_q95_mw"][market] for market in MARKETS])
+    reference_scores: dict[str, dict[str, float]] = {}
+    for record in calendar["train"]:
+        panel = CanonicalMarketPanel.from_csv(ROOT / record["panel_path"])
+        service, batch = _raw_arrivals(panel.timestamps)
+        if np.any(service + batch > np.asarray([site.compute_capacity for site in sites]) + 1e-12):
+            raise ValueError("objective calibration requires a feasible no-flexibility baseline")
+        power = np.asarray([
+            [site.power_mw(float(work)) for site, work in zip(sites, row)]
+            for row in service + batch
+        ])
+        net = panel.frame.pivot(
+            index="timestamp_utc", columns="market_id", values="net_load_mw"
+        ).loc[panel.timestamps, list(MARKETS)].to_numpy(dtype=np.float64)
+        ramp, peak = trajectory_scores(net, power, scales)
+        reference_scores[record["month_id"]] = {
+            "ramp_mean_squared": ramp, "normalized_peak": peak,
+        }
+    ramp_reference = float(np.mean([row["ramp_mean_squared"] for row in reference_scores.values()]))
+    peak_reference = float(np.mean([row["normalized_peak"] for row in reference_scores.values()]))
+    JointObjective(ramp_reference=ramp_reference, peak_reference=peak_reference).validate()
+    return {
+        "normalization": NORMALIZATION_METHOD,
+        "fit_months": months,
+        "ramp_reference": ramp_reference,
+        "peak_reference": peak_reference,
+        "reference_scores_by_month": reference_scores,
+    }
+
+
+def build(*, rebuild: bool = False) -> dict[str, Any]:
+    if rebuild and FACTORY_ROOT.exists():
+        shutil.rmtree(FACTORY_ROOT)
     if FACTORY_ROOT.exists():
         return validate()
     calendar = _load_calendar()
     sites = _site_configs()
+    calibration = calibrate_objective(calendar, sites)
     windows: dict[str, dict[str, Any]] = {"train": {}, "validation": {}, "test": {}}
     try:
         for split in ("train", "validation"):
@@ -143,6 +209,9 @@ def build() -> dict[str, Any]:
                     "fixture_path": str(fixture.relative_to(ROOT)).replace("\\", "/"),
                 }
         _write_json(FACTORY_ROOT / "factory.json", {
+            "version": OBJECTIVE_VERSION,
+            "input_digest": _input_digest(calendar),
+            "objective_calibration": calibration,
             "markets": list(MARKETS), "workload_cells": list(CELLS),
             "history_hours": HISTORY_HOURS,
             "episode_unit": "one continuous calendar month",
@@ -158,6 +227,20 @@ def build() -> dict[str, Any]:
 def validate() -> dict[str, Any]:
     factory_path = FACTORY_ROOT / "factory.json"
     factory = json.loads(factory_path.read_text(encoding="utf-8"))
+    if factory.get("version") != OBJECTIVE_VERSION:
+        raise ValueError("stale objective factory; rebuild with --rebuild")
+    if factory.get("input_digest") != _input_digest(_load_calendar()):
+        raise ValueError("factory inputs changed; rebuild with --rebuild")
+    calibration = factory["objective_calibration"]
+    if (
+        calibration["normalization"] != NORMALIZATION_METHOD
+        or sorted(calibration["fit_months"]) != sorted(factory["windows"]["train"])
+    ):
+        raise ValueError("factory objective calibration is inconsistent")
+    JointObjective(
+        ramp_reference=calibration["ramp_reference"],
+        peak_reference=calibration["peak_reference"],
+    ).validate()
     if tuple(factory["markets"]) != MARKETS or tuple(factory["workload_cells"]) != CELLS:
         raise ValueError("factory market mapping is invalid")
     if factory["windows"].get("test") != {}:
@@ -192,4 +275,6 @@ def validate() -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    print(json.dumps(build(), indent=2, sort_keys=True))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--rebuild", action="store_true", help="replace only the generated joint factory")
+    print(json.dumps(build(rebuild=parser.parse_args().rebuild), indent=2, sort_keys=True))

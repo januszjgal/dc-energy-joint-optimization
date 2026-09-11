@@ -1,67 +1,106 @@
 # Active Four-Market Data Contract
 
-The active experiment uses one raw-workload protocol and one generated factory.
-Cells a-d are active; cells e-h remain tier-curve workload holdouts.
+The joint ramp-and-monthly-net-load-peak experiment uses one raw-workload
+protocol, `env/protocols/four_market_v2.yaml`, and one generated factory.
+Cells a-d are active; cells e-h remain unused tier-curve workload holdouts,
+not a separate test split.
 
 ## Workload and power
 
 `cells/cell_a_tiers.csv` through `cells/cell_d_tiers.csv` provide the raw measured
-five-minute normalized CPU, service, and batch curves. The factory averages twelve
-samples per hour and uses the service and batch columns unchanged. It uses fixed
-provisional batch deadlines `[2, 1, 2, 3]`; they are protocol parameters, not
-observed customer deadlines.
+five-minute normalized CPU, service, and batch curves from ClusterData2019.
+The factory averages twelve samples per hour and uses the service and batch
+columns without reshaping them. The 744-hour workload restarts each month;
+shorter months use only the hours they need. Measured execution is treated as
+synthetic arrival demand, not as observed job submissions or deadlines.
+
+Service must run immediately. Every site uses a 24-slot batch completion window,
+including the arrival slot: batch may run immediately or in the following
+23 hours. Windows are clipped at month-end, when queues must be empty. Batch
+releases follow global earliest-deadline-first order, with ties broken by origin
+index and then arrival order. The decoder enforces service, capacity, and
+deadlines as hard constraints, retaining the conservative deadline safety guard.
 
 `power_model_params.json` contains the committed affine CPU-to-power coefficients.
-Every proxy site has normalized compute capacity 1 and a 500 MW rating:
+Every synthetic site has normalized compute capacity 1 and a 500 MW rating:
 
 ```text
 power_mw = 500 * (idle_power_fraction + dynamic_power_fraction * executed_work)
 ```
 
+Cells a-d map to CAISO NP15, MISO Minnesota, SPP North, and ISO-NE NEMA,
+respectively. This mapping is assumed, not a claim about Google's cell locations.
+
 ## Electricity calendar
 
-`four_market_v2/calendar.json` is the source contract. It lists 114
-October-January training dates, the exact 28 February validation dates, each
-referenced path under `four_market_v2/windows/`, and
-`four_market_v2/frozen_stats.json`. Daily panels contain four market cases with
-gross demand, wind, solar, derived net load, day-ahead LMP, and causal 1-3 hour
-gross/net forecasts. The contract has no test split.
+`four_market_2025/calendar.json` lists the eleven training months of 2025
+(all except May), the May validation month, each panel under
+`four_market_2025/months/`, and `four_market_2025/frozen_stats.json`.
+There are 334 training days and 31 validation days, with no test split.
+May has already informed forecast-lead selection and is not an untouched test set.
 
-Forecasts remain per-date causal forecasts: a fit using later training targets
-would leak them into earlier training observations. Forecast age, vintage, and
-quality are not policy observations.
+Each panel contains one continuous month and one preceding warm hour, with
+four market rows per hour. Queues and site-power history carry across midnight
+and reset only at the month boundary. Every decision hour is scored. The warm
+hour supplies the first observation and ramp starting point but is excluded
+from monthly peak maxima.
+
+Panels use demand and wind/solar generation from the CISO, MISO, SWPP, and ISNE
+balancing authorities. EIA's hour-ending labels are shifted back one hour to
+hour-beginning UTC. Net load is demand minus wind and solar. Day-ahead prices
+are not fetched, and cost is not part of the study.
+
+Forecast models are fitted on the eleven training months. Each row carries
+gross-demand and net-load forecasts issued at that row's hour, with leads
+1, 3, 6, and 12. A decision at hour t reads the realized grid row and forecasts
+from t-1, targeting t, t+2, t+5, and t+11, together with current arrivals.
+The 82-feature joint observation also includes running adjusted and original
+normalized peaks over completed decision hours and the remaining-month
+fraction. Forecast vintage and quality fields are provenance, not policy
+observations.
+
+## Fixed objective calibration
+
+Regional scales $S_m$ are the gross-demand 95th percentiles over training
+decision hours. The factory computes $C_R$ and $C_Q$ as arithmetic means of
+the eleven monthly no-flexibility scores: $R_e$ is the mean hourly sum across
+markets of squared adjusted normalized ramps, and $Q_e$ is the sum of separate regional
+normalized monthly net-load peaks. These are absolute adjusted-grid metrics,
+not signed incremental ramp impacts. Both positive scales stay frozen for all
+training and May validation.
+For data snapshot `8386b7d`, the rounded values are $C_R\approx0.00826852$ and
+$C_Q\approx3.66460$.
+
+The default objective is $J_e=0.5R_e/C_R+0.5Q_e/C_Q$. Equal weights value
+equal proportional changes relative to those fixed training references, not
+equal achieved savings or learned influence. Report $J_{\mathrm{NF}}-J_{\mathrm{policy}}$
+(positive is favorable) alongside raw ramp and peak scores, incremental ramp
+diagnostics, and regional peaks in MW with reductions from the same no-flexibility
+fleet. Peak reduction is not a claim of going below the native no-fleet peak.
+The [thesis](../latex/thesis_problemstatement.tex) defines the objective.
 
 ## Factory and campaign
 
-Run:
+From the repository root, run:
 
 ```powershell
 python scripts\build_four_market_v2_factory.py
+python scripts\run_four_market_v2_campaign.py preflight
 ```
 
-This produces one fixture set and
-`output/four_market_v2/factory/factory.json`. The factory reads `calendar.json`
-and central frozen statistics, and references data panels rather than copying them.
-It validates the 114/28 split, panel coverage, hard capacity, and raw workload
-contract.
+The factory writes monthly fixtures and
+`output/four_market_joint_v1/factory/factory.json`, referencing the calendar,
+central frozen statistics, and panels rather than copying panels. Its fixed
+objective calibration records the objective version and input identity.
+Script and module names retain `four_market_v2` and `ramp_v6`.
 
-The locked ten-seed campaign is complete. Reproduce it with five workers, then
-aggregate after all ten summaries exist:
+Joint campaign outputs use `output/four_market_joint_v1/campaign/`, tagged
+pilots use `output/four_market_joint_v1/pilot/<tag>/`, and checkpoints use
+`models/four_market_joint_v1/`. Old `output/four_market_v2/` and
+`models/four_market_v2/` artifacts are historical and must not be reused.
 
-```powershell
-python scripts\run_four_market_v2_campaign.py run --workers 5
-python scripts\aggregate_four_market_v2_campaign.py
-```
-
-Seeds 4101-4110 request 2,000,000 interactions and complete uninterrupted
-(`resumed_from_interactions=0`) at the safe boundary of 2,045,952 per seed.
-Learning curves use raw rollout metrics; final paired analysis uses the optimizer
-seed (`n=10`), exact two-sided Wilcoxon, matched-pairs
-rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw seed bootstrap, and
-post-hoc cost/safety reporting.
-
-All ten optimizer seeds beat status quo on the macro ramp metric
-(`p=0.001953125`, exact two-sided Wilcoxon; rank-biserial `1.0`). CAISO, SPP,
-and ISO-NE improved in every seed, while MISO worsened in every seed. Mean
-day-ahead cost was 1.001233 times status quo and all modeled safety/work
-violations were zero.
+**Full joint ten-seed results are pending.** The planned seeds are 4101-4110,
+trained on eleven months and paired with the same no-flexibility fleet on May.
+Ramp-only, peak-only, and equal-weight joint runs are objective variants, not
+additional scheduling baselines. See the [repository README](../README.md)
+for the short pilot and full campaign commands.

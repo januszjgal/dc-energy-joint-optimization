@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from ramp_rl.campaign_statistics import paired_seed_summary, slope_diagnostic  # noqa: E402
+from energy_model_v3.four_market_v2 import ARTIFACT_NAMESPACE  # noqa: E402
 from ramp_rl.runner import LEARNING_CURVE_COLUMNS  # noqa: E402
 from scripts.run_four_market_v2_campaign import (  # noqa: E402
     REQUESTED_TIMESTEPS,
@@ -29,7 +30,7 @@ from scripts.run_four_market_v2_campaign import (  # noqa: E402
 )
 
 
-OUTPUT_ROOT = ROOT / "output" / "four_market_v2" / "campaign"
+OUTPUT_ROOT = ROOT / "output" / ARTIFACT_NAMESPACE / "campaign"
 SEEDS = tuple(range(4101, 4111))
 
 def _require_complete_summaries(output_root: Path) -> list[dict[str, Any]]:
@@ -73,10 +74,12 @@ def aggregate_learning_curves(output_root: Path) -> dict[str, Any]:
         raise ValueError("learning curves have no common rollout interaction counts")
     aggregate_path = output_root / "learning_curve_aggregate.csv"
     fields = (
-        "interaction_count", "seed_count", "mean_raw_ramp_reward",
+        "interaction_count", "seed_count", "mean_raw_joint_reward",
+        "median_raw_joint_reward", "mean_raw_peak_reward", "mean_raw_ramp_squared",
+        "mean_raw_peak_increment", "mean_raw_ramp_reward",
         "median_raw_ramp_reward", "mean_raw_incremental_ramp_impact",
         "median_raw_incremental_ramp_impact", "mean_episode_count",
-        "mean_elapsed_seconds",
+        "mean_elapsed_seconds", "mean_completed_episode_joint_J",
     )
     rows: list[dict[str, float | int]] = []
     for interaction_count in aligned_counts:
@@ -84,12 +87,21 @@ def aggregate_learning_curves(output_root: Path) -> dict[str, Any]:
         rows.append({
             "interaction_count": interaction_count,
             "seed_count": len(values),
+            "mean_raw_joint_reward": float(mean(row["mean_raw_joint_reward"] for row in values)),
+            "median_raw_joint_reward": float(np.median([row["mean_raw_joint_reward"] for row in values])),
+            "mean_raw_peak_reward": float(mean(row["mean_raw_peak_reward"] for row in values)),
+            "mean_raw_ramp_squared": float(mean(row["mean_raw_ramp_squared"] for row in values)),
+            "mean_raw_peak_increment": float(mean(row["mean_raw_peak_increment"] for row in values)),
             "mean_raw_ramp_reward": float(mean(row["mean_raw_ramp_reward"] for row in values)),
             "median_raw_ramp_reward": float(np.median([row["mean_raw_ramp_reward"] for row in values])),
             "mean_raw_incremental_ramp_impact": float(mean(row["mean_raw_incremental_ramp_impact"] for row in values)),
             "median_raw_incremental_ramp_impact": float(np.median([row["mean_raw_incremental_ramp_impact"] for row in values])),
             "mean_episode_count": float(mean(row["episode_count"] for row in values)),
             "mean_elapsed_seconds": float(mean(row["elapsed_seconds"] for row in values)),
+            "mean_completed_episode_joint_J": float(mean(
+                -row["mean_completed_episode_return"] for row in values
+                if np.isfinite(row["mean_completed_episode_return"])
+            )) if any(np.isfinite(row["mean_completed_episode_return"]) for row in values) else float("nan"),
         })
     with aggregate_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -97,12 +109,12 @@ def aggregate_learning_curves(output_root: Path) -> dict[str, Any]:
         writer.writerows(rows)
     figure_path = output_root / "learning_curve_aggregate.png"
     x = [int(row["interaction_count"]) for row in rows]
-    y = [float(row["mean_raw_incremental_ramp_impact"]) for row in rows]
+    y = [-float(row["mean_raw_joint_reward"]) for row in rows]
     fig, axis = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
     axis.plot(x, y, color="#0078d4", linewidth=1.8)
     axis.axvline(110_592, color="#666666", linestyle="--", linewidth=1, label="110,592 comparison point")
-    axis.set(xlabel="environment interactions", ylabel="mean raw incremental ramp impact")
-    axis.set_title("Ten-seed aligned PPO learning curve")
+    axis.set(xlabel="environment interactions", ylabel="mean hourly joint-objective contribution")
+    axis.set_title("Ten-seed joint peak/ramp PPO learning curve")
     axis.legend()
     fig.savefig(figure_path, dpi=160)
     plt.close(fig)
@@ -130,7 +142,7 @@ def aggregate_learning_curves(output_root: Path) -> dict[str, Any]:
 def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
     rows = _require_complete_summaries(output_root)
     differences = [
-        float(row["validation"]["status_quo_comparison"]["policy_minus_status_quo_mean_incremental_ramp_impact"])
+        float(row["validation"]["status_quo_comparison"]["policy_minus_status_quo_joint_J"])
         for row in rows
     ]
     markets = sorted(
@@ -143,6 +155,12 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
             for row in rows
         ]
         per_market[market] = {
+            "mean_policy_joint_J": float(mean(item["policy_joint_J"] for item in market_rows)),
+            "mean_status_quo_joint_J": float(mean(item["status_quo_joint_J"] for item in market_rows)),
+            "mean_joint_improvement": float(mean(item["improvement"] for item in market_rows)),
+            "mean_policy_peak_mw": float(mean(item["policy_peak_mw"] for item in market_rows)),
+            "mean_status_quo_peak_mw": float(mean(item["status_quo_peak_mw"] for item in market_rows)),
+            "mean_peak_reduction_mw": float(mean(item["peak_reduction_mw"] for item in market_rows)),
             "mean_policy_native_relative_incremental_ramp_impact": float(
                 mean(
                     item["policy_native_relative_incremental_ramp_impact"]
@@ -178,6 +196,9 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
             "effective_interactions": int(row["effective_interactions"]),
             "resumed_from_interactions": int(row["resumed_from_interactions"]),
             "training_elapsed_seconds": float(row["training_elapsed_seconds"]),
+            "policy_joint_J": float(row["validation"]["status_quo_comparison"]["policy_J"]),
+            "status_quo_joint_J": float(row["validation"]["status_quo_comparison"]["status_quo_J"]),
+            "components": row["validation"]["status_quo_comparison"]["components"],
             "policy_native_relative_incremental_ramp_impact": float(
                 row["validation"]["mean_incremental_ramp_impact"]
             ),
@@ -198,15 +219,18 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
         for row in rows
     ]
     result = {
+        "objective": rows[0]["validation"]["objective"],
         "seed_count": len(rows),
         "requested_interactions_per_seed": REQUESTED_TIMESTEPS,
         "validation_month_ids": list(rows[0]["validation_window_ids"]),
         "validation_days_per_seed": int(rows[0]["validation"]["day_count"]),
         "improvement_definition": (
-            "status-quo minus policy mean incremental ramp impact; positive favors the policy"
+            "status-quo minus policy mean monthly normalized joint score; positive favors the policy"
         ),
         "mean_improvement": float(-mean(differences)),
         "statistical_unit": "optimizer seed",
+        "mean_joint_J": float(mean(row["validation"]["mean_joint_J"] for row in rows)),
+        "sample_standard_deviation_joint_J": float(stdev(row["validation"]["mean_joint_J"] for row in rows)),
         "mean_incremental_ramp_impact": float(mean(
             float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows
         )),
@@ -226,7 +250,17 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
                 for row in rows
             )
         ),
-        "paired_policy_minus_status_quo": paired_seed_summary(differences),
+        "paired_policy_minus_status_quo": paired_seed_summary(differences, metric="monthly joint J"),
+        "component_comparisons": {
+            component: paired_seed_summary(
+                [
+                    -float(row["validation"]["status_quo_comparison"]["components"][component]["improvement"])
+                    for row in rows
+                ],
+                metric=component,
+            )
+            for component in ("ramp", "net_load_peak")
+        },
         "learning_curves": aggregate_learning_curves(output_root),
         "seeds": seed_summaries,
     }

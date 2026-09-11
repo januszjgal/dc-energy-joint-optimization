@@ -9,6 +9,7 @@ produced afterwards by grouping the hourly results by UTC date.
 from __future__ import annotations
 
 from collections import OrderedDict, defaultdict
+import json
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -21,14 +22,17 @@ from env.ramp_v6.projection import (
     SEMANTIC_ADJUSTMENT_COORDINATE_ID,
     SEMANTIC_ADJUSTMENT_UNITS,
 )
-from ramp_rl.contract import EnvRequest, RampEnvAdapter, RampEnvironmentFactory
+from env.ramp_v6.objective import JointObjective
+from ramp_rl.contract import (
+    EnvRequest, RampEnvAdapter, RampEnvironmentFactory, environment_identity,
+)
 
 
 IMPROVEMENT_DEFINITION = (
-    "J(status quo) - J(policy), where J sums the one-hour incremental squared "
-    "ramp impact over every market and hour of the month; positive means the "
-    "policy left gentler ramps than running every arrival in place. The "
-    "'improvement' field is the same quantity divided by the scored hours"
+    "Mean monthly J(status quo) - J(policy). J combines mean squared regional "
+    "one-hour ramps and regional monthly net-load peaks using fixed positive "
+    "training references and the declared weights. Positive favors the policy; "
+    "neither component is guaranteed to improve individually."
 )
 
 
@@ -160,11 +164,26 @@ def _episode(
     )
     context = reset_info["episode_context"]
     per_market_incremental, abs_h1_by_market = _collect_per_market_metrics(infos)
-    # Each step's impact is already summed over markets, so the month sum is J.
+    # Native-relative ramp impact is retained separately from the joint score.
     incremental = [float(info["incremental_ramp_impact"]) for info in infos]
     dates = [str(info["utc_date"]) for info in infos]
     daily = _daily_means(dates, incremental)
     semantic_adjustment_values = [float(info["semantic_adjustment_l2"]) for info in infos]
+    objective = JointObjective.from_dict(context["objective"])
+    ramp_mean_squared = float(mean(float(info["ramp_squared_score"]) for info in infos))
+    peaks = {
+        market: {
+            "adjusted_peak_mw": float(row["running_adjusted_peak_mw"]),
+            "native_peak_mw": float(row["running_native_peak_mw"]),
+            "normalized_peak": float(row["running_adjusted_peak_mw"]) / float(row["market_scale_mw"]),
+        }
+        for market, row in infos[-1]["per_market"].items()
+    }
+    normalized_peak = sum(row["normalized_peak"] for row in peaks.values())
+    joint_J = objective.score(ramp_mean_squared, normalized_peak)
+    raw_return = float(sum(info["scalar_reward"] for info in infos))
+    if not np.isclose(raw_return, -joint_J, rtol=1e-9, atol=1e-12):
+        raise RuntimeError("raw monthly return does not equal the negative joint objective")
     return {
         "window_id": window_id,
         "evaluation_seed": seed,
@@ -175,7 +194,20 @@ def _episode(
         "utc_dates": dates,
         "ramp_h1": [float(info["ramp_h1_adjusted"]) for info in infos],
         "incremental": incremental,
-        "J": float(sum(incremental)),
+        "objective": objective.as_dict(),
+        "J": joint_J,
+        "raw_undiscounted_return": raw_return,
+        "ramp_mean_squared": ramp_mean_squared,
+        "normalized_peak": normalized_peak,
+        "regional_peaks": peaks,
+        "per_market_ramp_mean_squared": {
+            market: float(mean(
+                float(info["per_market"][market]["windows"]["1h"]["adjusted_fraction_s_per_hour"])**2
+                for info in infos
+            ))
+            for market in peaks
+        },
+        "ramp_impact_J": float(sum(incremental)),
         "daily_incremental": dict(daily),
         "per_market_incremental": per_market_incremental,
         "abs_adjusted_ramp_h1_by_market": abs_h1_by_market,
@@ -201,7 +233,7 @@ def _market_series(episodes: list[dict[str, Any]]) -> dict[str, list[float]]:
 
 
 def _daily_table(policy: list[dict[str, Any]], baseline: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Per-UTC-day means of the equal-market impact, pooled over episodes."""
+    """Daily ramp-impact diagnostics, not daily or monthly joint objectives."""
     policy_days: dict[str, list[float]] = defaultdict(list)
     baseline_days: dict[str, list[float]] = defaultdict(list)
     for episode in policy:
@@ -218,9 +250,10 @@ def _daily_table(policy: list[dict[str, Any]], baseline: list[dict[str, Any]]) -
         baseline_mean = float(mean(baseline_days[date]))
         rows.append({
             "date": date,
+            "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
             "policy_incremental_ramp_impact": policy_mean,
             "status_quo_incremental_ramp_impact": baseline_mean,
-            "improvement": baseline_mean - policy_mean,
+            "ramp_impact_improvement_mean_per_hour": baseline_mean - policy_mean,
         })
     return rows
 
@@ -237,6 +270,11 @@ def _aggregate(
             raise ValueError("policy and status quo episodes must be paired by window")
         if policy_episode["utc_dates"] != baseline_episode["utc_dates"]:
             raise ValueError("policy and status quo episodes must cover the same hours")
+        if policy_episode["objective"] != baseline_episode["objective"]:
+            raise ValueError("policy and status quo objective definitions differ")
+    if any(episode["objective"] != policy[0]["objective"] for episode in policy):
+        raise ValueError("cannot aggregate different objective weights or references")
+    objective = JointObjective.from_dict(policy[0]["objective"])
     impacts = [value for episode in policy for value in episode["incremental"]]
     impact_dates = [date for episode in policy for date in episode["utc_dates"]]
     impact_months = [episode["month_id"] for episode in policy for _ in episode["incremental"]]
@@ -263,11 +301,32 @@ def _aggregate(
             "policy_minus_status_quo_incremental_ramp_impact": (
                 policy_market_macro[market] - status_quo_market_macro[market]
             ),
-            "improvement": status_quo_market_macro[market] - policy_market_macro[market],
-            "policy_outperforms_status_quo": policy_market_macro[market] < status_quo_market_macro[market],
+            "ramp_impact_improvement_mean_per_hour": status_quo_market_macro[market] - policy_market_macro[market],
         }
         for market in policy_market_values
     }
+    for market, row in per_market_status_quo_comparison.items():
+        policy_ramp = float(mean(e["per_market_ramp_mean_squared"][market] for e in policy))
+        baseline_ramp = float(mean(e["per_market_ramp_mean_squared"][market] for e in baseline))
+        policy_peak = float(mean(e["regional_peaks"][market]["normalized_peak"] for e in policy))
+        baseline_peak = float(mean(e["regional_peaks"][market]["normalized_peak"] for e in baseline))
+        policy_peak_mw = float(mean(e["regional_peaks"][market]["adjusted_peak_mw"] for e in policy))
+        baseline_peak_mw = float(mean(e["regional_peaks"][market]["adjusted_peak_mw"] for e in baseline))
+        policy_J = objective.score(policy_ramp, policy_peak)
+        baseline_J = objective.score(baseline_ramp, baseline_peak)
+        row.update({
+            "policy_ramp_mean_squared": policy_ramp,
+            "status_quo_ramp_mean_squared": baseline_ramp,
+            "ramp_mean_squared_improvement": baseline_ramp - policy_ramp,
+            "policy_peak_mw": policy_peak_mw,
+            "status_quo_peak_mw": baseline_peak_mw,
+            "peak_reduction_mw": baseline_peak_mw - policy_peak_mw,
+            "native_peak_mw": float(mean(e["regional_peaks"][market]["native_peak_mw"] for e in policy)),
+            "policy_joint_J": policy_J,
+            "status_quo_joint_J": baseline_J,
+            "improvement": baseline_J - policy_J,
+            "policy_outperforms_status_quo": policy_J < baseline_J,
+        })
     better_count = sum(row["policy_outperforms_status_quo"] for row in per_market_status_quo_comparison.values())
     market_count = len(per_market_status_quo_comparison)
     if market_count == 0:
@@ -281,12 +340,36 @@ def _aggregate(
     semantic_positive_count = sum(value > 1e-12 for value in semantic_adjustment_values)
     per_evaluation_seed: dict[int, list[float]] = defaultdict(list)
     for episode in policy:
-        per_evaluation_seed[int(episode["evaluation_seed"])].extend(episode["incremental"])
+        per_evaluation_seed[int(episode["evaluation_seed"])].append(episode["J"])
     policy_mean = float(mean(impacts))
     status_quo_mean = float(mean(status_quo_impacts))
     step_count = sum(episode["step_count"] for episode in policy)
+    policy_J = float(mean(episode["J"] for episode in policy))
+    baseline_J = float(mean(episode["J"] for episode in baseline))
+    components = {}
+    for name, field, reference, weight in (
+        ("ramp", "ramp_mean_squared", objective.ramp_reference, objective.ramp_weight),
+        ("net_load_peak", "normalized_peak", objective.peak_reference, objective.peak_weight),
+    ):
+        policy_value = float(mean(episode[field] for episode in policy))
+        baseline_value = float(mean(episode[field] for episode in baseline))
+        components[name] = {
+            "policy": policy_value,
+            "status_quo": baseline_value,
+            "improvement": baseline_value - policy_value,
+            "relative_improvement": (
+                (baseline_value - policy_value) / baseline_value if baseline_value > 0.0 else None
+            ),
+            "training_reference": reference,
+            "weight": weight,
+            "weighted_improvement": weight * (baseline_value - policy_value) / reference,
+        }
     summary = {
         "split": split,
+        "objective": objective.as_dict(),
+        "mean_joint_J": policy_J,
+        "mean_ramp_squared": components["ramp"]["policy"],
+        "mean_normalized_net_load_peak": components["net_load_peak"]["policy"],
         "episode_count": len(policy),
         "window_ids": [episode["window_id"] for episode in policy],
         "step_count": step_count,
@@ -318,13 +401,17 @@ def _aggregate(
             "policy_native_relative_mean_incremental_ramp_impact": policy_mean,
             "status_quo_native_relative_mean_incremental_ramp_impact": status_quo_mean,
             "policy_minus_status_quo_mean_incremental_ramp_impact": policy_mean - status_quo_mean,
-            "improvement": status_quo_mean - policy_mean,
-            "policy_J": float(sum(episode["J"] for episode in policy)),
-            "status_quo_J": float(sum(episode["J"] for episode in baseline)),
-            "improvement_J": float(
-                sum(episode["J"] for episode in baseline)
-                - sum(episode["J"] for episode in policy)
+            "ramp_impact_improvement_mean_per_hour": status_quo_mean - policy_mean,
+            "ramp_impact_improvement_J": float(
+                sum(episode["ramp_impact_J"] for episode in baseline)
+                - sum(episode["ramp_impact_J"] for episode in policy)
             ),
+            "improvement": baseline_J - policy_J,
+            "policy_J": policy_J,
+            "status_quo_J": baseline_J,
+            "improvement_J": baseline_J - policy_J,
+            "policy_minus_status_quo_joint_J": policy_J - baseline_J,
+            "components": components,
             "improvement_definition": IMPROVEMENT_DEFINITION,
             "markets_better_count": int(better_count),
             "market_count": int(market_count),
@@ -358,13 +445,14 @@ def _aggregate(
             "policy_ramp_power": sum(episode["ramp_power"] for episode in policy),
             "status_quo_ramp_power": sum(episode["ramp_power"] for episode in baseline),
         },
-        "bootstrap_by_month": _cluster_bootstrap_interval(
+        "ramp_impact_bootstrap_by_month": _cluster_bootstrap_interval(
             impacts, impact_months, unit="month", draws=500,
         ),
-        "bootstrap_by_day": _cluster_bootstrap_interval(
+        "ramp_impact_bootstrap_by_day": _cluster_bootstrap_interval(
             impacts, impact_dates, unit="day", draws=500,
         ),
         "evaluation_seed_interval": {
+            "metric": "monthly_joint_J",
             "mean": float(mean(float(mean(values)) for values in per_evaluation_seed.values())),
             "minimum": float(min(float(mean(values)) for values in per_evaluation_seed.values())),
             "maximum": float(max(float(mean(values)) for values in per_evaluation_seed.values())),
@@ -386,6 +474,19 @@ def evaluate_checkpoint(
 ) -> dict[str, Any]:
     if split != "validation":
         raise ValueError("evaluation is validation-only")
+    if not seeds or not windows:
+        raise ValueError("evaluation requires at least one seed and validation window")
+    metadata_path = checkpoint_dir / "training_summary.json"
+    if not metadata_path.is_file():
+        metadata_path = checkpoint_dir / "state.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    request = EnvRequest(split=split, seed=seeds[0], window_id=windows[0])
+    probe = RampEnvAdapter(factory(request), request)
+    try:
+        if metadata.get("environment_identity") != environment_identity(probe.contract):
+            raise ValueError("checkpoint objective, data or observation schema does not match evaluation")
+    finally:
+        probe.close()
     model = PPO.load(checkpoint_dir / "model.zip", device="cpu")
     normalization_path = checkpoint_dir / "vecnormalize.pkl"
     policy: list[dict[str, Any]] = []
