@@ -1,0 +1,23 @@
+{
+  "effective_interactions": 1024000,
+  "learning_curve_path": "output/four_market_v2/pilot/one-hour-1m/seed-4102/learning_curve.csv",
+  "n_envs": 4,
+  "ppo_config": {
+    "batch_size": 256,
+    "gae_lambda": 0.95,
+    "gamma": 0.99,
+    "learning_rate": 0.0003,
+    "n_epochs": 10,
+    "n_steps": 512,
+    "net_arch": [
+      64,
+      64
+    ]
+  },
+  "requested_interactions": 1000000,
+  "resumed_from_interactions": 0,
+  "safe_boundary_interactions": 51200,
+  "safe_quantum": 51200,
+  "seed": 4102,
+  "update_count": 5000
+}

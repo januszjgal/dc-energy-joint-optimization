@@ -1,0 +1,77 @@
+{
+  "elapsed_seconds": 6045.180358399637,
+  "final": {
+    "4101": {
+      "abs_adjusted_ramp_h1_p95": 0.080773880007042,
+      "batch_unfinished": 0.0,
+      "behavior_audit": {
+        "deferrable_pre_service": 295.77415726753264,
+        "policy_ramp_power": 492021.77533683006,
+        "status_quo_ramp_power": 509040.0449328206
+      },
+      "decoder_adjustment_rate": 0.7634408602150538,
+      "improvement_J": 0.18608674962201696,
+      "markets_better_count": 3,
+      "per_market_improvement_mean_per_hour": {
+        "CAISO_NP15": 0.0001255369423303392,
+        "ISONE_NEMA": 0.00011422682652080582,
+        "MISO_MINN_HUB": -2.137764128391736e-06,
+        "SPP_NORTH_HUB": 1.24905942315706e-05
+      },
+      "policy_J": -0.18596431126167534,
+      "service_unserved": 0.0,
+      "status_quo_J": 0.00012243836034161537,
+      "step_count": 744
+    },
+    "4102": {
+      "abs_adjusted_ramp_h1_p95": 0.08088020744013669,
+      "batch_unfinished": 0.0,
+      "behavior_audit": {
+        "deferrable_pre_service": 284.3891872140749,
+        "policy_ramp_power": 494434.4216422666,
+        "status_quo_ramp_power": 509040.0449328206
+      },
+      "decoder_adjustment_rate": 0.8346774193548387,
+      "improvement_J": 0.18418408814260376,
+      "markets_better_count": 3,
+      "per_market_improvement_mean_per_hour": {
+        "CAISO_NP15": 0.00011251669679576528,
+        "ISONE_NEMA": 0.00012911406454021806,
+        "MISO_MINN_HUB": -2.7169523153644943e-06,
+        "SPP_NORTH_HUB": 8.645449235569001e-06
+      },
+      "policy_J": -0.18406164978226214,
+      "service_unserved": 0.0,
+      "status_quo_J": 0.00012243836034161537,
+      "step_count": 744
+    },
+    "4103": {
+      "abs_adjusted_ramp_h1_p95": 0.08130535856163376,
+      "batch_unfinished": 0.0,
+      "behavior_audit": {
+        "deferrable_pre_service": 285.22293793428406,
+        "policy_ramp_power": 502867.033186664,
+        "status_quo_ramp_power": 509040.0449328206
+      },
+      "decoder_adjustment_rate": 0.7567204301075269,
+      "improvement_J": 0.1905655016956426,
+      "markets_better_count": 3,
+      "per_market_improvement_mean_per_hour": {
+        "CAISO_NP15": 0.00011525820675495232,
+        "ISONE_NEMA": 0.0001320157639997733,
+        "MISO_MINN_HUB": -2.0402116199459095e-06,
+        "SPP_NORTH_HUB": 1.0902667875492578e-05
+      },
+      "policy_J": -0.19044306333530098,
+      "service_unserved": 0.0,
+      "status_quo_J": 0.00012243836034161537,
+      "step_count": 744
+    }
+  },
+  "seeds": [
+    4101,
+    4102,
+    4103
+  ],
+  "timesteps": 1000000
+}
