@@ -41,8 +41,7 @@ multiple sites may also choose where that work runs.
 The question we ask here is:
 \begin{quote}
 \emph{How much can a causal scheduler jointly smooth normalized one-hour
-regional net-load ramps and reduce regional monthly net-load peaks relative
-to the same fleet without flexibility, using temporal deferral and geographic
+regional net-load ramps and reduce regional monthly net-load peaks, using temporal deferral and geographic
 routing while satisfying immediate-service, batch-window, and site-capacity
 constraints?}
 \end{quote}
@@ -51,11 +50,8 @@ We use Google workload traces and EIA grid data to model a synthetic fleet
 of four data centers. Each hour, the scheduler chooses where service runs,
 how much batch work to execute, and where to execute it. We will use
 proximal policy optimization (PPO) to train a policy that minimizes an equally
-weighted combination of normalized monthly ramp and peak scores while meeting
+weighted combination of scaled monthly ramp impact and regional peaks while meeting
 workload deadlines and site-capacity limits.
-
-We focus on net load rather than cost: rapid changes require generation to
-adjust quickly, while high peaks require more supply at once.
 
 \section{Google ClusterData2019 Workload Trace}
 \label{sec:clusterdata2019}
@@ -303,8 +299,9 @@ observed wind and solar output, all in MW:
 \subsection{Calendar and frozen statistics}
 \label{subsec:energy-calendar}
 
-We use 2025 grid data: eleven months (334 UTC days) for training and May
-(31 UTC days) for validation. Each month is a continuous simulation, as
+We use 2025 grid data. The training set, \(\mathcal E_{\mathrm{train}}\),
+contains the eleven months outside May (334 UTC days). May (31 UTC days)
+is used for validation. Each month is a continuous simulation, as
 described in Section~\ref{subsec:transform-pairing}.
 
 To compare markets of different sizes, we define a fixed scale
@@ -408,8 +405,8 @@ used in the eleven training months and the May validation month.
 
 Each month is an independent, continuous simulation. Queues and site-power
 history carry across midnight, and every decision hour is scored. The
-decision hours are \(\mathcal T=\{0,\ldots,T_e-1\}\), where \(T_e\) is the
-month's length in hours. One preceding hour,
+decision hours for month \(e\) are \(\mathcal T_e=\{0,\ldots,T_e-1\}\), where
+\(T_e\) is its length in hours. One preceding hour,
 \(\mathcal W=\{-1\}\), initializes the grid and site-power history for the
 first decision and ramp calculation.
 Its power is computed by executing the preceding workload in place;
@@ -429,20 +426,20 @@ each hour, then multiplying by the site's hourly capacity
 \(K_m\Delta t\).\footnote{We treat each hour's recorded CPU execution as
 work arriving at the start of the corresponding simulation hour. For
 example, average utilization of 60\% becomes 0.6 work units.} Let \(t\)
-be the hour within the month and \(h\) the corresponding trace hour:
+be the hour within the month:
 \begin{align}
   s_{m,t}
   &=
   \frac{K_m\Delta t}{12}
-  \sum_{b=0}^{11} u^{\mathrm{svc}}_{m,12h+b},
+  \sum_{b=0}^{11} u^{\mathrm{svc}}_{m,12t+b},
   \label{eq:synthetic-service-arrivals}\\
   q_{m,t}
   &=
   \frac{K_m\Delta t}{12}
-  \sum_{b=0}^{11} u^{\mathrm{bat}}_{m,12h+b}.
+  \sum_{b=0}^{11} u^{\mathrm{bat}}_{m,12t+b}.
   \label{eq:synthetic-batch-arrivals}
 \end{align}
-The trace restarts each month, so \(h=t\). With \(K_m=1\) work unit per hour
+With \(K_m=1\) work unit per hour
 and \(\Delta t=1\) h, the resulting work amounts equal the hourly average
 utilization values numerically.
 
@@ -519,9 +516,10 @@ in the smaller markets.
 Let \(\mathcal M=\{1,\ldots,4\}\) be the modeled sites and their paired market
 cases. Indices \(i\) and \(j\) identify batch origin and execution
 destination, respectively. Let
-\(\mathcal T=\{0,\ldots,T_e-1\}\) be the decision-slot indices of a simulated
-month with \(T_e\) hours, and \(\mathcal W=\{-1\}\) the preceding warm-up
-slot. One interval has duration \(\Delta t=1\) h.
+\(\mathcal T_e=\{0,\ldots,T_e-1\}\) be the decision-slot indices of simulated
+month \(e\) with \(T_e\) hours, and \(\mathcal W=\{-1\}\) the preceding warm-up
+slot. One interval has duration \(\Delta t=1\) h. The month index is omitted
+from hourly quantities.
 
 For each site and hour, the model uses synthetic service arrivals
 \(s_{m,t}\), synthetic batch arrivals \(q_{m,t}\), standardized compute
@@ -607,8 +605,8 @@ origin, cumulative execution must cover all work due:
 \begin{equation}
   \sum_{\rho=0}^{t}y_{i,\rho}
   \geq
-  \sum_{\substack{\nu\in\mathcal T\\d_{\nu}\leq t}}q_{i,\nu},
-  \qquad i\in\mathcal M,\ t\in\mathcal T.
+  \sum_{\substack{\nu\in\mathcal T_e\\d_{\nu}\leq t}}q_{i,\nu},
+  \qquad i\in\mathcal M,\ t\in\mathcal T_e.
   \label{eq:deadline-feasibility}
 \end{equation}
 Finally, the month must end with every backlog empty:
@@ -680,11 +678,8 @@ the market's demand scale per hour:
   \frac{A_{m,t}-A_{m,t-1}}{S_m\Delta t}.
   \label{eq:adjusted-ramp}
 \end{align}
-A 1,000 MW change represents a smaller fraction of MISO's demand scale than
-of ISO-NE's.
-
 Squaring penalizes larger ramps and treats upward and downward ramps
-equally. As a diagnostic, we measure the fleet's incremental ramp impact by
+equally. We measure the fleet's ramp impact by
 subtracting the original grid's squared ramp:
 \begin{equation}
   I_{m,t}
@@ -696,86 +691,73 @@ subtracting the original grid's squared ramp:
 \end{equation}
 A negative value means the scheduled fleet reduced the squared ramp relative
 to the original grid; a positive value means it increased it.
-\(I_{m,t}\) is not the joint objective.
 
-Each simulated month \(e\) is one optimization episode. For scheduling policy
-\(\mu\), define the mean hourly fleet ramp score and the sum of regional
-normalized monthly net-load peaks:
-\begin{align}
-  R_e(\mu)
-  &=
-  \frac{1}{T_e}
-  \sum_{t\in\mathcal T}\sum_{m\in\mathcal M}
-  \left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu)\right)^2,
-  \label{eq:monthly-ramp-score}\\
-  Q_e(\mu)
-  &=
-  \sum_{m\in\mathcal M}
-  \max_{t\in\mathcal T}\frac{A_{m,t}(\mu)}{S_m}.
-  \label{eq:monthly-peak-score}
-\end{align}
-The warm-up hour contributes to the first ramp but never to a monthly peak.
-Each region has its own peak maximum; \(Q_e\) is not the maximum of the
-combined regions, a data-center power peak, or an hourly squared-load penalty.
-One hour defines the ramp measurement, not the planning horizon.
+We also aim to reduce each region's monthly net-load peak. Under scheduling
+policy \(\mu\), its normalized peak in month \(e\) is
+\begin{equation}
+  Q_{m,e}(\mu)
+  =
+  \max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m}.
+  \label{eq:monthly-peak}
+\end{equation}
+This takes the highest adjusted net load during the month and divides it
+by the region's demand scale, \(S_m\).
 
-\subsection{Joint objective and fixed reference scales}
-\label{subsec:problem-normalization}
-
-Let \(\mathcal E_{\mathrm{train}}\) be the eleven training months and
-\(\mu_{\mathrm{NF}}\) the no-flexibility policy defined below. We take the
-arithmetic mean of its monthly scores:
+Ramp impact and monthly peaks have different numerical scales. To combine
+them in one objective, we divide each by a fixed positive reference value.
+The no-flexibility policy,
+\(\mu_{\mathrm{NF}}\), runs all work immediately at its original site.
+Using this policy over \(\mathcal E_{\mathrm{train}}\), we calculate
 \begin{align}
   C_R
-  &=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}R_e(\mu_{\mathrm{NF}}),
-  \label{eq:ramp-reference-scale}\\
+  &=
+  \frac{1}{|\mathcal E_{\mathrm{train}}|}
+  \sum_{e\in\mathcal E_{\mathrm{train}}}
+  \sum_{t\in\mathcal T_e}\sum_{m\in\mathcal M}
+  \left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu_{\mathrm{NF}})\right)^2,
+  \label{eq:ramp-reference}\\
   C_Q
-  &=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}Q_e(\mu_{\mathrm{NF}}).
-  \label{eq:peak-reference-scale}
+  &=
+  \frac{1}{|\mathcal E_{\mathrm{train}}|}
+  \sum_{e\in\mathcal E_{\mathrm{train}}}\sum_{m\in\mathcal M}
+  Q_{m,e}(\mu_{\mathrm{NF}}).
+  \label{eq:peak-reference}
 \end{align}
-For the current data, \(C_R\approx0.00826852\) and \(C_Q\approx3.66460\).
-These positive scales are frozen for all training and May validation.
-They use absolute adjusted-grid scores, never the signed incremental
-diagnostic \(I_{m,t}\).
+\(C_R\) averages monthly totals of squared ramps, giving \(I_{m,t}\) a
+positive reference scale. \(C_Q\) averages the summed normalized regional
+peaks. Both remain fixed during training and May validation.
 
+\subsection{Joint objective}
+\label{subsec:problem-normalization}
+
+Each simulated month \(e\) is one optimization episode. Decisions are hourly,
+and the objective covers the full month. We choose the schedule with the
+smallest equally weighted combination of scaled monthly ramp impact and
+regional monthly peaks.
 Let \(\mathfrak M\) be the causal scheduling policies satisfying
-Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}. The joint
-objective uses equal weights by default:
+Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
 \begin{equation}
   \begin{aligned}
     &\min_{\mu\in\mathfrak M} J_e(\mu),\\
     &J_e(\mu)
     =
-    0.5\,\frac{R_e(\mu)}{C_R}
-    +0.5\,\frac{Q_e(\mu)}{C_Q}.
+    \frac{0.5}{C_R}
+    \sum_{t\in\mathcal T_e}\sum_{m\in\mathcal M} I_{m,t}(\mu)\\
+    &\hspace{2em}
+    +\frac{0.5}{C_Q}
+    \sum_{m\in\mathcal M} Q_{m,e}(\mu).
   \end{aligned}
   \label{eq:objective}
 \end{equation}
-Equal weights give the same value to equal proportional changes relative to
-these fixed training references, not equal achieved savings or learned
-influence. A lower joint score need not improve both components.
-Comparison variants can replace the two weights with nonnegative
-\(\lambda_r,\lambda_p\), where \(\lambda_r+\lambda_p=1\); ramp-only and
-peak-only policies still use the same no-flexibility baseline.
+The 0.5 weights apply after dividing each term by its reference scale.
+A lower joint score need not improve both components.
 
-\subsection{Reference signal and the one baseline}
-\label{subsec:problem-baselines}
+\subsection{No-flexibility comparison}
+\label{subsec:problem-evaluation}
 
-The \emph{original grid}, with \(P_{m,t}=0\), provides the diagnostic reference
-\(\Delta^{\mathrm{original}}_{m,t}\) in Equation~\eqref{eq:incremental-impact}.
-It is not another scheduling baseline, and \(J_e\) is not a signed comparison
-with it. We compare scheduling policies using the same added fleet.
-
-The \emph{no-flexibility baseline}, \(\mu_{\mathrm{NF}}\), runs every arrival
-at its original site in its arrival hour. It uses the same arrivals, power
-models, grid data, forecasts, and month as the scheduler:
-\begin{equation}
-  x^{\mathrm{svc},\mathrm{NF}}_{m,t}=s_{m,t},
-  \qquad
-  x^{\mathrm{bat},\mathrm{NF}}_{m,t}=q_{m,t}.
-  \label{eq:no-flex-baseline}
-\end{equation}
-We report improvement as
+We compare the scheduler with \(\mu_{\mathrm{NF}}\) using
+the same arrivals, power models, grid data, forecasts, and month. We report
+improvement as
 \begin{equation}
   \text{Improvement}
   =
@@ -783,12 +765,10 @@ We report improvement as
   \label{eq:improvement}
 \end{equation}
 which is positive when the scheduler \(\mu\) improves on the baseline.
-The no-flexibility baseline is feasible and is currently the only scheduling
-comparison used in this thesis.
 
-We also report raw \(R_e\) and \(Q_e\), incremental ramp diagnostics
-\(I_{m,t}\), and regional adjusted peaks in MW with their reductions from
-the same no-flexibility fleet. Since site power is nonnegative, peak reduction
+We report the ramp-impact and peak components separately, along with
+regional adjusted peaks in MW and their reductions from
+the no-flexibility fleet. Since site power is nonnegative, peak reduction
 means improvement over that fleet without flexibility, not a peak below the
 original grid without the fleet.
 
@@ -819,96 +799,94 @@ chapter will describe the observation features and solution algorithm.
 
 \begin{quote}
 Choose a causal policy for hourly service destinations, batch release
-volumes, and batch destinations to minimize the joint monthly ramp and
+volumes, and batch destinations to minimize the joint monthly ramp-impact and
 regional net-load peak score in Equation~\eqref{eq:objective}. Use only the
 information available at each decision and meet the service, deadline, and
 capacity constraints above. Report improvement over the no-flexibility
 baseline using Equation~\eqref{eq:improvement}.
 \end{quote}
 
-PPO is an approximate solution method, not a guarantee of global optimality.
-The raw, undiscounted monthly reward sums to \(-J_e\); training uses a
-discount factor of 0.99 and reward normalization. The methods chapter will
-describe the reward construction and training procedure.
 
-\subsection{Worked example: one-hour ramp diagnostic}
-\label{subsec:problem-worked-ramp}
+\subsection{Worked example: joint ramp and peak reduction}
+\label{subsec:problem-worked-joint}
 
-At 2025-07-19 16:00 UTC (trace hour 448), MISO Minnesota receives
-0.3982 work units of service and 0.0708 of batch. Under the no-flexibility
-baseline, it executes \(w=0.4690\) work units. Its modeled power is
+We select an hour from the completed July 2025 data to illustrate the joint
+objective. This is a worked calculation, not a PPO result. We compare the
+no-flexibility baseline with a schedule that changes one hour's service
+routing and leaves all other work in place.
+
+At 2025-07-29 22:00 UTC (hour \(t=694\)), ISO-NE NEMA receives 0.3549 work
+units of service and 0.2047 of batch. Under the baseline, it executes
+\(w=0.5596\) work units, drawing approximately
 \begin{equation*}
-  P = 500\,(0.5482 + 0.3758 \times 0.4690) = 362 \ \mathrm{MW}.
+  P = 500\,(0.382039 + 0.570370 \times 0.5596)
+  \approx 350.6\ \mathrm{MW}.
 \end{equation*}
-CAISO NP15, SPP North, and ISO-NE NEMA draw approximately 361, 350, and
-333 MW, respectively.
+CAISO NP15 draws 352.3 MW and has 0.4799 work units of spare capacity.
+Moving ISO-NE's 0.3549 service work units to CAISO fits within that capacity.
+ISO-NE's power falls to 249.4 MW, and CAISO's rises to 412.6 MW. Batch work
+still runs at its original sites in its arrival hour.
 
-Table~\ref{tab:energy-example-rows} gives the grid conditions for that hour.
-CAISO net load fell by 2,112 MW from the previous hour, while MISO net load
-rose by 2,826 MW. The 15:00 forecasts available to the scheduler predicted
-current-hour net loads of 10,840 MW for CAISO and 78,530 MW for MISO.
-The calculations below use the realized values to score an illustrative
-routing choice.
-
-\begin{table}[htbp]
-  \centering
-  \footnotesize
-  \caption{The four market cases at 2025-07-19 16:00 UTC, in MW.}
-  \label{tab:energy-example-rows}
-  \begin{tabular}{@{}lrrrr@{}}
-    \toprule
-    Market case & Demand & Wind & Solar & Net load \\
-    \midrule
-    CAISO NP15     & 29,214 &  2,096 & 15,279 & 11,839 \\
-    MISO Minnesota & 89,047 &  3,238 &  7,577 & 78,232 \\
-    SPP North      & 43,158 & 16,032 &    801 & 26,325 \\
-    ISO-NE NEMA    & 11,312 &    160 &    857 & 10,295 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Table~\ref{tab:incremental-ramp-example} shows the baseline's one-hour ramp
-diagnostic.
+Table~\ref{tab:joint-example-hour} shows the two regions' grid conditions
+and the fleet's ramp impact. Routing changes ISO-NE's impact from positive
+to negative, while increasing CAISO's positive impact.
+The 21:00 forecasts available at this decision
+predicted current-hour net loads of 23,439 MW for ISO-NE and 10,150 MW for
+CAISO; scoring uses the realized net load.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Incremental ramp diagnostic from Equation~\eqref{eq:incremental-impact} at
-  2025-07-19 16:00 UTC, with every site running the work that arrived there.
-  A positive \(I\) means the fleet made that market's ramp worse.}
-  \label{tab:incremental-ramp-example}
-  \begin{tabular}{@{}lrrr@{}}
+  \caption{Grid conditions and routing effects at 2025-07-29 22:00 UTC.
+  Ramp impacts use Equation~\eqref{eq:incremental-impact}.}
+  \label{tab:joint-example-hour}
+  \begin{tabular}{@{}lrr@{}}
     \toprule
-    Market case & \(\Delta^{\mathrm{original}}\) & \(\Delta^{\mathrm{adjusted}}\) & \(I\ (\times10^{-5})\) \\
+    Quantity & ISO-NE NEMA & CAISO NP15 \\
     \midrule
-    CAISO NP15     & \(-0.0621\) & \(-0.0621\) & \(-0.05\) \\
-    MISO Minnesota & \(+0.0279\) & \(+0.0279\) & \(+0.09\) \\
-    SPP North      & \(+0.0622\) & \(+0.0622\) & \(-0.24\) \\
-    ISO-NE NEMA    & \(+0.0216\) & \(+0.0225\) & \(+4.03\) \\
-    \midrule
-    Total          &             &             & \(+3.83\) \\
+    Original net load at 21:00 (MW) & 23,204 & 9,153 \\
+    Original net load at 22:00 (MW) & 24,082 & 9,390 \\
+    Ramp impact \(I_{m,t}\), baseline & \(+0.000032\) & \(+0.000006\) \\
+    Ramp impact \(I_{m,t}\), with routing & \(-0.000488\) & \(+0.000035\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Let's review ISO-NE NEMA closely. Its original ramp is \(+0.0216\); increasing
-site power raises the adjusted ramp to \(+0.0225\), giving
-\(I=+4.03\times10^{-5}\). Summing the four markets gives a baseline
-total impact for this hour of \(+3.83\times10^{-5}\).
+Let's review ISO-NE NEMA closely. This hour sets its monthly adjusted
+net-load peak under the baseline: \(24{,}082+350.6=24{,}432.6\) MW.
+After routing, its peak is \(24{,}082+249.4=24{,}331.4\) MW, a reduction
+of 101.2 MW. Checking every July hour confirms that no other hour exceeds
+this new peak. CAISO's monthly peak remains 33,872.9 MW, and the MISO and
+SPP peaks are unchanged.
 
-Now move Minnesota's 0.3982 units of service to CAISO NP15, which has
-0.4281 units of spare capacity. Minnesota's power falls from 362 to
-287 MW, while CAISO's rises from 361 to 429 MW. Their different power
-coefficients mean the 75 MW reduction and 68 MW increase need not match.
-This reduces demand in the region with rising net load and adds demand
-in the region with falling net load.
+We calculate both schedules over all 744 hours, including the next-hour
+ramp when service returns to its original sites.
+Table~\ref{tab:joint-example-month} shows how the routing choice changes
+the normalized monthly components. The joint score is their equally
+weighted mean; calculations use unrounded inputs.
 
-CAISO's one-hour impact becomes \(-24.39\times10^{-5}\), and MISO's becomes
-\(-3.98\times10^{-5}\). With the other two sites unchanged, the total
-falls to \(-24.58\times10^{-5}\). This improves the score for this
-hour, not necessarily the joint monthly objective. The example does not
-establish a monthly peak reduction; evaluating \(J_e\) requires the full
-month's adjusted-load trajectory, including effects on later ramps.
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{July scores for the illustrative routing change. All other work
+  follows the no-flexibility baseline.}
+  \label{tab:joint-example-month}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    Quantity & Baseline & With routing \\
+    \midrule
+    ISO-NE monthly peak (MW) & 24,432.6 & 24,331.4 \\
+    CAISO monthly peak (MW) & 33,872.9 & 33,872.9 \\
+    Scaled ramp impact & \(-0.000200\) & \(-0.000307\) \\
+    Normalized regional peaks & 1.213534 & 1.212000 \\
+    Joint score \(J_e\) & 0.606667 & 0.605847 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The joint improvement is \(0.606667-0.605847\approx0.000820\).
+This one-hour routing change reduces both monthly scores while executing
+the same work within the service, deadline, and capacity constraints.
 
 \section{Scope and Limitations}
 \label{sec:limitations}
