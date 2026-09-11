@@ -11,7 +11,7 @@ import numpy as np
 
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.models import RampProtocol
-from env.ramp_v6.objective import JointObjective, trajectory_scores, update_peak
+from env.ramp_v6.objective import JointObjective, reference_trajectory_scores, update_peak
 from env.ramp_v6.panel import CanonicalMarketPanel
 from ramp_rl.contract import environment_identity
 from ramp_rl.evaluation import _aggregate, _episode, evaluate_checkpoint
@@ -40,6 +40,33 @@ class JointObjectiveMathTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 JointObjective(**kwargs).validate()
 
+    def test_negative_impact_earns_credit_without_clamping(self) -> None:
+        objective = JointObjective(ramp_reference=2.0, peak_reference=10.0)
+        ramp_reward, peak_reward = objective.reward_components(-4.0, 0.0)
+        self.assertEqual(ramp_reward, 1.0)
+        self.assertEqual(peak_reward, 0.0)
+        self.assertEqual(objective.score(-4.0, 0.0), -1.0)
+
+    def test_native_subtraction_is_a_constant_with_the_same_reference(self) -> None:
+        objective = JointObjective(ramp_reference=2.0, peak_reference=10.0)
+        native_squared_sum = 3.0
+        for adjusted_squared_sum, peak in ((2.0, 10.0), (4.0, 8.0)):
+            absolute = objective.score(adjusted_squared_sum, peak)
+            incremental = objective.score(adjusted_squared_sum - native_squared_sum, peak)
+            self.assertAlmostEqual(absolute - incremental, 0.75)
+
+    def test_reward_sums_without_a_month_length_divisor(self) -> None:
+        objective = JointObjective()
+        for hours in (672, 720, 744):
+            reward = sum(objective.reward_components(-0.001, 0.0)[0] for _ in range(hours))
+            self.assertAlmostEqual(reward, -objective.score(-0.001 * hours, 0.0))
+
+    def test_old_mean_ramp_objective_metadata_is_rejected(self) -> None:
+        metadata = JointObjective().as_dict()
+        metadata["version"] = "joint-net-load-peak-ramp-v1"
+        with self.assertRaisesRegex(ValueError, "incompatible joint objective"):
+            JointObjective.from_dict(metadata)
+
     def test_peak_increments_telescope_including_negative_first_value(self) -> None:
         peak = None
         increments = []
@@ -51,9 +78,9 @@ class JointObjectiveMathTests(unittest.TestCase):
 
     def test_peak_is_regional_month_maximum_and_excludes_warm_hour(self) -> None:
         net = np.asarray([[999.0, 999.0], [100.0, 200.0], [200.0, 100.0]])
-        ramp, peak = trajectory_scores(net, np.zeros_like(net), np.asarray([100.0, 100.0]))
+        ramp, peak = reference_trajectory_scores(net, np.zeros_like(net), np.asarray([100.0, 100.0]))
         self.assertEqual(peak, 4.0)
-        expected_ramp = ((-8.99)**2 + (-7.99)**2 + 1.0**2 + (-1.0)**2) / 2
+        expected_ramp = (-8.99)**2 + (-7.99)**2 + 1.0**2 + (-1.0)**2
         self.assertAlmostEqual(ramp, expected_ramp)
 
 
@@ -72,9 +99,9 @@ class JointEnvironmentTests(unittest.TestCase):
         )
 
     def test_episode_reward_equals_independently_computed_joint_score(self) -> None:
-        for weight in (0.0, 0.5, 1.0):
-            with self.subTest(weight=weight):
-                env = self.make_env(weight)
+        for weight, hours in ((0.0, 48), (0.5, 48), (1.0, 48), (0.5, 672), (0.5, 720), (0.5, 744)):
+            with self.subTest(weight=weight, hours=hours):
+                env = self.make_env(weight, hours)
                 try:
                     observation, _ = env.reset(seed=7)
                     returns = 0.0
@@ -90,8 +117,11 @@ class JointEnvironmentTests(unittest.TestCase):
                                 info["per_market"]["M"]["running_adjusted_peak_mw"] / 1200.0,
                                 places=6,
                             )
-                    adjusted = env.panel.frame["net_load_mw"].to_numpy() + np.asarray(power)
-                    ramp = float(np.mean((np.diff(adjusted) / 1200.0)**2))
+                    native = env.panel.frame["net_load_mw"].to_numpy()
+                    adjusted = native + np.asarray(power)
+                    ramp = float(np.sum(
+                        (np.diff(adjusted) / 1200.0)**2 - (np.diff(native) / 1200.0)**2
+                    ))
                     peak = float(np.max(adjusted[1:]) / 1200.0)
                     expected = weight * ramp / 0.02 + (1.0 - weight) * peak / 1.2
                     self.assertAlmostEqual(returns, -expected, places=12)
@@ -151,6 +181,33 @@ class JointEnvironmentTests(unittest.TestCase):
         self.assertEqual(comparison["components"]["net_load_peak"]["improvement"], 0.0)
         self.assertEqual(comparison["per_market"]["M"]["peak_reduction_mw"], 0.0)
         self.assertNotEqual(episode["J"], episode["ramp_impact_J"])
+        self.assertAlmostEqual(
+            episode["ramp_impact_sum"], sum(episode["incremental"])
+        )
+
+    def test_signed_ramp_baselines_never_produce_percentage_improvements(self) -> None:
+        for warm_power in (70.0, 85.0, 95.0):
+            with self.subTest(warm_power=warm_power):
+                def factory(request):
+                    env = self.make_env(hours=12)
+                    env.workload.warm_power_mw.fill(warm_power)
+                    return env
+
+                episode = _episode(
+                    factory=factory, split="validation", seed=1, window_id="test",
+                    model=None, normalization_path=None,
+                )
+                if warm_power == 70.0:
+                    self.assertGreater(episode["ramp_impact_sum"], 0.0)
+                elif warm_power == 95.0:
+                    self.assertLess(episode["ramp_impact_sum"], 0.0)
+                else:
+                    self.assertAlmostEqual(episode["ramp_impact_sum"], 0.0, places=12)
+                summary = _aggregate([episode], [episode], "validation")
+                component = summary["status_quo_comparison"]["components"]["ramp"]
+                self.assertEqual(component["metric"], "ramp_impact_sum")
+                self.assertIsNone(component["relative_improvement"])
+                self.assertEqual(component["improvement"], 0.0)
 
     def test_evaluation_rejects_mismatched_objective_before_loading_model(self) -> None:
         env = self.make_env(weight=1.0)

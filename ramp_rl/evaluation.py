@@ -29,8 +29,8 @@ from ramp_rl.contract import (
 
 
 IMPROVEMENT_DEFINITION = (
-    "Mean monthly J(status quo) - J(policy). J combines mean squared regional "
-    "one-hour ramps and regional monthly net-load peaks using fixed positive "
+    "Mean monthly J(status quo) - J(policy). J combines summed regional "
+    "incremental squared ramp impacts and regional monthly net-load peaks using fixed positive "
     "training references and the declared weights. Positive favors the policy; "
     "neither component is guaranteed to improve individually."
 )
@@ -164,8 +164,9 @@ def _episode(
     )
     context = reset_info["episode_context"]
     per_market_incremental, abs_h1_by_market = _collect_per_market_metrics(infos)
-    # Native-relative ramp impact is retained separately from the joint score.
+    # The objective uses the monthly sum; hourly means remain diagnostics.
     incremental = [float(info["incremental_ramp_impact"]) for info in infos]
+    ramp_impact_sum = float(sum(incremental))
     dates = [str(info["utc_date"]) for info in infos]
     daily = _daily_means(dates, incremental)
     semantic_adjustment_values = [float(info["semantic_adjustment_l2"]) for info in infos]
@@ -180,7 +181,7 @@ def _episode(
         for market, row in infos[-1]["per_market"].items()
     }
     normalized_peak = sum(row["normalized_peak"] for row in peaks.values())
-    joint_J = objective.score(ramp_mean_squared, normalized_peak)
+    joint_J = objective.score(ramp_impact_sum, normalized_peak)
     raw_return = float(sum(info["scalar_reward"] for info in infos))
     if not np.isclose(raw_return, -joint_J, rtol=1e-9, atol=1e-12):
         raise RuntimeError("raw monthly return does not equal the negative joint objective")
@@ -198,6 +199,7 @@ def _episode(
         "J": joint_J,
         "raw_undiscounted_return": raw_return,
         "ramp_mean_squared": ramp_mean_squared,
+        "ramp_impact_sum": ramp_impact_sum,
         "normalized_peak": normalized_peak,
         "regional_peaks": peaks,
         "per_market_ramp_mean_squared": {
@@ -207,7 +209,11 @@ def _episode(
             ))
             for market in peaks
         },
-        "ramp_impact_J": float(sum(incremental)),
+        "per_market_ramp_impact_sum": {
+            market: float(sum(values))
+            for market, values in per_market_incremental.items()
+        },
+        "ramp_impact_J": ramp_impact_sum,
         "daily_incremental": dict(daily),
         "per_market_incremental": per_market_incremental,
         "abs_adjusted_ramp_h1_by_market": abs_h1_by_market,
@@ -308,13 +314,18 @@ def _aggregate(
     for market, row in per_market_status_quo_comparison.items():
         policy_ramp = float(mean(e["per_market_ramp_mean_squared"][market] for e in policy))
         baseline_ramp = float(mean(e["per_market_ramp_mean_squared"][market] for e in baseline))
+        policy_impact = float(mean(e["per_market_ramp_impact_sum"][market] for e in policy))
+        baseline_impact = float(mean(e["per_market_ramp_impact_sum"][market] for e in baseline))
         policy_peak = float(mean(e["regional_peaks"][market]["normalized_peak"] for e in policy))
         baseline_peak = float(mean(e["regional_peaks"][market]["normalized_peak"] for e in baseline))
         policy_peak_mw = float(mean(e["regional_peaks"][market]["adjusted_peak_mw"] for e in policy))
         baseline_peak_mw = float(mean(e["regional_peaks"][market]["adjusted_peak_mw"] for e in baseline))
-        policy_J = objective.score(policy_ramp, policy_peak)
-        baseline_J = objective.score(baseline_ramp, baseline_peak)
+        policy_J = objective.score(policy_impact, policy_peak)
+        baseline_J = objective.score(baseline_impact, baseline_peak)
         row.update({
+            "policy_ramp_impact_sum": policy_impact,
+            "status_quo_ramp_impact_sum": baseline_impact,
+            "ramp_impact_improvement_sum": baseline_impact - policy_impact,
             "policy_ramp_mean_squared": policy_ramp,
             "status_quo_ramp_mean_squared": baseline_ramp,
             "ramp_mean_squared_improvement": baseline_ramp - policy_ramp,
@@ -348,17 +359,24 @@ def _aggregate(
     baseline_J = float(mean(episode["J"] for episode in baseline))
     components = {}
     for name, field, reference, weight in (
-        ("ramp", "ramp_mean_squared", objective.ramp_reference, objective.ramp_weight),
+        ("ramp", "ramp_impact_sum", objective.ramp_reference, objective.ramp_weight),
         ("net_load_peak", "normalized_peak", objective.peak_reference, objective.peak_weight),
     ):
         policy_value = float(mean(episode[field] for episode in policy))
         baseline_value = float(mean(episode[field] for episode in baseline))
         components[name] = {
+            "metric": field,
             "policy": policy_value,
             "status_quo": baseline_value,
             "improvement": baseline_value - policy_value,
             "relative_improvement": (
-                (baseline_value - policy_value) / baseline_value if baseline_value > 0.0 else None
+                (baseline_value - policy_value) / baseline_value
+                if name == "net_load_peak" and baseline_value > 0.0 else None
+            ),
+            "relative_improvement_basis": (
+                "positive_baseline_peak"
+                if name == "net_load_peak" and baseline_value > 0.0
+                else "not_applicable_to_signed_or_nonpositive_metric"
             ),
             "training_reference": reference,
             "weight": weight,
@@ -368,7 +386,8 @@ def _aggregate(
         "split": split,
         "objective": objective.as_dict(),
         "mean_joint_J": policy_J,
-        "mean_ramp_squared": components["ramp"]["policy"],
+        "mean_monthly_ramp_impact": components["ramp"]["policy"],
+        "mean_ramp_squared": float(mean(episode["ramp_mean_squared"] for episode in policy)),
         "mean_normalized_net_load_peak": components["net_load_peak"]["policy"],
         "episode_count": len(policy),
         "window_ids": [episode["window_id"] for episode in policy],

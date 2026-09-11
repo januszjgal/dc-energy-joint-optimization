@@ -53,6 +53,8 @@ class JointReportingTests(unittest.TestCase):
             improvement = 0.5 * (ramp_gain + peak_gain)
             market = {
                 "policy_joint_J": 1.0 - improvement,
+                "policy_ramp_impact_sum": 1.0 - ramp_gain,
+                "status_quo_ramp_impact_sum": 1.0,
                 "status_quo_joint_J": 1.0,
                 "improvement": improvement,
                 "policy_peak_mw": 400.0 * (1.0 - peak_gain),
@@ -67,6 +69,7 @@ class JointReportingTests(unittest.TestCase):
                 "objective": JointObjective().as_dict(),
                 "day_count": 31,
                 "mean_joint_J": 1.0 - improvement,
+                "mean_monthly_ramp_impact": 1.0 - ramp_gain,
                 "mean_incremental_ramp_impact": 0.5 - ramp_gain,
                 "emergency_feasibility_rate": 0.0,
                 **dict.fromkeys(

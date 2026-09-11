@@ -119,7 +119,7 @@ class RampProtocol:
     slot, so every episode ends with empty queues and every slot is scored.
     """
 
-    protocol_id: str = "joint-peak-ramp-month-v1"
+    protocol_id: str = "joint-peak-ramp-impact-month-v2"
     history_hours: int = HISTORY_HOURS
     terminal_tail_hours: int = 0
     deadline_bucket_hours: tuple[int, ...] = (1, 3, 6, 12, 24)

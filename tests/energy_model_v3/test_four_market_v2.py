@@ -109,7 +109,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
         self.assertNotIn("2025-05", calibration["fit_months"])
         scores = calibration["reference_scores_by_month"].values()
         self.assertAlmostEqual(
-            np.mean([row["ramp_mean_squared"] / calibration["ramp_reference"] for row in scores]),
+            np.mean([row["ramp_squared_sum"] / calibration["ramp_reference"] for row in scores]),
             1.0,
         )
         self.assertAlmostEqual(
@@ -197,7 +197,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
             self.assertEqual(reset_info["episode_context"]["month_id"], self.window)
             steps = 0
             total_reward = 0.0
-            total_ramp_squared = 0.0
+            total_ramp_impact = 0.0
             dates: list[str] = []
             while True:
                 _, reward, terminated, truncated, info = adapter.step(adapter.evaluation_action("status_quo"))
@@ -205,7 +205,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
                 dates.append(info["utc_date"])
                 self.assertFalse(truncated)
                 total_reward += reward
-                total_ramp_squared += info["ramp_squared_score"]
+                total_ramp_impact += info["incremental_ramp_impact"]
                 self.assertAlmostEqual(reward, info["ramp_reward"] + info["peak_reward"])
                 self.assertAlmostEqual(
                     info["incremental_ramp_impact"],
@@ -237,7 +237,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
                     objective = adapter.env._current.protocol.objective
                     self.assertAlmostEqual(
                         total_reward,
-                        -objective.score(total_ramp_squared / steps, info["running_peak_normalized_sum"]),
+                        -objective.score(total_ramp_impact, info["running_peak_normalized_sum"]),
                         places=12,
                     )
                     break

@@ -51,7 +51,7 @@ Build it with the Tectonic recipe in VS Code; the PDF and SyncTeX output go in
   consulted to select forecast lead times, so it is validation rather than an
   untouched test set. There is no separate test split.
 - The factory creates one fixture per month and
-  `output/four_market_joint_v1/factory/factory.json`; it references the panels in
+  `output/four_market_joint_v2/factory/factory.json`; it references the panels in
   `data/four_market_2025/months/` rather than copying them. It freezes the training
   no-flexibility calibration and records its objective version and input identity.
 
@@ -62,32 +62,38 @@ Day-ahead prices are not fetched and cost is not part of the study.
 Adjusted regional net load is $A_{m,t}=N_{m,t}+P_{m,t}$. Each fixed regional
 scale $S_m$ is the training gross-demand 95th percentile. With $\Delta t=1$ hour,
 $\Delta^{\mathrm{adj}}_{m,t}=(A_{m,t}-A_{m,t-1})/(S_m\Delta t)$.
-For a month $e$ with $T_e$ decision hours:
+The incremental impact subtracts the original grid's squared ramp. Each region
+also has its own monthly peak:
 
 $$
 \begin{aligned}
-R_e(\mu)&=\frac{1}{T_e}\sum_{t\in\mathcal T_e}\sum_m
-  \left(\Delta^{\mathrm{adj}}_{m,t}(\mu)\right)^2,\\
-Q_e(\mu)&=\sum_m\max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m}.
+I_{m,t}(\mu)&=\left(\Delta^{\mathrm{adj}}_{m,t}(\mu)\right)^2
+  -\left(\Delta^{\mathrm{original}}_{m,t}\right)^2,\\
+Q_{m,e}(\mu)&=\max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m}.
 \end{aligned}
 $$
 
-$R_e$ is the mean hourly fleet ramp score. $Q_e$ sums separate regional monthly
-net-load peaks, not the maximum of the combined regions, data-center power peaks,
-or hourly squared loads. The warm hour participates in the first ramp only.
-The fixed positive references are arithmetic means over the eleven training months:
+The objective sums $I_{m,t}$ over the month; negative impacts are valid.
+It sums the separate regional peaks, not the maximum of the combined regions,
+data-center power peaks, or hourly squared loads. The warm hour participates
+in the first ramp only. The fixed positive references are arithmetic means
+over the eleven training months:
 
 $$
-C_R=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}R_e(\mathrm{NF}),
+C_R=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}
+  \sum_{t\in\mathcal T_e}\sum_m(\Delta^{\mathrm{adj}}_{m,t}(\mathrm{NF}))^2,
 \qquad
-C_Q=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}Q_e(\mathrm{NF}).
+C_Q=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}\sum_m Q_{m,e}(\mathrm{NF}).
 $$
 
-They use absolute adjusted-grid scores, never signed incremental ramp impacts,
-and remain frozen for all training and May validation. The objective is
+Calibration uses absolute adjusted squared-ramp totals, never signed impacts
+or hourly averages. For the committed data, $C_R\approx6.03405775$ and
+$C_Q\approx3.66459854$. Both remain frozen for training and May validation.
+The objective is
 
 $$
-J_e(\mu)=\lambda_r\frac{R_e(\mu)}{C_R}+\lambda_p\frac{Q_e(\mu)}{C_Q},
+J_e(\mu)=\frac{\lambda_r}{C_R}\sum_{t\in\mathcal T_e}\sum_m I_{m,t}(\mu)
+       +\frac{\lambda_p}{C_Q}\sum_m Q_{m,e}(\mu),
 \qquad \lambda_r+\lambda_p=1.
 $$
 
@@ -99,14 +105,15 @@ score need not improve both components.
 The raw step reward is
 
 $$
-r_t=-\frac{\lambda_r}{T_eC_R}\sum_m(\Delta^{\mathrm{adj}}_{m,t})^2
+r_t=-\frac{\lambda_r}{C_R}\sum_m I_{m,t}
     -\frac{\lambda_p}{C_Q}\sum_m(M_{m,t}-M_{m,t-1}),
 $$
 
 where $M_{m,t}$ is the running normalized adjusted peak over decision hours.
 Set $M_{m,-1}=0$; the first increment initializes $M_{m,0}=A_{m,0}/S_m$,
 and later updates take the running maximum. No warm-hour peak is included.
-The raw, undiscounted monthly sum is exactly $-J_e$. PPO uses gamma 0.99 and
+There is no episode-length divisor. Negative ramp impacts earn positive ramp
+rewards. The raw, undiscounted monthly sum is exactly $-J_e$. PPO uses gamma 0.99 and
 reward normalization, so it is an approximate solution method, not an exact
 optimizer of the undiscounted objective or a guarantee of global optimality.
 
@@ -120,15 +127,14 @@ evaluation window as PPO. The reported improvement is
 
     improvement = J(status quo) - J(PPO)
 
-so a positive value means PPO improved the joint score. Report raw ramp score
-$R_e$, incremental ramp diagnostics
-$I_{m,t}=(\Delta^{\mathrm{adj}}_{m,t})^2-(\Delta^{\mathrm{original}}_{m,t})^2$,
-peak score $Q_e$, and regional adjusted peaks in MW and their reductions from
-the same no-flexibility fleet separately. The incremental-ramp comparison is
-not the sign-reversed joint improvement.
+so a positive value means PPO improved the joint score. Report the monthly
+sum of ramp impacts, summed normalized peaks, and regional adjusted peaks
+in MW separately. Hourly mean impacts and absolute squared ramps remain
+diagnostics, not inputs to $J_e$. Ramp percentages are not reported because
+this component is signed; use raw or training-reference-scaled differences.
 
-The native grid without the fleet is a diagnostic reference, not a second
-scheduling baseline; $J_e$ is not a signed comparison with it. With nonnegative
+The native grid without the fleet supplies the reference in $I_{m,t}$, not a
+second scheduling baseline. With nonnegative
 added site power, peak reduction means relative to the same fleet without
 flexibility, never a peak below the native grid without the fleet.
 
@@ -146,10 +152,11 @@ matched-pairs rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw
 seed-bootstrap intervals, per-UTC-day tables, safety totals, and learning-curve
 slopes.
 
-**Full joint results are pending.** Earlier ramp-only campaign results and
-checkpoints under `output/four_market_v2/` and `models/four_market_v2/` are
-historical, not joint results or inputs to reuse. A short pilot does not
-establish a ten-seed result.
+**Full monthly-impact results are pending.** Earlier ramp-only artifacts under
+`four_market_v2` and mean-squared joint artifacts under `four_market_joint_v1`
+are historical. The current objective and calibration have new version
+identifiers; incompatible checkpoints cannot be resumed or silently reused.
+A short pilot does not establish a ten-seed result.
 
 ## Reproduce
 
@@ -178,19 +185,23 @@ python -m pytest -q tests
 Run a short joint pilot:
 
 ```powershell
-python scripts\run_four_market_v2_pilot.py --ramp-weight 0.5 --seeds 4101 --timesteps 51200 --tag joint-50-50-smoke --workers 1
+python scripts\run_four_market_v2_pilot.py --ramp-weight 0.5 --seeds 4101 --timesteps 51200 --tag impact-50-50-smoke --workers 1
 ```
 
 The default ramp weight is 0.5 from the protocol. Use `--ramp-weight 0` for
 peak-only, `0.5` for joint, or `1` for ramp-only comparisons, with distinct tags.
 These are three objective variants, not three additional scheduling baselines.
 
-**Smoke result:** Seed 4101 completed 51,200 interactions and the full 744-hour
-May evaluation with no unserved service, unfinished/expired batch, terminal work,
-or certificate violations. Joint improvement was -0.00032585 (policy
-$J=0.92269678$, no-flexibility $J=0.92237093$): feasible execution, not evidence
-of performance improvement. Results are in
-`output/four_market_joint_v1/pilot/joint-50-50-smoke/pilot.json`.
+The unchanged thesis's July routing example is a regression test: baseline
+$J=0.6066670713$, routed $J=0.6058467827$, improvement $0.0008202886$.
+This includes every July hour and the following hour's rebound ramp.
+
+**Smoke result:** A fresh seed-4101 run completed 51,200 interactions and all
+744 May evaluation hours with no unserved service, unfinished/expired batch,
+terminal work, or certificate violations. Policy $J=0.44045917$ versus
+no-flexibility $J=0.43925375$ gives improvement $-0.00120543$.
+This establishes feasible execution, not performance improvement. Results are
+in `output/four_market_joint_v2/pilot/impact-50-50-smoke/pilot.json`.
 
 Run and aggregate the locked campaign (only aggregate after all ten summaries
 exist):
@@ -209,7 +220,7 @@ python scripts\build_energy_thesis_figures.py
 ## Repository map
 
 Script and module names retain `four_market_v2` and `ramp_v6`; new artifacts
-use `four_market_joint_v1` to keep them separate from historical runs.
+use `four_market_joint_v2` to keep them separate from historical runs.
 
 | Path | Role |
 |---|---|
@@ -223,10 +234,11 @@ use `four_market_joint_v1` to keep them separate from historical runs.
 | `energy_model_v3/four_market_v2.py` | One-factory runtime (one continuous episode per month) |
 | `env/ramp_v6/` | Scheduler, queue, observation, and reward implementation |
 | `ramp_rl/` | Trainer boundary, PPO runner, evaluation, and campaign statistics |
-| `output/four_market_joint_v1/factory/` | Monthly fixtures, `factory.json`, and fixed objective calibration |
-| `output/four_market_joint_v1/campaign/` | Joint ten-seed summaries, statistics, and learning curves (full results pending) |
-| `output/four_market_joint_v1/pilot/<tag>/` | Tagged short pilot outputs |
-| `models/four_market_joint_v1/` | Joint campaign and pilot checkpoints |
-| `output/four_market_v2/`, `models/four_market_v2/` | Historical artifacts only; not reused by joint runs |
+| `output/four_market_joint_v2/factory/` | Monthly fixtures, `factory.json`, and fixed objective calibration |
+| `output/four_market_joint_v2/campaign/` | Monthly-impact ten-seed summaries, statistics, and learning curves (full results pending) |
+| `output/four_market_joint_v2/pilot/<tag>/` | Tagged short pilot outputs |
+| `models/four_market_joint_v2/` | Monthly-impact campaign and pilot checkpoints |
+| `output/four_market_v2/`, `models/four_market_v2/` | Historical ramp-only artifacts |
+| `output/four_market_joint_v1/`, `models/four_market_joint_v1/` | Historical mean-squared joint artifacts |
 | `scripts/` | Data, factory, campaign, aggregation, and figure commands |
 | `tests/` | Unit and integration tests, including causality, continuity, and deadline checks |

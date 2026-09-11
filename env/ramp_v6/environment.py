@@ -639,7 +639,7 @@ class RampAwareEnv(gym.Env):
             })
         # Running-maximum increments telescope; every raw episode return is -J.
         ramp_reward, peak_reward = self.protocol.objective.reward_components(
-            ramp_squared_score, peak_normalized_increment, self.action_steps
+            weighted_impact, peak_normalized_increment
         )
         reward = ramp_reward + peak_reward
         service_unserved = max(

@@ -158,6 +158,7 @@ def _completed_campaign_summary(
             "day_count": 31,
             "step_count": 744,
             "mean_joint_J": 1.0,
+            "mean_monthly_ramp_impact": 744.0,
             "mean_policy_native_relative_incremental_ramp_impact": 1.0,
             "mean_incremental_ramp_impact": 1.0,
             "status_quo_comparison": {

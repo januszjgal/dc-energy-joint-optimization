@@ -63,20 +63,23 @@ observations.
 
 Regional scales $S_m$ are the gross-demand 95th percentiles over training
 decision hours. The factory computes $C_R$ and $C_Q$ as arithmetic means of
-the eleven monthly no-flexibility scores: $R_e$ is the mean hourly sum across
-markets of squared adjusted normalized ramps, and $Q_e$ is the sum of separate regional
-normalized monthly net-load peaks. These are absolute adjusted-grid metrics,
-not signed incremental ramp impacts. Both positive scales stay frozen for all
-training and May validation.
-For data snapshot `8386b7d`, the rounded values are $C_R\approx0.00826852$ and
-$C_Q\approx3.66460$.
+the eleven monthly no-flexibility reference scores: the total sum of squared
+adjusted normalized ramps and the sum of separate regional normalized peaks.
+These are absolute adjusted-grid metrics, not signed incremental impacts or
+hourly averages. Both positive scales stay frozen for training and May
+validation. For the committed data, $C_R\approx6.03405775$ and
+$C_Q\approx3.66459854$.
 
-The default objective is $J_e=0.5R_e/C_R+0.5Q_e/C_Q$. Equal weights value
+The default objective is
+$J_e=0.5\sum_{t,m}I_{m,t}/C_R+0.5\sum_mQ_{m,e}/C_Q$, where
+$I_{m,t}$ subtracts the original grid's squared ramp from the adjusted
+squared ramp. There is no division by month length. Equal weights value
 equal proportional changes relative to those fixed training references, not
 equal achieved savings or learned influence. Report $J_{\mathrm{NF}}-J_{\mathrm{policy}}$
-(positive is favorable) alongside raw ramp and peak scores, incremental ramp
-diagnostics, and regional peaks in MW with reductions from the same no-flexibility
-fleet. Peak reduction is not a claim of going below the native no-fleet peak.
+(positive is favorable) alongside signed monthly ramp totals and regional
+peak scores. Use differences rather than percentages for the signed ramp
+component. Regional peak reductions in MW are measured against the same
+no-flexibility fleet, not the native no-fleet peak.
 The [thesis](../latex/thesis_problemstatement.tex) defines the objective.
 
 ## Factory and campaign
@@ -89,15 +92,17 @@ python scripts\run_four_market_v2_campaign.py preflight
 ```
 
 The factory writes monthly fixtures and
-`output/four_market_joint_v1/factory/factory.json`, referencing the calendar,
+`output/four_market_joint_v2/factory/factory.json`, referencing the calendar,
 central frozen statistics, and panels rather than copying panels. Its fixed
 objective calibration records the objective version and input identity.
 Script and module names retain `four_market_v2` and `ramp_v6`.
 
-Joint campaign outputs use `output/four_market_joint_v1/campaign/`, tagged
-pilots use `output/four_market_joint_v1/pilot/<tag>/`, and checkpoints use
-`models/four_market_joint_v1/`. Old `output/four_market_v2/` and
-`models/four_market_v2/` artifacts are historical and must not be reused.
+Campaign outputs use `output/four_market_joint_v2/campaign/`, tagged pilots
+use `output/four_market_joint_v2/pilot/<tag>/`, and checkpoints use
+`models/four_market_joint_v2/`. Old `four_market_v2` and
+`four_market_joint_v1` artifacts are historical and must not be resumed as
+monthly-impact runs. The objective and normalization versions are checked
+alongside data, observation, and training identities.
 
 **Full joint ten-seed results are pending.** The planned seeds are 4101-4110,
 trained on eleven months and paired with the same no-flexibility fleet on May.

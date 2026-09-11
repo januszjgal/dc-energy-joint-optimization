@@ -155,6 +155,8 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
             for row in rows
         ]
         per_market[market] = {
+            "mean_policy_monthly_ramp_impact": float(mean(item["policy_ramp_impact_sum"] for item in market_rows)),
+            "mean_status_quo_monthly_ramp_impact": float(mean(item["status_quo_ramp_impact_sum"] for item in market_rows)),
             "mean_policy_joint_J": float(mean(item["policy_joint_J"] for item in market_rows)),
             "mean_status_quo_joint_J": float(mean(item["status_quo_joint_J"] for item in market_rows)),
             "mean_joint_improvement": float(mean(item["improvement"] for item in market_rows)),
@@ -229,6 +231,7 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
         ),
         "mean_improvement": float(-mean(differences)),
         "statistical_unit": "optimizer seed",
+        "mean_monthly_ramp_impact": float(mean(row["validation"]["mean_monthly_ramp_impact"] for row in rows)),
         "mean_joint_J": float(mean(row["validation"]["mean_joint_J"] for row in rows)),
         "sample_standard_deviation_joint_J": float(stdev(row["validation"]["mean_joint_J"] for row in rows)),
         "mean_incremental_ramp_impact": float(mean(
@@ -257,7 +260,10 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
                     -float(row["validation"]["status_quo_comparison"]["components"][component]["improvement"])
                     for row in rows
                 ],
-                metric=component,
+                metric=(
+                    "monthly sum of incremental squared ramp impacts"
+                    if component == "ramp" else "summed normalized regional monthly peaks"
+                ),
             )
             for component in ("ramp", "net_load_peak")
         },

@@ -1,4 +1,4 @@
-"""Fixed-scale regional net-load peak and one-hour ramp objective."""
+"""Fixed-scale monthly incremental ramp impact and regional net-load peaks."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from typing import Any, Mapping
 import numpy as np
 
 
-OBJECTIVE_VERSION = "joint-net-load-peak-ramp-v1"
-NORMALIZATION_METHOD = "training-month-mean-no-flexibility-v1"
+OBJECTIVE_VERSION = "joint-net-load-peak-ramp-impact-v2"
+NORMALIZATION_METHOD = "training-month-mean-no-flexibility-ramp-totals-v2"
 
 
 @dataclass(frozen=True)
@@ -34,19 +34,17 @@ class JointObjective:
         if min(self.ramp_reference, self.peak_reference) <= 0.0:
             raise ValueError("objective references must be strictly positive")
 
-    def score(self, ramp_mean_squared: float, normalized_peak: float) -> float:
+    def score(self, ramp_impact_sum: float, normalized_peak: float) -> float:
         return (
-            self.ramp_weight * ramp_mean_squared / self.ramp_reference
+            self.ramp_weight * ramp_impact_sum / self.ramp_reference
             + self.peak_weight * normalized_peak / self.peak_reference
         )
 
     def reward_components(
-        self, ramp_squared: float, peak_increment: float, decision_steps: int
+        self, ramp_impact: float, peak_increment: float
     ) -> tuple[float, float]:
-        if decision_steps <= 0:
-            raise ValueError("objective requires at least one decision slot")
         return (
-            -self.ramp_weight * ramp_squared / (decision_steps * self.ramp_reference),
+            -self.ramp_weight * ramp_impact / self.ramp_reference,
             -self.peak_weight * peak_increment / self.peak_reference,
         )
 
@@ -58,7 +56,8 @@ class JointObjective:
             "peak_weight": self.peak_weight,
             "ramp_reference": self.ramp_reference,
             "peak_reference": self.peak_reference,
-            "ramp_metric": "mean_hourly_sum_of_regional_normalized_squared_adjusted_ramps",
+            "ramp_metric": "monthly_sum_of_regional_incremental_squared_ramp_impacts",
+            "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
             "peak_metric": "sum_of_regional_normalized_decision_month_net_load_maxima",
         }
 
@@ -87,10 +86,13 @@ def update_peak(previous: float | None, current: float) -> tuple[float, float]:
     return peak, peak - (0.0 if previous is None else previous)
 
 
-def trajectory_scores(
+def reference_trajectory_scores(
     net_load_mw: np.ndarray, power_mw: np.ndarray, market_scales_mw: np.ndarray
 ) -> tuple[float, float]:
-    """Absolute reference metrics; row zero is warm history, not a peak sample."""
+    """Absolute monthly calibration totals, not signed policy impacts.
+
+    Row zero supplies warm ramp history but is not a monthly peak sample.
+    """
     net = np.asarray(net_load_mw, dtype=np.float64)
     power = np.asarray(power_mw, dtype=np.float64)
     scales = np.asarray(market_scales_mw, dtype=np.float64)
@@ -101,6 +103,6 @@ def trajectory_scores(
     if not all(np.isfinite(values).all() for values in (net, power, scales)):
         raise ValueError("trajectory inputs must be finite")
     adjusted = (net + power) / scales
-    ramp = float(np.square(np.diff(adjusted, axis=0)).sum(axis=1).mean())
+    ramp = float(np.square(np.diff(adjusted, axis=0)).sum())
     peak = float(adjusted[1:].max(axis=0).sum())
     return ramp, peak

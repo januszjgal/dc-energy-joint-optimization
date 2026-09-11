@@ -24,7 +24,7 @@ from energy_model_v3.four_market_v2 import (  # noqa: E402
 )
 from env.ramp_v6.models import HISTORY_HOURS, SiteConfig  # noqa: E402
 from env.ramp_v6.objective import (  # noqa: E402
-    JointObjective, NORMALIZATION_METHOD, OBJECTIVE_VERSION, trajectory_scores,
+    JointObjective, NORMALIZATION_METHOD, OBJECTIVE_VERSION, reference_trajectory_scores,
 )
 from env.ramp_v6.panel import CanonicalMarketPanel  # noqa: E402
 
@@ -162,11 +162,11 @@ def calibrate_objective(
         net = panel.frame.pivot(
             index="timestamp_utc", columns="market_id", values="net_load_mw"
         ).loc[panel.timestamps, list(MARKETS)].to_numpy(dtype=np.float64)
-        ramp, peak = trajectory_scores(net, power, scales)
+        ramp, peak = reference_trajectory_scores(net, power, scales)
         reference_scores[record["month_id"]] = {
-            "ramp_mean_squared": ramp, "normalized_peak": peak,
+            "ramp_squared_sum": ramp, "normalized_peak": peak,
         }
-    ramp_reference = float(np.mean([row["ramp_mean_squared"] for row in reference_scores.values()]))
+    ramp_reference = float(np.mean([row["ramp_squared_sum"] for row in reference_scores.values()]))
     peak_reference = float(np.mean([row["normalized_peak"] for row in reference_scores.values()]))
     JointObjective(ramp_reference=ramp_reference, peak_reference=peak_reference).validate()
     return {
