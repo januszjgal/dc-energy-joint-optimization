@@ -47,6 +47,12 @@ class FourMarketV2DesignTests(unittest.TestCase):
             self.assertEqual(observation.shape, (OBSERVATION_SIZE,))
             schema = env._current.observation_schema
             self.assertEqual(len(schema), OBSERVATION_SIZE)
+            for market in MARKETS:
+                for quantity in ("gross", "net"):
+                    self.assertEqual(
+                        [name for name in schema if name.startswith(f"{market}:forecast_{quantity}_t+")],
+                        [f"{market}:forecast_{quantity}_t+{ahead}_z" for ahead in (0, 2, 5, 11)],
+                    )
             self.assertEqual(
                 [name for name in schema if name.startswith("batch_queue_deadline")],
                 [
@@ -80,7 +86,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
             self.assertEqual(current.workload.service_arrivals.shape, (hours, 4))
             self.assertEqual(current.workload.warm_power_mw.shape, (HISTORY_HOURS, 4))
             np.testing.assert_array_equal(
-                current.workload.batch_deadline_hours[0], [24, 24, 24, 24]
+                current.workload.batch_deadline_hours, np.full((hours, 4), 24)
             )
             max_arrivals = float((raw_service + raw_batch).sum(axis=1).max())
             expected = 1.0 - max_arrivals / float(current._capacity.sum())

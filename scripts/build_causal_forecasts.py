@@ -1,10 +1,8 @@
-"""Regenerate strictly causal gross-demand and net-load forecasts.
+"""Regenerate gross-demand and net-load forecasts from causal input features.
 
-The forecasts shipped in the original panels have two defects. All three
-horizon columns hold one series offset by one row, so a three-hour-ahead
-forecast is identical to a one-hour-ahead forecast of the same target hour;
-and the series is 1.9x to 3.1x worse than naive persistence at one hour,
-which means it never sees the most recent observation.
+Forecast leads 1, 3, 6, and 12 are measured from each row's issue hour. The
+decision at hour t reads the row at t-1, so these forecasts predict the
+current hour t and hours t+2, t+5, and t+11.
 
 This module fits one ridge regression per (market, quantity, horizon), using
 only features observable at the issue hour, on the training calendar alone.
@@ -31,14 +29,13 @@ sys.path.insert(0, str(ROOT))
 PANEL_ROOT = ROOT / "data" / "four_market_2025" / "months"
 CALENDAR_PATH = ROOT / "data" / "four_market_2025" / "calendar.json"
 
-HORIZONS = (1, 3, 6, 12)
+HORIZONS = (1, 3, 6, 12)  # Lead hours from the issue row, not the decision hour.
 QUANTITIES = ("gross", "net")
 QUANTITY_COLUMN = {"gross": "gross_demand_mw", "net": "net_load_mw"}
 
-# Fit period. Matches the training calendar exactly, so that no validation
-# hour influences any coefficient. The holdout month sits in the middle of the
-# year, so the training set is not contiguous: models must not be fitted on
-# the months either side of the holdout and then scored on it.
+# Fit issue and target timestamps exclude May, matching the training calendar.
+# May was consulted when selecting forecast leads, so it is a validation
+# month, not an untouched test set. Training months are noncontiguous.
 YEAR_START = pd.Timestamp("2025-01-01T00:00:00Z")
 YEAR_END = pd.Timestamp("2025-12-31T23:00:00Z")
 VALIDATION_MONTH = 5
@@ -200,9 +197,9 @@ def fit_market_quantity_horizon(
 ) -> FittedModel:
     """Fit one direct-multistep model predicting ``horizon`` hours ahead.
 
-    A separate model per horizon is what makes the three columns genuinely
+    A separate model per horizon is what makes the forecast columns genuinely
     different. Recursive one-step forecasting, or copying one series into
-    three columns, would not.
+    all columns, would not.
     """
     aligned_target = target.shift(-horizon)
     usable = features.notna().all(axis=1) & aligned_target.notna()

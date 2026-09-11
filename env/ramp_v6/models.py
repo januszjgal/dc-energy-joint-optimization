@@ -10,6 +10,8 @@ import numpy as np
 
 
 HORIZONS = (1, 3)
+# Forecast lead times are measured from the previous observed row (t-1),
+# so the decision at t receives predictions for t, t+2, t+5, and t+11.
 FORECAST_HOURS = (1, 3, 6, 12)
 # The hour-t decision reads grid rows through hour t-1. Level features use
 # four lags of that last completed hour, and the three-hour closed ramp needs
@@ -152,8 +154,9 @@ class WorkloadTrace:
     Arrays use absolute compute-work units. Scaling a study multiplies arrivals,
     warm power, site compute capacity, and site rated power together.
     ``batch_deadline_hours[t, i]`` is the inclusive execution-window length
-    ``H_i``: an arrival in slot ``t`` may run in slots ``t .. t + H_i - 1``,
-    so ``H_i = 1`` allows no delay and ``H_i = 3`` allows at most two hours.
+    ``H_i``: an arrival in slot ``t`` may run in slots ``t .. t + H_i - 1``.
+    Thus ``H_i = 24`` permits immediate execution or execution through slot
+    ``t + 23``, completing within 24 hours. The episode end may shorten it.
     """
 
     service_arrivals: np.ndarray

@@ -99,6 +99,7 @@ def make_env(hours: int, batch: dict[int, float], window: int, **panel_kwargs) -
 
 
 HOLD_BATCH = np.asarray([0.0, -6.0, 0.0], dtype=np.float32)  # request zero optional batch
+RELEASE_BATCH = np.asarray([0.0, 6.0, 0.0], dtype=np.float32)  # request all available batch
 
 
 def run(env: RampAwareEnv, action_fn, hours: int) -> list[dict]:
@@ -156,6 +157,39 @@ class CausalTimelineTests(unittest.TestCase):
         self.assertEqual(contract["history_hours"], HISTORY_HOURS)
         RampEnvAdapter(env, EnvRequest(split="validation", seed=0))
 
+    def test_forecast_names_and_values_use_lead_minus_issue_lag(self) -> None:
+        frame = make_panel(26).frame.copy()
+        row_offsets = np.arange(len(frame), dtype=float) / 100.0
+        leads_and_offsets = ((1, 0), (3, 2), (6, 5), (12, 11))
+        for quantity, mean, quantity_offset in (("gross", 1000.0, 0.0), ("net", 900.0, 0.3)):
+            for lead, _ in leads_and_offsets:
+                # Distinct leads and issue rows catch both column and timing mistakes.
+                frame[f"forecast_{quantity}_h{lead}_mw"] = (
+                    mean + 150.0 * (lead / 10.0 + row_offsets + quantity_offset)
+                )
+        env = RampAwareEnv(
+            CanonicalMarketPanel(frame), [SITE], make_workload(26, {}, 24), STATS
+        )
+        try:
+            observation, _ = env.reset(seed=0)
+            schema = env.observation_schema
+            for quantity in ("gross", "net"):
+                self.assertEqual(
+                    [name for name in schema if name.startswith(f"{MARKET}:forecast_{quantity}_t+")],
+                    [f"{MARKET}:forecast_{quantity}_t+{ahead}_z" for _, ahead in leads_and_offsets],
+                )
+            for step in (0, 1):
+                issue_row = HISTORY_HOURS + step - 1
+                for quantity, quantity_offset in (("gross", 0.0), ("net", 0.3)):
+                    for lead, ahead in leads_and_offsets:
+                        name = f"{MARKET}:forecast_{quantity}_t+{ahead}_z"
+                        expected = lead / 10.0 + issue_row / 100.0 + quantity_offset
+                        self.assertAlmostEqual(float(observation[schema.index(name)]), expected, places=6)
+                if step == 0:
+                    observation, _, _, _, _ = env.step(env.evaluation_action("status_quo"))
+        finally:
+            env.close()
+
 
 class ContinuityTests(unittest.TestCase):
     def test_batch_and_power_history_carry_across_midnight(self) -> None:
@@ -199,6 +233,63 @@ class ContinuityTests(unittest.TestCase):
 
 
 class DeadlineSemanticsTests(unittest.TestCase):
+    def test_24_hour_window_allows_immediate_or_optional_early_execution(self) -> None:
+        for release_slot in (0, 10):
+            with self.subTest(release_slot=release_slot):
+                env = make_env(30, {0: 0.2}, 24)
+                try:
+                    actions = iter(
+                        RELEASE_BATCH if hour == release_slot else HOLD_BATCH
+                        for hour in range(30)
+                    )
+                    infos = run(env, lambda _: next(actions), 30)
+                    expected = np.zeros(30)
+                    expected[release_slot] = 0.2
+                    np.testing.assert_allclose(
+                        [info["batch_completed"] for info in infos], expected, atol=1e-12
+                    )
+                    self.assertAlmostEqual(infos[-1]["batch_queue"]["queued"], 0.0)
+                finally:
+                    env.close()
+
+    def test_24_hour_window_forces_execution_in_slot_23(self) -> None:
+        env = make_env(30, {0: 0.2}, 24)
+        try:
+            infos = run(env, lambda _: HOLD_BATCH, 30)
+            expected = np.zeros(30)
+            expected[23] = 0.2
+            np.testing.assert_allclose(
+                [info["batch_completed"] for info in infos], expected, atol=1e-12
+            )
+            self.assertAlmostEqual(infos[22]["batch_queue"]["queued"], 0.2)
+            self.assertAlmostEqual(infos[23]["batch_queue"]["queued"], 0.0)
+        finally:
+            env.close()
+
+    def test_24_hour_backlog_stays_feasible_and_clears_at_terminal(self) -> None:
+        hours = 48
+        env = make_env(hours, {hour: 0.3 for hour in range(hours)}, 24)
+        try:
+            infos = run(env, lambda _: HOLD_BATCH, hours)
+            self.assertEqual(len(infos), hours)
+            completed = 0.0
+            for hour, info in enumerate(infos):
+                completed += info["batch_completed"]
+                due_count = sum(min(arrival + 23, hours - 1) <= hour for arrival in range(hours))
+                self.assertGreaterEqual(completed + 1e-10, 0.3 * due_count)
+                self.assertAlmostEqual(info["service_completed"], 0.4)
+                self.assertAlmostEqual(info["batch_expired"], 0.0)
+                self.assertEqual(info["certificate_violations"], 0)
+                self.assertTrue(all(slack >= -1e-10 for slack in info["capacity_slack"]))
+                self.assertAlmostEqual(info["work_conservation_error"], 0.0)
+            self.assertGreater(max(info["batch_queue"]["queued"] for info in infos), 1.0)
+            self.assertAlmostEqual(completed, 14.4)
+            self.assertAlmostEqual(infos[-1]["batch_unfinished"], 0.0)
+            self.assertAlmostEqual(infos[-1]["batch_queue"]["queued"], 0.0)
+            self.assertTrue(infos[-1]["actual_terminal"])
+        finally:
+            env.close()
+
     def test_window_length_counts_the_arrival_slot(self) -> None:
         # H = 1 runs in its arrival slot; H = 2 may wait one slot, never two.
         for window, expected_slot in ((1, 5), (2, 6), (3, 7)):

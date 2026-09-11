@@ -7,7 +7,8 @@ inside the episode and are reset only when a new episode starts.
 Event order inside decision hour ``t``:
 
 1. grid rows through hour ``t-1`` are available, together with the forecasts
-   issued at ``t-1``, which cover hours ``t``, ``t+1``, and ``t+2``;
+   issued at ``t-1`` with leads 1, 3, 6, and 12 hours, which predict
+   hours ``t``, ``t+2``, ``t+5``, and ``t+11``;
 2. the hour-``t`` service and batch arrivals are revealed and queued;
 3. the policy chooses service destinations, the batch volume to execute now,
    and batch destinations for hour ``t``;
@@ -195,7 +196,8 @@ class RampAwareEnv(gym.Env):
                     f"{market}:native_ramp_{horizon}h_closed_fraction_s_per_hour"
                 )
             for quantity in ("gross", "net"):
-                for ahead in range(len(FORECAST_HOURS)):
+                for lead in FORECAST_HOURS:
+                    ahead = lead - GRID_OBSERVATION_LAG_HOURS
                     names.append(f"{market}:forecast_{quantity}_t+{ahead}_z")
                 names.append(f"{market}:forecast_{quantity}_max_up_fraction_s")
         for site in self.sites:

@@ -16,27 +16,32 @@ The current problem-statement chapter is
   and site-power history carry across every midnight inside the month and reset
   only at the month boundary. Four warm hours before the month give the first
   decisions their lookback and the first ramps their starting point. Every hour
-  of the month is scored. Work arriving in the last hours has its execution
+  of the month is scored. Work arriving in the last 23 hours has its execution
   window cut at the month's final hour, so the month closes with empty queues and
   nothing escapes the objective.
 - **Causal timeline inside hour t.** Grid rows through hour t-1, and the
-  forecasts issued at t-1 (covering t, t+1, t+2), are observed; the hour-t
+  forecasts issued at t-1 with leads 1, 3, 6, and 12 (targeting t, t+2, t+5,
+  and t+11: the current decision hour and 2, 5, and 11 hours later), are observed; the hour-t
   arrivals are revealed; the policy chooses service destinations, the batch
   volume to run now, and batch destinations; the realized hour-t grid values are
   revealed; site power, adjusted net load, and the reward are computed.
   [`tests/ramp_v6/test_continuous_month.py`](tests/ramp_v6/test_continuous_month.py)
   perturbs every row at or after hour t and asserts the hour-t observation is
   unchanged.
-- **Batch windows** `[2, 1, 2, 3]` slots for cells a-d, counted inclusively of
-  the arrival slot: a window of 1 allows no delay and a window of 3 allows at
-  most two hours. Earliest-deadline-first drainage breaks ties by lowest origin
-  index, then arrival order. Hard capacity and the window rule are enforced by
-  the projection layer, so nothing is ever dropped or late.
-- The action shape is 9 and the observation shape is 94. The reward is the
+- **Batch completion window** `H = 24` slots for every site, including the
+  arrival slot. Batch can execute immediately or in any of the next 23 hourly
+  slots and must finish within 24 hours; it is never required to wait.
+  Earliest-deadline-first drainage breaks ties by lowest origin index, then
+  arrival order. Month-end clipping can give different arrival hours the same
+  deadline. The projection layer enforces capacity and deadlines, releasing
+  batch earlier when necessary to leave enough capacity to finish the backlog.
+- The action shape is 9 and the observation shape is 105. The reward is the
   negative equal-market, 1 h/3 h weighted incremental squared ramp impact.
 - [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json)
   lists the eleven training months (2025 outside May), the May validation month,
-  the monthly panel paths, and the frozen-statistics path. There is no test split.
+  the monthly panel paths, and the frozen-statistics path. May has already been
+  consulted to select forecast lead times, so it is validation rather than an
+  untouched test set. There is no separate test split.
 - The factory creates one fixture per month and
   [`factory.json`](output/four_market_v2/factory/factory.json); it references
   the panels in `data/four_market_2025/months/` rather than copying them.
