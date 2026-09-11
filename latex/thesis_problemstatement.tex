@@ -151,10 +151,7 @@ interval.\footnote{Top-level instances are rows whose
 \codepath{alloc_collection_id} is null or zero. Restricting to them follows
 Google's own analysis example and avoids counting both an allocation set and
 the work running inside it \cite{googleTraceFormatV3,
-googleClusterAnalysisColab}. The second filter removes rows with
-\codepath{end_time}\,\(-\)\,\codepath{start_time} below 300 s so that every
-retained row spans a complete bucket; a retained row is assigned to the
-bucket containing its start time.}
+googleClusterAnalysisColab}. }
 
 \subsection{Modeled service and batch classes}
 \label{subsec:clusterdata-tier-split}
