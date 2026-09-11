@@ -3,9 +3,11 @@
 The active experiment schedules raw measured service and batch CPU curves from
 ClusterData2019 cells a-d against four hourly market panels. It is a single,
 fixed-workload proxy experiment, not a claim about identified Google facilities.
-The current problem-statement chapter is
-[`latex/problemstatement_ieee_revised.tex`](latex/problemstatement_ieee_revised.tex);
-[`latex/thesis.tex`](latex/thesis.tex) is an older draft.
+The working thesis document is
+[`latex/problemstatement_ieee_revised.tex`](latex/problemstatement_ieee_revised.tex).
+It currently contains the problem statement and will be expanded into the thesis.
+Build it with the Tectonic recipe in VS Code; the PDF and SyncTeX output go in
+`latex/build/`, which is ignored by Git. Superseded drafts remain in Git history.
 
 ## Active design
 
