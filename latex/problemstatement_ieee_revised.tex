@@ -477,10 +477,10 @@ workload.
 \end{table}
 
 For grid context, Table~\ref{tab:native-ramp-scale} reports absolute one-hour
-native ramps over the 334 training days. These are raw MW changes; the
+original grid ramps over the 334 training days. These are raw MW changes; the
 objective later divides by \(S_m\Delta t\) to express them as fractions of
 each market's demand scale per hour.
-Against the median one-hour native ramp, a site's idle-to-full power range
+Against the median one-hour original ramp, a site's idle-to-full power range
 is 19\% in CAISO NP15,
 11\% in MISO Minnesota, 33\% in SPP North, and 64\% in ISO-NE NEMA; against
 the Q90 ramp these ranges fall to between 4\% and 26\%. The site's power
@@ -490,7 +490,7 @@ in the smaller markets.
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Absolute one-hour native net-load ramp magnitudes over training
+  \caption{Absolute one-hour original net-load ramp magnitudes over training
   hours, in MW.}
   \label{tab:native-ramp-scale}
   \begin{tabular}{@{}lrr@{}}
@@ -523,8 +523,7 @@ For each site and hour, the model uses synthetic service arrivals
 \(s_{m,t}\), synthetic batch arrivals \(q_{m,t}\), standardized compute
 capacity \(K_m\), reference power \(\overline P_m\), power coefficients
 \(\alpha_m,\beta_m\), the batch window \(H\), regional net load \(N_{m,t}\),
-and training-only scale \(S_m\). Appendix~\ref{app:notation} defines every symbol
-and Appendix~\ref{app:equation-inventory} lists every numbered equation.
+and training-only scale \(S_m\).
 
 Work can be divided among sites. We do not model individual jobs, memory
 limits, machine types, application dependencies, or scheduling within a site.
@@ -663,11 +662,11 @@ adding fleet power. This one-hour interval matches the data and scheduling
 decisions. Dividing by \(S_m\Delta t\) expresses each change as a fraction of
 the market's demand scale per hour:
 \begin{align}
-  \Delta^0_{m,t}
+  \Delta^{\mathrm{original}}_{m,t}
   &=
   \frac{N_{m,t}-N_{m,t-1}}{S_m\Delta t},
   \label{eq:native-ramp}\\
-  \Delta_{m,t}
+  \Delta^{\mathrm{adjusted}}_{m,t}
   &=
   \frac{A_{m,t}-A_{m,t-1}}{S_m\Delta t}.
   \label{eq:adjusted-ramp}
@@ -676,18 +675,18 @@ A 1,000 MW change represents a smaller fraction of MISO's demand scale than
 of ISO-NE's.
 
 Squaring penalizes larger ramps and treats upward and downward ramps
-equally. We measure the fleet's impact by subtracting the native grid's
+equally. We measure the fleet's impact by subtracting the original grid's
 squared ramp:
 \begin{equation}
   I_{m,t}
   =
-  \Delta_{m,t}^{\,2}
+  \left(\Delta^{\mathrm{adjusted}}_{m,t}\right)^2
   -
-  \left(\Delta^0_{m,t}\right)^2.
+  \left(\Delta^{\mathrm{original}}_{m,t}\right)^2.
   \label{eq:incremental-impact}
 \end{equation}
 A negative value means the scheduled fleet reduced the squared ramp relative
-to the native grid; a positive value means it increased it. The objective
+to the original grid; a positive value means it increased it. The objective
 does not require improvement in every market and hour. We write
 \(I_{m,t}(\mu)\) when showing its dependence on scheduling policy \(\mu\)
 through \(P_{m,t}\).
@@ -714,7 +713,7 @@ Read from the inside out, that says: add the fleet's one-hour ramp impacts
 across all markets and hours of the month,
 and choose the causal policy with the smallest total. A negative \(J\)
 means the fleet reduced the month's total normalized squared ramp score
-relative to the native grid; a positive \(J\) means it increased it.
+relative to the original grid; a positive \(J\) means it increased it.
 
 Ramps are evaluated relative to each market's demand scale, so equal
 changes in MW need not receive equal scores.
@@ -722,8 +721,8 @@ changes in MW need not receive equal scores.
 \subsection{Reference signal and the one baseline}
 \label{subsec:problem-baselines}
 
-The \emph{native grid}, with \(P_{m,t}=0\), provides the reference
-\(\Delta^0_{m,t}\) in Equation~\eqref{eq:incremental-impact}. We compare
+The \emph{original grid}, with \(P_{m,t}=0\), provides the reference
+\(\Delta^{\mathrm{original}}_{m,t}\) in Equation~\eqref{eq:incremental-impact}. We compare
 scheduling policies using the same added fleet.
 
 The \emph{no-flexibility baseline}, \(\mu_{\mathrm{NF}}\), runs every arrival
@@ -743,7 +742,7 @@ We report improvement as
   \label{eq:improvement}
 \end{equation}
 which is positive when the scheduler \(\mu\) improves on the baseline.
-The no-flexibility baseline is feasible and is the only scheduling
+The no-flexibility baseline is feasible and is currently the only scheduling
 comparison used in this thesis.
 
 \subsection{Causal information}
@@ -824,7 +823,7 @@ Table~\ref{tab:objective-example} shows the baseline's one-hour ramp impact.
   \label{tab:objective-example}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
-    Market case & \(\Delta^0\) & \(\Delta\) & \(I\ (\times10^{-5})\) \\
+    Market case & \(\Delta^{\mathrm{original}}\) & \(\Delta^{\mathrm{adjusted}}\) & \(I\ (\times10^{-5})\) \\
     \midrule
     CAISO NP15     & \(-0.0621\) & \(-0.0621\) & \(-0.05\) \\
     MISO Minnesota & \(+0.0279\) & \(+0.0279\) & \(+0.09\) \\
@@ -836,7 +835,7 @@ Table~\ref{tab:objective-example} shows the baseline's one-hour ramp impact.
   \end{tabular}
 \end{table}
 
-Let's review ISO-NE NEMA closely. Its native ramp is \(+0.0216\); increasing
+Let's review ISO-NE NEMA closely. Its original ramp is \(+0.0216\); increasing
 site power raises the adjusted ramp to \(+0.0225\), giving
 \(I=+4.03\times10^{-5}\). Summing the four markets gives a baseline
 total impact for this hour of \(+3.83\times10^{-5}\).
@@ -874,196 +873,16 @@ The study has the following limitations:
         transmission and distribution constraints are not represented.
   \item Independent monthly episodes do not measure the effects of
         carrying a backlog between months.
+  \item Warm-up period only provides 1 hour, which reduces the schedulers historical grid observations.
 \end{itemize}
 
-A later version could expand the warm-up period to give the scheduler more
-historical grid observations.
+
 
 
 
 \appendices
 \onecolumn
 
-\section{Notation}
-\label{app:notation}
-
-\begin{longtable}{@{}L{0.18\textwidth}L{0.56\textwidth}L{0.18\textwidth}@{}}
-  \caption{Symbols used in the data construction and scheduling problem.}
-  \label{tab:notation}\\
-  \toprule
-  Symbol & Definition & Units \\
-  \midrule
-  \endfirsthead
-  \toprule
-  Symbol & Definition & Units \\
-  \midrule
-  \endhead
-  \(c\) & Google source-cell index & -- \\
-  \(n\) & Machine index within a source cell & -- \\
-  \(r\) & Retained instance-usage row index & -- \\
-  \(k\) & Five-minute bucket index & -- \\
-  \(b\) & Five-minute offset within one trace hour & -- \\
-  \(h\) & Hour index in the 744-hour source workload & -- \\
-  \(\tau\) & Absolute UTC timestamp & time \\
-  \(\tau_e\) & Absolute UTC start of simulated month \(e\) & time \\
-  \(\mathcal{R}\) & Training hours: every hour of 2025 outside May & -- \\
-  \(e\) & Simulated-month index & -- \\
-  \(T_e\) & Number of hours in simulated month \(e\) (744 for May) & -- \\
-  \(t\) & Decision-hour index within a simulated month & -- \\
-  \(\nu,\rho\) & Dummy arrival-slot and decision-slot indices & -- \\
-  \(i,j,m\) & Modeled origin, destination, or site/market index & -- \\
-  \(\mathcal J_c\) & Machines ever observed in source cell \(c\) & -- \\
-  \(\mathcal E_{c,k}\) & Retained usage rows for cell \(c\), bucket \(k\) & -- \\
-  \(\mathcal E^{\mathrm{bat}}_{c,k}\) & Rows in \(\mathcal E_{c,k}\) matched to priority \(\leq115\) & -- \\
-  \(\mathcal M\) & Four modeled sites and market cases & -- \\
-  \(\mathcal T\) & Decision-slot indices \(0,\ldots,T_e-1\) of a month & -- \\
-  \(\mathcal W\) & Preceding warm-up hour \(\{-1\}\) & -- \\
-  \(\Delta t\) & Duration of one decision interval & h \\
-  \(\kappa_n\) & Largest reported CPU capacity for machine \(n\) & normalized CPU \\
-  \(C^{\mathrm{ref}}_c\) & Fixed monthly CPU reference capacity of cell \(c\) & normalized CPU \\
-  \(a_r\) & Average CPU execution rate in usage row \(r\) & normalized CPU \\
-  \(p_r\) & Priority matched to row \(r\); unmatched rows are excluded from the batch set & -- \\
-  \(u_{c,k}\) & Aggregate five-minute CPU execution fraction & fraction \\
-  \(u^{\mathrm{svc}}_{c,k}\) & Service-residual CPU execution fraction & fraction \\
-  \(u^{\mathrm{bat}}_{c,k}\) & No-SLO batch CPU execution fraction & fraction \\
-  \(s_{m,t}\) & Synthetic service arrivals at site \(m\), slot \(t\) & work \\
-  \(q_{m,t}\) & Synthetic batch arrivals at site \(m\), slot \(t\) & work \\
-  \(\widehat p_c(u)\) & Predicted normalized server power & fraction \\
-  \(\alpha_c,\beta_c\) & Source-cell affine intercept and slope & fraction \\
-  \(\alpha_m,\beta_m\) & Power coefficients for the assigned site & fraction \\
-  \(D_m(\tau)\) & Regional gross-demand series at absolute UTC time & MW \\
-  \(G^{\mathrm{wnd}}_m(\tau)\) & Regional wind-generation series at absolute UTC time & MW \\
-  \(G^{\mathrm{sol}}_m(\tau)\) & Regional solar-generation series at absolute UTC time & MW \\
-  \(N_m(\tau)\) & Native net-load series at absolute UTC time & MW \\
-  \(D_{m,t}\) & Gross demand at hour \(t\) of a simulated month & MW \\
-  \(N_{m,t}\) & Native net load at hour \(t\) of a simulated month & MW \\
-  \(K_m\) & Standardized compute capacity of site \(m\) & work/h \\
-  \(\overline P_m\) & Reference power scale of site \(m\) & MW \\
-  \(H\) & Inclusive batch execution-window length, 24 for every site & intervals \\
-  \(d_{\nu}\) & Latest execution slot of an arrival in slot \(\nu\), limited by month-end & slot index \\
-  \(B_{i,t}\) & Batch backlog from origin \(i\) before current arrivals & work \\
-  \(y_{i,t}\) & Batch work released from origin \(i\) & work \\
-  \(x^{\mathrm{svc},\mathrm{NF}}_{m,t},x^{\mathrm{bat},\mathrm{NF}}_{m,t}\) & No-flexibility baseline allocations & work \\
-  \(x^{\mathrm{svc}}_{m,t}\) & Service executed at site \(m\) & work \\
-  \(x^{\mathrm{bat}}_{m,t}\) & Batch executed at site \(m\) & work \\
-  \(z_t\) & Total batch work executed in hour \(t\) & work \\
-  \(w_{m,t}\) & Total service plus batch work executed at site \(m\) & work \\
-  \(P_{m,t}\) & Modeled site server power & MW \\
-  \(A_{m,t}\) & Regional net load after modeled site power & MW \\
-  \(S_m\) & Training-only gross-demand Q95 scale & MW \\
-  \(\Delta^0_{m,t}\) & Normalized one-hour native ramp & fraction/h \\
-  \(\Delta_{m,t}\) & Normalized one-hour adjusted ramp & fraction/h \\
-  \(I_{m,t}\) & Incremental squared one-hour ramp impact & h\(^{-2}\) \\
-  \(J(\mu)\) & Total one-hour ramp impact across all markets and hours of a simulated month under policy \(\mu\) & h\(^{-2}\) \\
-  \(\mathcal I_t\) & Information available when the hour-\(t\) decision is made & mixed \\
-  \(\mathfrak M\) & Feasible causal-policy set & -- \\
-  \(\mu\) & Causal scheduling policy & -- \\
-  \(\mu_{\mathrm{NF}}\) & The no-flexibility baseline schedule & -- \\
-  \bottomrule
-\end{longtable}
-
-\section{Equation Inventory}
-\label{app:equation-inventory}
-
-\begingroup
-\small
-\begin{longtable}{@{}L{0.16\textwidth}L{0.50\textwidth}L{0.26\textwidth}@{}}
-  \caption{Numbered equations and where each is used.}
-  \label{tab:equation-inventory}\\
-  \toprule
-  Equation & Purpose & Used by \\
-  \midrule
-  \endfirsthead
-  \toprule
-  Equation & Purpose & Used by \\
-  \midrule
-  \endhead
-  \eqref{eq:reference-capacity}
-    & Defines fixed source-cell CPU reference capacity
-    & Five-minute normalization \\
-  \eqref{eq:clusterdata-utilization}
-    & Defines aggregate five-minute CPU execution
-    & Service and batch split \\
-  \eqref{eq:batch-utilization}
-    & Defines no-SLO batch execution
-    & Hourly batch profile \\
-  \eqref{eq:service-utilization}
-    & Defines service residual
-    & Hourly service profile \\
-  \eqref{eq:powerdata-affine-fit}
-    & Fits normalized server power from CPU utilization
-    & Runtime power model \\
-  \eqref{eq:energy-net-load}
-    & Removes observed wind and solar from regional gross demand
-    & Native and adjusted ramps \\
-  \eqref{eq:market-scale}
-    & Defines the training-only gross-demand Q95 scale
-    & Cross-market ramp normalization \\
-  \eqref{eq:synthetic-service-arrivals}
-    & Converts repeated service fractions to hourly work arrivals
-    & Scheduling inputs \\
-  \eqref{eq:synthetic-batch-arrivals}
-    & Converts repeated batch fractions to hourly work arrivals
-    & Queue inputs \\
-  \eqref{eq:episode-grid-map}
-    & Maps absolute grid rows to hours of a simulated month
-    & Ramp inputs \\
-  \eqref{eq:service-conservation}
-    & Conserves immediate service within its arrival hour
-    & Hard feasibility \\
-  \eqref{eq:batch-total}
-    & Matches batch releases to execution
-    & Queue and site load \\
-  \eqref{eq:queue-balance}
-    & Conserves batch work by origin
-    & Queue state \\
-  \eqref{eq:queue-availability}
-    & Prevents execution before arrival
-    & Hard feasibility \\
-  \eqref{eq:batch-deadline}
-    & Assigns latest execution slots, limited by month-end
-    & Deadline feasibility \\
-  \eqref{eq:deadline-feasibility}
-    & Requires all due work to be completed
-    & Queue feasibility \\
-  \eqref{eq:terminal-queue}
-    & Requires no unfinished batch at the end of the month
-    & Hard feasibility \\
-  \eqref{eq:executed-work}
-    & Adds service and batch at each destination
-    & Capacity and power \\
-  \eqref{eq:site-capacity}
-    & Bounds destination work by standardized capacity
-    & Hard feasibility \\
-  \eqref{eq:runtime-power}
-    & Converts executed work to MW
-    & Adjusted net load \\
-  \eqref{eq:adjusted-net-load}
-    & Adds modeled site power to native regional net load
-    & Adjusted ramp \\
-  \eqref{eq:native-ramp}
-    & Defines normalized one-hour native ramp
-    & Incremental impact \\
-  \eqref{eq:adjusted-ramp}
-    & Defines normalized one-hour ramp after site power
-    & Incremental impact \\
-  \eqref{eq:incremental-impact}
-    & Compares adjusted and native squared one-hour ramps
-    & Objective \\
-  \eqref{eq:objective}
-    & Minimizes total one-hour ramp impact across all markets and hours of the month
-    & Scheduling objective \\
-  \eqref{eq:no-flex-baseline}
-    & Defines the no-routing, no-deferral baseline
-    & Evaluation \\
-  \eqref{eq:improvement}
-    & Defines the reported improvement over the no-flexibility baseline
-    & Evaluation \\
-  \bottomrule
-\end{longtable}
-\endgroup
-
-\clearpage
 \section{Data Schemas}
 \label{app:data-schemas}
 
