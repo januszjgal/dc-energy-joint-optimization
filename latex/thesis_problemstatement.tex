@@ -641,11 +641,6 @@ Section~\ref{sec:powerdata2019} and the 500 MW reference scale:
   \label{eq:runtime-power}
 \end{equation}
 
-
-Service, deadlines, and capacity are hard constraints enforced by the action
-decoder, not reward penalties. The conservative deadline safety guard is
-part of the solution method and will be described in the methods chapter.
-
 Work may execute at any site with available capacity. Transfers have no
 modeled latency, bandwidth limit, data-residency restriction, energy cost,
 or movement charge. This gives the model an optimistic upper bound on
@@ -901,10 +896,6 @@ The study has the following limitations:
   \item The affine power fit is deterministic, omits fit uncertainty and
         facility overhead, and is extrapolated when scheduling pushes a site
         outside its commonly observed CPU range.
-  \item Physical grid data are balancing-authority-wide, so local
-        transmission and distribution constraints are not represented.
-  \item Independent monthly episodes do not measure the effects of
-        carrying a backlog between months.
   \item Warm-up period only provides 1 hour, which reduces the schedulers historical grid observations.
 \end{itemize}
 
