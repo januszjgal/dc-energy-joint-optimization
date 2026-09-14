@@ -1,0 +1,205 @@
+{
+  "isone_window": {
+    "no_flex_power_at_peak_mw": 340.4059116429987,
+    "peak_hour_utc": "2025-05-16T23:00:00+00:00",
+    "policy_power_at_peak_mw": 231.1063097638534,
+    "seed": 4102,
+    "window_end_utc": "2025-05-18T10:00:00+00:00",
+    "window_start_utc": "2025-05-15T11:00:00+00:00"
+  },
+  "no_flex_may_J": 0.0056133718930433145,
+  "no_flex_training_mean_J": 0.005437336832439054,
+  "no_flex_training_month_J": {
+    "2025-01": 0.005472929399642429,
+    "2025-02": 0.005423824659212091,
+    "2025-03": 0.005406518170579729,
+    "2025-04": 0.005627508432799072,
+    "2025-06": 0.0058064684822296654,
+    "2025-07": 0.005620865593287932,
+    "2025-08": 0.005172237119655715,
+    "2025-09": 0.005299949234189233,
+    "2025-10": 0.005268290811114847,
+    "2025-11": 0.005322767003266057,
+    "2025-12": 0.005389346250852827
+  },
+  "seeds": {
+    "4101": {
+      "by_checkpoint": {
+        "1024000": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.015301715893243702,
+          "peak_impact": 0.031057592597826603,
+          "peak_weighted_improvement": 0.0013657099126371563,
+          "policy_J": -0.009688344000200392,
+          "ramp_weighted_improvement": 0.013936005980606545,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        },
+        "153600": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.013127843465686226,
+          "peak_impact": 0.03572419744508176,
+          "peak_weighted_improvement": 0.0007289955766842057,
+          "policy_J": -0.007514471572642917,
+          "ramp_weighted_improvement": 0.01239884788900202,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        },
+        "512000": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.01545298067865299,
+          "peak_impact": 0.03159992501492807,
+          "peak_weighted_improvement": 0.0012917137556615714,
+          "policy_J": -0.00983960878560968,
+          "ramp_weighted_improvement": 0.014161266922991418,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        }
+      },
+      "interactions_per_second": 238.5156441291221,
+      "may_behavior": {
+        "decoder_adjustment_pct": 75.13440860215054,
+        "mean_batch_wait_hours": 0.9525830441648443,
+        "per_market": {
+          "CAISO_NP15": {
+            "peak_change_mw": -88.43811292245664,
+            "squared_ramp_cut_pct": 1.9813064742435444
+          },
+          "ISONE_NEMA": {
+            "peak_change_mw": -109.0193528778218,
+            "squared_ramp_cut_pct": 11.02483717900482
+          },
+          "MISO_MINN_HUB": {
+            "peak_change_mw": -36.56142991375236,
+            "squared_ramp_cut_pct": -0.040206275314898676
+          },
+          "SPP_NORTH_HUB": {
+            "peak_change_mw": -45.98845570686535,
+            "squared_ramp_cut_pct": 0.6843468738223322
+          }
+        },
+        "service_moved_pct": 31.722250311517673
+      },
+      "training_minutes": 71.55365732499922
+    },
+    "4102": {
+      "by_checkpoint": {
+        "1024000": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.016469405870259735,
+          "peak_impact": 0.03162804461908464,
+          "peak_weighted_improvement": 0.0012878771001756581,
+          "policy_J": -0.010856033977216427,
+          "ramp_weighted_improvement": 0.01518152877008408,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        },
+        "153600": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.012505340658435862,
+          "peak_impact": 0.03670178405001991,
+          "peak_weighted_improvement": 0.0005956130799069591,
+          "policy_J": -0.006891968765392553,
+          "ramp_weighted_improvement": 0.011909727578528904,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        },
+        "512000": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.015465066859040786,
+          "peak_impact": 0.032355488722280654,
+          "peak_weighted_improvement": 0.0011886241948473285,
+          "policy_J": -0.009851694965997476,
+          "ramp_weighted_improvement": 0.014276442664193456,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        }
+      },
+      "interactions_per_second": 238.9561972238319,
+      "may_behavior": {
+        "decoder_adjustment_pct": 68.14516129032258,
+        "mean_batch_wait_hours": 1.4703001308634485,
+        "per_market": {
+          "CAISO_NP15": {
+            "peak_change_mw": -77.57139059639303,
+            "squared_ramp_cut_pct": 2.088741653956905
+          },
+          "ISONE_NEMA": {
+            "peak_change_mw": -109.29960187914548,
+            "squared_ramp_cut_pct": 12.228776091016258
+          },
+          "MISO_MINN_HUB": {
+            "peak_change_mw": 16.23750170932908,
+            "squared_ramp_cut_pct": -0.39056032351809866
+          },
+          "SPP_NORTH_HUB": {
+            "peak_change_mw": -57.82247625837772,
+            "squared_ramp_cut_pct": 1.2300416881690774
+          }
+        },
+        "service_moved_pct": 30.91544996463183
+      },
+      "training_minutes": 71.42173697499966
+    },
+    "4103": {
+      "by_checkpoint": {
+        "1024000": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.017024537423707048,
+          "peak_impact": 0.029612089123642334,
+          "peak_weighted_improvement": 0.0015629352648596122,
+          "policy_J": -0.01141116553066374,
+          "ramp_weighted_improvement": 0.015461602158847438,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        },
+        "153600": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.01338092463527029,
+          "peak_impact": 0.033838451531739144,
+          "peak_weighted_improvement": 0.000986287868680208,
+          "policy_J": -0.007767552742226982,
+          "ramp_weighted_improvement": 0.012394636766590084,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        },
+        "512000": {
+          "batch_unfinished": 0.0,
+          "improvement_J": 0.016236906029678873,
+          "peak_impact": 0.030559581109266473,
+          "peak_weighted_improvement": 0.0014336588958089394,
+          "policy_J": -0.010623534136635563,
+          "ramp_weighted_improvement": 0.014803247133869933,
+          "service_unserved": 0.0,
+          "status_quo_peak_impact": 0.041067149691775745
+        }
+      },
+      "interactions_per_second": 238.64013177548557,
+      "may_behavior": {
+        "decoder_adjustment_pct": 70.83333333333334,
+        "mean_batch_wait_hours": 0.9645291915871659,
+        "per_market": {
+          "CAISO_NP15": {
+            "peak_change_mw": -91.28913762664888,
+            "squared_ramp_cut_pct": 1.8891559490567713
+          },
+          "ISONE_NEMA": {
+            "peak_change_mw": -140.01311293106664,
+            "squared_ramp_cut_pct": 14.077390624691976
+          },
+          "MISO_MINN_HUB": {
+            "peak_change_mw": 34.820554466568865,
+            "squared_ramp_cut_pct": -0.015211301543758228
+          },
+          "SPP_NORTH_HUB": {
+            "peak_change_mw": -62.005133034333994,
+            "squared_ramp_cut_pct": 0.9014009280920344
+          }
+        },
+        "service_moved_pct": 31.06942970651415
+      },
+      "training_minutes": 71.51633105333312
+    }
+  },
+  "tag": "impact-50-50-1m"
+}

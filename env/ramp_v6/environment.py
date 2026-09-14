@@ -526,6 +526,7 @@ class RampAwareEnv(gym.Env):
         ramp_squared_score = 0.0
         native_ramp_squared_score = 0.0
         peak_normalized_increment = 0.0
+        peak_impact_increment = 0.0
         ramp_h1: list[float] = []
         abs_ramp_h1: list[float] = []
         incremental_by_market: list[float] = []
@@ -625,21 +626,26 @@ class RampAwareEnv(gym.Env):
                 self._adjusted_peaks_mw[market],
                 float(row["net_load_mw"]) + market_power[market],
             )
-            native_peak, _ = update_peak(
+            native_peak, native_increase = update_peak(
                 self._native_peaks_mw[market], float(row["net_load_mw"])
             )
             self._adjusted_peaks_mw[market] = adjusted_peak
             self._native_peaks_mw[market] = native_peak
             peak_normalized_increment += peak_increase / scale
+            # Like I_{m,t}, the peak term subtracts the original grid, whose
+            # running-maximum records no schedule can change.
+            market_peak_impact = (peak_increase - native_increase) / scale
+            peak_impact_increment += market_peak_impact
             per_market[market].update({
                 "adjusted_net_load_mw": float(row["net_load_mw"]) + market_power[market],
                 "running_adjusted_peak_mw": adjusted_peak,
                 "running_native_peak_mw": native_peak,
                 "peak_normalized_increment": peak_increase / scale,
+                "peak_impact_increment": market_peak_impact,
             })
         # Running-maximum increments telescope; every raw episode return is -J.
         ramp_reward, peak_reward = self.protocol.objective.reward_components(
-            weighted_impact, peak_normalized_increment
+            weighted_impact, peak_impact_increment
         )
         reward = ramp_reward + peak_reward
         service_unserved = max(
@@ -671,8 +677,14 @@ class RampAwareEnv(gym.Env):
             "ramp_squared_score": ramp_squared_score,
             "native_ramp_squared_score": native_ramp_squared_score,
             "peak_normalized_increment": peak_normalized_increment,
+            "peak_impact_increment": peak_impact_increment,
             "running_peak_normalized_sum": sum(
                 row["running_adjusted_peak_mw"] / self.stats.gross_q95_mw[market]
+                for market, row in per_market.items()
+            ),
+            "running_peak_impact_normalized_sum": sum(
+                (row["running_adjusted_peak_mw"] - row["running_native_peak_mw"])
+                / self.stats.gross_q95_mw[market]
                 for market, row in per_market.items()
             ),
             "weighted_incremental_ramp_impact": weighted_impact,

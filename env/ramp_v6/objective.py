@@ -1,4 +1,10 @@
-"""Fixed-scale monthly incremental ramp impact and regional net-load peaks."""
+"""Fixed-scale monthly incremental ramp impact and regional net-load peak impact.
+
+Both components subtract the original grid: ramps as squared-ramp increments,
+peaks as the adjusted monthly maximum minus the original monthly maximum. The
+original grid does not depend on the schedule, so the subtraction shifts J by a
+constant and keeps the grid's own records out of the hourly reward.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +15,7 @@ from typing import Any, Mapping
 import numpy as np
 
 
-OBJECTIVE_VERSION = "joint-net-load-peak-ramp-impact-v2"
+OBJECTIVE_VERSION = "joint-net-load-peak-impact-ramp-impact-v3"
 NORMALIZATION_METHOD = "training-month-mean-no-flexibility-ramp-totals-v2"
 
 
@@ -34,18 +40,18 @@ class JointObjective:
         if min(self.ramp_reference, self.peak_reference) <= 0.0:
             raise ValueError("objective references must be strictly positive")
 
-    def score(self, ramp_impact_sum: float, normalized_peak: float) -> float:
+    def score(self, ramp_impact_sum: float, peak_impact_sum: float) -> float:
         return (
             self.ramp_weight * ramp_impact_sum / self.ramp_reference
-            + self.peak_weight * normalized_peak / self.peak_reference
+            + self.peak_weight * peak_impact_sum / self.peak_reference
         )
 
     def reward_components(
-        self, ramp_impact: float, peak_increment: float
+        self, ramp_impact: float, peak_impact_increment: float
     ) -> tuple[float, float]:
         return (
             -self.ramp_weight * ramp_impact / self.ramp_reference,
-            -self.peak_weight * peak_increment / self.peak_reference,
+            -self.peak_weight * peak_impact_increment / self.peak_reference,
         )
 
     def as_dict(self) -> dict[str, str | float]:
@@ -58,7 +64,8 @@ class JointObjective:
             "peak_reference": self.peak_reference,
             "ramp_metric": "monthly_sum_of_regional_incremental_squared_ramp_impacts",
             "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
-            "peak_metric": "sum_of_regional_normalized_decision_month_net_load_maxima",
+            "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_original",
+            "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
         }
 
     @classmethod

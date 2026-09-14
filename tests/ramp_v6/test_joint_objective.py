@@ -122,12 +122,25 @@ class JointEnvironmentTests(unittest.TestCase):
                     ramp = float(np.sum(
                         (np.diff(adjusted) / 1200.0)**2 - (np.diff(native) / 1200.0)**2
                     ))
-                    peak = float(np.max(adjusted[1:]) / 1200.0)
+                    peak = float((np.max(adjusted[1:]) - np.max(native[1:])) / 1200.0)
                     expected = weight * ramp / 0.02 + (1.0 - weight) * peak / 1.2
                     self.assertAlmostEqual(returns, -expected, places=12)
                     self.assertAlmostEqual(env.queue.total, 0.0)
                 finally:
                     env.close()
+
+    def test_peak_reward_excludes_the_original_grids_own_records(self) -> None:
+        env = self.make_env(weight=0.0, hours=48)
+        try:
+            env.reset(seed=3)
+            _, reward, _, _, info = env.step(HOLD_BATCH)
+            power = info["per_site"]["site-M"]["power_mw"]
+            # The first decision sets both running peaks; only fleet power is charged.
+            self.assertAlmostEqual(info["peak_impact_increment"], power / 1200.0, places=12)
+            self.assertAlmostEqual(reward, -power / 1200.0 / 1.2, places=12)
+            self.assertGreater(info["peak_normalized_increment"], info["peak_impact_increment"])
+        finally:
+            env.close()
 
     def test_objective_weights_do_not_change_feasibility_projection(self) -> None:
         envs = [self.make_env(weight) for weight in (0.0, 0.5, 1.0)]

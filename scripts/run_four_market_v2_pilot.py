@@ -1,8 +1,8 @@
 """Short PPO pilot: a few seeds with a chosen budget, evaluated on May.
 
 Unlike the locked ten-seed campaign, the seeds and interaction budget are
-arguments. Results go to ``output/four_market_joint_v2/pilot/<tag>/`` and checkpoints
-to ``models/four_market_joint_v2/pilot/<tag>/``, so campaign directories are never
+arguments. Results go to ``output/four_market_joint_v3/pilot/<tag>/`` and checkpoints
+to ``models/four_market_joint_v3/pilot/<tag>/``, so campaign directories are never
 touched. Every saved milestone is evaluated too, which shows whether the May
 improvement grows with training.
 """

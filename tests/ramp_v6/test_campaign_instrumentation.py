@@ -101,6 +101,7 @@ class _TinyRampEnv(gym.Env[np.ndarray, np.ndarray]):
             "peak_reward": -0.5,
             "ramp_squared_score": 1.0,
             "peak_normalized_increment": 1.0,
+            "peak_impact_increment": 1.0,
         }
         return np.zeros(2, dtype=np.float32), -1.0, terminal, False, info
 

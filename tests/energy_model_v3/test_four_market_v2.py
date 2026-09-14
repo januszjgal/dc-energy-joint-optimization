@@ -237,7 +237,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
                     objective = adapter.env._current.protocol.objective
                     self.assertAlmostEqual(
                         total_reward,
-                        -objective.score(total_ramp_impact, info["running_peak_normalized_sum"]),
+                        -objective.score(total_ramp_impact, info["running_peak_impact_normalized_sum"]),
                         places=12,
                     )
                     break

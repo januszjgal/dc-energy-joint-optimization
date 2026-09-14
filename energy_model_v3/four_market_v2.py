@@ -25,7 +25,7 @@ from ramp_rl.contract import EnvRequest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-ARTIFACT_NAMESPACE = "four_market_joint_v2"
+ARTIFACT_NAMESPACE = "four_market_joint_v3"
 FACTORY_ROOT = ROOT / "output" / ARTIFACT_NAMESPACE / "factory"
 PROTOCOL_PATH = ROOT / "env" / "protocols" / "four_market_v2.yaml"
 MARKET_TO_CELL = (
@@ -62,6 +62,7 @@ def objective_from_factory(
         or configuration["ramp_time_aggregation"] != "sum_over_month"
         or configuration["ramp_quantity"] != "incremental_squared_impact"
         or configuration["peak_time_aggregation"] != "maximum_per_region_over_decision_month"
+        or configuration["peak_quantity"] != "adjusted_maximum_minus_original_maximum"
     ):
         raise ValueError("protocol objective is incompatible with the factory")
     weights = configuration["component_weights"]
@@ -171,7 +172,7 @@ class FourMarketV2WindowEnv(gym.Env):
             workload,
             stats,
             RampProtocol(
-                protocol_id="four-market-joint-net-load-peak-ramp-impact-v2",
+                protocol_id="four-market-joint-net-load-peak-impact-ramp-impact-v3",
                 objective=self.objective,
             ),
             episode_context={

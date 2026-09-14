@@ -74,9 +74,11 @@ class MonthlyRampImpactTests(unittest.TestCase):
             impacts = adjusted_ramps**2 - native_ramps**2
             impact_sum = float(impacts.sum())
             peaks = adjusted[1:].max(axis=0)
-            normalized_peak = float((peaks / scales).sum())
-            score = self.objective.score(impact_sum, normalized_peak)
+            original_peaks = net[1:].max(axis=0)
+            peak_impact = float(((peaks - original_peaks) / scales).sum())
+            score = self.objective.score(impact_sum, peak_impact)
             previous = [None] * len(MARKETS)
+            previous_original = [None] * len(MARKETS)
             raw_return = 0.0
             for slot in range(1, len(adjusted)):
                 peak_increment = 0.0
@@ -84,7 +86,10 @@ class MonthlyRampImpactTests(unittest.TestCase):
                     previous[market], increase = update_peak(
                         previous[market], float(adjusted[slot, market] / scales[market])
                     )
-                    peak_increment += increase
+                    previous_original[market], original_increase = update_peak(
+                        previous_original[market], float(net[slot, market] / scales[market])
+                    )
+                    peak_increment += increase - original_increase
                 raw_return += sum(self.objective.reward_components(
                     float(impacts[slot - 1].sum()), peak_increment
                 ))
@@ -93,8 +98,8 @@ class MonthlyRampImpactTests(unittest.TestCase):
             results.append((score, peaks, impact_sum))
 
         baseline, shifted = results
-        self.assertAlmostEqual(baseline[0], 0.6066670713238196, places=10)
-        self.assertAlmostEqual(shifted[0], 0.605846782739789, places=10)
+        self.assertAlmostEqual(baseline[0], 0.005620865581107415, places=10)
+        self.assertAlmostEqual(shifted[0], 0.004800576997076811, places=10)
         self.assertAlmostEqual(baseline[0] - shifted[0], 0.000820288584030604, places=10)
         self.assertAlmostEqual(baseline[1][isone], 24432.61158786, places=6)
         self.assertAlmostEqual(shifted[1][isone], 24331.40723248, places=6)

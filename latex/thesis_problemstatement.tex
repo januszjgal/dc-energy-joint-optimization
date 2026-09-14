@@ -50,7 +50,7 @@ We use Google workload traces and EIA grid data to model a synthetic fleet
 of four data centers. Each hour, the scheduler chooses where service runs,
 how much batch work to execute, and where to execute it. We will use
 proximal policy optimization (PPO) to train a policy that minimizes an equally
-weighted combination of scaled monthly ramp impact and regional peaks while meeting
+weighted combination of scaled monthly ramp impact and regional peak impact while meeting
 workload deadlines and site-capacity limits.
 
 \section{Google ClusterData2019 Workload Trace}
@@ -161,7 +161,7 @@ labels. We use the priority bands from Google's analysis in
 Table~\ref{tab:priority-bands} and assume work in the no-SLO bands can be
 deferred.\footnote{Priority comes from \codepath{collection_events}. We keep
 \codepath{type=0} events, take the highest priority recorded for each
-\codepath{collection_id}, and join that to the usage rows.}
+\codepath{collection_id}, and join that to the usage rows, using BigQuery. }
 
 \begin{table}[htbp]
   \centering
@@ -685,15 +685,30 @@ A negative value means the scheduled fleet reduced the squared ramp relative
 to the original grid; a positive value means it increased it.
 
 We also aim to reduce each region's monthly net-load peak. Under scheduling
-policy \(\mu\), its normalized peak in month \(e\) is
+policy \(\mu\), its normalized adjusted and original peaks in month \(e\) are
+\begin{align}
+  Q^{\mathrm{adjusted}}_{m,e}(\mu)
+  &=
+  \max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m},
+  \label{eq:monthly-peak}\\
+  Q^{\mathrm{original}}_{m,e}
+  &=
+  \max_{t\in\mathcal T_e}\frac{N_{m,t}}{S_m}.
+  \label{eq:monthly-original-peak}
+\end{align}
+Each takes the highest net load during the month and divides it by the
+region's demand scale, \(S_m\). As with ramps, we measure the fleet's peak
+impact by subtracting the original grid's peak:
 \begin{equation}
-  Q_{m,e}(\mu)
+  \Phi_{m,e}(\mu)
   =
-  \max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m}.
-  \label{eq:monthly-peak}
+  Q^{\mathrm{adjusted}}_{m,e}(\mu)-Q^{\mathrm{original}}_{m,e}.
+  \label{eq:peak-impact}
 \end{equation}
-This takes the highest adjusted net load during the month and divides it
-by the region's demand scale, \(S_m\).
+No schedule can change the original peak, so subtracting it changes every
+schedule's score by the same amount. It keeps the grid's own peak records,
+which the scheduler cannot influence, out of the hourly training signal.
+Site power is positive, so \(\Phi_{m,e}(\mu)>0\).
 
 Ramp impact and monthly peaks have different numerical scales. To combine
 them in one objective, we divide each by a fixed positive reference value.
@@ -712,12 +727,13 @@ Using this policy over \(\mathcal E_{\mathrm{train}}\), we calculate
   &=
   \frac{1}{|\mathcal E_{\mathrm{train}}|}
   \sum_{e\in\mathcal E_{\mathrm{train}}}\sum_{m\in\mathcal M}
-  Q_{m,e}(\mu_{\mathrm{NF}}).
+  Q^{\mathrm{adjusted}}_{m,e}(\mu_{\mathrm{NF}}).
   \label{eq:peak-reference}
 \end{align}
 \(C_R\) averages monthly totals of squared ramps, giving \(I_{m,t}\) a
 positive reference scale. \(C_Q\) averages the summed normalized regional
-peaks. Both remain fixed during training and May validation.
+peaks, giving \(\Phi_{m,e}\) a positive reference scale. Both remain fixed
+during training and May validation.
 
 \subsection{Joint objective}
 \label{subsec:problem-normalization}
@@ -725,7 +741,7 @@ peaks. Both remain fixed during training and May validation.
 Each simulated month \(e\) is one optimization episode. Decisions are hourly,
 and the objective covers the full month. We choose the schedule with the
 smallest equally weighted combination of scaled monthly ramp impact and
-regional monthly peaks.
+regional monthly peak impact.
 Let \(\mathfrak M\) be the causal scheduling policies satisfying
 Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
 \begin{equation}
@@ -737,7 +753,7 @@ Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
     \sum_{t\in\mathcal T_e}\sum_{m\in\mathcal M} I_{m,t}(\mu)\\
     &\hspace{2em}
     +\frac{0.5}{C_Q}
-    \sum_{m\in\mathcal M} Q_{m,e}(\mu).
+    \sum_{m\in\mathcal M} \Phi_{m,e}(\mu).
   \end{aligned}
   \label{eq:objective}
 \end{equation}
@@ -870,13 +886,15 @@ weighted mean; calculations use unrounded inputs.
     ISO-NE monthly peak (MW) & 24,432.6 & 24,331.4 \\
     CAISO monthly peak (MW) & 33,872.9 & 33,872.9 \\
     Scaled ramp impact & \(-0.000200\) & \(-0.000307\) \\
-    Normalized regional peaks & 1.213534 & 1.212000 \\
-    Joint score \(J_e\) & 0.606667 & 0.605847 \\
+    Scaled peak impact & 0.011442 & 0.009908 \\
+    Joint score \(J_e\) & 0.005621 & 0.004801 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The joint improvement is \(0.606667-0.605847\approx0.000820\).
+The scaled peak impact is \(\sum_m\Phi_{m,e}/C_Q\), using July's original
+peaks, including 24,082 MW for ISO-NE. The joint improvement is
+\(0.005621-0.004801\approx0.000820\).
 This one-hour routing change reduces both monthly scores while executing
 the same work within the service, deadline, and capacity constraints.
 
@@ -1011,6 +1029,234 @@ described in Section~\ref{subsec:transform-pairing}.
 \end{longtable}
 \endgroup
 
+
+\clearpage
+\section{Implementation Notes}
+\label{app:implementation}
+
+Paths are relative to the repository root. Several names predate the current
+design: \codepath{energy_model_v3}, \codepath{env/ramp_v6}, and the
+\codepath{four_market_v2} prefix. \codepath{README.md} gives the rebuild
+commands. Training, evaluation, and campaign code will be documented with the
+methods chapter.
+
+\subsection{Workload extraction (Section~\ref{sec:clusterdata2019})}
+\begin{itemize}
+  \item \codepath{extract_tier_curves.ipynb} runs the BigQuery queries in
+        Google Colab. It needs a Google Cloud project and the BigQuery client
+        listed in \codepath{requirements.txt}.
+  \item Its \codepath{cap} common-table expression computes
+        \(C^{\mathrm{ref}}_c\) (Equation~\eqref{eq:reference-capacity}) by
+        taking \codepath{MAX(capacity.cpus)} for each \codepath{machine_id}
+        and summing over machines.
+  \item The usage query assigns each row to a 300-second bucket by
+        \codepath{start_time}, sums \codepath{average_usage.cpus}, divides by
+        \(C^{\mathrm{ref}}_c\), and clips the result to \([0,1]\), a bound no
+        retained bucket reaches. Its \codepath{WHERE} clause keeps top-level
+        rows and requires \codepath{end_time-start_time} of at least
+        300 seconds.
+  \item The \codepath{prio} common-table expression takes the highest
+        \codepath{type=0} priority for each \codepath{collection_id}. A left
+        join keeps usage rows without a match, which fall into the service
+        residual.
+  \item The notebook writes \codepath{data/cells/cell_a_tiers.csv} through
+        \codepath{data/cells/cell_d_tiers.csv}, which also carry an unused
+        \codepath{batch_share} column. The files for cells \(e\)--\(h\) come
+        from \codepath{extract_cells_eh.ipynb} and are unused.
+\end{itemize}
+
+\subsection{Power model (Section~\ref{sec:powerdata2019})}
+\begin{itemize}
+  \item The power-extraction cell of
+        \codepath{extract_clusterdata2019_full.ipynb} averages
+        \codepath{measured_power_util} by hour from \codepath{powerdata_2019},
+        excluding rows flagged \codepath{bad_measurement_data}. It builds hourly
+        CPU utilization with the filters above and fits each cell with
+        \codepath{numpy.linalg.lstsq}. The notebook's machine, job, and
+        workload-generator outputs are unused.
+  \item Coefficients are stored under \codepath{per_cell_cpu_model} in
+        \codepath{data/power_model_params.json} as \codepath{idle_power}
+        (\(\alpha_c\)), \codepath{slope} (\(\beta_c\)), \codepath{r_squared},
+        and the number of fitted hours, \codepath{n}. The file's top-level
+        pooled fit, \codepath{cpu_mem_model}, and entries for cells
+        \(e\)--\(h\) are unused.
+  \item \codepath{_site_configs} in
+        \codepath{scripts/build_four_market_v2_factory.py} copies
+        \(\alpha_m,\beta_m\) into each site's \codepath{SiteConfig}, whose
+        \codepath{power_mw} method in \codepath{env/ramp_v6/models.py}
+        evaluates Equation~\eqref{eq:runtime-power}.
+\end{itemize}
+
+\subsection{Grid data and forecasts (Section~\ref{sec:energy-data})}
+\begin{itemize}
+  \item \codepath{scripts/fetch_eia_panels.py} downloads the series from the
+        EIA API v2 with the key \codepath{EIA_API_KEY} in an untracked
+        \codepath{.env} file. \codepath{MARKETS} maps each market case to its
+        balancing authority, and \codepath{fetch_series} requests demand from
+        \codepath{region-data} and wind and solar from
+        \codepath{fuel-type-data}. \codepath{HOUR_LABEL_IS_ENDING} applies the
+        one-hour shift.
+  \item \codepath{build_frame} fills gaps of up to three hours by
+        interpolation, clips negative wind and solar values to zero, and
+        computes \codepath{net_load_mw}.
+  \item \codepath{write_panels} writes
+        \codepath{data/four_market_2025/months/YYYY-MM/canonical_panel.csv},
+        holding the warm-up hour and the month, and
+        \codepath{data/four_market_2025/calendar.json}, which lists the months
+        and panel paths. The same split appears under \codepath{data.split} in
+        \codepath{env/protocols/four_market_v2.yaml}, the single protocol
+        file.
+  \item \codepath{compute_scales} computes \(S_m\). It is stored as
+        \codepath{gross_q95_mw} in
+        \codepath{data/four_market_2025/frozen_stats.json}, with training means
+        and standard deviations used to standardize observations, and repeated
+        as \codepath{market_scale_mw} in every panel row.
+        \codepath{RampAwareEnv} refuses to run if the two copies disagree.
+  \item \codepath{CanonicalMarketPanel} in \codepath{env/ramp_v6/panel.py}
+        checks that the columns in \codepath{REQUIRED_COLUMNS} are present and
+        finite, that timestamps are contiguous hourly UTC with every market in
+        every hour, and that no forecast is issued after its row's hour.
+  \item In \codepath{scripts/build_causal_forecasts.py},
+        \codepath{build_features} lists every input, including trailing 24-
+        and 168-hour means, the 25-hour lag, and calendar terms.
+        \codepath{assert_causal} checks that no input uses a later row.
+        \codepath{fit_ridge} solves ridge regression in closed form, with the
+        penalty chosen by rolling-origin cross-validation in
+        \codepath{select_alpha}. Rows without a week of history use
+        persistence, as would any model that failed to beat persistence on
+        training hours; none does. \codepath{--write} rewrites the panels'
+        forecast columns, and \codepath{--report} prints accuracy only.
+  \item Forecast lead times are \codepath{FORECAST_HOURS} and urgency horizons
+        are \codepath{deadline_bucket_hours}, both in
+        \codepath{env/ramp_v6/models.py}. \codepath{EDFQueue.due_by} computes
+        urgency.
+\end{itemize}
+
+\subsection{Fleet construction and monthly simulation
+  (Section~\ref{sec:data-transformations})}
+\begin{itemize}
+  \item \codepath{MARKET_TO_CELL}, \codepath{RATED_POWER_MW},
+        \codepath{COMPUTE_CAPACITY}, and \codepath{DEADLINE_WINDOW_SLOTS} in
+        \codepath{energy_model_v3/four_market_v2.py} set the mapping, fleet
+        constants, and \(H\). The protocol file records them under
+        \codepath{fleet} and \codepath{deadline_hours}.
+  \item In \codepath{scripts/build_four_market_v2_factory.py},
+        \codepath{_hourly_curve} drops the unpaired final row and averages
+        groups of twelve, \codepath{_raw_arrivals} maps each UTC hour to trace
+        hour \((\text{day}-1)\cdot24+\text{hour}\), and \codepath{_workload}
+        stores warm-up power as \codepath{warm_power_mw}. The warm-up length is
+        \codepath{HISTORY_HOURS} in \codepath{env/ramp_v6/models.py}.
+  \item The factory writes one fixture per month to
+        \codepath{output/four_market_joint_v3/factory/windows/YYYY-MM/fixture.json},
+        holding site configurations, arrivals, batch windows, and warm-up
+        power, plus an index, \codepath{factory.json}. These generated files
+        are not tracked. \codepath{validate} rejects a factory whose input
+        files have changed since it was built, and \codepath{--rebuild}
+        regenerates it.
+  \item \codepath{RampAwareEnv} in \codepath{env/ramp_v6/environment.py}
+        simulates one month. Its \codepath{reset} empties the queue, clears the
+        running peaks, and loads warm-up power; each \codepath{step} advances
+        one hour. \codepath{FourMarketV2WindowEnv} in
+        \codepath{energy_model_v3/four_market_v2.py} loads a fresh month on
+        every reset through \codepath{_load_window}, which assembles the
+        \codepath{WorkloadTrace}, \codepath{SiteConfig},
+        \codepath{FrozenRampStats}, and \codepath{CanonicalMarketPanel}. It
+        cycles through the training months in shuffled order.
+  \item Hour \(t\) of a month is row \(t+1\) of its panel, after the warm-up
+        hour; \codepath{CanonicalMarketPanel.observation_rows} returns it.
+  \item No committed script produces the tables in
+        Section~\ref{subsec:transform-control-authority}. They follow from
+        \codepath{data/power_model_params.json}, the tier curves, and the
+        training panels.
+\end{itemize}
+
+\subsection{Constraints (Sections~\ref{subsec:problem-decisions}--\ref{subsec:problem-feasibility})}
+\begin{itemize}
+  \item \codepath{project_action} in \codepath{env/ramp_v6/projection.py}
+        turns each hourly action into \(x^{\mathrm{svc}}_{j,t}\), \(z_t\), and
+        \(x^{\mathrm{bat}}_{j,t}\) satisfying
+        Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}.
+        The action encoding belongs to the methods chapter.
+  \item \codepath{project_capped_simplex} splits total service among
+        destinations so that it is conserved and within capacity.
+        \codepath{EDFQueue.drain} in \codepath{models.py} gives \(y_{i,t}\),
+        and \codepath{exact_transport} pairs origins with destinations so both
+        totals match.
+  \item \codepath{EDFQueue} keeps the backlog ledger, and after every hour
+        \codepath{step} checks that arrived work equals completed plus queued
+        work. \codepath{_load_current_arrivals} stores each arrival with its
+        first late slot, \(\min\{\nu+H,\;T_e\}\), one past \(d_\nu\).
+  \item \codepath{project_action} raises the release to cover both the work due
+        now and, for each later deadline, the work due by then minus
+        \codepath{_guaranteed_future_batch_capacity_by_deadline}. That bound
+        assumes future service could reach the month's largest hourly arrival
+        total, so releases are sometimes earlier than strictly needed. In the
+        final slot it releases the whole queue.
+  \item \codepath{step} stops the simulation if due work remains, a site
+        exceeds capacity, or work is left at month-end.
+        \codepath{tests/ramp_v6/test_continuous_month.py} and
+        \codepath{tests/ramp_v6/test_ramp_math.py} test the window, drain order,
+        and deadline guard.
+\end{itemize}
+
+\subsection{Ramps, peaks, and the joint objective
+  (Sections~\ref{subsec:problem-objective}--\ref{subsec:problem-normalization})}
+\begin{itemize}
+  \item \codepath{closed_window_terms} in \codepath{env/ramp_v6/reward.py}
+        computes Equations~\eqref{eq:native-ramp}--\eqref{eq:incremental-impact};
+        \codepath{_step_info} in \codepath{environment.py} applies it to each
+        market, using the previous hour's site power.
+  \item \codepath{update_peak} in \codepath{env/ramp_v6/objective.py}
+        maintains running maxima. \codepath{_step_info} tracks each region's
+        adjusted and original peaks and charges each hour the adjusted increase
+        minus the original increase. Running maxima telescope, so a month of
+        these increments sums to \(\Phi_{m,e}\).
+  \item \codepath{reference_trajectory_scores} scores one month under
+        \(\mu_{\mathrm{NF}}\). \codepath{calibrate_objective} in the factory
+        script averages those scores over the training months and stores the
+        results, with each month's scores, under
+        \codepath{objective_calibration} in \codepath{factory.json}.
+        \codepath{objective_from_factory} loads them, and
+        \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that May
+        is never read.
+  \item \codepath{JointObjective} implements
+        Equation~\eqref{eq:objective}: \codepath{score} returns \(J_e\), and
+        \codepath{reward_components} gives each hour's share, which sums to
+        \(-J_e\) over a month. The weights are \codepath{component_weights} in
+        the protocol file, and \codepath{OBJECTIVE_VERSION} labels the
+        definition so that results under different definitions are never
+        mixed. \codepath{tests/ramp_v6/test_joint_objective.py} checks the
+        monthly identity.
+\end{itemize}
+
+\subsection{Baseline, causal information, and worked example
+  (Sections~\ref{subsec:problem-evaluation}--\ref{subsec:problem-worked-joint})}
+\begin{itemize}
+  \item \codepath{_status_quo_action} in \codepath{environment.py} encodes
+        \(\mu_{\mathrm{NF}}\), and
+        \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that it
+        runs every arrival in place. \codepath{ramp_rl/evaluation.py} computes
+        Equation~\eqref{eq:improvement}.
+  \item \codepath{_build_observation_schema} and \codepath{_observation} build
+        \(\mathcal I_t\), and \codepath{GRID_OBSERVATION_LAG_HOURS} sets the
+        one-hour lag. \codepath{tests/ramp_v6/test_continuous_month.py} changes
+        every grid row at or after hour \(t\) and checks that the hour-\(t\)
+        observation is unchanged.
+  \item \codepath{tests/energy_model_v3/test_monthly_ramp_impact.py}
+        recomputes the worked example's monthly scores and peaks from the
+        panel and trace data.
+\end{itemize}
+
+\subsection{Other tracked files}
+\codepath{scripts/build_energy_thesis_figures.py} draws the normalized
+net-load figures in \codepath{docs/figures/four_market_v2/}, which this
+document does not use. \codepath{docs/problem_statement_review_2026-09-07.md}
+reviews an earlier draft. The \codepath{output/} and \codepath{models/}
+folders named \codepath{four_market_v2}, \codepath{four_market_joint_v1}, and
+\codepath{four_market_joint_v2} hold results from superseded designs.
+\codepath{.gitignore} excludes model weights, generated factories, and
+\codepath{.env}; \codepath{.gitattributes} stores CSV files and notebooks
+verbatim.
 
 \begin{thebibliography}{99}
 

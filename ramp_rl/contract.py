@@ -10,7 +10,7 @@ import numpy as np
 from gymnasium import spaces
 
 
-CONTRACT_VERSION = "joint-peak-ramp-impact-v2"
+CONTRACT_VERSION = "joint-peak-impact-ramp-impact-v3"
 SEMANTIC_ACTION_ID = "ramp-v6-constraint-decoded-preferences-2n-plus-1-v1"
 HISTORY_HOURS = 1
 REQUIRED_STEP_INFO = (
@@ -19,6 +19,7 @@ REQUIRED_STEP_INFO = (
     "peak_reward",
     "ramp_squared_score",
     "peak_normalized_increment",
+    "peak_impact_increment",
     "ramp_h1_adjusted",
     "abs_adjusted_ramp_h1_fraction_s_per_hour_by_market",
     "physical_ramp_market_order",

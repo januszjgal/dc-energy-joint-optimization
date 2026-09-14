@@ -1,0 +1,42 @@
+{
+  "environment_identity": {
+    "action_shape": [
+      9
+    ],
+    "factory_id": "0171d2fab7fbca7f1aae1956dcd21ccd6179dd4ce61b7f9f5e8556e5f53ff257",
+    "objective": {
+      "normalization": "training-month-mean-no-flexibility-ramp-totals-v2",
+      "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_original",
+      "peak_reference": 3.664598536383508,
+      "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
+      "peak_weight": 0.5,
+      "ramp_metric": "monthly_sum_of_regional_incremental_squared_ramp_impacts",
+      "ramp_reference": 6.034057752312674,
+      "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
+      "ramp_weight": 0.5,
+      "version": "joint-net-load-peak-impact-ramp-impact-v3"
+    },
+    "observation_shape": [
+      82
+    ],
+    "version": "joint-peak-impact-ramp-impact-v3"
+  },
+  "interaction_count": 1024000,
+  "n_envs": 4,
+  "n_steps": 512,
+  "ppo_config": {
+    "batch_size": 256,
+    "gae_lambda": 0.95,
+    "gamma": 0.99,
+    "learning_rate": 0.0003,
+    "n_epochs": 10,
+    "n_steps": 512,
+    "net_arch": [
+      64,
+      64
+    ]
+  },
+  "requested_interactions": 1000000,
+  "safe_quantum": 51200,
+  "seed": 4103
+}

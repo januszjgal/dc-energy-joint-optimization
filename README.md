@@ -51,7 +51,7 @@ Build it with the Tectonic recipe in VS Code; the PDF and SyncTeX output go in
   consulted to select forecast lead times, so it is validation rather than an
   untouched test set. There is no separate test split.
 - The factory creates one fixture per month and
-  `output/four_market_joint_v2/factory/factory.json`; it references the panels in
+  `output/four_market_joint_v3/factory/factory.json`; it references the panels in
   `data/four_market_2025/months/` rather than copying them. It freezes the training
   no-flexibility calibration and records its objective version and input identity.
 
@@ -69,12 +69,18 @@ $$
 \begin{aligned}
 I_{m,t}(\mu)&=\left(\Delta^{\mathrm{adj}}_{m,t}(\mu)\right)^2
   -\left(\Delta^{\mathrm{original}}_{m,t}\right)^2,\\
-Q_{m,e}(\mu)&=\max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m}.
+Q^{\mathrm{adj}}_{m,e}(\mu)&=\max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m},
+\qquad
+Q^{\mathrm{original}}_{m,e}=\max_{t\in\mathcal T_e}\frac{N_{m,t}}{S_m},\\
+\Phi_{m,e}(\mu)&=Q^{\mathrm{adj}}_{m,e}(\mu)-Q^{\mathrm{original}}_{m,e}.
 \end{aligned}
 $$
 
 The objective sums $I_{m,t}$ over the month; negative impacts are valid.
-It sums the separate regional peaks, not the maximum of the combined regions,
+Like $I_{m,t}$, the peak impact $\Phi_{m,e}$ subtracts the original grid. That
+shifts every schedule's $J_e$ by the same constant, leaving the best schedule and
+every improvement unchanged, and keeps the grid's own peak records out of the
+reward. It sums the separate regional peak impacts, not the maximum of the combined regions,
 data-center power peaks, or hourly squared loads. The warm hour participates
 in the first ramp only. The fixed positive references are arithmetic means
 over the eleven training months:
@@ -83,7 +89,7 @@ $$
 C_R=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}
   \sum_{t\in\mathcal T_e}\sum_m(\Delta^{\mathrm{adj}}_{m,t}(\mathrm{NF}))^2,
 \qquad
-C_Q=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}\sum_m Q_{m,e}(\mathrm{NF}).
+C_Q=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}\sum_m Q^{\mathrm{adj}}_{m,e}(\mathrm{NF}).
 $$
 
 Calibration uses absolute adjusted squared-ramp totals, never signed impacts
@@ -93,7 +99,7 @@ The objective is
 
 $$
 J_e(\mu)=\frac{\lambda_r}{C_R}\sum_{t\in\mathcal T_e}\sum_m I_{m,t}(\mu)
-       +\frac{\lambda_p}{C_Q}\sum_m Q_{m,e}(\mu),
+       +\frac{\lambda_p}{C_Q}\sum_m \Phi_{m,e}(\mu),
 \qquad \lambda_r+\lambda_p=1.
 $$
 
@@ -106,12 +112,13 @@ The raw step reward is
 
 $$
 r_t=-\frac{\lambda_r}{C_R}\sum_m I_{m,t}
-    -\frac{\lambda_p}{C_Q}\sum_m(M_{m,t}-M_{m,t-1}),
+    -\frac{\lambda_p}{C_Q}\sum_m\left[(M_{m,t}-M_{m,t-1})-(O_{m,t}-O_{m,t-1})\right],
 $$
 
-where $M_{m,t}$ is the running normalized adjusted peak over decision hours.
-Set $M_{m,-1}=0$; the first increment initializes $M_{m,0}=A_{m,0}/S_m$,
-and later updates take the running maximum. No warm-hour peak is included.
+where $M_{m,t}$ and $O_{m,t}$ are the running normalized adjusted and original
+peaks over decision hours. Set $M_{m,-1}=O_{m,-1}=0$; the first peak increment is
+therefore $P_{m,0}/S_m$, and later updates take running maxima. Original-grid
+records cancel, so they never enter the reward. No warm-hour peak is included.
 There is no episode-length divisor. Negative ramp impacts earn positive ramp
 rewards. The raw, undiscounted monthly sum is exactly $-J_e$. PPO uses gamma 0.99 and
 reward normalization, so it is an approximate solution method, not an exact
@@ -128,7 +135,7 @@ evaluation window as PPO. The reported improvement is
     improvement = J(status quo) - J(PPO)
 
 so a positive value means PPO improved the joint score. Report the monthly
-sum of ramp impacts, summed normalized peaks, and regional adjusted peaks
+sum of ramp impacts, summed regional peak impacts, and regional adjusted peaks
 in MW separately. Hourly mean impacts and absolute squared ramps remain
 diagnostics, not inputs to $J_e$. Ramp percentages are not reported because
 this component is signed; use raw or training-reference-scaled differences.
@@ -201,7 +208,7 @@ This includes every July hour and the following hour's rebound ramp.
 terminal work, or certificate violations. Policy $J=0.44045917$ versus
 no-flexibility $J=0.43925375$ gives improvement $-0.00120543$.
 This establishes feasible execution, not performance improvement. Results are
-in `output/four_market_joint_v2/pilot/impact-50-50-smoke/pilot.json`.
+in `output/four_market_joint_v3/pilot/impact-50-50-smoke/pilot.json`.
 
 Run and aggregate the locked campaign (only aggregate after all ten summaries
 exist):
@@ -220,7 +227,7 @@ python scripts\build_energy_thesis_figures.py
 ## Repository map
 
 Script and module names retain `four_market_v2` and `ramp_v6`; new artifacts
-use `four_market_joint_v2` to keep them separate from historical runs.
+use `four_market_joint_v3` to keep them separate from historical runs.
 
 | Path | Role |
 |---|---|
@@ -234,10 +241,10 @@ use `four_market_joint_v2` to keep them separate from historical runs.
 | `energy_model_v3/four_market_v2.py` | One-factory runtime (one continuous episode per month) |
 | `env/ramp_v6/` | Scheduler, queue, observation, and reward implementation |
 | `ramp_rl/` | Trainer boundary, PPO runner, evaluation, and campaign statistics |
-| `output/four_market_joint_v2/factory/` | Monthly fixtures, `factory.json`, and fixed objective calibration |
-| `output/four_market_joint_v2/campaign/` | Monthly-impact ten-seed summaries, statistics, and learning curves (full results pending) |
-| `output/four_market_joint_v2/pilot/<tag>/` | Tagged short pilot outputs |
-| `models/four_market_joint_v2/` | Monthly-impact campaign and pilot checkpoints |
+| `output/four_market_joint_v3/factory/` | Monthly fixtures, `factory.json`, and fixed objective calibration |
+| `output/four_market_joint_v3/campaign/` | Monthly-impact ten-seed summaries, statistics, and learning curves (full results pending) |
+| `output/four_market_joint_v3/pilot/<tag>/` | Tagged short pilot outputs |
+| `models/four_market_joint_v3/` | Monthly-impact campaign and pilot checkpoints |
 | `output/four_market_v2/`, `models/four_market_v2/` | Historical ramp-only artifacts |
 | `output/four_market_joint_v1/`, `models/four_market_joint_v1/` | Historical mean-squared joint artifacts |
 | `scripts/` | Data, factory, campaign, aggregation, and figure commands |

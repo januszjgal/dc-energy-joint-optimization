@@ -177,11 +177,15 @@ def _episode(
             "adjusted_peak_mw": float(row["running_adjusted_peak_mw"]),
             "native_peak_mw": float(row["running_native_peak_mw"]),
             "normalized_peak": float(row["running_adjusted_peak_mw"]) / float(row["market_scale_mw"]),
+            "peak_impact": (
+                float(row["running_adjusted_peak_mw"]) - float(row["running_native_peak_mw"])
+            ) / float(row["market_scale_mw"]),
         }
         for market, row in infos[-1]["per_market"].items()
     }
     normalized_peak = sum(row["normalized_peak"] for row in peaks.values())
-    joint_J = objective.score(ramp_impact_sum, normalized_peak)
+    peak_impact_sum = sum(row["peak_impact"] for row in peaks.values())
+    joint_J = objective.score(ramp_impact_sum, peak_impact_sum)
     raw_return = float(sum(info["scalar_reward"] for info in infos))
     if not np.isclose(raw_return, -joint_J, rtol=1e-9, atol=1e-12):
         raise RuntimeError("raw monthly return does not equal the negative joint objective")
@@ -201,6 +205,7 @@ def _episode(
         "ramp_mean_squared": ramp_mean_squared,
         "ramp_impact_sum": ramp_impact_sum,
         "normalized_peak": normalized_peak,
+        "peak_impact_sum": peak_impact_sum,
         "regional_peaks": peaks,
         "per_market_ramp_mean_squared": {
             market: float(mean(
@@ -316,8 +321,8 @@ def _aggregate(
         baseline_ramp = float(mean(e["per_market_ramp_mean_squared"][market] for e in baseline))
         policy_impact = float(mean(e["per_market_ramp_impact_sum"][market] for e in policy))
         baseline_impact = float(mean(e["per_market_ramp_impact_sum"][market] for e in baseline))
-        policy_peak = float(mean(e["regional_peaks"][market]["normalized_peak"] for e in policy))
-        baseline_peak = float(mean(e["regional_peaks"][market]["normalized_peak"] for e in baseline))
+        policy_peak = float(mean(e["regional_peaks"][market]["peak_impact"] for e in policy))
+        baseline_peak = float(mean(e["regional_peaks"][market]["peak_impact"] for e in baseline))
         policy_peak_mw = float(mean(e["regional_peaks"][market]["adjusted_peak_mw"] for e in policy))
         baseline_peak_mw = float(mean(e["regional_peaks"][market]["adjusted_peak_mw"] for e in baseline))
         policy_J = objective.score(policy_impact, policy_peak)
@@ -333,6 +338,8 @@ def _aggregate(
             "status_quo_peak_mw": baseline_peak_mw,
             "peak_reduction_mw": baseline_peak_mw - policy_peak_mw,
             "native_peak_mw": float(mean(e["regional_peaks"][market]["native_peak_mw"] for e in policy)),
+            "policy_peak_impact": policy_peak,
+            "status_quo_peak_impact": baseline_peak,
             "policy_joint_J": policy_J,
             "status_quo_joint_J": baseline_J,
             "improvement": baseline_J - policy_J,
@@ -360,7 +367,7 @@ def _aggregate(
     components = {}
     for name, field, reference, weight in (
         ("ramp", "ramp_impact_sum", objective.ramp_reference, objective.ramp_weight),
-        ("net_load_peak", "normalized_peak", objective.peak_reference, objective.peak_weight),
+        ("net_load_peak", "peak_impact_sum", objective.peak_reference, objective.peak_weight),
     ):
         policy_value = float(mean(episode[field] for episode in policy))
         baseline_value = float(mean(episode[field] for episode in baseline))
@@ -374,7 +381,7 @@ def _aggregate(
                 if name == "net_load_peak" and baseline_value > 0.0 else None
             ),
             "relative_improvement_basis": (
-                "positive_baseline_peak"
+                "positive_baseline_peak_impact"
                 if name == "net_load_peak" and baseline_value > 0.0
                 else "not_applicable_to_signed_or_nonpositive_metric"
             ),
@@ -388,7 +395,8 @@ def _aggregate(
         "mean_joint_J": policy_J,
         "mean_monthly_ramp_impact": components["ramp"]["policy"],
         "mean_ramp_squared": float(mean(episode["ramp_mean_squared"] for episode in policy)),
-        "mean_normalized_net_load_peak": components["net_load_peak"]["policy"],
+        "mean_peak_impact": components["net_load_peak"]["policy"],
+        "mean_normalized_net_load_peak": float(mean(episode["normalized_peak"] for episode in policy)),
         "episode_count": len(policy),
         "window_ids": [episode["window_id"] for episode in policy],
         "step_count": step_count,

@@ -71,9 +71,10 @@ validation. For the committed data, $C_R\approx6.03405775$ and
 $C_Q\approx3.66459854$.
 
 The default objective is
-$J_e=0.5\sum_{t,m}I_{m,t}/C_R+0.5\sum_mQ_{m,e}/C_Q$, where
+$J_e=0.5\sum_{t,m}I_{m,t}/C_R+0.5\sum_m\Phi_{m,e}/C_Q$, where
 $I_{m,t}$ subtracts the original grid's squared ramp from the adjusted
-squared ramp. There is no division by month length. Equal weights value
+squared ramp and $\Phi_{m,e}$ subtracts the original normalized monthly peak
+from the adjusted one. Both subtractions are constant across schedules. There is no division by month length. Equal weights value
 equal proportional changes relative to those fixed training references, not
 equal achieved savings or learned influence. Report $J_{\mathrm{NF}}-J_{\mathrm{policy}}$
 (positive is favorable) alongside signed monthly ramp totals and regional
@@ -92,15 +93,16 @@ python scripts\run_four_market_v2_campaign.py preflight
 ```
 
 The factory writes monthly fixtures and
-`output/four_market_joint_v2/factory/factory.json`, referencing the calendar,
+`output/four_market_joint_v3/factory/factory.json`, referencing the calendar,
 central frozen statistics, and panels rather than copying panels. Its fixed
 objective calibration records the objective version and input identity.
 Script and module names retain `four_market_v2` and `ramp_v6`.
 
-Campaign outputs use `output/four_market_joint_v2/campaign/`, tagged pilots
-use `output/four_market_joint_v2/pilot/<tag>/`, and checkpoints use
-`models/four_market_joint_v2/`. Old `four_market_v2` and
-`four_market_joint_v1` artifacts are historical and must not be resumed as
+Campaign outputs use `output/four_market_joint_v3/campaign/`, tagged pilots
+use `output/four_market_joint_v3/pilot/<tag>/`, and checkpoints use
+`models/four_market_joint_v3/`. Old `four_market_v2`,
+`four_market_joint_v1`, and `four_market_joint_v2` (absolute-peak objective)
+artifacts are historical and must not be resumed as
 monthly-impact runs. The objective and normalization versions are checked
 alongside data, observation, and training identities.
 
