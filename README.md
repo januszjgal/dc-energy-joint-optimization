@@ -1,14 +1,10 @@
 # Joint Grid-Ramp Smoothing and Monthly Net-Load Peak Reduction
 
-This is Janusz Gal's applied master's thesis at UNC Charlotte. The active
+This is a master's thesis repository for UNC Charlotte written by Janusz 'Jay' Gal. The 
 experiment schedules raw measured service and batch CPU curves from
-ClusterData2019 cells a-d against four hourly market panels. It is a single,
-fixed-workload proxy experiment, not a claim about identified Google facilities.
+ClusterData2019 cells a-d against four hourly market panels.
 The working thesis document is
 [`latex/thesis_problemstatement.tex`](latex/thesis_problemstatement.tex).
-It currently contains the problem statement and will be expanded into the thesis.
-Build it with the Tectonic recipe in VS Code; the PDF and SyncTeX output go in
-`latex/build/`, which is ignored by Git. Superseded drafts remain in Git history.
 
 ## Active design
 
