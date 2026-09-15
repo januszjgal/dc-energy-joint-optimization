@@ -176,8 +176,15 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Rebuild the data (optional; the committed monthly panels already carry the
-causal forecast columns):
+To re-extract the Google workload and power inputs, run
+[`extract_cells.ipynb`](extract_cells.ipynb) from top to bottom in Colab or
+locally from the repository root. It defaults to billing project `aeee-thesis`
+and cells a-d; e-h are optional. It stages a zip under
+`build/clusterdata2019/` for review before replacing committed data.
+The existing inputs can be used without rerunning it.
+
+Rebuild the EIA panels and forecasts (optional; the committed monthly panels
+already carry the causal forecast columns):
 
 ```powershell
 python scripts\fetch_eia_panels.py --write
@@ -232,6 +239,7 @@ use `four_market_joint_v3` to keep them separate from historical runs.
 
 | Path | Role |
 |---|---|
+| `extract_cells.ipynb` | Single Google workload and power extraction notebook |
 | `data/cells/cell_X_tiers.csv` | Retained measured CPU/service/batch tier curves |
 | `data/four_market_2025/calendar.json` | Month split, monthly panel paths, and frozen-statistics path |
 | `data/four_market_2025/months/` | One continuous hourly EIA panel per month (one warm hour plus the month, hour-beginning UTC) |

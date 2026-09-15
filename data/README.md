@@ -7,6 +7,15 @@ not a separate test split.
 
 ## Workload and power
 
+[`extract_cells.ipynb`](../extract_cells.ipynb) is the single extraction notebook.
+Run it top to bottom in Colab or from the repository root with local Google
+credentials. It defaults to project `aeee-thesis` and cells a-d; set
+`INCLUDE_UNUSED_CELLS = True` to also extract e-h. It writes tier and aggregate
+curves, power coefficients, and the a-d fitting scatter to
+`build/clusterdata2019/data/`, then packages only that run's outputs in a zip.
+Review those files before copying them into `data/` and rebuilding the factory.
+The committed data and historical runs are unchanged by the consolidation.
+
 `cells/cell_a_tiers.csv` through `cells/cell_d_tiers.csv` provide the raw measured
 five-minute normalized CPU, service, and batch curves from ClusterData2019.
 The factory averages twelve samples per hour and uses the service and batch

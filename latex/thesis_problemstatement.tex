@@ -1068,9 +1068,9 @@ methods chapter.
 
 \subsection{Workload extraction (Section~\ref{sec:clusterdata2019})}
 \begin{itemize}
-  \item \codepath{extract_tier_curves.ipynb} runs the BigQuery queries in
-        Google Colab. It needs a Google Cloud project and the BigQuery client
-        listed in \codepath{requirements.txt}.
+  \item \codepath{extract_cells.ipynb} runs the BigQuery queries in
+        Google Colab or a local Jupyter kernel. It needs a Google Cloud
+        project and installs its extraction dependencies in the first code cell.
   \item Its \codepath{cap} common-table expression computes
         \(C^{\mathrm{ref}}_c\) (Equation~\eqref{eq:reference-capacity}) by
         taking \codepath{MAX(capacity.cpus)} for each \codepath{machine_id}
@@ -1096,19 +1096,19 @@ methods chapter.
         \codepath{average_usage.cpus} times window duration.
   \item The notebook writes \codepath{data/cells/cell_a_tiers.csv} through
         \codepath{data/cells/cell_d_tiers.csv}, which also carry an unused
-        \codepath{batch_share} column. The files for cells \(e\)--\(h\) come
-        from \codepath{extract_cells_eh.ipynb} and are unused.
+        \codepath{batch_share} column. Cells \(e\)--\(h\) are optional
+        exports from the same notebook and are unused. Outputs are staged under
+        \codepath{build/clusterdata2019/} before being copied into the repository.
 \end{itemize}
 
 \subsection{Power model (Section~\ref{sec:powerdata2019})}
 \begin{itemize}
   \item The power-extraction cell of
-        \codepath{extract_clusterdata2019_full.ipynb} averages
+        \codepath{extract_cells.ipynb} averages
         \codepath{measured_power_util} by hour from \codepath{powerdata_2019},
         excluding rows flagged \codepath{bad_measurement_data}. It builds hourly
         CPU utilization with the filters above and fits each cell with
-        \codepath{numpy.linalg.lstsq}. The notebook's machine, job, and
-        workload-generator outputs are unused.
+        \codepath{numpy.linalg.lstsq}.
   \item Coefficients are stored under \codepath{per_cell_cpu_model} in
         \codepath{data/power_model_params.json} as \codepath{idle_power}
         (\(\alpha_c\)), \codepath{slope} (\(\beta_c\)), \codepath{r_squared},

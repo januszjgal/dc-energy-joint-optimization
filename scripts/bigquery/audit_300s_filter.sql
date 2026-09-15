@@ -1,4 +1,4 @@
--- Audit of the >= 300 s instance_usage filter used by extract_tier_curves.ipynb,
+-- Audit of the >= 300 s instance_usage filter used by extract_cells.ipynb,
 -- cells a-d. Paste into the BigQuery console and run each query separately.
 -- Saved results: results/query1_filter_volume.csv (Query 1) and
 -- results/query2_hourly_shape.csv (Query 2), next to this file.
