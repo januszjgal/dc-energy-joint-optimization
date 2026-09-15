@@ -31,192 +31,144 @@ ramp, net-load peak
 \section{Introduction}
 \label{sec:introduction}
 
-The problem-statement chapter defines a causal hourly scheduler for four
-synthetic data centers. Each month, it must minimize a joint score
-\(J_e\) that adds scaled one-hour ramp impact and scaled regional peak
-impact, while every service arrival runs immediately, batch work finishes
-within 24 hours, and no site exceeds its capacity. It compares every schedule
-with the no-flexibility baseline \(\mu_{\mathrm{NF}}\), which runs all work at
-its origin in its arrival hour.
+The problem-statement chapter defines a scheduler for four synthetic data
+centers. Here we use proximal policy optimization (PPO) to choose where
+service runs and when and where batch work runs. We ask whether this
+scheduler can reduce regional net-load ramps and monthly peaks while
+meeting service, completion-window, and site-capacity constraints.
 
-This chapter describes how we solve that problem with proximal policy
-optimization (PPO) and reports a first pilot: three independently trained
-policies evaluated on May 2025. Section~\ref{sec:primer} introduces the
-reinforcement-learning terms as they apply to this problem.
-Section~\ref{sec:ppo} explains PPO. Section~\ref{sec:running} describes how a
-training run works and what a seed controls. Sections~\ref{sec:evaluation}
-and~\ref{sec:results} give the evaluation protocol and results. The pilot is a
-draft result: it has three seeds and one validation month.
+Previous work uses workload flexibility to change when data centers draw
+power. Google's Carbon-Aware Computing system shifts flexible work using
+forecasts and daily completion requirements \cite{radovanovic2021carbonaware}.
+DeepEE applies deep reinforcement learning to joint job scheduling and
+cooling control \cite{ran2019deepee}. SustainDC provides a benchmark for
+workload, cooling, and battery control using observations, forecasts, and
+separate operating metrics \cite{naug2024sustaindc}. These studies inform our
+use of workload flexibility and learned control. Our focus is their effect
+on regional net-load ramps and peaks; we do not measure carbon savings.
 
-\section{Reinforcement Learning for This Problem}
-\label{sec:primer}
+We evaluate three independently trained policies on May 2025, using the
+same no-flexibility baseline, \(\mu_{\mathrm{NF}}\), which executes all work
+at its origin in its arrival hour. The study's contribution is the
+scheduling model and its evaluation using Google workload traces and EIA
+grid data. PPO supplies the learning method. Appendix~\ref{app:implementation}
+gives the code locations and reproduction commands.
 
-\subsection{Agent, environment, and episodes}
+\section{The Scheduling Method}
+\label{sec:scheduler}
 
-Reinforcement learning trains an \emph{agent} to choose actions that
-maximize the total \emph{reward} it collects from an
-\emph{environment} \cite{sutton2018reinforcement}. Here the agent is the
-scheduler and the environment is the simulated four-site fleet with its grid
-data.\footnote{The environment is \codepath{RampAwareEnv} in
-\codepath{env/ramp_v6/environment.py}. \codepath{make_four_market_env} in
-\codepath{energy_model_v3/four_market_v2.py} builds it from the generated
-factory.} One interaction is one decision hour: the agent observes the state
-of the grid and its queues, chooses an action, and receives a reward once the
-hour's realized net load is known.
-
-An \emph{episode} is one calendar month of 672 to 744 hours. Queues and
-site-power history carry across midnight, and the episode ends at month-end
-with every queue empty. Training cycles through the eleven training months;
-May is never seen during training.
+One interaction is one decision hour. The scheduler observes the available
+grid information and workload, chooses an action, and receives a reward
+once the hour's realized net load is known. One episode is a calendar month
+of 672 to 744 hours. Queues and site-power history carry across midnight;
+each month ends with empty queues.
 
 \subsection{Observation}
+\label{subsec:observation}
 
-The agent sees an 82-number \emph{observation}, the information set
-\(\mathcal I_t\) from the problem statement.\footnote{\codepath{_build_observation_schema}
-and \codepath{_observation} in \codepath{env/ramp_v6/environment.py} define
-and fill the 82 entries.} For each of the four markets, it contains
-standardized gross demand and net load for hour \(t-1\); the four gross-demand
-and four net-load forecasts issued at \(t-1\); the steepest forecast climb for
-each quantity; and the running adjusted and original peaks. For each site, it
-contains the hour-\(t\) service and batch arrivals, the queued batch work, and
-the previous hour's power. It ends with five queue-urgency totals, the hour of
-day and day of week as sine--cosine pairs, and the fraction of the month
-remaining. No entry comes from hour \(t\) or later.
+The policy receives an 82-number observation built from the information
+available at hour \(t\). For each market, it includes gross demand and net
+load from \(t-1\), the four gross-demand and four net-load forecasts issued
+at \(t-1\), the steepest forecast climb for each quantity, and the running
+adjusted and original peaks. For each site, it includes current service and
+batch arrivals, queued batch work, and the previous hour's power. Five
+queue-urgency totals, cyclic hour and weekday features, and the fraction of
+the month remaining complete the observation.
 
-\subsection{Action}
+Current arrivals are known when scheduling; realized grid measurements are
+available only through \(t-1\). The observation summarizes the available
+information rather than exposing the simulator's full state.
 
-The action is nine bounded numbers in \([-6,6]\): four service preferences,
-one batch-release level, and four batch-destination
-preferences.\footnote{\codepath{action_schema} in
-\codepath{env/ramp_v6/environment.py} names the nine entries, and
-\codepath{project_action} in \codepath{env/ramp_v6/projection.py} decodes
-them.} A decoder turns them into a feasible schedule every hour:
+\subsection{Actions and feasibility}
+\label{subsec:actions}
+
+PPO outputs nine preferences in \([-6,6]\): four for service destinations,
+one for batch release, and four for batch destinations. A decoder turns
+these preferences into the executed schedule:
 \begin{itemize}
-  \item a softmax of the service preferences splits total service among the
-        sites, then a projection keeps each site within capacity;
-  \item the release level maps linearly from \([-6,6]\) to a fraction
-        \([0,1]\) of the batch queue, raised when needed to meet deadlines
-        and capped by spare capacity; and
-  \item a softmax of the destination preferences places that batch work, and
-        earliest-deadline-first order decides whose work it is.
+  \item A softmax splits service among sites, and a projection keeps the
+        allocation within each site's capacity.
+  \item The release preference maps to a fraction of queued batch work.
+        The decoder increases release when needed to meet deadlines and
+        limits it to the remaining capacity.
+  \item A softmax splits released batch work among destinations, subject to
+        capacity. A global earliest-deadline-first queue selects the work.
 \end{itemize}
-The decoder guarantees the service, deadline, and capacity constraints, so the
-agent never needs a penalty to learn them. It can only express preferences
-among feasible schedules.
+PPO learns scheduling preferences; the decoder enforces service, deadline,
+and capacity constraints. Feasibility therefore comes from the decoder,
+without constraint penalties in the reward.
 
-\subsection{Reward and return}
+\subsection{Reward}
+\label{subsec:reward}
 
-Each hour's reward is that hour's share of \(-J_e\):
+The raw hourly reward follows the form of the joint objective from the
+problem statement:
 \begin{equation}
-  r_t
-  =
-  -\frac{0.5}{C_R}\sum_{m} I_{m,t}
-  -\frac{0.5}{C_Q}\sum_{m}\left[
-    \left(M_{m,t}-M_{m,t-1}\right)
-    -\left(O_{m,t}-O_{m,t-1}\right)
-  \right],
+  \begin{aligned}
+    r_t
+    ={}&-\frac{0.5}{C_R}\sum_m I_{m,t}\\
+    &-\frac{0.5}{C_Q}\sum_m\left[
+      \left(M_{m,t}-M_{m,t-1}\right)
+      -\left(O_{m,t}-O_{m,t-1}\right)
+    \right],
+  \end{aligned}
   \label{eq:reward}
 \end{equation}
-where \(I_{m,t}\) is the ramp impact and \(M_{m,t}\) and \(O_{m,t}\) are the
-running normalized adjusted and original peaks, starting from zero. Running
-maxima telescope, so the month's undiscounted \emph{return} is exactly
-\(\sum_t r_t=-J_e\).\footnote{\codepath{JointObjective.reward_components} in
-\codepath{env/ramp_v6/objective.py} computes both terms, and
-\codepath{tests/ramp_v6/test_joint_objective.py} checks that a month of
-rewards equals \(-J_e\).} Maximizing return is therefore the same as
-minimizing \(J_e\).
+where \(I_{m,t}\) is ramp impact, and \(M_{m,t}\) and \(O_{m,t}\) are the
+running normalized adjusted and original peaks. Each maximum is initialized
+from the first decision hour; its first increment is measured from zero.
+The preceding warm hour contributes to the first ramp but not to the peaks.
 
-\subsection{Policy and value function}
+The peak increments sum to the month's peak impact, so the raw,
+undiscounted episode return is \(\sum_t r_t=-J_e\). Lowering the joint score
+therefore increases this return. Negative ramp impacts and positive hourly
+rewards are valid.
 
-A \emph{policy} \(\pi_\theta(a\mid o)\) maps an observation to a probability
-distribution over actions. Ours is a neural network with parameters
-\(\theta\). A \emph{value function} \(V_\phi(o)\) estimates the discounted
-return expected from an observation; it is used only during training, to judge
-whether an action did better or worse than expected. PPO trains both
-together, an arrangement called actor--critic.
+Both reference scales use total-grid quantities under no flexibility,
+as defined in the problem statement.
 
-\section{Proximal Policy Optimization}
+\section{Training with PPO}
 \label{sec:ppo}
 
-\subsection{Why PPO}
+PPO handles the decoder's continuous preference actions. We use its
+Stable-Baselines3 implementation \cite{schulman2017ppo,raffin2021sb3} with an
+actor--critic network: the policy chooses actions, while a separate value
+function estimates discounted training returns
+\cite{sutton2018reinforcement}.
 
-PPO \cite{schulman2017ppo} is a policy-gradient method: it adjusts \(\theta\)
-in the direction that makes better-than-expected actions more likely. It
-handles continuous actions directly, needs no model of grid dynamics, and
-usually works with standard settings. We use the Stable-Baselines3
-implementation \cite{raffin2021sb3}.\footnote{Version 2.9.0, pinned in
-\codepath{requirements.txt}; \codepath{ramp_rl/runner.py} refuses to run with
-any other version.}
+\subsection{Policy updates}
 
-\subsection{Collecting experience}
+Each rollout collects 512 steps from each of four environments, or 2,048
+transitions. The policy samples actions from a diagonal Gaussian with a
+learned mean and per-dimension standard deviations. Samples are clipped to
+\([-6,6]\) before reaching the decoder.
 
-Training alternates two phases. In the \emph{rollout} phase, the current
-policy runs in the simulator and records observations, actions, rewards, and
-value estimates. Actions are sampled from a diagonal Gaussian distribution
-whose mean the network outputs and whose per-dimension standard deviation is
-learned separately. That randomness is how the agent explores. Samples are
-clipped to \([-6,6]\) before the decoder sees them.
+Generalized advantage estimation \cite{schulman2016gae} uses the rewards
+and value estimates to assess which sampled actions did better than
+expected. Estimates stop at the end of the rollout or month. At an
+unfinished rollout, the value function estimates the remaining return;
+at month-end, there is no future return. PPO then updates the policy using
+its clipped objective. Clipping limits the incentive for large policy
+changes; it does not impose a hard 20\% bound on action-probability changes.
+Appendix~\ref{subsec:ppo-details} gives the update equations.
 
-\subsection{Advantages}
+\subsection{Normalization and discounting}
 
-After a rollout, generalized advantage estimation \cite{schulman2016gae}
-measures how much better each action turned out than the value function
-predicted:
-\begin{align}
-  \delta_t &= r_t+\gamma V_\phi(o_{t+1})-V_\phi(o_t),
-  \label{eq:td-error}\\
-  \hat A_t &= \sum_{l\geq0}(\gamma\lambda)^l\,\delta_{t+l},
-  \label{eq:gae}
-\end{align}
-with discount \(\gamma=0.99\) and \(\lambda=0.95\). The sum stops at the end of
-an episode. Advantages are normalized within each minibatch.
+During training, observations are standardized using running means and
+variances and clipped to \(\pm10\). Rewards are divided by a running
+standard deviation of discounted returns and clipped to \(\pm10\).
+The policy and value function train on these transformed values; reported
+rewards and \(J_e\) use raw values.
 
-The discount means a reward 100 hours away counts about 37\% as much as one
-now. \(J_e\) itself is undiscounted, so PPO optimizes a close approximation of
-the objective rather than the objective exactly. The approximation matters
-most for peaks set late in a month by decisions made much earlier.
+PPO uses \(\gamma=0.99\), so training favors earlier rewards. It is an
+approximate method for the monthly problem: evaluation uses the raw,
+undiscounted objective, while training uses discounted, normalized rewards.
 
-\subsection{The clipped update}
+\subsection{Training setup}
 
-In the \emph{update} phase, PPO improves the policy using the recorded
-experience. With the probability ratio
-\(\rho_t(\theta)=\pi_\theta(a_t\mid o_t)/\pi_{\theta_{\mathrm{old}}}(a_t\mid o_t)\),
-it maximizes
-\begin{equation}
-  L^{\mathrm{clip}}(\theta)
-  =
-  \mathbb{E}_t\!\left[
-    \min\!\left(
-      \rho_t\hat A_t,\;
-      \mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)\,\hat A_t
-    \right)
-  \right],
-  \label{eq:ppo-clip}
-\end{equation}
-with \(\epsilon=0.2\). The clip removes any gain from moving an action's
-probability more than 20\% away from the policy that collected the data, so
-each update stays close to experience the agent actually has. The value
-network is trained to match observed returns with squared error, weighted
-0.5 in the combined loss. There is no entropy bonus, and gradients are
-clipped to norm 0.5.
-
-\subsection{Normalization}
-
-Observations and rewards have very different scales, so training wraps the
-environments in a running normalizer.\footnote{\codepath{VecNormalize} from
-Stable-Baselines3, created in \codepath{run_training} in
-\codepath{ramp_rl/runner.py} and saved beside each model as
-\codepath{vecnormalize.pkl}.} Each observation entry is standardized with a
-running mean and variance and clipped to \(\pm10\). Rewards are divided by a
-running standard deviation of the discounted return and clipped to \(\pm10\).
-Normalization only rescales what the network sees. The recorded rewards and
-every reported \(J_e\) use raw, unnormalized values.
-
-\subsection{Network and hyperparameters}
-
-Table~\ref{tab:hyperparameters} lists the settings. The policy and value
-networks are separate, each with two hidden layers of 64 tanh units, for
-19,603 trainable parameters in total. We have not tuned these settings.
+The policy and value networks each have two hidden layers of 64 tanh units,
+with 19,603 trainable parameters in total. Table~\ref{tab:hyperparameters}
+lists the pilot settings. We have not tuned them for this problem.
 
 \begin{table}[htbp]
   \centering
@@ -246,104 +198,45 @@ networks are separate, each with two hidden layers of 64 tanh units, for
   \end{tabular}
 \end{table}
 
-\section{Running a Training Run}
-\label{sec:running}
+Each seed trains a fresh policy on the eleven training months of 2025,
+excluding May. Each environment cycles through a shuffled order of these
+months before repeating them. The requested 1,000,000 interactions are
+rounded up to a checkpoint boundary, giving 1,024,000 interactions per seed.
 
-\subsection{What one run does}
+The pilot uses seeds 4101--4103. A seed controls network initialization,
+action sampling, minibatch order, and the order of training months. Data,
+constraints, and hyperparameters stay the same, so differences between
+seeds measure variation from training randomness.
 
-A run trains one policy from scratch.\footnote{\codepath{run_training} in
-\codepath{ramp_rl/runner.py}. Its PPO settings come from the
-\codepath{training} section of \codepath{env/protocols/four_market_v2.yaml}.}
-Four copies of the environment step in turn inside one process. Each rollout
-collects 512 hours from each copy, 2,048 transitions in all. PPO then makes 10
-passes over those transitions in minibatches of 256, 80 gradient steps per
-update.
-
-A request for 1,000,000 interactions is rounded up to the next checkpoint
-boundary, 1,024,000 interactions or 500 updates. Each copy sees 256,000 hours,
-about 351 simulated months, so a run covers roughly 1,400 months, or about 128
-passes through the training year. Each copy draws the eleven training months
-in a freshly shuffled order before repeating any of them.\footnote{\codepath{FourMarketV2WindowEnv._next_window_id}
-in \codepath{energy_model_v3/four_market_v2.py}.}
-
-\subsection{Checkpoints and logs}
-
-After every rollout, the run appends one row of raw training metrics to a
-learning-curve file. Every 25 rollouts (51,200 interactions), it saves a
-resumable checkpoint. It also keeps milestone snapshots at the first
-checkpoints past 110,592, 500,000, and 1,000,000
-interactions.\footnote{\codepath{TrainingCallback} and
-\codepath{save_latest_checkpoint} in \codepath{ramp_rl/runner.py}. A
-checkpoint records the environment identity, PPO settings, and seed, and a
-resumed run must match all three.} Each checkpoint stores the objective
-version, data digest, and observation and action shapes, so a model can never
-be evaluated against a different objective or data set.\footnote{\codepath{environment_identity}
-in \codepath{ramp_rl/contract.py}; \codepath{tests/ramp_v6/test_campaign_instrumentation.py}
-tests checkpointing and resumption.}
-
-\subsection{What a seed is}
-
-A seed is the integer that fixes every random choice in one run. Seed \(s\)
-sets the Python, NumPy, and PyTorch generators and the PPO seed, which
-determine the network's initial weights, the exploration noise, and the
-minibatch shuffling. Environment copy \(r\) receives seed \(s+r\) and shuffles
-its month order with a generator seeded by \(s+1009r\).\footnote{\codepath{_make_vec_env}
-and \codepath{run_training} in \codepath{ramp_rl/runner.py}.}
-
-Everything else is identical across seeds: the data, objective, constraints,
-and hyperparameters. Differences between seeds therefore measure how much the
-result depends on the randomness of training, not uncertainty about future
-grids or workloads. A single seed can be lucky or unlucky; several seeds show
-whether a result is repeatable. The pilot uses seeds 4101--4103. The planned
-campaign uses ten, 4101--4110.
-
-\subsection{Commands}
-
-From the repository root, the pilot is reproduced with three
-commands:\footnote{\codepath{scripts/build_four_market_v2_factory.py} builds
-the monthly fixtures, \codepath{scripts/run_four_market_v2_pilot.py} trains and
-evaluates the seeds, and \codepath{scripts/build_ppo_pilot_figures.py} draws the
-figures in this chapter.}
-{\footnotesize
-\begin{verbatim}
-python scripts/build_four_market_v2_factory.py
-python scripts/run_four_market_v2_pilot.py \
-    --seeds 4101 4102 4103 \
-    --timesteps 1000000 --tag impact-50-50-1m
-python scripts/build_ppo_pilot_figures.py \
-    --tag impact-50-50-1m
-\end{verbatim}
-}
-The pilot script trains the seeds in parallel processes and evaluates every
-milestone. It writes learning curves and summaries to
-\codepath{output/four_market_joint_v3/pilot/impact-50-50-1m/} and checkpoints
-to \codepath{models/four_market_joint_v3/pilot/impact-50-50-1m/}. The option
-\codepath{--ramp-weight} selects ramp-only (1) or peak-only (0) variants of the
-objective. The full ten-seed campaign uses
-\codepath{scripts/run_four_market_v2_campaign.py}.
-
-On an eight-core laptop, each seed trained at about 240 interactions per
-second and finished in 71--72 minutes, with the three seeds running at once.
-
-\section{Evaluation Protocol}
+\section{Evaluation}
 \label{sec:evaluation}
 
-Each saved policy is evaluated on May 2025, one continuous 744-hour
-episode.\footnote{\codepath{evaluate_checkpoint} and \codepath{_run_episode}
-in \codepath{ramp_rl/evaluation.py}.} Evaluation differs from training in
-three ways. The policy acts \emph{deterministically}, using the mean of its
-Gaussian rather than sampling. The normalizer's statistics are frozen at their
-training values. And the no-flexibility baseline runs on the same 744 hours,
+Each saved policy runs on May 2025, one continuous 744-hour episode. It acts
+deterministically, using the Gaussian mean instead of sampling. Observation
+normalization uses frozen training statistics, and rewards are reported
+without normalization. The no-flexibility baseline runs on the same hours,
 with the same arrivals, grid data, and forecasts.
 
 We report \(J_e(\mu_{\mathrm{NF}})-J_e(\mu)\), positive when PPO improves on
-the baseline, together with its ramp and peak parts. For the final
-checkpoints we also recomputed \(J_e\) independently from the raw panel and
-each site's power; it matched the environment's return exactly, with no
-service, deadline, or capacity violation.
+the baseline, and show the ramp and peak contributions separately. Regional
+results report squared-ramp reductions relative to the original grid and
+peak changes in MW relative to the no-flexibility fleet. These references
+are labeled separately in the figures and tables.
 
-May also informed the choice of forecast lead times, so it is a validation
-month rather than an untouched test set.
+We also report percentage reductions from no flexibility in total squared
+normalized ramps, summed normalized regional peaks, and the fleet's added
+peak impact. Each percentage divides the reduction by the corresponding
+no-flexibility value. The signed joint score is reported as an absolute
+improvement.
+
+For each final checkpoint, we also recomputed \(J_e\) from the raw grid
+panel and site-power trajectory. It matched the negative raw episode return
+within numerical tolerance. All three policies completed the evaluation
+with no service, deadline, or capacity violation.
+
+May informed the choice of forecast lead times and is used to inspect
+checkpoint performance. It is a validation month, not an untouched test
+set. The pilot assesses three trained policies on this one month.
 
 \section{Pilot Results}
 \label{sec:results}
@@ -351,14 +244,10 @@ month rather than an untouched test set.
 \subsection{Training}
 
 Fig.~\ref{fig:learning} shows the return of each completed training month.
-All three seeds begin below the baseline, because random exploration moves
-power erratically, and cross the baseline's level within about 50,000
+All three seeds begin below the average no-flexibility return and cross
+that level within about 50,000
 interactions. Returns rise quickly to about 0.010 by 400,000 interactions and
-then climb slowly to 0.013--0.014. The three curves are nearly
-indistinguishable.\footnote{Learning-curve data:
-\codepath{learning_curve.csv} in each seed's output folder. Figures are drawn by
-\codepath{scripts/build_ppo_pilot_figures.py}, which writes every quoted number
-to \codepath{docs/figures/ppo_pilot/figure_data.json}.}
+then climb slowly to 0.013--0.014. The three curves follow similar trends.
 
 \begin{figure}[!t]
   \centering
@@ -375,14 +264,9 @@ to \codepath{docs/figures/ppo_pilot/figure_data.json}.}
 Table~\ref{tab:may} and Fig.~\ref{fig:checkpoints} give the May results. The
 baseline scores \(J_e=0.005613\). Every checkpoint of every seed improves on
 it, and the final policies reach \(J_e\) between \(-0.0097\) and
-\(-0.0114\), improvements of 0.0153 to 0.0170. Both terms of
-\(J_e\) are measured against the original grid without the fleet, which is
-why \(J_e\) can be negative. The ramp term falls below zero when the fleet
-smooths ramps. The peak term cannot: any site power lifts a region's monthly
-peak above the original grid's, so \(\Phi_{m,e}>0\). Because the original peak
-is fixed, minimizing \(\Phi_{m,e}\) is the same as minimizing each region's
-highest adjusted net load, and the policies lower that added peak by about a
-quarter relative to the baseline.
+\(-0.0114\), improvements of 0.0153 to 0.0170. A negative joint score means
+that the scaled ramp reduction relative to the original grid outweighs the
+fleet's added peak impact.
 
 \begin{table}[htbp]
   \centering
@@ -414,20 +298,41 @@ quarter relative to the baseline.
   \label{fig:checkpoints}
 \end{figure}
 
-About 90\% of the improvement comes from ramps. The fleet's total squared
-one-hour ramp, relative to the original grid, falls by 2.8--3.1\%. The peak
-impact \(\sum_m\Phi_{m,e}\) falls from 0.0411 under the baseline to
-0.0296--0.0316, a cut of about a quarter. The ramp gain is mostly in place by
-153,600 interactions, while the peak gain roughly doubles between the first
-and last checkpoints.
+Relative to no flexibility, the final policies reduce total squared
+normalized ramps by 2.8--3.1\% and the sum of normalized regional peaks by
+0.29--0.36\% (Table~\ref{tab:nf-percentages}). That peak reduction removes
+23--28\% of the fleet's added peak impact, \(\sum_m\Phi_{m,e}\), which falls
+from 0.0411 to 0.0296--0.0316.
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{May reductions from no flexibility (\%) for the final policies.
+  Peaks are summed after regional normalization.}
+  \label{tab:nf-percentages}
+  \begin{tabular}{@{}lrrr@{}}
+    \toprule
+    Quantity & 4101 & 4102 & 4103 \\
+    \midrule
+    Total squared ramps & 2.83 & 3.08 & 3.14 \\
+    Total regional peaks & 0.31 & 0.29 & 0.36 \\
+    Fleet-added peak impact & 24.37 & 22.98 & 27.89 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+About 90\% of the joint improvement comes from the ramp component. The ramp
+gain is mostly in place by 153,600 interactions, while the peak gain roughly
+doubles between the first and last checkpoints.
 
 \subsection{Regions}
 
 Fig.~\ref{fig:regions} and Table~\ref{tab:regions} break the result down by
 region. ISO-NE NEMA, where a site's power range is largest relative to typical
-ramps, gains most: its squared ramp falls 11--14\% and its monthly peak falls
-109--140 MW. CAISO NP15 and SPP North improve on both measures. MISO
-Minnesota, where a site's power is smallest relative to the grid, changes
+ramps, gains most: its squared-ramp total is 11--14\% below the original grid's,
+and its monthly peak is 109--140 MW below the no-flexibility baseline.
+CAISO NP15 and SPP North improve on both measures. MISO Minnesota, where a
+site's power is smallest relative to the grid, changes
 little, and its peak rises by up to 35 MW in two seeds.
 
 \begin{figure*}[!t]
@@ -447,7 +352,7 @@ little, and its peak rises by up to 35 MW in two seeds.
   \label{tab:regions}
   \begin{tabular}{@{}lrrrrrr@{}}
     \toprule
-    & \multicolumn{3}{c}{Squared-ramp cut (\%)}
+    & \multicolumn{3}{c}{Squared-ramp cut vs.\ original (\%)}
     & \multicolumn{3}{c}{Peak change vs.\ baseline (MW)} \\
     \cmidrule(lr){2-4}\cmidrule(l){5-7}
     Market case & 4101 & 4102 & 4103 & 4101 & 4102 & 4103 \\
@@ -462,12 +367,11 @@ little, and its peak rises by up to 35 MW in two seeds.
 
 \subsection{How the policies act}
 
-The policies work mainly by moving service between sites. About 31\% of May's
-service work runs away from its origin site, while batch work waits only
-1.0--1.5 hours on average despite its 24-hour window. The decoder changes the
-requested allocation in 68--75\% of hours. It does so when a request exceeds
-spare capacity or the queue, or releases less batch work than deadlines
-require.
+The policies mainly reallocate service between sites. The allocation
+diagnostic indicates that about 31\% of May's service work changes sites,
+while batch work waits 1.0--1.5 hours on average within its 24-hour window.
+The decoder adjusts the requested schedule in 68--75\% of hours to meet
+capacity and deadline requirements.
 
 Fig.~\ref{fig:isone} shows ISO-NE over three days around its May peak hour.
 Under the baseline, site power stays near 340 MW. The PPO policy instead runs
@@ -487,37 +391,217 @@ less than the baseline.
 \section{Limitations and Next Steps}
 \label{sec:limitations}
 
+The three policies improve on no-flexibility in the May simulation. This
+is preliminary evidence from one validation month. The planned campaign
+uses seeds 4101--4110 to assess training variation more closely; additional
+seeds do not add new grid or workload conditions.
+
+The next comparison is a simple forecast-aware rule using the same
+observations, workload constraints, and feasibility decoder. That comparison
+would help determine what learning adds beyond flexible scheduling. No
+heuristic results are included in this pilot.
+
+\begin{samepage}
+We have not yet compared ramp-only and peak-only policies. Those runs would
+help separate the objectives' effects. Routing remains free and
+instantaneous, making the available geographic flexibility optimistic.
+
+\end{samepage}
+
+\clearpage
+\appendices
+\onecolumn
+\section{Implementation Notes}
+\label{app:implementation}
+
+Paths are relative to the repository root. These notes connect the methods
+and results to the implementation and give the commands used for the pilot.
+The problem-statement appendix documents workload construction, grid data,
+and the power model.
+
+\subsection{Environment, observations, and actions
+  (Section~\ref{sec:scheduler})}
 \begin{itemize}
-  \item \emph{Few seeds, one month.} Three seeds and a single validation month
-        show that the result repeats, but cannot yet support statistical
-        claims. The planned campaign uses ten seeds.
-  \item \emph{No objective ablation.} We have not yet trained ramp-only or
-        peak-only policies. Without them we cannot say how much of the peak
-        reduction the peak term itself causes; a ramp-only policy may reduce
-        peaks too.
-  \item \emph{Nominal weights.} The 0.5 weights are applied to scaled terms,
-        but the fleet can move the ramp term far more than the peak term, so
-        the objective weights ramps more heavily in practice.
-  \item \emph{Discounting.} PPO maximizes a discounted return with
-        \(\gamma=0.99\), an approximation of the undiscounted \(J_e\).
-  \item \emph{Untuned training.} The hyperparameters are common defaults, not
-        tuned for this problem.
-  \item \emph{Optimistic routing.} Moving work between sites is free and
-        instant, so the results are an upper bound on geographic
-        flexibility.
-  \item \emph{No simple heuristic.} We compare only with the no-flexibility
-        baseline, not with a rule-based scheduler that uses the same
-        forecasts.
+  \item \codepath{RampAwareEnv} in \codepath{env/ramp_v6/environment.py}
+        implements the hourly simulation. \codepath{make_four_market_env}
+        in \codepath{energy_model_v3/four_market_v2.py} builds it from the
+        generated monthly factory.
+  \item \codepath{_build_observation_schema} and \codepath{_observation}
+        in \codepath{environment.py} define and fill the 82 observation
+        entries. The simulator retains the full queues; the policy receives
+        queue totals and urgency summaries.
+  \item \codepath{action_schema} names the nine preferences.
+        \codepath{project_action} in \codepath{env/ramp_v6/projection.py}
+        converts them to service allocations, batch releases, and batch
+        destinations. The environment drains the global queue in
+        earliest-deadline-first order.
+  \item \codepath{JointObjective.reward_components} in
+        \codepath{env/ramp_v6/objective.py} computes
+        Equation~\eqref{eq:reward}. The environment maintains running
+        adjusted and original peaks. The first decision initializes each
+        maximum, with zero as the reference for its first increment.
+  \item \codepath{tests/ramp_v6/test_joint_objective.py} checks the raw
+        reward--objective identity. \codepath{tests/ramp_v6/test_continuous_month.py}
+        checks chronology and queue behavior, and
+        \codepath{tests/energy_model_v3/test_monthly_ramp_impact.py} checks
+        the problem statement's worked example.
 \end{itemize}
 
+\subsection{PPO update equations}
+\label{subsec:ppo-details}
+
+The policy \(\pi_\theta(a\mid o)\) describes the distribution of sampled actions;
+\(V_\phi(o)\) estimates discounted training returns. Here \(o_t\) is the
+normalized observation and \(\widetilde r_t\) is the normalized and clipped
+training reward. Generalized advantage estimation uses
+\begin{align}
+  \delta_t
+  &=\widetilde r_t+\gamma V_\phi(o_{t+1})-V_\phi(o_t),
+  \label{eq:td-error}\\
+  \hat A_t
+  &=\sum_{l=0}^{K_t-1}(\gamma\lambda)^l\delta_{t+l},
+  \label{eq:gae}
+\end{align}
+where \(K_t\) is the number of collected steps from \(t\) to the earlier of
+the rollout boundary or month-end. At month-end the next-state value is
+zero. At an unfinished rollout boundary it supplies the bootstrap value.
+The pilot uses \(\gamma=0.99\) and \(\lambda=0.95\).
+
+Advantages are standardized within each minibatch before the policy update.
+For the sampled action \(a_t\), define
+\(\rho_t(\theta)=\pi_\theta(a_t\mid o_t)/
+\pi_{\theta_{\mathrm{old}}}(a_t\mid o_t)\). PPO maximizes
+\begin{equation}
+  L^{\mathrm{clip}}(\theta)
+  =\mathbb E_t\!\left[
+    \min\!\left(
+      \rho_t\hat A_t,\;
+      \mathrm{clip}(\rho_t,1-\epsilon,1+\epsilon)\hat A_t
+    \right)
+  \right],
+  \label{eq:ppo-clip}
+\end{equation}
+with \(\epsilon=0.2\). The probability ratio uses the sampled Gaussian
+action; the environment receives its clipped version. Clipping limits the
+incentive for large policy changes; it does not enforce a bound on the
+policy itself.
+
+The value network fits estimated returns with squared error, weighted 0.5
+in the combined loss. There is no entropy bonus, and gradients are clipped
+to norm 0.5. These settings are listed in Table~\ref{tab:hyperparameters}.
+
+\subsection{Training and checkpoints (Section~\ref{sec:ppo})}
+\begin{itemize}
+  \item The saved pilot uses \(C_R=6.034057752312674\) and
+        \(C_Q=3.664598536383508\), matching the problem statement's total-grid
+        references. Both are means over the eleven training months under
+        no flexibility: total squared adjusted ramps and summed normalized
+        adjusted peaks, respectively.
+  \item \codepath{run_training} in \codepath{ramp_rl/runner.py} reads the
+        PPO settings from \codepath{env/protocols/four_market_v2.yaml}.
+        Stable-Baselines3 2.9.0 is pinned in \codepath{requirements.txt},
+        and the runner checks the installed version.
+  \item \codepath{VecNormalize} standardizes and clips observations and
+        scales and clips training rewards. Its statistics are saved in
+        \codepath{vecnormalize.pkl}. Evaluation freezes those statistics
+        and disables reward normalization.
+  \item Four environment copies step in turn within one training process.
+        Each rollout provides 2,048 transitions. Ten epochs with minibatches
+        of 256 give 80 gradient steps per update; the pilot's 1,024,000
+        interactions give 500 updates.
+  \item \codepath{FourMarketV2WindowEnv._next_window_id} in
+        \codepath{energy_model_v3/four_market_v2.py} draws the eleven training
+        months in shuffled cycles. The runner seeds Python, NumPy, PyTorch,
+        PPO, and the environment copies to control training randomness.
+  \item \codepath{TrainingCallback} writes raw metrics to
+        \codepath{learning_curve.csv} after each rollout.
+        \codepath{save_latest_checkpoint} saves a resumable checkpoint every
+        25 rollouts, or 51,200 interactions. The pilot evaluates milestones
+        at 153,600, 512,000, and 1,024,000 interactions.
+  \item \codepath{environment_identity} in \codepath{ramp_rl/contract.py}
+        records the objective, input digest, and observation and action
+        shapes. Resume checks also compare PPO settings and seed. The
+        evaluator rejects checkpoints with incompatible environment
+        identities. \codepath{tests/ramp_v6/test_campaign_instrumentation.py}
+        tests these checks and checkpoint resumption.
+\end{itemize}
+On the eight-core laptop used for the pilot, each seed trained at about
+240 interactions per second and finished in 71--72 minutes, with all three
+seeds running concurrently.
+
+\subsection{Evaluation and figures
+  (Sections~\ref{sec:evaluation}--\ref{sec:results})}
+\begin{itemize}
+  \item \codepath{evaluate_checkpoint} and \codepath{_run_episode} in
+        \codepath{ramp_rl/evaluation.py} run the deterministic policy and
+        no-flexibility baseline. They report raw joint scores, component
+        outcomes, regional metrics, and feasibility checks.
+  \item \codepath{scripts/run_four_market_v2_pilot.py} trains the selected
+        seeds and evaluates saved milestones. The pilot's summaries and
+        learning curves are under
+        \codepath{output/four_market_joint_v3/pilot/impact-50-50-1m/};
+        checkpoints are under
+        \codepath{models/four_market_joint_v3/pilot/impact-50-50-1m/}.
+  \item \codepath{scripts/build_ppo_pilot_figures.py} draws the figures from
+        those outputs and writes their supporting values to
+        \codepath{docs/figures/ppo_pilot/figure_data.json}. Squared-ramp
+        percentages in the regional figure use the original grid's
+        squared-ramp total. Table~\ref{tab:nf-percentages} instead compares
+        each final policy with no flexibility; its values are stored under
+        \codepath{no_flexibility_percentage_reductions}. The ramp denominator
+        is the baseline's total squared adjusted ramps, the peak denominator
+        is its sum of normalized adjusted regional peaks, and the added-peak
+        denominator is \(\sum_m\Phi_{m,e}(\mu_{\mathrm{NF}})\). All three are
+        positive for this month.
+  \item The service-reallocation diagnostic uses differences between
+        destination allocations and origin arrivals. It measures the
+        minimum work that must have changed sites, rather than tracking
+        individual service jobs.
+\end{itemize}
+
+\subsection{Reproduction commands}
+From the repository root, run the following commands in PowerShell:
+{\small
+\begin{verbatim}
+python scripts/build_four_market_v2_factory.py
+python scripts/run_four_market_v2_pilot.py `
+    --seeds 4101 4102 4103 `
+    --timesteps 1000000 --tag impact-50-50-1m
+python scripts/build_ppo_pilot_figures.py `
+    --tag impact-50-50-1m
+\end{verbatim}
+}
+The pilot script runs seeds in separate processes. The option
+\codepath{--ramp-weight} selects ramp-only (1), equal-weight (0.5), or
+peak-only (0) objectives. The planned ten-seed campaign is run by
+\codepath{scripts/run_four_market_v2_campaign.py}.
+
 \begin{thebibliography}{99}
+
+\bibitem{radovanovic2021carbonaware}
+A. Radovanovi\'{c} \emph{et al.}, ``Carbon-Aware Computing for Datacenters,''
+arXiv:2106.11750v1, 2021. [Online]. Available:
+\url{https://arxiv.org/abs/2106.11750v1}.
+
+\bibitem{ran2019deepee}
+Y. Ran, H. Hu, X. Zhou, and Y. Wen, ``DeepEE: Joint optimization of job
+scheduling and cooling control for data center energy efficiency using deep
+reinforcement learning,'' in \emph{Proc. IEEE Int. Conf. Distributed
+Computing Systems (ICDCS)}, 2019, pp. 645--655,
+doi: 10.1109/ICDCS.2019.00070.
+
+\bibitem{naug2024sustaindc}
+A. Naug \emph{et al.}, ``SustainDC: Benchmarking for sustainable data center
+control,'' in \emph{Advances in Neural Information Processing Systems},
+vol. 37, Datasets and Benchmarks Track, 2024,
+doi: 10.52202/079017-3192.
 
 \bibitem{sutton2018reinforcement}
 R. S. Sutton and A. G. Barto, \emph{Reinforcement Learning: An Introduction},
 2nd ed. Cambridge, MA, USA: MIT Press, 2018.
 
 \bibitem{schulman2017ppo}
-J. Schulman, F. Wolfe, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal
+J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal
 policy optimization algorithms,'' arXiv:1707.06347, 2017.
 
 \bibitem{schulman2016gae}
@@ -526,7 +610,7 @@ J. Schulman, P. Moritz, S. Levine, M. Jordan, and P. Abbeel,
 estimation,'' in \emph{Proc. Int. Conf. Learn. Represent. (ICLR)}, 2016.
 
 \bibitem{raffin2021sb3}
-A. Raffin, A. Hill, A. Gernhardt, M. Ernestus, and N. Dormann,
+A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and N. Dormann,
 ``Stable-Baselines3: Reliable reinforcement learning implementations,''
 \emph{J. Mach. Learn. Res.}, vol. 22, no. 268, pp. 1--8, 2021.
 

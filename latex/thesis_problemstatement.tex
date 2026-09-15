@@ -72,7 +72,17 @@ execution, and \codepath{collection_events} for
 priority.\footnote{The full trace is approximately 2.4 TiB, so the extraction
 queries it through BigQuery rather than downloading it.}
 
-Rather than track individual jobs and their execution, we use the aggregate CPU utilization (for each five-minute window) as our demand.   
+Rather than track individual jobs and their execution, we use the aggregate CPU utilization (for each five-minute window) as our demand.\footnote{Tirmazi
+\emph{et al.}, in \emph{Borg: The Next Generation} \cite{tirmazi2020borg},
+summarize this trace the same way, plotting each priority tier's CPU usage as
+a fraction of cell capacity over hour-long intervals (their Fig.~2).
+Radovanovi\'{c} \emph{et al.}, in \emph{Carbon-Aware Computing for
+Datacenters} \cite{radovanovic2021carbonaware}, schedule aggregate flexible
+and inflexible CPU usage per cluster, from Google's internal fleet data rather
+than this trace. Naug \emph{et al.}, in \emph{SustainDC: Benchmarking for
+Sustainable Data Center Control} \cite{naug2024sustaindc}, drive their
+reinforcement-learning workload environment with utilization curves from
+Alibaba and Google traces.}
 
 \begin{figure}[!ht]
   \centering
@@ -146,12 +156,17 @@ where \(a_r\) is row \(r\)'s \codepath{average_usage.cpus} value. Both the
 numerator and denominator use Google's normalized CPU units, so
 \(u_{c,k}\) is dimensionless.
 
-We retain only top-level instances and rows covering at least one full five-minute
-interval.\footnote{Top-level instances are rows whose
-\codepath{alloc_collection_id} is null or zero. Restricting to them follows
-Google's own analysis example and avoids counting both an allocation set and
-the work running inside it \cite{googleTraceFormatV3,
-googleClusterAnalysisColab}. }
+We retain only top-level instances and full five-minute measurement
+windows.\footnote{Using only top-level instances avoids counting both an
+allocation set and the work running inside it. Google reports each instance's
+usage over windows of at most 300 seconds
+\cite{googleTraceFormatV3}. Following the instance-usage query example in Google's \cite{googleClusterAnalysisColab}., we keep rows whose
+\codepath{end_time-start_time} is at least 300 seconds, so each retained
+\(a_r\) is an average over a whole window. An audit of cells \(a\)--\(d\) found that
+the 300-second filter removes 6.5\% of CPU work, proportionally more batch
+(11--15\% of batch work) than service (2--8\%). Hour by hour, the retained
+curves correlate with all-row curves at 0.96--0.99 in level and 0.88--0.97 in
+one-hour ramps, with slightly larger relative ramps (2.6--4.9\%).}
 
 \subsection{Modeled service and batch classes}
 \label{subsec:clusterdata-tier-split}
@@ -730,10 +745,15 @@ Using this policy over \(\mathcal E_{\mathrm{train}}\), we calculate
   Q^{\mathrm{adjusted}}_{m,e}(\mu_{\mathrm{NF}}).
   \label{eq:peak-reference}
 \end{align}
-\(C_R\) averages monthly totals of squared ramps, giving \(I_{m,t}\) a
-positive reference scale. \(C_Q\) averages the summed normalized regional
-peaks, giving \(\Phi_{m,e}\) a positive reference scale. Both remain fixed
-during training and May validation.
+Both references are totals for the whole grid with the no-flexibility fleet:
+\(C_R\) is its average monthly total of squared ramps, and \(C_Q\) is its
+average monthly sum of normalized regional peaks. Dividing by them expresses
+a change in \(\sum_{t,m}I_{m,t}\) or \(\sum_m\Phi_{m,e}\) as a fraction of total
+squared ramp or of total peak, so the equal weights below value equal
+fractional reductions of the two totals. The fleet can change total ramps
+proportionally more than total peaks, so ramp gains usually contribute more
+to the joint score. Both references remain fixed during training and May
+validation.
 
 \subsection{Joint objective}
 \label{subsec:problem-normalization}
@@ -894,7 +914,7 @@ weighted mean; calculations use unrounded inputs.
 
 The scaled peak impact is \(\sum_m\Phi_{m,e}/C_Q\), using July's original
 peaks, including 24,082 MW for ISO-NE. The joint improvement is
-\(0.005621-0.004801\approx0.000820\).
+\(0.005621-0.004801\approx0.000820\), most of it from the lower ISO-NE peak.
 This one-hour routing change reduces both monthly scores while executing
 the same work within the service, deadline, and capacity constraints.
 
@@ -1059,6 +1079,15 @@ methods chapter.
         \codepath{type=0} priority for each \codepath{collection_id}. A left
         join keeps usage rows without a match, which fall into the service
         residual.
+  \item \codepath{scripts/bigquery/audit_300s_filter.sql} audits the
+        300-second filter with the same top-level filter and priority join.
+        Its first query measures the rows and CPU work removed by cell and
+        class, saved as
+        \codepath{scripts/bigquery/results/query1_filter_volume.csv}; its
+        second compares hourly level, one-hour ramps, and peaks with and
+        without the filter, saved as
+        \codepath{scripts/bigquery/results/query2_hourly_shape.csv}. Work is
+        \codepath{average_usage.cpus} times window duration.
   \item The notebook writes \codepath{data/cells/cell_a_tiers.csv} through
         \codepath{data/cells/cell_d_tiers.csv}, which also carry an unused
         \codepath{batch_share} column. The files for cells \(e\)--\(h\) come
@@ -1281,6 +1310,12 @@ Accessed: Aug. 28, 2026.
 A. Radovanovi\'{c} \emph{et al.}, ``Carbon-Aware Computing for Datacenters,''
 arXiv:2106.11750v1, 2021. [Online]. Available:
 \url{https://arxiv.org/abs/2106.11750v1}.
+
+\bibitem{naug2024sustaindc}
+A. Naug \emph{et al.}, ``SustainDC: Benchmarking for sustainable data center
+control,'' in \emph{Advances in Neural Information Processing Systems},
+vol. 37, Datasets and Benchmarks Track, 2024,
+doi: 10.52202/079017-3192.
 
 \bibitem{googleClusterAnalysisColab}
 Google, ``Google ClusterData2019 analysis Colab,'' 2020. [Online]. Available:

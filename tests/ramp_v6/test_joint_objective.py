@@ -78,9 +78,12 @@ class JointObjectiveMathTests(unittest.TestCase):
 
     def test_peak_is_regional_month_maximum_and_excludes_warm_hour(self) -> None:
         net = np.asarray([[999.0, 999.0], [100.0, 200.0], [200.0, 100.0]])
-        ramp, peak = reference_trajectory_scores(net, np.zeros_like(net), np.asarray([100.0, 100.0]))
-        self.assertEqual(peak, 4.0)
-        expected_ramp = (-8.99)**2 + (-7.99)**2 + 1.0**2 + (-1.0)**2
+        power = np.asarray([[0.0, 0.0], [0.0, 10.0], [20.0, 0.0]])
+        ramp, peak = reference_trajectory_scores(net, power, np.asarray([100.0, 100.0]))
+        # Adjusted maxima 2.2 and 2.1 over decision hours; including the warm row
+        # would make both maxima 9.99 instead.
+        self.assertAlmostEqual(peak, 4.3)
+        expected_ramp = (-8.99)**2 + 1.2**2 + (-7.89)**2 + (-1.1)**2
         self.assertAlmostEqual(ramp, expected_ramp)
 
 

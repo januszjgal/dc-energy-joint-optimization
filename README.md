@@ -92,9 +92,12 @@ C_R=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}
 C_Q=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}\sum_m Q^{\mathrm{adj}}_{m,e}(\mathrm{NF}).
 $$
 
-Calibration uses absolute adjusted squared-ramp totals, never signed impacts
-or hourly averages. For the committed data, $C_R\approx6.03405775$ and
-$C_Q\approx3.66459854$. Both remain frozen for training and May validation.
+Both references are whole-grid totals with the no-flexibility fleet: total
+squared adjusted ramp and summed regional adjusted peaks. Dividing the impact
+terms by them expresses each change as a fraction of a grid total, so equal
+weights value equal fractional reductions. The fleet can move total ramps
+proportionally more than total peaks, so ramp gains usually dominate. For the
+committed data, $C_R\approx6.03405775$ and $C_Q\approx3.66459854$. Both remain frozen for training and May validation.
 The objective is
 
 $$
@@ -200,15 +203,13 @@ peak-only, `0.5` for joint, or `1` for ramp-only comparisons, with distinct tags
 These are three objective variants, not three additional scheduling baselines.
 
 The unchanged thesis's July routing example is a regression test: baseline
-$J=0.6066670713$, routed $J=0.6058467827$, improvement $0.0008202886$.
+$J=0.0056208656$, routed $J=0.0048005770$, improvement $0.0008202886$.
 This includes every July hour and the following hour's rebound ramp.
 
-**Smoke result:** A fresh seed-4101 run completed 51,200 interactions and all
-744 May evaluation hours with no unserved service, unfinished/expired batch,
-terminal work, or certificate violations. Policy $J=0.44045917$ versus
-no-flexibility $J=0.43925375$ gives improvement $-0.00120543$.
-This establishes feasible execution, not performance improvement. Results are
-in `output/four_market_joint_v3/pilot/impact-50-50-smoke/pilot.json`.
+**Pilot results:** the three-seed pilot in
+`output/four_market_joint_v3/pilot/impact-50-50-1m/` uses the current
+calibration. On May its final policies improve $J$ by 0.0153 to 0.0170 over the
+no-flexibility baseline; `latex/ppo_solution.tex` reports the details.
 
 Run and aggregate the locked campaign (only aggregate after all ten summaries
 exist):
@@ -247,5 +248,6 @@ use `four_market_joint_v3` to keep them separate from historical runs.
 | `models/four_market_joint_v3/` | Monthly-impact campaign and pilot checkpoints |
 | `output/four_market_v2/`, `models/four_market_v2/` | Historical ramp-only artifacts |
 | `output/four_market_joint_v1/`, `models/four_market_joint_v1/` | Historical mean-squared joint artifacts |
+| `output/four_market_joint_v2/`, `models/four_market_joint_v2/` | Historical joint runs under the absolute-peak objective |
 | `scripts/` | Data, factory, campaign, aggregation, and figure commands |
 | `tests/` | Unit and integration tests, including causality, continuity, and deadline checks |

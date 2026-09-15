@@ -96,9 +96,13 @@ def update_peak(previous: float | None, current: float) -> tuple[float, float]:
 def reference_trajectory_scores(
     net_load_mw: np.ndarray, power_mw: np.ndarray, market_scales_mw: np.ndarray
 ) -> tuple[float, float]:
-    """Absolute monthly calibration totals, not signed policy impacts.
+    """Total-grid monthly calibration scores under the no-flexibility fleet.
 
-    Row zero supplies warm ramp history but is not a monthly peak sample.
+    The ramp score is the total squared adjusted ramp and the peak score is the
+    sum of regional adjusted monthly maxima, both for the whole grid with the
+    fleet. Dividing the objective's impact terms by them expresses each as a
+    fraction of a grid total. Row zero supplies warm ramp history but is not a
+    monthly peak sample.
     """
     net = np.asarray(net_load_mw, dtype=np.float64)
     power = np.asarray(power_mw, dtype=np.float64)

@@ -131,6 +131,38 @@ def month_arrays(infos: list[dict[str, Any]], site_ids: list[str]) -> dict[str, 
     }
 
 
+def no_flexibility_percentage_reductions(
+    summary: dict[str, Any], scales: dict[str, float],
+) -> dict[str, float | None]:
+    """Compare final saved outcomes with positive, same-metric NF baselines."""
+    checkpoints = summary["validation_by_interactions"]
+    final = checkpoints[max(checkpoints, key=int)]
+    regions = final["regional_metrics"]
+    hours = final["step_count"]
+
+    def reduction(baseline: float, policy: float) -> float | None:
+        return 100.0 * (baseline - policy) / baseline if baseline > 0.0 else None
+
+    ramp_totals = {
+        policy: hours * sum(region[f"{policy}_ramp_mean_squared"] for region in regions.values())
+        for policy in ("status_quo", "policy")
+    }
+    peak_totals = {
+        policy: sum(region[f"{policy}_peak_mw"] / scales[market] for market, region in regions.items())
+        for policy in ("status_quo", "policy")
+    }
+    peak_impact = final["components"]["net_load_peak"]
+    return {
+        "total_squared_adjusted_ramps_pct": reduction(ramp_totals["status_quo"], ramp_totals["policy"]),
+        "summed_normalized_adjusted_regional_peaks_pct": reduction(
+            peak_totals["status_quo"], peak_totals["policy"],
+        ),
+        "summed_normalized_fleet_added_peak_impact_pct": reduction(
+            peak_impact["status_quo"], peak_impact["policy"],
+        ),
+    }
+
+
 def behavior_metrics(
     arrays: dict[str, np.ndarray], baseline: dict[str, np.ndarray],
     net: np.ndarray, warm: np.ndarray, scales: np.ndarray,
@@ -318,6 +350,9 @@ def main() -> None:
                     for k, v in summaries[seed]["validation_by_interactions"].items()
                 },
                 "may_behavior": metrics[seed],
+                "no_flexibility_percentage_reductions": no_flexibility_percentage_reductions(
+                    summaries[seed], stats["gross_q95_mw"],
+                ),
             }
             for seed in SEEDS
         },

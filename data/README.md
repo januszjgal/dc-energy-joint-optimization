@@ -65,9 +65,10 @@ Regional scales $S_m$ are the gross-demand 95th percentiles over training
 decision hours. The factory computes $C_R$ and $C_Q$ as arithmetic means of
 the eleven monthly no-flexibility reference scores: the total sum of squared
 adjusted normalized ramps and the sum of separate regional normalized peaks.
-These are absolute adjusted-grid metrics, not signed incremental impacts or
-hourly averages. Both positive scales stay frozen for training and May
-validation. For the committed data, $C_R\approx6.03405775$ and
+Both are whole-grid totals with the fleet, not signed impacts or hourly
+averages, so dividing the objective's impact terms by them expresses each
+change as a fraction of a grid total. Both positive scales stay frozen for
+training and May validation. For the committed data, $C_R\approx6.03405775$ and
 $C_Q\approx3.66459854$.
 
 The default objective is
