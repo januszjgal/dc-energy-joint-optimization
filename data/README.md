@@ -22,6 +22,9 @@ index and then arrival order. The decoder enforces service, capacity, and
 deadlines as hard constraints, retaining the conservative deadline safety guard.
 
 `power_model_params.json` contains the committed affine CPU-to-power coefficients.
+CPU utilization is the sole predictor of measured power-domain utilization.
+The power measurements include data-center-floor cooling, as documented in
+[Google Data Center Power Trace, p. 2](https://raw.githubusercontent.com/google/cluster-data/master/power_trace_documentation.pdf#page=2).
 Every synthetic site has normalized compute capacity 1 and a 500 MW rating:
 
 ```text

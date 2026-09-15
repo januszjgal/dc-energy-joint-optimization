@@ -217,24 +217,29 @@ We refer to these curves as \emph{deferrable batch} and
 are converted to hourly arrivals in Section~\ref{sec:data-transformations}.
 Appendix~\ref{app:data-schemas} lists the stored columns and example values.
 
-\section{Google PowerData2019 Server-Power Model}
+\section{Google PowerData2019 Power Model}
 \label{sec:powerdata2019}
 
 \subsection{Data fit}
 \label{subsec:powerdata-purpose}
 
 PowerData2019 \cite{googlePowerData2019} provides five-minute normalized
-server-power measurements for the same Borg cells. We average
-\codepath{measured_power_util} and normalized CPU execution by hour, then
-fit an ordinary least-squares line:
+power-domain measurements for the same Borg cells. These measurements
+include data-center-floor cooling.\footnote{See \emph{Google Data Center
+Power Trace}, p.~2, under \codepath{measured_power_util}
+\cite{googlePowerTraceDocumentation}.}
+We use CPU utilization to predict measured power-domain utilization,
+averaging both series by cell and hour before fitting an ordinary
+least-squares line:
 \begin{equation}
   \widehat p_c(u)
   =
   \alpha_c+\beta_c u.
   \label{eq:powerdata-affine-fit}
 \end{equation}
-The intercept \(\alpha_c\) represents idle power, and \(\beta_c\) describes
-how power increases with utilization. The fitted idle draw ranges from
+The intercept \(\alpha_c\) is the modeled power draw at zero CPU utilization,
+and \(\beta_c\) describes how power increases with utilization. The fitted
+idle draw ranges from
 about 38\% to 55\% of reference power across the cells.
 
 \subsection{Active coefficients and power range}
@@ -250,7 +255,8 @@ idle power ranges from 191 to 274 MW, with full utilization adding
 \begin{table*}[htbp]
   \centering
   \small
-  \caption{CPU-only power fits at the 500 MW reference scale.}
+  \caption{Power fits using CPU utilization as the sole predictor, at the
+  500 MW reference scale.}
   \label{tab:powerdata-coefficients}
   \begin{tabular}{@{}crrrcrrr@{}}
     \toprule
@@ -470,7 +476,7 @@ This mapping also applies to the preceding warm-up hour.
 \label{subsec:transform-control-authority}
 
 At the 500 MW reference scale, the sum of the four individual idle-to-full
-server-power ranges is approximately 906 MW. Table~\ref{tab:workload-feasibility} summarizes the repeated 744-hour
+modeled power ranges is approximately 906 MW. Table~\ref{tab:workload-feasibility} summarizes the repeated 744-hour
 workload. 
 
 \begin{table}[htbp]
@@ -931,8 +937,8 @@ The study has the following limitations:
   \item The workload extraction uses a fixed monthly capacity denominator,
         removes partial five-minute rows, and places unmatched priorities in
         the service residual.
-  \item The affine power fit is deterministic, omits fit uncertainty and
-        facility overhead, and is extrapolated when scheduling pushes a site
+  \item The affine power fit is deterministic, omits fit uncertainty,
+        and is extrapolated when scheduling pushes a site
         outside its commonly observed CPU range.
   \item Warm-up period only provides 1 hour, which reduces the schedulers historical grid observations.
 \end{itemize}
@@ -1327,6 +1333,12 @@ Google, ``PowerData2019: power measurements for ClusterData2019,'' 2020.
 [Online]. Available:
 \url{https://github.com/google/cluster-data/blob/master/PowerData2019.md}.
 Accessed: Sep. 7, 2026.
+
+\bibitem{googlePowerTraceDocumentation}
+J. Prakash and V. Kontorinis, ``Google Data Center Power Trace,''
+Feb. 15, 2024, p.~2. [Online]. Available:
+\url{https://raw.githubusercontent.com/google/cluster-data/master/power_trace_documentation.pdf}.
+Accessed: Sep. 15, 2026.
 
 \bibitem{eiaGridMonitor}
 U.S. Energy Information Administration, ``Hourly Electric Grid Monitor.''
