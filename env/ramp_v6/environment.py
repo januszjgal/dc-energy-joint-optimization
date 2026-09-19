@@ -141,6 +141,11 @@ class RampAwareEnv(gym.Env):
             shape=(len(self.observation_schema),),
             dtype=np.float32,
         )
+        # The bound is a convention, not a tuned quantity: wide enough for the
+        # policy's spread and for the logit gaps the status-quo action needs,
+        # narrow enough that softmax preferences stay finite. It must equal the
+        # projection decoder's fraction bound, so action[n_sites] = -6 requests
+        # no batch beyond the mandatory floor and +6 requests the whole queue.
         self.action_space = spaces.Box(
             low=-6.0,
             high=6.0,

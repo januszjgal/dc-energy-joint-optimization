@@ -33,12 +33,12 @@ workload scheduling
 \section{Introduction and Scope}
 \label{sec:introduction}
 
-Large data centers draw enough electrical power that the timing and location 
+Large data centers draw enough electrical power that the timing and location
 of their computing work matter to the grids that serve them. Some work must
 run immediately, while lower-priority work may be delayed. An operator with
 multiple sites may also choose where that work runs.
 
-The question we ask here is:
+The question asked here is:
 \begin{quote}
 \emph{How much can a causal scheduler jointly smooth normalized one-hour
 regional net-load ramps and reduce regional monthly net-load peaks, using temporal deferral and geographic
@@ -46,12 +46,271 @@ routing while satisfying immediate-service, batch-window, and site-capacity
 constraints?}
 \end{quote}
 
-We use Google workload traces and EIA grid data to model a synthetic fleet
+Google workload traces and EIA grid data are used to model a synthetic fleet
 of four data centers. Each hour, the scheduler chooses where service runs,
-how much batch work to execute, and where to execute it. We will use
-proximal policy optimization (PPO) to train a policy that minimizes an equally
-weighted combination of scaled monthly ramp impact and regional peak impact while meeting
-workload deadlines and site-capacity limits.
+how much batch work to execute, and where to execute it. Proximal policy
+optimization (PPO) will be used to train a policy that minimizes an equally
+weighted combination of scaled monthly ramp impact and regional peak impact
+while meeting workload deadlines and site-capacity limits.
+Section~\ref{sec:literature} places this question in the literature, and the
+remaining sections define the data, the synthetic fleet, and the problem.
+
+\section{Literature Review}
+\label{sec:literature}
+
+The references are grouped by the lever they study and by the perspective
+from which that lever is judged: data centers as loads on the electric grid,
+geographic routing among sites, temporal deferral of batch work, learned
+schedulers, and the workload and power models on which such studies rest.
+The section closes by positioning this thesis against that work and stating
+the perspective adopted here.
+
+\subsection{Data centers as grid loads}
+\label{subsec:lit-grid-loads}
+
+In \emph{Key Questions on Energy and AI}, the International Energy Agency
+\cite{iea2026energyai} reports that data-center electricity consumption grew
+by more than 15\% between 2024 and 2025, to almost 500 TWh, and projects it to
+roughly double, to about 950 TWh, by 2030. The report describes large-load
+connection queues, notes that AI workloads can trigger steep and sudden load
+ramps as clusters of GPUs transition synchronously between tasks, and observes
+that peak demand often remains meaningfully below nameplate capacity. It
+recommends that system operators explore non-firm connections and incentives
+for demand response in return for faster grid access, arguing that demand
+response and dynamic contracts could reduce the need for additional reserves,
+network upgrades, and peaking capacity. These are grid-side concerns: what
+matters to the system operator is the shape of the load, its ramps and its
+peaks, rather than the data center's bill.
+
+Vasques, Moura, and de Almeida, in \emph{A review on energy efficiency and
+demand response with focus on small and medium data centers}
+\cite{vasques2019review}, review the same relationship from the
+demand-response side. They distinguish two roles for workload flexibility:
+load management that lowers the data center's own operating cost, and
+demand-response services that support the efficient and reliable operation of
+the grid. Flexibility in their account may be a temporary load reduction or a
+temporary load increase during a renewable surplus, and it is usually split
+into ICT-flexible workload, meaning delay-tolerant jobs that can run at another
+time, and non-ICT measures such as cooling set points and uninterruptible
+power supplies.
+
+Sakalkar \emph{et al.}, in \emph{Data Center Power Oversubscription with a
+Medium Voltage Power Plane and Priority-Aware Capping}
+\cite{sakalkar2020oversubscription}, show how Google manages power inside the
+facility. A capping service that throttles only low-priority workloads on
+every node lets the fleet oversubscribe its power infrastructure by 25\% or
+more, with the achievable oversubscription limited by the share of power drawn
+by high-priority work that must not be disrupted. Priority is thus already the
+lever by which an operator sheds kilowatts, and the same priority structure
+defines the deferrable work in Section~\ref{subsec:clusterdata-tier-split}.
+That capping, however, protects electrical limits inside the facility; it does
+not address the shape of the regional load.
+
+\subsection{Geographic routing among sites}
+\label{subsec:lit-spatial}
+
+Qureshi \emph{et al.}, in \emph{Cutting the Electric Bill for Internet-Scale
+Systems} \cite{qureshi2009cutting}, combine hourly wholesale electricity
+prices at 29 United States locations with Akamai traffic data and simulate
+price-conscious request routing. Existing systems could reduce energy cost by
+at least 2\% without increasing bandwidth cost, and a fully energy-elastic
+system with relaxed bandwidth constraints by over 30\%. The savings hinge on
+energy elasticity, the fraction of a cluster's power that follows its load
+rather than being drawn at idle, and they fall when routing reacts late to
+price changes. Rao \emph{et al.}, in \emph{Minimizing Electricity Cost:
+Optimization of Distributed Internet Data Centers in a Multi-Electricity-Market
+Environment} \cite{rao2010minimizing}, formulate the same routing problem as a
+mixed-integer program with service-delay guarantees, approximate it by a
+linear program, and report hourly cost reductions of 30\% and 18\% on two sets
+of real price data.
+
+Liu \emph{et al.}, in \emph{Geographical Load Balancing with Renewables}
+\cite{liu2011glb}, replace price with renewable availability. In a
+trace-based study, ``follow the renewables'' routing significantly reduces the
+renewable capacity needed to reach a given share of clean energy, small-scale
+storage helps most in combination with routing, and wind is more valuable than
+solar because its output is weakly correlated across sites and available at
+night. Zhao, Zhou, and Li, in \emph{CFWS: DRL-Based Framework for Energy Cost
+and Carbon Footprint Optimization in Cloud Data Centers} \cite{zhao2025cfws},
+bring learned control to the same lever: a deep reinforcement learning agent
+migrates virtual machines among geo-distributed data centers under
+time-varying prices and location-varying carbon rates, reducing brown energy
+by 6\% to 13\% while cutting the number of migrations.
+
+In all four studies the grid enters only through a price or a carbon signal,
+and the score is the data center's own cost, renewable use, or carbon. None
+measures what the routed load does to the ramps or the peak of the receiving
+region. The routing model in Section~\ref{sec:problem-statement}, with
+conservation of work, per-site capacity, and no transfer cost, descends from
+these formulations; the objective does not.
+
+\subsection{Temporal deferral of batch work}
+\label{subsec:lit-temporal}
+
+Liu \emph{et al.}, in \emph{Renewable and Cooling Aware Workload Management
+for Sustainable Data Centers} \cite{liu2012renewable}, split the workload into
+interactive services that run continuously and delay-tolerant batch jobs whose
+deadlines range from several hours to multiple days. Predictions of renewable
+supply and IT demand feed a plan that shifts batch work toward hours of
+renewable availability and efficient cooling, reducing recurring power cost
+and non-renewable energy by as much as 60\% against existing techniques.
+Grange, Da Costa, and Stolf, in \emph{Green IT scheduling for data center
+powered with renewable energy} \cite{grange2018green}, schedule batch jobs
+with due dates in a single data center with on-site solar generation, keeping
+the scheduler agnostic of the electrical infrastructure by having a separate
+system supply the objective function. Brown energy falls by up to 49\%, and
+the authors find that the freedom allowed by the service-level agreement, the
+due-date slack, largely determines the achievable saving. Xu, Toosi, and
+Buyya, in \emph{A Self-Adaptive Approach for Managing Applications and
+Harnessing Renewable Energy for Sustainable Cloud Computing}
+\cite{xu2021selfadaptive}, pair a brownout mechanism for interactive workloads
+with a deferral algorithm for batch workloads and reduce brown energy by 21\%
+in a prototype driven by real traces. Haghshenas \emph{et al.}, in
+\emph{Infrastructure Aware Heterogeneous-Workloads Scheduling for Data Center
+Energy Cost Minimization} \cite{haghshenas2022infrastructure}, schedule
+service and batch jobs against renewable supply, cooling efficiency, and a
+tariff that combines time-of-use prices with peak demand charges; batch jobs
+must finish within 24 hours of submission, and cost falls by up to 46\%.
+
+Radovanovi\'{c} \emph{et al.}, in \emph{Carbon-Aware Computing for
+Datacenters} \cite{radovanovic2021carbonaware}, describe the system in
+production across Google's fleet. Day-ahead forecasts of grid carbon intensity
+and of cluster demand feed a risk-aware optimization that produces hourly
+Virtual Capacity Curves: limits on the resources available to temporally
+flexible workloads that preserve total daily capacity, so that all such work
+completes within a day. The optimizer minimizes a weighted sum of expected
+carbon footprint and daily power peak over all clusters, on the reasoning that
+data centers are planned around peak power, so smaller peaks reduce the need
+for new capacity. Cluster-level flexible usage proves predictable within a
+day-ahead horizon despite job-level uncertainty.
+
+The batch window \(H=24\) used in Section~\ref{subsec:problem-batch} follows
+Radovanovi\'{c} \emph{et al.} and Haghshenas \emph{et al.}, and the
+service/batch split follows Liu \emph{et al.} and Haghshenas \emph{et al.}
+The finding of Grange \emph{et al.} that due-date slack governs the saving is
+why \(H\) is reported as an assumption whose value matters. In this line of
+work the objective is cost, brown energy, or carbon; the peak appears only as
+a demand charge or as a capacity-cost term, and hour-to-hour ramps do not
+appear at all.
+
+\subsection{Learned schedulers}
+\label{subsec:lit-rl}
+
+Kahil \emph{et al.}, in \emph{Reinforcement learning for data center energy
+efficiency optimization: A systematic literature review and research roadmap}
+\cite{kahil2025rl}, review 65 studies from 2019 to 2024 that apply
+reinforcement learning to cooling and to ICT tasks such as task scheduling,
+resource allocation, and virtual-machine consolidation. Almost all are
+evaluated in simulation, and the review names the lack of real-world
+validation and of standardized metrics as the main gaps. Ran \emph{et al.}, in
+\emph{DeepEE: Joint Optimization of Job Scheduling and Cooling Control for
+Data Center Energy Efficiency Using Deep Reinforcement Learning}
+\cite{ran2019deepee}, train a parameterized-action deep Q-network that jointly
+schedules jobs and adjusts airflow on a two-time-scale simulation platform,
+saving up to 15\% of energy against siloed control. Naug \emph{et al.}, in
+\emph{SustainDC: Benchmarking for Sustainable Data Center Control}
+\cite{naug2024sustaindc}, provide Gymnasium environments in which a
+load-shifting agent, a cooling agent, and a battery agent act on a simulated
+data center driven by public Alibaba and Google utilization traces. The
+load-shifting agent observes the time of day, current and forecast grid carbon
+intensity, and the amount of flexible work still to be placed; it is penalized
+if flexible work is not rescheduled within its horizon; and its reward is the
+carbon footprint. The baseline assumes no shifting, which the authors describe
+as current practice. Outside data centers, Zhang and Lam, in \emph{Practical
+Implementation and Evaluation of Deep Reinforcement Learning Control for a
+Radiant Heating System} \cite{zhang2018practical}, train an agent on a
+calibrated building simulator and deploy it in an office building for three
+months, reducing heating demand by 17\% to 18\% while documenting the data
+requirements and training cost that such a deployment entails.
+
+This thesis follows the pattern set by SustainDC and DeepEE: a simulated
+environment driven by public traces, a reinforcement-learning agent, and a
+no-flexibility baseline. The forecasts in
+Section~\ref{subsec:energy-forecasts} play the role that carbon-intensity
+forecasts play in SustainDC and in Google's system, as the scheduler's only
+view of the hours ahead. The reward differs: where SustainDC's load-shifting
+agent minimizes carbon, the agent here is charged for the change its fleet
+makes to the region's net-load ramps and monthly peak. As in the studies Kahil
+\emph{et al.} review, the results are simulation results; no deployment is
+claimed.
+
+\subsection{Workload traces and power models}
+\label{subsec:lit-data}
+
+The workload here comes from Google's 2019 cluster trace, documented by Wilkes
+in \emph{Google cluster-usage traces v3} \cite{wilkes2020clusterdata2019} and
+analyzed by Tirmazi \emph{et al.} in \emph{Borg: The Next Generation}
+\cite{tirmazi2020borg}. The analysis defines priority tiers, of which the
+free and best-effort batch tiers carry no service-level objective, finds that
+best-effort batch has grown to about 20\% of cell capacity, and reports
+resource consumption so heavy-tailed that the top 1\% of jobs consume over
+99\% of resources. It summarizes each cell as each tier's CPU usage as a
+fraction of cell capacity over time, the same aggregate view adopted in
+Section~\ref{sec:clusterdata2019}. Da Costa, Grange, and De Courchelle, in
+\emph{Modeling and Generating large-scale Google-like Workload}
+\cite{dacosta2016modeling}, fit a generative model to the earlier 2011 trace
+so that scheduling experiments can be reproduced on synthetic workloads; here
+the measured aggregate usage is replayed instead. Lin \emph{et al.}, in
+\emph{A systematic review of green-aware management techniques for
+sustainable data center} \cite{lin2024systematic}, catalog the public
+workload traces, renewable data, and price series used across this literature
+and note the growing use of the temporal and spatial flexibility of batch
+work.
+
+For power, Dayarathna, Wen, and Fan, in \emph{Data Center Energy Consumption
+Modeling: A Survey} \cite{dayarathna2016survey}, organize more than 200
+models and observe that most rest on a few CPU or server metrics. They cite
+the finding of Fan \emph{et al.} at Google that a linear function of CPU
+utilization tracks dynamic power accurately at the power-distribution-unit
+level, which is the form fitted in Section~\ref{sec:powerdata2019}. Cooling
+is a large share of facility power: Zhang \emph{et al.}, in \emph{A survey on
+data center cooling systems: Technology, power consumption modeling and
+control strategy optimization} \cite{zhang2021cooling}, put it near 30\%, and
+Zhang \emph{et al.}, in \emph{Towards Joint Optimization Over ICT and Cooling
+Systems in Data Centre: A Survey} \cite{zhang2016joint}, review the coupling
+models that joint ICT-and-cooling control requires. Cooling control is outside
+the scope of this thesis. Its power is not omitted, however: the PowerData2019
+measurements \cite{googlePowerData2019} fitted in
+Section~\ref{sec:powerdata2019} include data-center-floor cooling, so the
+affine power model carries cooling's response to load without modeling it
+separately. Software-level efficiency measures, such as the virtualization,
+consolidation, and placement techniques surveyed by Katal, Dahiya, and
+Choudhury in \emph{Energy efficiency in cloud computing data centers: a
+survey on software technologies} \cite{katal2023energy} and by Panwar,
+Rauthan, and Barthwal in \emph{A systematic review on effective energy
+utilization management strategies in cloud data centers}
+\cite{panwar2022systematic}, reduce the energy needed per unit of work. They
+are complementary to, and separate from, the question asked here, which holds
+the work fixed and changes only when and where it runs.
+
+\subsection{Position of this thesis}
+\label{subsec:lit-position}
+
+The reviewed work supplies both levers used here, geographic routing from
+Section~\ref{subsec:lit-spatial} and temporal deferral from
+Section~\ref{subsec:lit-temporal}, and the learned-control pattern of
+Section~\ref{subsec:lit-rl}. What it does not supply is a measurement of the
+effect of a specific scheduling policy on the ramps and peak of a specific
+region's net load. The cost- and carbon-driven studies see the grid through a
+price or an intensity signal; the grid-side reports describe flexibility as
+valuable without attaching it to a scheduler.
+
+This thesis takes the operator perspective on grid-ramp and peak-kW
+reduction. The decision-maker is the operator of a multi-site fleet, who
+controls only what such an operator controls: where service work runs, and
+when and where batch work runs. Regional demand, wind, and solar are exogenous
+history. The score is what those decisions do to the grid, namely the change
+in each region's squared one-hour net-load ramp and in each region's monthly
+net-load peak, measured in MW relative to the grid without the fleet and
+normalized by a fixed regional scale (Equation~\eqref{eq:objective}).
+Electricity cost, carbon, and energy use are neither optimized nor reported.
+This is the operator's view of the ramp and kW quantities that the system
+operator cares about; no demand-response program, tariff, market signal, or
+payment is modeled, and reductions are reported as reductions in the modeled
+score rather than as reserve, cost, or reliability savings. The forecasts, the
+priority-based split, the 24-hour window, and the no-flexibility baseline are
+each taken from the studies above, so that the departure lies in the objective
+alone.
 
 \section{Google ClusterData2019 Workload Trace}
 \label{sec:clusterdata2019}
@@ -68,21 +327,21 @@ location, or other identifying information.
 
 Three tables supply the workload data used here: \codepath{machine_events}
 for the CPU reference capacity, \codepath{instance_usage} for measured CPU
-execution, and \codepath{collection_events} for
-priority.\footnote{The full trace is approximately 2.4 TiB, so the extraction
-queries it through BigQuery rather than downloading it.}
+execution, and \codepath{collection_events} for priority. The full trace is
+approximately 2.4 TiB, so it is queried through BigQuery rather than
+downloaded.
 
-Rather than track individual jobs and their execution, we use the aggregate CPU utilization (for each five-minute window) as our demand.\footnote{Tirmazi
-\emph{et al.}, in \emph{Borg: The Next Generation} \cite{tirmazi2020borg},
-summarize this trace the same way, plotting each priority tier's CPU usage as
-a fraction of cell capacity over hour-long intervals (their Fig.~2).
-Radovanovi\'{c} \emph{et al.}, in \emph{Carbon-Aware Computing for
-Datacenters} \cite{radovanovic2021carbonaware}, schedule aggregate flexible
-and inflexible CPU usage per cluster, from Google's internal fleet data rather
-than this trace. Naug \emph{et al.}, in \emph{SustainDC: Benchmarking for
-Sustainable Data Center Control} \cite{naug2024sustaindc}, drive their
-reinforcement-learning workload environment with utilization curves from
-Alibaba and Google traces.}
+Rather than tracking individual jobs and their execution, the aggregate CPU
+utilization in each five-minute window is used as demand. This is how the
+trace is summarized by Tirmazi \emph{et al.} in \emph{Borg: The Next
+Generation} \cite{tirmazi2020borg}, who plot each priority tier's CPU usage as
+a fraction of cell capacity over hour-long intervals (their Fig.~2). Aggregate
+flexible and inflexible CPU usage per cluster is likewise the quantity
+scheduled by Radovanovi\'{c} \emph{et al.} in \emph{Carbon-Aware Computing
+for Datacenters} \cite{radovanovic2021carbonaware}, from Google's internal
+fleet data rather than this trace, and utilization curves from Alibaba and
+Google traces drive the workload environment of \emph{SustainDC}
+\cite{naug2024sustaindc}.
 
 \begin{figure}[!ht]
   \centering
@@ -124,8 +383,9 @@ Alibaba and Google traces.}
 \subsection{Fixed reference capacity}
 \label{subsec:clusterdata-capacity}
 
-Google expresses CPU capacity in normalized units, with the largest machine (in a cell)
-equal to 1.0. We then define a cell's reference capacity is the sum over its machines:
+Google expresses CPU capacity in normalized units, with the largest machine in
+a cell equal to 1.0. A cell's reference capacity is then defined as the sum
+over its machines:
 \begin{equation}
   C^{\mathrm{ref}}_c
   =
@@ -134,15 +394,16 @@ equal to 1.0. We then define a cell's reference capacity is the sum over its mac
 \end{equation}
 where \(\mathcal{J}_c\) is all machines ever observed in cell \(c\)
 and \(\kappa_n\) is machine \(n\)'s largest reported
-\codepath{capacity.cpus}.\footnote{Machines can have multiple add, update,
-and snapshot records in \codepath{machine_events}; we keep the largest
-reported capacity. This gives a fixed monthly reference, rather than the
-active capacity in each five-minute interval.}
+\codepath{capacity.cpus}. Machines can have multiple add, update, and
+snapshot records in \codepath{machine_events}; the largest reported capacity
+is kept. This gives a fixed monthly reference rather than the active capacity
+in each five-minute interval, so the utilization defined next is measured
+relative to that fixed reference.
 
 \subsection{Five-minute executed CPU}
 \label{subsec:clusterdata-utilization}
 
-For each five-minute window, we sum recorded CPU usage and divide by the
+For each five-minute window, recorded CPU usage is summed and divided by the
 cell's fixed reference capacity. Let \(k\) identify the window and
 \(\mathcal{E}_{c,k}\) denote its set of retained usage rows:
 \begin{equation}
@@ -156,27 +417,30 @@ where \(a_r\) is row \(r\)'s \codepath{average_usage.cpus} value. Both the
 numerator and denominator use Google's normalized CPU units, so
 \(u_{c,k}\) is dimensionless.
 
-We retain only top-level instances and full five-minute measurement
-windows.\footnote{Using only top-level instances avoids counting both an
-allocation set and the work running inside it. Google reports each instance's
-usage over windows of at most 300 seconds
-\cite{googleTraceFormatV3}. Following the instance-usage query example in Google's \cite{googleClusterAnalysisColab}., we keep rows whose
-\codepath{end_time-start_time} is at least 300 seconds, so each retained
-\(a_r\) is an average over a whole window. An audit of cells \(a\)--\(d\) found that
-the 300-second filter removes 6.5\% of CPU work, proportionally more batch
-(11--15\% of batch work) than service (2--8\%). Hour by hour, the retained
-curves correlate with all-row curves at 0.96--0.99 in level and 0.88--0.97 in
-one-hour ramps, with slightly larger relative ramps (2.6--4.9\%).}
+Only top-level instances and full five-minute measurement windows are
+retained. Using only top-level instances avoids counting both an allocation
+set and the work running inside it. Google reports each instance's usage over
+windows of at most 300 seconds \cite{googleTraceFormatV3}. Following the
+instance-usage query example in Google's analysis notebook
+\cite{googleClusterAnalysisColab}, rows whose \codepath{end_time-start_time}
+is at least 300 seconds are kept, so each retained \(a_r\) is an average over
+a whole window. An audit of cells \(a\)--\(d\) found that the 300-second
+filter removes 6.5\% of CPU work, proportionally more batch (11--15\% of batch
+work) than service (2--8\%). Hour by hour, the retained curves correlate with
+all-row curves at 0.96--0.99 in level and 0.88--0.97 in one-hour ramps, with
+slightly larger relative ramps (2.6--4.9\%). The retained curves therefore
+describe retained execution rather than all execution.
 
 \subsection{Modeled service and batch classes}
 \label{subsec:clusterdata-tier-split}
 
 Google records job priorities rather than explicit service and batch
-labels. We use the priority bands from Google's analysis in
-Table~\ref{tab:priority-bands} and assume work in the no-SLO bands can be
-deferred.\footnote{Priority comes from \codepath{collection_events}. We keep
-\codepath{type=0} events, take the highest priority recorded for each
-\codepath{collection_id}, and join that to the usage rows, using BigQuery. }
+labels. The priority bands from Google's analysis in
+Table~\ref{tab:priority-bands} are used, and work in the no-SLO bands is
+assumed to be deferrable. Priority comes from \codepath{collection_events}:
+\codepath{type=0} events are kept, the highest priority recorded for each
+\codepath{collection_id} is taken, and that priority is joined to the usage
+rows in BigQuery.
 
 \begin{table}[htbp]
   \centering
@@ -196,11 +460,11 @@ deferred.\footnote{Priority comes from \codepath{collection_events}. We keep
   \end{tabular}
 \end{table}
 
-We classify priority 115 or below as batch and the remaining usage as
+Priority 115 or below is classified as batch and the remaining usage as
 service. Let \(p_r\) be the priority attached to row \(r\), and
 \(\mathcal{E}^{\mathrm{bat}}_{c,k}\) the set of rows in
-\(\mathcal{E}_{c,k}\) with \(p_r\leq115\).\footnote{Usage rows without a
-matching priority record remain in the service residual.} The two classes are
+\(\mathcal{E}_{c,k}\) with \(p_r\leq115\). Usage rows without a matching
+priority record remain in the service residual. The two classes are
 \begin{align}
   u^{\mathrm{bat}}_{c,k}
   &=
@@ -212,7 +476,7 @@ matching priority record remain in the service residual.} The two classes are
   u_{c,k}-u^{\mathrm{bat}}_{c,k}.
   \label{eq:service-utilization}
 \end{align}
-We refer to these curves as \emph{deferrable batch} and
+These curves are referred to as \emph{deferrable batch} and
 \emph{nondeferrable service}. Four cells supply the workload profiles, which
 are converted to hourly arrivals in Section~\ref{sec:data-transformations}.
 Appendix~\ref{app:data-schemas} lists the stored columns and example values.
@@ -225,12 +489,12 @@ Appendix~\ref{app:data-schemas} lists the stored columns and example values.
 
 PowerData2019 \cite{googlePowerData2019} provides five-minute normalized
 power-domain measurements for the same Borg cells. These measurements
-include data-center-floor cooling.\footnote{See \emph{Google Data Center
-Power Trace}, p.~2, under \codepath{measured_power_util}
-\cite{googlePowerTraceDocumentation}.}
-We use CPU utilization to predict measured power-domain utilization,
-averaging both series by cell and hour before fitting an ordinary
-least-squares line:
+include data-center-floor cooling, as documented under
+\codepath{measured_power_util} on p.~2 of the \emph{Google Data Center Power
+Trace} documentation \cite{googlePowerTraceDocumentation}.
+CPU utilization is used to predict measured power-domain utilization; both
+series are averaged by cell and hour before an ordinary least-squares line is
+fitted:
 \begin{equation}
   \widehat p_c(u)
   =
@@ -248,7 +512,7 @@ about 38\% to 55\% of reference power across the cells.
 Table~\ref{tab:powerdata-coefficients} lists the fitted coefficients for the
 four cells used here.\footnote{Stored in
 \codepath{data/power_model_params.json}.} Google reports normalized power,
-so we assume a reference power of 500 MW per site. At this scale, modeled
+so a reference power of 500 MW per site is assumed. At this scale, modeled
 idle power ranges from 191 to 274 MW, with full utilization adding
 170 to 285 MW, depending on the cell.
 
@@ -284,16 +548,16 @@ idle power ranges from 191 to 274 MW, with full utilization adding
 \subsection{Four market cases}
 \label{subsec:energy-sources}
 
-Each modeled site is assigned to an electricity market. We use hourly
-demand and generation by fuel from the EIA grid monitor
-\cite{eiaGridMonitor}. CAISO NP15 draws on the CISO balancing authority,
-MISO Minnesota on MISO, SPP North on SWPP, and ISO-NE NEMA on ISNE.
+Each modeled site is assigned to an electricity market. Hourly demand and
+generation by fuel are taken from the EIA grid monitor \cite{eiaGridMonitor}.
+CAISO NP15 draws on the CISO balancing authority, MISO Minnesota on MISO,
+SPP North on SWPP, and ISO-NE NEMA on ISNE.
 
-For each region, we use demand, wind generation, and solar
-generation.\footnote{The EIA fields \codepath{D},
+For each region, demand, wind generation, and solar generation are
+used.\footnote{The EIA fields \codepath{D},
 \codepath{NG.WND}, and \codepath{NG.SUN} are stored as
 \codepath{gross_demand_mw}, \codepath{wind_mw}, and \codepath{solar_mw}.}
-EIA labels each interval by its ending hour. We subtract one hour to store
+EIA labels each interval by its ending hour. One hour is subtracted to store
 hour-beginning UTC timestamps, giving one row per market per hour.
 
 \subsection{Net load}
@@ -317,13 +581,13 @@ observed wind and solar output, all in MW:
 \subsection{Calendar and frozen statistics}
 \label{subsec:energy-calendar}
 
-We use 2025 grid data. The training set, \(\mathcal E_{\mathrm{train}}\),
+Grid data from 2025 are used. The training set, \(\mathcal E_{\mathrm{train}}\),
 contains the eleven months outside May (334 UTC days). May (31 UTC days)
 is used for validation. Each month is a continuous simulation, as
 described in Section~\ref{subsec:transform-pairing}.
 
-To compare markets of different sizes, we define a fixed scale
-\(S_m\) for each market: the empirical 95th percentile of gross demand over
+To compare markets of different sizes, a fixed scale
+\(S_m\) is defined for each market: the empirical 95th percentile of gross demand over
 the training months,
 \begin{equation}
   S_m
@@ -333,7 +597,7 @@ the training months,
 \end{equation}
 where \(\mathcal{R}\) is every hour of 2025 outside May.
 The scales in Table~\ref{tab:frozen-stats} are held fixed throughout training
-and validation. We use them to express net-load ramps and peaks relative to
+and validation and are used to express net-load ramps and peaks relative to
 each market's demand scale.
 
 \begin{table}[htbp]
@@ -356,23 +620,203 @@ each market's demand scale.
 \subsection{Forecasts}
 \label{subsec:energy-forecasts}
 
-Each row contains gross-demand and net-load predictions with lead times of
-one, three, six, and twelve hours from its issue time. The decision at hour
-\(t\) reads the forecasts issued at \(t-1\), so their targets are
-\(t\), \(t+2\), \(t+5\), and \(t+11\): the current decision hour and
-two, five, and eleven hours later. Queue urgency is reported separately as
-work due within one, three, six, twelve, and twenty-four execution slots.
+Each panel row carries gross-demand and net-load forecasts with lead times of
+one, three, six, and twelve hours from its issue time, which is the row's own
+hour. The decision at hour \(t\) reads the row for \(t-1\), so the forecasts
+available to it target \(t\), \(t+2\), \(t+5\), and \(t+11\): the current
+decision hour and two, five, and eleven hours later. Queue urgency is reported
+separately as work due within one, three, six, twelve, and twenty-four
+execution slots.
 
-We generate these forecasts from EIA data using linear regressions. Inputs
-available at the issue hour include recent demand, demand at the same hour
-yesterday and a week earlier, recent one-hour and three-hour changes, and
-wind and solar generation.\footnote{Generated
-by \codepath{scripts/build_causal_forecasts.py}. Each market has a separate
-model for each quantity and each of the four lead times, thirty-two in all.
-Model fitting uses the eleven training months, excluding May.}
-Section~\ref{subsec:problem-causality} gives the full list of information
-available at each decision.
+No external forecast product is used. The forecasts are produced from the EIA
+data by ridge regression, fitted and written by
+\codepath{scripts/build_causal_forecasts.py}, so that their inputs, their
+fitting, their output, and their accuracy are known exactly. Each is described
+in turn.
 
+\subsubsection{Model}
+For each market \(m\), each quantity \(Y\in\{D_m,N_m\}\), and each lead
+\(h\in\{1,3,6,12\}\), a separate direct multi-step model predicts the value
+\(h\) hours after the issue hour \(\tau\) from 28 inputs \(x_k(\tau)\)
+observed at or before \(\tau\):
+\begin{align}
+  \widehat Y(\tau+h\mid\tau)
+  &=
+  \bar y+\sum_{k=1}^{28} w_k\,\frac{x_k(\tau)-\bar x_k}{\sigma_k},
+  \label{eq:forecast-model}\\
+  \mathbf w
+  &=
+  \left(\mathbf X^{\mathsf T}\mathbf X+\alpha\mathbf I\right)^{-1}
+  \mathbf X^{\mathsf T}\left(\mathbf y-\bar y\mathbf 1\right).
+  \label{eq:forecast-ridge}
+\end{align}
+Here \(\bar x_k\) and \(\sigma_k\) are the mean and standard deviation of
+input \(k\) over the training rows, \(\mathbf X\) is the matrix of
+standardized inputs over those rows, \(\mathbf y\) is the vector of targets
+\(Y(\tau+h)\), \(\bar y\) is its mean, and \(\alpha>0\) is the ridge penalty.
+The intercept is the training mean of the target and is not penalized, and the
+coefficients are computed in closed form. Four markets, two quantities, and
+four leads give 32 models. A separate model per lead is what makes the four
+forecast columns differ; one one-step model applied recursively, or one series
+copied into every column, would not.
+
+\subsubsection{Inputs}
+Table~\ref{tab:forecast-inputs} lists the inputs. Every input is a function of
+observations at or before the issue hour. The level at \(\tau\) alone
+reproduces a persistence forecast, so any improvement over persistence must
+come from the other inputs. The one- and three-hour changes are included
+because the objective concerns ramps: the rate at which a series is already
+moving carries information beyond its level. Wind and solar output at the
+issue hour drive the gap between gross demand and net load, and the calendar
+terms carry the daily and weekly cycles. Causality is checked mechanically:
+the inputs are rebuilt from a copy of the series truncated six hours early,
+and every value on the overlapping hours must be unchanged to within
+\(10^{-9}\). A column that used a later row would move, and the build stops.
+The panel loader separately rejects any forecast whose recorded issue time is
+later than its row's hour.
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{Forecast inputs for one market at issue hour \(\tau\). \(D\) is
+  gross demand and \(N\) is net load; every value is observed at or before
+  \(\tau\).}
+  \label{tab:forecast-inputs}
+  \begin{tabular}{@{}L{0.27\columnwidth}L{0.55\columnwidth}r@{}}
+    \toprule
+    Group & Inputs & Count \\
+    \midrule
+    Recent levels
+      & \(D\) and \(N\) at \(\tau\), \(\tau-1\), \(\tau-2\), and \(\tau-3\)
+      & 8 \\
+    \addlinespace
+    Daily and weekly lags
+      & \(D\) and \(N\) at \(\tau-24\), \(\tau-25\), and \(\tau-168\)
+      & 6 \\
+    \addlinespace
+    Trailing means
+      & means of \(D\) and \(N\) over the 24 and the 168 hours ending at
+        \(\tau-1\)
+      & 4 \\
+    \addlinespace
+    Recent changes
+      & \(D\) and \(N\) at \(\tau\) minus their values at \(\tau-1\) and at
+        \(\tau-3\)
+      & 4 \\
+    \addlinespace
+    Renewable output
+      & wind and solar generation at \(\tau\)
+      & 2 \\
+    \addlinespace
+    Calendar
+      & sine and cosine of the UTC hour of day and of the day of week
+      & 4 \\
+    \midrule
+    Total & & 28 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{Fitting}
+A model is fitted on rows whose issue hour and target hour both fall in the
+eleven training months. No April row with a May target is used, and no May
+hour serves as an issue hour or a target hour in any fit or in the penalty
+selection. Rows without a complete input set are excluded: the weekly lag and
+the 168-hour mean need a week of history, so the first 168 hours of the panel,
+through 2025-01-07 22:00 UTC, carry no model forecast. The rows that remain
+number 7,847 per model at the one-hour lead and 7,825 at the twelve-hour lead.
+The penalty \(\alpha\) is chosen from \(\{0.01, 0.1, 1, 10, 100, 1000\}\) by
+rolling-origin cross-validation: the training rows are placed in time order,
+their second half is divided into four consecutive blocks of 981 rows, and for
+each block a model is fitted on every earlier row and scored on that block by
+mean absolute error. The penalty with the lowest mean error over the four
+blocks is kept, and the model is refitted on all training rows. A model is
+therefore never scored on an hour that precedes the hours it was fitted on.
+The selected penalties range from 0.01, for most ISO-NE and SPP models, to
+1000, for the CAISO net-load models at the three- and six-hour leads. The
+standardization statistics \(\bar x_k\) and \(\sigma_k\) are computed once on
+all training rows before the cross-validation.
+
+\subsubsection{Output}
+The output of each model is a point forecast, in MW, of the target quantity
+at \(\tau+h\). For every panel row, the eight forecasts are written to the
+columns \codepath{forecast_gross_h1_mw} through
+\codepath{forecast_gross_h12_mw} and \codepath{forecast_net_h1_mw} through
+\codepath{forecast_net_h12_mw}, listed in Appendix~\ref{app:data-schemas};
+the issue time is recorded as the row's own hour in
+\codepath{forecast_issue_time_utc}; and the model version is recorded in
+\codepath{forecast_vintage_id} and in the calendar file. Rows without a
+complete input set receive the persistence value, the issue-hour observation
+of the target quantity, in every forecast column. The scheduler reads these
+columns as part of its observation and never calls the model. Scoring always
+uses the realized net load, as Section~\ref{subsec:problem-causality} states.
+
+\subsubsection{Accuracy}
+Accuracy is measured by the mean absolute error (MAE) between each forecast
+and the realized value at its target hour, and it is compared with the
+persistence forecast, which assumes that the target hour equals the issue
+hour. Two sets of hours are scored. The in-sample set is the training rows
+that fitted each model. The out-of-sample set is the 744 issue hours of May
+2025, which no fit and no penalty selection used; May was consulted only when
+the four lead times were chosen, which is why it is called validation rather
+than test. Table~\ref{tab:forecast-accuracy} reports both.
+
+\begin{table*}[htbp]
+  \centering
+  \footnotesize
+  \caption{Forecast mean absolute error in MW, ridge model versus persistence,
+  by lead \(h\) in hours from the issue hour. The out-of-sample rows score the
+  744 issue hours of May 2025; the in-sample rows score the training rows that
+  fitted each model.}
+  \label{tab:forecast-accuracy}
+  \begin{tabular}{@{}llrrrrrrrr@{}}
+    \toprule
+    & & \multicolumn{2}{c}{\(h=1\)} & \multicolumn{2}{c}{\(h=3\)}
+        & \multicolumn{2}{c}{\(h=6\)} & \multicolumn{2}{c}{\(h=12\)} \\
+    \cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(l){9-10}
+    Market case & Quantity & Ridge & Persist. & Ridge & Persist.
+                & Ridge & Persist. & Ridge & Persist. \\
+    \midrule
+    \multicolumn{10}{@{}l}{\emph{May 2025, out of sample}} \\
+    CAISO NP15     & gross demand &   447 &   815 & 1,163 & 2,110 & 1,480 & 3,111 & 1,819 &  2,723 \\
+    CAISO NP15     & net load     & 1,056 & 1,745 & 2,787 & 4,795 & 3,019 & 8,455 & 2,745 & 12,496 \\
+    MISO Minnesota & gross demand &   433 & 1,426 & 1,329 & 4,140 & 2,172 & 7,557 & 3,011 & 10,360 \\
+    MISO Minnesota & net load     &   825 & 1,558 & 2,423 & 4,109 & 3,618 & 6,531 & 4,443 &  7,932 \\
+    SPP North      & gross demand &   255 &   594 &   840 & 1,721 & 1,471 & 3,133 & 1,720 &  4,384 \\
+    SPP North      & net load     &   541 &   787 & 1,661 & 2,183 & 2,791 & 3,832 & 3,500 &  5,383 \\
+    ISO-NE NEMA    & gross demand &   187 &   403 &   569 & 1,073 &   741 & 1,656 &   810 &  1,699 \\
+    ISO-NE NEMA    & net load     &   200 &   433 &   622 & 1,147 &   801 & 1,763 &   851 &  1,787 \\
+    \addlinespace
+    \multicolumn{10}{@{}l}{\emph{Training months, in sample}} \\
+    CAISO NP15     & gross demand &   509 &   868 & 1,169 & 2,246 & 1,318 & 3,469 & 1,474 &  3,626 \\
+    CAISO NP15     & net load     & 1,052 & 1,569 & 2,514 & 4,209 & 2,521 & 7,137 & 2,439 &  9,073 \\
+    MISO Minnesota & gross demand &   537 & 1,775 & 1,766 & 5,046 & 2,875 & 8,730 & 3,250 & 11,019 \\
+    MISO Minnesota & net load     &   999 & 2,079 & 3,022 & 5,527 & 4,437 & 8,735 & 5,027 & 10,176 \\
+    SPP North      & gross demand &   276 &   773 &   909 & 2,206 & 1,515 & 3,844 & 1,733 &  4,913 \\
+    SPP North      & net load     &   570 & 1,074 & 1,667 & 2,995 & 2,791 & 5,333 & 3,785 &  7,581 \\
+    ISO-NE NEMA    & gross demand &   224 &   506 &   679 & 1,361 &   921 & 2,099 & 1,105 &  2,117 \\
+    ISO-NE NEMA    & net load     &   241 &   534 &   740 & 1,430 &   991 & 2,191 & 1,173 &  2,186 \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+Every model beats persistence at every lead in both sets. In May, the ridge
+errors are 24\% to 78\% below persistence. The gain is largest for CAISO net
+load at the six- and twelve-hour leads, 64\% and 78\%, where persistence
+carries the midday solar trough forward into the evening, and smallest for SPP
+North net load, 24\% to 35\%, where wind dominates the hour-to-hour variation.
+In-sample errors are within about 30\% of the May errors for every model, in
+both directions, so the models do not overfit the training months. Relative
+to each market's scale \(S_m\), the May MAE is 0.4\% to 3.1\% of \(S_m\) at
+the one-hour lead and 3.0\% to 8.1\% at the twelve-hour lead; persistence is
+1.3\% to 5.1\% and 7.8\% to 36.8\% at the same leads. When the columns are
+written, any model whose in-sample MAE failed to beat persistence would be
+replaced by persistence outright, and the newly fitted forecasts are compared
+with the columns already in the panels. No model triggered the replacement,
+and the committed panels match the current model within rounding. The
+forecasts therefore give the scheduler a materially better view of the coming
+hours than the last observation alone, with errors that stay within a few
+percent of the regional demand scale.
 
 The hourly grid panels contain demand, wind and solar generation, net load,
 the fixed market scale, and forecasts for each market.
@@ -384,10 +828,10 @@ Appendix~\ref{app:data-schemas} lists the columns and an example row.
 \subsection{Cell-to-market mapping and standardized work}
 \label{subsec:transform-mapping}
 
-We assume the fixed cell-to-market mapping in
-Table~\ref{tab:active-market-map}; Google does not report cell locations.
-The site index \(m\) therefore identifies the source cell for its workload
-curves \(u^{\mathrm{svc}},u^{\mathrm{bat}}\) and power coefficients
+The fixed cell-to-market mapping in Table~\ref{tab:active-market-map} is
+assumed; Google does not report cell locations. The site index \(m\)
+therefore identifies the source cell for its workload curves
+\(u^{\mathrm{svc}},u^{\mathrm{bat}}\) and power coefficients
 \(\alpha_m,\beta_m\). All four sites have compute capacity \(K_m=1\) and
 reference power \(\overline P_m=500\) MW.
 
@@ -438,13 +882,14 @@ Equation~\eqref{eq:batch-deadline}.
 Let \(s_{m,t}\) and \(q_{m,t}\) denote hourly service and batch arrivals at
 site \(m\). Service must run immediately; batch may wait.
 
-We convert the five-minute utilization curves from
-Section~\ref{sec:clusterdata2019} to work by averaging the twelve windows in
-each hour, then multiplying by the site's hourly capacity
-\(K_m\Delta t\).\footnote{We treat each hour's recorded CPU execution as
-work arriving at the start of the corresponding simulation hour. For
-example, average utilization of 60\% becomes 0.6 work units.} Let \(t\)
-be the hour within the month:
+The five-minute utilization curves from
+Section~\ref{sec:clusterdata2019} are converted to work by averaging the
+twelve windows in each hour, then multiplying by the site's hourly capacity
+\(K_m\Delta t\). Each hour's recorded CPU execution is treated as work
+arriving at the start of the corresponding simulation hour, and the hour's
+aggregate work is assumed known at that moment; for example, average
+utilization of 60\% becomes 0.6 work units. Let \(t\) be the hour within the
+month:
 \begin{align}
   s_{m,t}
   &=
@@ -461,7 +906,7 @@ With \(K_m=1\) work unit per hour
 and \(\Delta t=1\) h, the resulting work amounts equal the hourly average
 utilization values numerically.
 
-We use grid data from the corresponding UTC hours. If \(\tau_e\) is the
+Grid data from the corresponding UTC hours are used. If \(\tau_e\) is the
 month's UTC start time,
 \begin{equation}
   \begin{aligned}
@@ -477,7 +922,7 @@ This mapping also applies to the preceding warm-up hour.
 
 At the 500 MW reference scale, the sum of the four individual idle-to-full
 modeled power ranges is approximately 906 MW. Table~\ref{tab:workload-feasibility} summarizes the repeated 744-hour
-workload. 
+workload.
 
 \begin{table}[htbp]
   \centering
@@ -545,8 +990,9 @@ capacity \(K_m\), reference power \(\overline P_m\), power coefficients
 \(\alpha_m,\beta_m\), the batch window \(H\), regional net load \(N_{m,t}\),
 and training-only scale \(S_m\).
 
-Work can be divided among sites. We do not model individual jobs, memory
-limits, machine types, application dependencies, or scheduling within a site.
+Work can be divided among sites. Individual jobs, memory limits, machine
+types, application dependencies, and scheduling within a site are not
+modeled.
 
 \subsection{Scheduler controls}
 \label{subsec:problem-decisions}
@@ -604,10 +1050,12 @@ cannot exceed available work:
   \label{eq:queue-availability}
 \end{align}
 With \(H=24\), batch may execute immediately or in the following 23 hourly
-slots, completing within 24 hours and by month-end.\footnote{A 24-hour
-completion window for flexible work is described in \emph{Carbon-Aware
-Computing for Datacenters} \cite{radovanovic2021carbonaware}. \(H\) is an assumption rather than a
-measurement, because the trace records when work ran, not when it was due.}
+slots, completing within 24 hours and by month-end. A 24-hour completion
+window for flexible work is the convention of Google's carbon-aware system
+\cite{radovanovic2021carbonaware} and of the batch model of Haghshenas
+\emph{et al.} \cite{haghshenas2022infrastructure}. \(H\) is an assumption
+rather than a measurement, because the trace records when work ran, not when
+it was due.
 
 An arrival in slot \(\nu\) must therefore run by slot
 \begin{equation}
@@ -649,7 +1097,7 @@ capacity:
   &\leq w_{m,t}\leq K_m\Delta t.
   \label{eq:site-capacity}
 \end{align}
-We convert executed work to power using the model from
+Executed work is converted to power using the model from
 Section~\ref{sec:powerdata2019} and the 500 MW reference scale:
 \begin{equation}
   P_{m,t}
@@ -677,7 +1125,7 @@ The regional net load after adding modeled site power is
   N_{m,t}+P_{m,t}.
   \label{eq:adjusted-net-load}
 \end{equation}
-We measure changes in net load between consecutive hours, before and after
+Changes in net load between consecutive hours are measured, before and after
 adding fleet power. This one-hour interval matches the data and scheduling
 decisions. Dividing by \(S_m\Delta t\) expresses each change as a fraction of
 the market's demand scale per hour:
@@ -692,7 +1140,7 @@ the market's demand scale per hour:
   \label{eq:adjusted-ramp}
 \end{align}
 Squaring penalizes larger ramps and treats upward and downward ramps
-equally. We measure the fleet's ramp impact by
+equally. The fleet's ramp impact is measured by
 subtracting the original grid's squared ramp:
 \begin{equation}
   I_{m,t}
@@ -705,8 +1153,9 @@ subtracting the original grid's squared ramp:
 A negative value means the scheduled fleet reduced the squared ramp relative
 to the original grid; a positive value means it increased it.
 
-We also aim to reduce each region's monthly net-load peak. Under scheduling
-policy \(\mu\), its normalized adjusted and original peaks in month \(e\) are
+The reduction of each region's monthly net-load peak is the second aim. Under
+scheduling policy \(\mu\), its normalized adjusted and original peaks in
+month \(e\) are
 \begin{align}
   Q^{\mathrm{adjusted}}_{m,e}(\mu)
   &=
@@ -718,8 +1167,8 @@ policy \(\mu\), its normalized adjusted and original peaks in month \(e\) are
   \label{eq:monthly-original-peak}
 \end{align}
 Each takes the highest net load during the month and divides it by the
-region's demand scale, \(S_m\). As with ramps, we measure the fleet's peak
-impact by subtracting the original grid's peak:
+region's demand scale, \(S_m\). As with ramps, the fleet's peak
+impact is measured by subtracting the original grid's peak:
 \begin{equation}
   \Phi_{m,e}(\mu)
   =
@@ -732,10 +1181,11 @@ which the scheduler cannot influence, out of the hourly training signal.
 Site power is positive, so \(\Phi_{m,e}(\mu)>0\).
 
 Ramp impact and monthly peaks have different numerical scales. To combine
-them in one objective, we divide each by a fixed positive reference value.
+them in one objective, each is divided by a fixed positive reference value.
 The no-flexibility policy,
 \(\mu_{\mathrm{NF}}\), runs all work immediately at its original site.
-Using this policy over \(\mathcal E_{\mathrm{train}}\), we calculate
+Using this policy over \(\mathcal E_{\mathrm{train}}\), the references are
+calculated as
 \begin{align}
   C_R
   &=
@@ -765,9 +1215,9 @@ validation.
 \label{subsec:problem-normalization}
 
 Each simulated month \(e\) is one optimization episode. Decisions are hourly,
-and the objective covers the full month. We choose the schedule with the
+and the objective covers the full month. The schedule with the
 smallest equally weighted combination of scaled monthly ramp impact and
-regional monthly peak impact.
+regional monthly peak impact is sought.
 Let \(\mathfrak M\) be the causal scheduling policies satisfying
 Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
 \begin{equation}
@@ -789,9 +1239,9 @@ A lower joint score need not improve both components.
 \subsection{No-flexibility comparison}
 \label{subsec:problem-evaluation}
 
-We compare the scheduler with \(\mu_{\mathrm{NF}}\) using
-the same arrivals, power models, grid data, forecasts, and month. We report
-improvement as
+The scheduler is compared with \(\mu_{\mathrm{NF}}\) using
+the same arrivals, power models, grid data, forecasts, and month. Improvement
+is reported as
 \begin{equation}
   \text{Improvement}
   =
@@ -800,7 +1250,7 @@ improvement as
 \end{equation}
 which is positive when the scheduler \(\mu\) improves on the baseline.
 
-We report the ramp-impact and peak components separately, along with
+The ramp-impact and peak components are reported separately, along with
 regional adjusted peaks in MW and their reductions from
 the no-flexibility fleet. Since site power is nonnegative, peak reduction
 means improvement over that fleet without flexibility, not a peak below the
@@ -844,10 +1294,10 @@ baseline using Equation~\eqref{eq:improvement}.
 \subsection{Worked example: joint ramp and peak reduction}
 \label{subsec:problem-worked-joint}
 
-We select an hour from the completed July 2025 data to illustrate the joint
-objective. This is a worked calculation, not a PPO result. We compare the
-no-flexibility baseline with a schedule that changes one hour's service
-routing and leaves all other work in place.
+An hour from the completed July 2025 data is selected to illustrate the joint
+objective. This is a worked calculation, not a PPO result. The
+no-flexibility baseline is compared with a schedule that changes one hour's
+service routing and leaves all other work in place.
 
 At 2025-07-29 22:00 UTC (hour \(t=694\)), ISO-NE NEMA receives 0.3549 work
 units of service and 0.2047 of batch. Under the baseline, it executes
@@ -886,14 +1336,14 @@ CAISO; scoring uses the realized net load.
   \end{tabular}
 \end{table}
 
-Let's review ISO-NE NEMA closely. This hour sets its monthly adjusted
+ISO-NE NEMA is now examined closely. This hour sets its monthly adjusted
 net-load peak under the baseline: \(24{,}082+350.6=24{,}432.6\) MW.
 After routing, its peak is \(24{,}082+249.4=24{,}331.4\) MW, a reduction
 of 101.2 MW. Checking every July hour confirms that no other hour exceeds
 this new peak. CAISO's monthly peak remains 33,872.9 MW, and the MISO and
 SPP peaks are unchanged.
 
-We calculate both schedules over all 744 hours, including the next-hour
+Both schedules are calculated over all 744 hours, including the next-hour
 ramp when service returns to its original sites.
 Table~\ref{tab:joint-example-month} shows how the routing choice changes
 the normalized monthly components. The joint score is their equally
@@ -940,7 +1390,12 @@ The study has the following limitations:
   \item The affine power fit is deterministic, omits fit uncertainty,
         and is extrapolated when scheduling pushes a site
         outside its commonly observed CPU range.
-  \item Warm-up period only provides 1 hour, which reduces the schedulers historical grid observations.
+  \item The forecasts are ridge regressions fitted here on public EIA data.
+        An operator would hold system-operator or commercial forecasts of
+        different accuracy, and the scheduler's benefit may depend on that
+        accuracy.
+  \item The warm-up period provides only one hour, which limits the
+        scheduler's history of grid observations.
 \end{itemize}
 
 
@@ -1041,10 +1496,12 @@ described in Section~\ref{subsec:transform-pairing}.
       & 33,983 \\
     \addlinespace
     \codepath{forecast_gross_h1/h3/h6/h12_mw}
-      & Gross-demand forecast at each of the four lead times.
+      & Gross-demand forecast at each of the four lead times, from
+        Equation~\eqref{eq:forecast-model}.
       & 30,358 / 31,230 / 30,177 / 30,648 \\
     \codepath{forecast_net_h1/h3/h6/h12_mw}
-      & Net-load forecast at each of the four lead times.
+      & Net-load forecast at each of the four lead times, from
+        Equation~\eqref{eq:forecast-model}.
       & 11,230 / 11,008 / 11,247 / 26,814 \\
     \codepath{forecast_issue_time_utc},
     \codepath{forecast_vintage_id},
@@ -1151,16 +1608,21 @@ methods chapter.
         checks that the columns in \codepath{REQUIRED_COLUMNS} are present and
         finite, that timestamps are contiguous hourly UTC with every market in
         every hour, and that no forecast is issued after its row's hour.
-  \item In \codepath{scripts/build_causal_forecasts.py},
-        \codepath{build_features} lists every input, including trailing 24-
-        and 168-hour means, the 25-hour lag, and calendar terms.
-        \codepath{assert_causal} checks that no input uses a later row.
-        \codepath{fit_ridge} solves ridge regression in closed form, with the
-        penalty chosen by rolling-origin cross-validation in
-        \codepath{select_alpha}. Rows without a week of history use
-        persistence, as would any model that failed to beat persistence on
-        training hours; none does. \codepath{--write} rewrites the panels'
-        forecast columns, and \codepath{--report} prints accuracy only.
+  \item \codepath{scripts/build_causal_forecasts.py} implements
+        Section~\ref{subsec:energy-forecasts}. \codepath{build_features}
+        constructs the 28 inputs of Table~\ref{tab:forecast-inputs},
+        \codepath{assert_causal} performs the truncation check,
+        \codepath{fit_ridge} solves Equation~\eqref{eq:forecast-ridge} in
+        closed form, \codepath{select_alpha} runs the rolling-origin
+        cross-validation, and \codepath{fit_market_quantity_horizon} applies
+        the two-ended training mask. \codepath{build_all} fills rows without a
+        week of history with persistence and would replace any model that
+        failed to beat persistence on training hours; none does.
+        \codepath{--report} prints the accuracy in
+        Table~\ref{tab:forecast-accuracy} without writing, and
+        \codepath{--write} rewrites the panels' forecast columns and records
+        the vintage \codepath{causal-ridge-shortlag-v2} in
+        \codepath{calendar.json}.
   \item Forecast lead times are \codepath{FORECAST_HOURS} and urgency horizons
         are \codepath{deadline_bucket_hours}, both in
         \codepath{env/ramp_v6/models.py}. \codepath{EDFQueue.due_by} computes
@@ -1295,6 +1757,102 @@ verbatim.
 
 \begin{thebibliography}{99}
 
+\bibitem{iea2026energyai}
+International Energy Agency, ``Key Questions on Energy and AI,'' World Energy
+Outlook Special Report, IEA, Paris, France, 2026. [Online]. Available:
+\url{https://www.iea.org/reports/key-questions-on-energy-and-ai}.
+Accessed: Jun. 11, 2026.
+
+\bibitem{vasques2019review}
+T. L. Vasques, P. Moura, and A. de Almeida, ``A review on energy efficiency
+and demand response with focus on small and medium data centers,''
+\emph{Energy Efficiency}, vol. 12, no. 5, pp. 1399--1428, 2019,
+doi: 10.1007/s12053-018-9753-2.
+
+\bibitem{sakalkar2020oversubscription}
+V. Sakalkar, V. Kontorinis, D. Landhuis, S. Li, D. De Ronde, T. Blooming,
+A. Ramesh, J. Kennedy, C. Malone, J. Clidaras, and P. Ranganathan, ``Data
+center power oversubscription with a medium voltage power plane and
+priority-aware capping,'' in \emph{Proc. 25th Int. Conf. Architectural
+Support for Programming Languages and Operating Systems (ASPLOS)}, 2020,
+pp. 497--511, doi: 10.1145/3373376.3378533.
+
+\bibitem{qureshi2009cutting}
+A. Qureshi, R. Weber, H. Balakrishnan, J. Guttag, and B. Maggs, ``Cutting the
+electric bill for internet-scale systems,'' in \emph{Proc. ACM SIGCOMM},
+2009, pp. 123--134, doi: 10.1145/1592568.1592584.
+
+\bibitem{rao2010minimizing}
+L. Rao, X. Liu, L. Xie, and W. Liu, ``Minimizing electricity cost:
+Optimization of distributed internet data centers in a
+multi-electricity-market environment,'' in \emph{Proc. IEEE INFOCOM}, 2010,
+pp. 1145--1153.
+
+\bibitem{liu2011glb}
+Z. Liu, M. Lin, A. Wierman, S. H. Low, and L. L. H. Andrew, ``Geographical
+load balancing with renewables,'' \emph{ACM SIGMETRICS Perform. Eval. Rev.},
+vol. 39, no. 3, pp. 62--66, 2011, doi: 10.1145/2160803.2160862.
+
+\bibitem{zhao2025cfws}
+D. Zhao, J.-T. Zhou, and K. Li, ``CFWS: DRL-based framework for energy cost
+and carbon footprint optimization in cloud data centers,'' \emph{IEEE Trans.
+Sustain. Comput.}, vol. 10, no. 1, pp. 95--107, 2025,
+doi: 10.1109/TSUSC.2024.3391791.
+
+\bibitem{liu2012renewable}
+Z. Liu, Y. Chen, C. Bash, A. Wierman, D. Gmach, Z. Wang, M. Marwah, and
+C. Hyser, ``Renewable and cooling aware workload management for sustainable
+data centers,'' in \emph{Proc. 12th ACM SIGMETRICS/PERFORMANCE Joint Int.
+Conf. Measurement and Modeling of Computer Systems}, 2012, pp. 175--186,
+doi: 10.1145/2254756.2254779.
+
+\bibitem{grange2018green}
+L. Grange, G. Da Costa, and P. Stolf, ``Green IT scheduling for data center
+powered with renewable energy,'' \emph{Future Gener. Comput. Syst.}, vol. 86,
+pp. 99--120, 2018, doi: 10.1016/j.future.2018.03.049.
+
+\bibitem{xu2021selfadaptive}
+M. Xu, A. N. Toosi, and R. Buyya, ``A self-adaptive approach for managing
+applications and harnessing renewable energy for sustainable cloud
+computing,'' \emph{IEEE Trans. Sustain. Comput.}, vol. 6, no. 4,
+pp. 544--558, 2021, doi: 10.1109/TSUSC.2020.3014943.
+
+\bibitem{haghshenas2022infrastructure}
+K. Haghshenas, S. Taheri, M. Goudarzi, and S. Mohammadi, ``Infrastructure
+aware heterogeneous-workloads scheduling for data center energy cost
+minimization,'' \emph{IEEE Trans. Cloud Comput.}, vol. 10, no. 2,
+pp. 972--983, 2022, doi: 10.1109/TCC.2020.2977040.
+
+\bibitem{radovanovic2021carbonaware}
+A. Radovanovi\'{c} \emph{et al.}, ``Carbon-Aware Computing for Datacenters,''
+arXiv:2106.11750v1, 2021. [Online]. Available:
+\url{https://arxiv.org/abs/2106.11750v1}.
+
+\bibitem{kahil2025rl}
+H. Kahil, S. Sharma, P. V\"{a}lisuo, and M. Elmusrati, ``Reinforcement
+learning for data center energy efficiency optimization: A systematic
+literature review and research roadmap,'' \emph{Appl. Energy}, vol. 389,
+Art. no. 125734, 2025, doi: 10.1016/j.apenergy.2025.125734.
+
+\bibitem{ran2019deepee}
+Y. Ran, H. Hu, X. Zhou, and Y. Wen, ``DeepEE: Joint optimization of job
+scheduling and cooling control for data center energy efficiency using deep
+reinforcement learning,'' in \emph{Proc. IEEE Int. Conf. Distributed
+Computing Systems (ICDCS)}, 2019, pp. 645--655,
+doi: 10.1109/ICDCS.2019.00070.
+
+\bibitem{naug2024sustaindc}
+A. Naug \emph{et al.}, ``SustainDC: Benchmarking for sustainable data center
+control,'' in \emph{Advances in Neural Information Processing Systems},
+vol. 37, Datasets and Benchmarks Track, 2024,
+doi: 10.52202/079017-3192.
+
+\bibitem{zhang2018practical}
+Z. Zhang and K. P. Lam, ``Practical implementation and evaluation of deep
+reinforcement learning control for a radiant heating system,'' in
+\emph{Proc. 5th ACM Int. Conf. Systems for Built Environments (BuildSys)},
+2018, pp. 148--157, doi: 10.1145/3276774.3276775.
+
 \bibitem{wilkes2020clusterdata2019}
 J. Wilkes, ``Google cluster-usage traces v3,'' 2020. [Online]. Available:
 \url{https://github.com/google/cluster-data/blob/master/ClusterData2019.md}.
@@ -1306,33 +1864,63 @@ M. Harchol-Balter, and J. Wilkes, ``Borg: The next generation,'' in
 \emph{Proc. 15th Eur. Conf. Comput. Syst. (EuroSys)}, 2020, pp. 1--14,
 doi: 10.1145/3342195.3387517.
 
-\bibitem{googleTraceFormatV3}
-Google, ``ClusterData trace format v3,'' protocol-buffer schema, 2019.
-[Online]. Available:
-\url{https://github.com/google/cluster-data/blob/master/clusterdata_trace_format_v3.proto}.
-Accessed: Aug. 28, 2026.
+\bibitem{dacosta2016modeling}
+G. Da Costa, L. Grange, and I. De Courchelle, ``Modeling and generating
+large-scale Google-like workload,'' in \emph{Proc. 7th Int. Green and
+Sustainable Computing Conf. (IGSC)}, 2016, pp. 1--7,
+doi: 10.1109/IGCC.2016.7892623.
 
-\bibitem{radovanovic2021carbonaware}
-A. Radovanovi\'{c} \emph{et al.}, ``Carbon-Aware Computing for Datacenters,''
-arXiv:2106.11750v1, 2021. [Online]. Available:
-\url{https://arxiv.org/abs/2106.11750v1}.
+\bibitem{lin2024systematic}
+W. Lin, J. Lin, Z. Peng, H. Huang, W. Lin, and K. Li, ``A systematic review
+of green-aware management techniques for sustainable data center,''
+\emph{Sustain. Comput.: Informat. Syst.}, vol. 42, Art. no. 100989, 2024,
+doi: 10.1016/j.suscom.2024.100989.
 
-\bibitem{naug2024sustaindc}
-A. Naug \emph{et al.}, ``SustainDC: Benchmarking for sustainable data center
-control,'' in \emph{Advances in Neural Information Processing Systems},
-vol. 37, Datasets and Benchmarks Track, 2024,
-doi: 10.52202/079017-3192.
+\bibitem{dayarathna2016survey}
+M. Dayarathna, Y. Wen, and R. Fan, ``Data center energy consumption modeling:
+A survey,'' \emph{IEEE Commun. Surveys Tuts.}, vol. 18, no. 1, pp. 732--794,
+2016, doi: 10.1109/COMST.2015.2481183.
 
-\bibitem{googleClusterAnalysisColab}
-Google, ``Google ClusterData2019 analysis Colab,'' 2020. [Online]. Available:
-\url{https://github.com/google/cluster-data/blob/master/clusterdata_analysis_colab.ipynb}.
-Accessed: Aug. 28, 2026.
+\bibitem{zhang2021cooling}
+Q. Zhang, Z. Meng, X. Hong, Y. Zhan, J. Liu, J. Dong, T. Bai, J. Niu, and
+M. J. Deen, ``A survey on data center cooling systems: Technology, power
+consumption modeling and control strategy optimization,'' \emph{J. Syst.
+Archit.}, vol. 119, Art. no. 102253, 2021,
+doi: 10.1016/j.sysarc.2021.102253.
+
+\bibitem{zhang2016joint}
+W. Zhang, Y. Wen, Y. W. Wong, K. C. Toh, and C.-H. Chen, ``Towards joint
+optimization over ICT and cooling systems in data centre: A survey,''
+\emph{IEEE Commun. Surveys Tuts.}, vol. 18, no. 3, pp. 1596--1616, 2016,
+doi: 10.1109/COMST.2016.2545109.
+
+\bibitem{katal2023energy}
+A. Katal, S. Dahiya, and T. Choudhury, ``Energy efficiency in cloud computing
+data centers: A survey on software technologies,'' \emph{Cluster Comput.},
+vol. 26, pp. 1845--1875, 2023, doi: 10.1007/s10586-022-03713-0.
+
+\bibitem{panwar2022systematic}
+S. S. Panwar, M. M. S. Rauthan, and V. Barthwal, ``A systematic review on
+effective energy utilization management strategies in cloud data centers,''
+\emph{J. Cloud Comput.}, vol. 11, Art. no. 95, 2022,
+doi: 10.1186/s13677-022-00368-5.
 
 \bibitem{googlePowerData2019}
 Google, ``PowerData2019: power measurements for ClusterData2019,'' 2020.
 [Online]. Available:
 \url{https://github.com/google/cluster-data/blob/master/PowerData2019.md}.
 Accessed: Sep. 7, 2026.
+
+\bibitem{googleTraceFormatV3}
+Google, ``ClusterData trace format v3,'' protocol-buffer schema, 2019.
+[Online]. Available:
+\url{https://github.com/google/cluster-data/blob/master/clusterdata_trace_format_v3.proto}.
+Accessed: Aug. 28, 2026.
+
+\bibitem{googleClusterAnalysisColab}
+Google, ``Google ClusterData2019 analysis Colab,'' 2020. [Online]. Available:
+\url{https://github.com/google/cluster-data/blob/master/clusterdata_analysis_colab.ipynb}.
+Accessed: Aug. 28, 2026.
 
 \bibitem{googlePowerTraceDocumentation}
 J. Prakash and V. Kontorinis, ``Google Data Center Power Trace,''

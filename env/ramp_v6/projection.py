@@ -80,7 +80,11 @@ def softmax(logits: np.ndarray) -> np.ndarray:
 
 
 def bounded_fraction(value: float, bound: float = 6.0) -> float:
-    """Map a bounded scalar to [0, 1] with exact endpoints."""
+    """Map a bounded scalar to [0, 1] with exact endpoints.
+
+    The default matches the environment's frozen action bound; both endpoints
+    are reachable only while the two agree.
+    """
     return (float(np.clip(value, -bound, bound)) + bound) / (2.0 * bound)
 
 
