@@ -1,4 +1,8 @@
-"""One raw-workload four-market factory: one continuous episode per calendar month."""
+"""Four-market factories: one continuous episode per calendar month.
+
+There is one factory per split specification (see ``energy_model_v3/splits.py``):
+four cross-validation folds and the final factory with the test month.
+"""
 
 from __future__ import annotations
 
@@ -22,24 +26,37 @@ from env.ramp_v6.models import (
 from env.ramp_v6.panel import CanonicalMarketPanel
 from env.ramp_v6.objective import JointObjective, NORMALIZATION_METHOD, OBJECTIVE_VERSION
 from ramp_rl.contract import EnvRequest
+from energy_model_v3.splits import (
+    FINAL_SPEC, REFERENCE_CELL, SPECS, TRAIN_FLEET, fleet_for_split,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_NAMESPACE = "four_market_joint_v3"
-FACTORY_ROOT = ROOT / "output" / ARTIFACT_NAMESPACE / "factory"
 PROTOCOL_PATH = ROOT / "env" / "protocols" / "four_market_v2.yaml"
-MARKET_TO_CELL = (
-    ("CAISO_NP15", "a"),
-    ("MISO_MINN_HUB", "b"),
-    ("SPP_NORTH_HUB", "c"),
-    ("ISONE_NEMA", "d"),
-)
+MARKET_TO_CELL = TRAIN_FLEET
 MARKETS = tuple(market for market, _ in MARKET_TO_CELL)
 CELLS = tuple(cell for _, cell in MARKET_TO_CELL)
-RATED_POWER_MW = 500.0
-COMPUTE_CAPACITY = 1.0
-TOTAL_RATED_POWER_MW = 2_000.0
+CELL_CAPACITY_PATH = ROOT / "data" / "cell_capacity.json"
+# Cell c's site, the largest training site, has compute capacity 1 and this
+# reference power; every other site, training or test, scales both by its
+# cell's CPU capacity relative to cell c.
+REFERENCE_POWER_MW = 500.0
 DEADLINE_WINDOW_SLOTS = (24, 24, 24, 24)
+
+
+def factory_root(spec: str = FINAL_SPEC) -> Path:
+    """Generated factory directory of one split specification."""
+    if spec not in SPECS:
+        raise ValueError(f"unknown split specification {spec!r}; expected one of {SPECS}")
+    return ROOT / "output" / ARTIFACT_NAMESPACE / spec / "factory"
+
+
+def site_capacities(cells: tuple[str, ...] = CELLS) -> tuple[float, ...]:
+    """Compute capacity of each site in ``cells`` order, relative to cell c."""
+    capacities = json.loads(CELL_CAPACITY_PATH.read_text(encoding="utf-8"))["cells"]
+    reference = float(capacities[REFERENCE_CELL]["cpu_capacity"])
+    return tuple(float(capacities[cell]["cpu_capacity"]) / reference for cell in cells)
 
 
 def objective_from_factory(
@@ -106,7 +123,7 @@ def _load_window(
 
 
 class FourMarketV2WindowEnv(gym.Env):
-    """Factory wrapper that chooses a raw-workload train or validation month."""
+    """Factory wrapper that chooses a raw-workload train, validation, or test month."""
 
     metadata = {"render_modes": []}
 
@@ -150,13 +167,18 @@ class FourMarketV2WindowEnv(gym.Env):
             ROOT / record["fixture_path"],
             ROOT / self.payload["frozen_stats_path"],
         )
+        fleet = fleet_for_split(self.request.split)
         if tuple(site.market_id for site in sites) != MARKETS:
             raise ValueError("site mapping is invalid")
+        if tuple(record["workload_cells"]) != tuple(cell for _, cell in fleet):
+            raise ValueError(f"{self.request.split} windows must be served by their own fleet")
+        capacities = site_capacities(tuple(cell for _, cell in fleet))
         if len(sites) != 4 or any(
-            site.compute_capacity != COMPUTE_CAPACITY or site.rated_power_mw != RATED_POWER_MW
-            for site in sites
+            not np.isclose(site.compute_capacity, capacity, rtol=0.0, atol=1e-12)
+            or not np.isclose(site.rated_power_mw, REFERENCE_POWER_MW * capacity, rtol=0.0, atol=1e-9)
+            for site, capacity in zip(sites, capacities)
         ):
-            raise ValueError("four-market factory requires four direct 500 MW / K=1 sites")
+            raise ValueError("four-market sites must match the measured cell capacities")
         if tuple(workload.batch_deadline_hours[0]) != DEADLINE_WINDOW_SLOTS:
             raise ValueError("batch execution-window semantics are invalid")
         month_id = str(record["month_id"])
@@ -185,8 +207,9 @@ class FourMarketV2WindowEnv(gym.Env):
                 "forecast_model": self.payload["forecast_model"],
                 "future_realized_features_exposed": False,
                 "markets": list(MARKETS),
-                "workload_cells": list(CELLS),
-                "total_rated_power_mw": TOTAL_RATED_POWER_MW,
+                "workload_cells": list(record["workload_cells"]),
+                "factory_spec": self.payload["spec"],
+                "total_rated_power_mw": float(sum(site.rated_power_mw for site in sites)),
                 "factory_id": self.payload["input_digest"],
             },
         )
@@ -218,12 +241,14 @@ class FourMarketV2WindowEnv(gym.Env):
 
 
 def make_four_market_env(
-    request: EnvRequest, *, ramp_weight: float | None = None
+    request: EnvRequest, *, spec: str = FINAL_SPEC, ramp_weight: float | None = None
 ) -> FourMarketV2WindowEnv:
-    """Build the only active raw-workload four-market environment."""
-    if request.split not in {"train", "validation"}:
-        raise ValueError("four-market permits train and validation only")
-    payload = json.loads((FACTORY_ROOT / "factory.json").read_text(encoding="utf-8"))
-    if payload.get("windows", {}).get("test"):
-        raise ValueError("four-market factory must not expose a test split")
+    """Build the four-market environment of one split specification."""
+    if request.split not in {"train", "validation", "test"}:
+        raise ValueError("four-market splits are train, validation, and test")
+    payload = json.loads((factory_root(spec) / "factory.json").read_text(encoding="utf-8"))
+    if payload.get("spec") != spec:
+        raise ValueError("factory specification does not match the request")
+    if not payload.get("windows", {}).get(request.split):
+        raise ValueError(f"factory {spec!r} has no {request.split} windows")
     return FourMarketV2WindowEnv(payload, request, objective_from_factory(payload, ramp_weight))

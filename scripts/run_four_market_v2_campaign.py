@@ -1,8 +1,10 @@
-"""Run the locked ten-seed raw-workload four-market PPO campaign.
+"""Run the locked ten-seed final PPO campaign and its one test evaluation.
 
-Training episodes are the eleven continuous calendar months of 2025 outside
-May. Validation is the single continuous May episode, evaluated once per seed
-for the policy and once for the status-quo comparator on the same hours.
+The final policies train on all twelve continuous calendar months of 2025 (the
+cross-validation in scripts/run_four_market_cv.py has already been run on the
+same months). Each seed is then scored once on the May 2026 test month, served
+by the test fleet (cells e-h), for the policy and for the status-quo comparator
+on the same hours. Nothing about the design may change after this evaluation.
 """
 
 from __future__ import annotations
@@ -23,8 +25,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from energy_model_v3.four_market_v2 import (  # noqa: E402
-    ARTIFACT_NAMESPACE, FACTORY_ROOT, make_four_market_env,
+    ARTIFACT_NAMESPACE, factory_root, make_four_market_env,
 )
+from energy_model_v3.splits import DEVELOPMENT_MONTHS, FINAL_SPEC, TEST_MONTHS  # noqa: E402
 from ramp_rl.contract import EnvRequest, environment_identity  # noqa: E402
 from ramp_rl.evaluation import evaluate_checkpoint  # noqa: E402
 from ramp_rl.runner import (  # noqa: E402
@@ -42,9 +45,9 @@ MODEL_ROOT = ROOT / "models" / ARTIFACT_NAMESPACE / "campaign"
 SEEDS = tuple(range(4101, 4111))
 REQUESTED_TIMESTEPS = 2_000_000
 DEFAULT_WORKERS = 5
-TRAIN_MONTHS = 11
-VALIDATION_WINDOWS = ("2025-05",)
-VALIDATION_DAYS = 31
+TRAIN_MONTHS = len(DEVELOPMENT_MONTHS)
+TEST_WINDOWS = TEST_MONTHS
+TEST_DAYS = 31
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -55,13 +58,13 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _protocol() -> dict[str, Any]:
     payload = yaml.safe_load((ROOT / "env" / "protocols" / "four_market_v2.yaml").read_text())
-    if payload["data"]["split"]["test"]["months"]:
-        raise ValueError("campaign must not access a test split")
+    if tuple(payload["data"]["split"]["test"]["months"]) != TEST_WINDOWS:
+        raise ValueError("protocol test month differs from energy_model_v3/splits.py")
     return payload
 
 
 def _factory() -> dict[str, Any]:
-    return json.loads((FACTORY_ROOT / "factory.json").read_text())
+    return json.loads((factory_root(FINAL_SPEC) / "factory.json").read_text())
 
 
 def _environment_identity() -> dict[str, Any]:
@@ -75,16 +78,16 @@ def _environment_identity() -> dict[str, Any]:
 def _validate_campaign_geometry() -> dict[str, list[str]]:
     from scripts.build_four_market_v2_factory import validate
 
-    validate()
+    validate(FINAL_SPEC)
     windows = _factory()["windows"]
-    if len(windows["train"]) != TRAIN_MONTHS or sorted(windows["validation"]) != list(VALIDATION_WINDOWS):
+    if len(windows["train"]) != TRAIN_MONTHS or sorted(windows["test"]) != list(TEST_WINDOWS):
         raise RuntimeError(
             f"campaign requires exactly {TRAIN_MONTHS} training months and the "
-            f"{VALIDATION_WINDOWS[0]} validation month"
+            f"{TEST_WINDOWS[0]} test month"
         )
     return {
         "train": sorted(windows["train"]),
-        "validation": sorted(windows["validation"]),
+        "test": sorted(windows["test"]),
     }
 
 
@@ -165,9 +168,9 @@ def _load_completed_seed_summary(
                 f"completed seed summary has incompatible {field} for seed {seed}: "
                 f"{summary_path}"
             )
-    if summary.get("validation_window_ids") != geometry["validation"]:
+    if summary.get("test_window_ids") != geometry["test"]:
         raise RuntimeError(
-            f"completed seed summary has incompatible validation windows for seed {seed}: "
+            f"completed seed summary has incompatible test windows for seed {seed}: "
             f"{summary_path}"
         )
 
@@ -196,20 +199,20 @@ def _load_completed_seed_summary(
             f"{summary_path}"
         )
 
-    validation = summary.get("validation")
-    if not isinstance(validation, dict):
-        raise RuntimeError(f"completed seed summary has invalid validation for seed {seed}: {summary_path}")
-    if validation.get("objective") != validated_training["environment_identity"]["objective"]:
-        raise RuntimeError(f"completed seed summary has an incompatible validation objective: {summary_path}")
+    evaluation = summary.get("test")
+    if not isinstance(evaluation, dict):
+        raise RuntimeError(f"completed seed summary has invalid test results for seed {seed}: {summary_path}")
+    if evaluation.get("objective") != validated_training["environment_identity"]["objective"]:
+        raise RuntimeError(f"completed seed summary has an incompatible test objective: {summary_path}")
     for field, expected in (
-        ("episode_count", len(geometry["validation"])),
-        ("day_count", VALIDATION_DAYS),
-        ("step_count", VALIDATION_DAYS * 24),
+        ("episode_count", len(geometry["test"])),
+        ("day_count", TEST_DAYS),
+        ("step_count", TEST_DAYS * 24),
     ):
-        value = validation.get(field)
+        value = evaluation.get(field)
         if isinstance(value, bool) or not isinstance(value, int) or value != expected:
             raise RuntimeError(
-                f"completed seed summary has invalid validation {field} for seed {seed}: "
+                f"completed seed summary has invalid test {field} for seed {seed}: "
                 f"{summary_path}"
             )
     metric_paths = (
@@ -227,7 +230,7 @@ def _load_completed_seed_summary(
         ("status_quo_comparison", "policy_minus_status_quo_joint_J"),
     )
     for path in metric_paths:
-        value: Any = validation
+        value: Any = evaluation
         for field in path:
             if not isinstance(value, dict):
                 break
@@ -245,10 +248,13 @@ def _load_completed_seed_summary(
 
 
 def preflight() -> dict[str, Any]:
-    """Exercise the status quo across every active month once."""
+    """Check that the status quo is feasible in every final-factory month.
+
+    Feasibility only: no score is computed for the test month.
+    """
     geometry = _validate_campaign_geometry()
-    counts = {"train": 0, "validation": 0, "steps": 0, "max_immediate_arrival_work": 0.0}
-    for split in ("train", "validation"):
+    counts = {"train": 0, "test": 0, "steps": 0, "max_immediate_arrival_work": 0.0}
+    for split in ("train", "test"):
         for window_id in geometry[split]:
             env = make_four_market_env(EnvRequest(split=split, seed=SEEDS[0], window_id=window_id))
             try:
@@ -299,15 +305,15 @@ def train_and_evaluate(seed: int) -> dict[str, Any]:
             progress_path=output / "progress.json",
         )
         elapsed = time.perf_counter() - started
-        validation = evaluate_checkpoint(
-            factory=make_four_market_env, checkpoint_dir=checkpoint, split="validation",
-            seeds=[seed], windows=geometry["validation"],
+        evaluation = evaluate_checkpoint(
+            factory=make_four_market_env, checkpoint_dir=checkpoint, split="test",
+            seeds=[seed], windows=geometry["test"],
         )
-        if validation["episode_count"] != len(geometry["validation"]) or validation["day_count"] != VALIDATION_DAYS:
-            raise RuntimeError("each seed must evaluate the single continuous May validation month")
-        compact_validation = {
+        if evaluation["episode_count"] != len(geometry["test"]) or evaluation["day_count"] != TEST_DAYS:
+            raise RuntimeError("each seed must evaluate the single continuous test month")
+        compact_evaluation = {
             key: value
-            for key, value in validation.items()
+            for key, value in evaluation.items()
             if not key.endswith("_episodes")
         }
         summary = {
@@ -320,8 +326,8 @@ def train_and_evaluate(seed: int) -> dict[str, Any]:
             "training_elapsed_seconds": elapsed,
             "training_interactions_per_second": training["effective_interactions"] / elapsed,
             "training_identity": training_identity(training),
-            "validation_window_ids": geometry["validation"],
-            "validation": compact_validation,
+            "test_window_ids": geometry["test"],
+            "test": compact_evaluation,
         }
         _write_json(summary_path, summary)
         _write_json(output / "status.json", {

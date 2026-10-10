@@ -1,220 +1,220 @@
 {
   "isone_window": {
-    "no_flex_power_at_peak_mw": 340.4059116429987,
+    "no_flex_power_at_peak_mw": 288.0950129550334,
     "peak_hour_utc": "2025-05-16T23:00:00+00:00",
-    "policy_power_at_peak_mw": 231.1063097638534,
+    "policy_power_at_peak_mw": 173.79633264108645,
     "seed": 4102,
     "window_end_utc": "2025-05-18T10:00:00+00:00",
     "window_start_utc": "2025-05-15T11:00:00+00:00"
   },
-  "no_flex_may_J": 0.0056133718930433145,
-  "no_flex_training_mean_J": 0.005437336832439054,
+  "no_flex_may_J": 0.005075519312252905,
+  "no_flex_training_mean_J": 0.004922054841531666,
   "no_flex_training_month_J": {
-    "2025-01": 0.005472929399642429,
-    "2025-02": 0.005423824659212091,
-    "2025-03": 0.005406518170579729,
-    "2025-04": 0.005627508432799072,
-    "2025-06": 0.0058064684822296654,
-    "2025-07": 0.005620865593287932,
-    "2025-08": 0.005172237119655715,
-    "2025-09": 0.005299949234189233,
-    "2025-10": 0.005268290811114847,
-    "2025-11": 0.005322767003266057,
-    "2025-12": 0.005389346250852827
+    "2025-01": 0.004949742433529289,
+    "2025-02": 0.0049140176837616295,
+    "2025-03": 0.004898743486281217,
+    "2025-04": 0.0050769055528354905,
+    "2025-06": 0.005254268519569438,
+    "2025-07": 0.005089779469305032,
+    "2025-08": 0.004684795141606074,
+    "2025-09": 0.004808177728168452,
+    "2025-10": 0.004774804048368833,
+    "2025-11": 0.004821681499769231,
+    "2025-12": 0.004869687693653636
   },
   "seeds": {
     "4101": {
       "by_checkpoint": {
         "1024000": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.015301715893243702,
-          "peak_impact": 0.031057592597826603,
-          "peak_weighted_improvement": 0.0013657099126371563,
-          "policy_J": -0.009688344000200392,
-          "ramp_weighted_improvement": 0.013936005980606545,
+          "improvement_J": 0.015758833121021557,
+          "peak_impact": 0.027363068164910364,
+          "peak_weighted_improvement": 0.001322573877809672,
+          "policy_J": -0.01068331380876865,
+          "ramp_weighted_improvement": 0.014436259243211886,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         },
         "153600": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.013127843465686226,
-          "peak_impact": 0.03572419744508176,
-          "peak_weighted_improvement": 0.0007289955766842057,
-          "policy_J": -0.007514471572642917,
-          "ramp_weighted_improvement": 0.01239884788900202,
+          "improvement_J": 0.011296813588269259,
+          "peak_impact": 0.03177219397240865,
+          "peak_weighted_improvement": 0.0007203411762594633,
+          "policy_J": -0.006221294276016351,
+          "ramp_weighted_improvement": 0.010576472412009794,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         },
         "512000": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.01545298067865299,
-          "peak_impact": 0.03159992501492807,
-          "peak_weighted_improvement": 0.0012917137556615714,
-          "policy_J": -0.00983960878560968,
-          "ramp_weighted_improvement": 0.014161266922991418,
+          "improvement_J": 0.014662097402251523,
+          "peak_impact": 0.0281181171861309,
+          "peak_weighted_improvement": 0.0012194434089355059,
+          "policy_J": -0.009586578089998615,
+          "ramp_weighted_improvement": 0.013442653993316015,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         }
       },
-      "interactions_per_second": 238.5156441291221,
+      "interactions_per_second": 333.5510224548207,
       "may_behavior": {
-        "decoder_adjustment_pct": 75.13440860215054,
-        "mean_batch_wait_hours": 0.9525830441648443,
+        "decoder_adjustment_pct": 71.10215053763442,
+        "mean_batch_wait_hours": 0.9926260213537258,
         "per_market": {
           "CAISO_NP15": {
-            "peak_change_mw": -88.43811292245664,
-            "squared_ramp_cut_pct": 1.9813064742435444
+            "peak_change_mw": -76.116614941624,
+            "squared_ramp_cut_pct": 2.0240943274495224
           },
           "ISONE_NEMA": {
-            "peak_change_mw": -109.0193528778218,
-            "squared_ramp_cut_pct": 11.02483717900482
+            "peak_change_mw": -125.23945285397895,
+            "squared_ramp_cut_pct": 11.506930074142218
           },
           "MISO_MINN_HUB": {
-            "peak_change_mw": -36.56142991375236,
-            "squared_ramp_cut_pct": -0.040206275314898676
+            "peak_change_mw": 10.39338783812127,
+            "squared_ramp_cut_pct": 0.11974312189213836
           },
           "SPP_NORTH_HUB": {
-            "peak_change_mw": -45.98845570686535,
-            "squared_ramp_cut_pct": 0.6843468738223322
+            "peak_change_mw": -27.394408906271565,
+            "squared_ramp_cut_pct": 0.7341021099075424
           }
         },
-        "service_moved_pct": 31.722250311517673
+        "service_moved_pct": 31.441525014314113
       },
       "no_flexibility_percentage_reductions": {
-        "summed_normalized_adjusted_regional_peaks_pct": 0.31092312195101235,
-        "summed_normalized_fleet_added_peak_impact_pct": 24.373634812921267,
-        "total_squared_adjusted_ramps_pct": 2.829340816288272
+        "summed_normalized_adjusted_regional_peaks_pct": 0.3011542924280263,
+        "summed_normalized_fleet_added_peak_impact_pct": 26.137645015897693,
+        "total_squared_adjusted_ramps_pct": 2.9309785836213997
       },
-      "training_minutes": 71.55365732499922
+      "training_minutes": 51.16658477333355
     },
     "4102": {
       "by_checkpoint": {
         "1024000": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.016469405870259735,
-          "peak_impact": 0.03162804461908464,
-          "peak_weighted_improvement": 0.0012878771001756581,
-          "policy_J": -0.010856033977216427,
-          "ramp_weighted_improvement": 0.01518152877008408,
+          "improvement_J": 0.016179484490404288,
+          "peak_impact": 0.028672744370253505,
+          "peak_weighted_improvement": 0.0011436881136614844,
+          "policy_J": -0.01110396517815138,
+          "ramp_weighted_improvement": 0.015035796376742802,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         },
         "153600": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.012505340658435862,
-          "peak_impact": 0.03670178405001991,
-          "peak_weighted_improvement": 0.0005956130799069591,
-          "policy_J": -0.006891968765392553,
-          "ramp_weighted_improvement": 0.011909727578528904,
+          "improvement_J": 0.011211362974553383,
+          "peak_impact": 0.03287994056368495,
+          "peak_weighted_improvement": 0.0005690365296188902,
+          "policy_J": -0.006135843662300476,
+          "ramp_weighted_improvement": 0.010642326444934493,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         },
         "512000": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.015465066859040786,
-          "peak_impact": 0.032355488722280654,
-          "peak_weighted_improvement": 0.0011886241948473285,
-          "policy_J": -0.009851694965997476,
-          "ramp_weighted_improvement": 0.014276442664193456,
+          "improvement_J": 0.014973387575821496,
+          "peak_impact": 0.028397318800495234,
+          "peak_weighted_improvement": 0.0011813078805253479,
+          "policy_J": -0.009897868263568588,
+          "ramp_weighted_improvement": 0.013792079695296146,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         }
       },
-      "interactions_per_second": 238.9561972238319,
+      "interactions_per_second": 331.9201801410726,
       "may_behavior": {
-        "decoder_adjustment_pct": 68.14516129032258,
-        "mean_batch_wait_hours": 1.4703001308634485,
+        "decoder_adjustment_pct": 70.6989247311828,
+        "mean_batch_wait_hours": 1.3524545283025933,
         "per_market": {
           "CAISO_NP15": {
-            "peak_change_mw": -77.57139059639303,
-            "squared_ramp_cut_pct": 2.088741653956905
+            "peak_change_mw": -83.82323312856897,
+            "squared_ramp_cut_pct": 1.9094515271816788
           },
           "ISONE_NEMA": {
-            "peak_change_mw": -109.29960187914548,
-            "squared_ramp_cut_pct": 12.228776091016258
+            "peak_change_mw": -114.29868031394653,
+            "squared_ramp_cut_pct": 12.702344424020504
           },
           "MISO_MINN_HUB": {
-            "peak_change_mw": 16.23750170932908,
-            "squared_ramp_cut_pct": -0.39056032351809866
+            "peak_change_mw": -45.413558608692256,
+            "squared_ramp_cut_pct": 0.05034032422459508
           },
           "SPP_NORTH_HUB": {
-            "peak_change_mw": -57.82247625837772,
-            "squared_ramp_cut_pct": 1.2300416881690774
+            "peak_change_mw": 41.231160122857546,
+            "squared_ramp_cut_pct": 1.5221988375954423
           }
         },
-        "service_moved_pct": 30.91544996463183
+        "service_moved_pct": 31.324359283347754
       },
       "no_flexibility_percentage_reductions": {
-        "summed_normalized_adjusted_regional_peaks_pct": 0.29320338453325917,
-        "summed_normalized_fleet_added_peak_impact_pct": 22.984563437041786,
-        "total_squared_adjusted_ramps_pct": 3.0822115793167977
+        "summed_normalized_adjusted_regional_peaks_pct": 0.2604214330911114,
+        "summed_normalized_fleet_added_peak_impact_pct": 22.602377398601092,
+        "total_squared_adjusted_ramps_pct": 3.0527019794721104
       },
-      "training_minutes": 71.42173697499966
+      "training_minutes": 51.41798446666605
     },
     "4103": {
       "by_checkpoint": {
         "1024000": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.017024537423707048,
-          "peak_impact": 0.029612089123642334,
-          "peak_weighted_improvement": 0.0015629352648596122,
-          "policy_J": -0.01141116553066374,
-          "ramp_weighted_improvement": 0.015461602158847438,
+          "improvement_J": 0.014571970359755177,
+          "peak_impact": 0.029679665359268755,
+          "peak_weighted_improvement": 0.0010061550121040284,
+          "policy_J": -0.00949645104750227,
+          "ramp_weighted_improvement": 0.01356581534765115,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         },
         "153600": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.01338092463527029,
-          "peak_impact": 0.033838451531739144,
-          "peak_weighted_improvement": 0.000986287868680208,
-          "policy_J": -0.007767552742226982,
-          "ramp_weighted_improvement": 0.012394636766590084,
+          "improvement_J": 0.01042375879985817,
+          "peak_impact": 0.03312717007243009,
+          "peak_weighted_improvement": 0.0005352680001064618,
+          "policy_J": -0.005348239487605262,
+          "ramp_weighted_improvement": 0.009888490799751707,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         },
         "512000": {
           "batch_unfinished": 0.0,
-          "improvement_J": 0.016236906029678873,
-          "peak_impact": 0.030559581109266473,
-          "peak_weighted_improvement": 0.0014336588958089394,
-          "policy_J": -0.010623534136635563,
-          "ramp_weighted_improvement": 0.014803247133869933,
+          "improvement_J": 0.013734422988239379,
+          "peak_impact": 0.03103442036600804,
+          "peak_weighted_improvement": 0.0008211120345913964,
+          "policy_J": -0.00865890367598647,
+          "ramp_weighted_improvement": 0.01291331095364798,
           "service_unserved": 0.0,
-          "status_quo_peak_impact": 0.041067149691775745
+          "status_quo_peak_impact": 0.03704602726354965
         }
       },
-      "interactions_per_second": 238.64013177548557,
+      "interactions_per_second": 333.3590937983792,
       "may_behavior": {
-        "decoder_adjustment_pct": 70.83333333333334,
-        "mean_batch_wait_hours": 0.9645291915871659,
+        "decoder_adjustment_pct": 69.35483870967742,
+        "mean_batch_wait_hours": 0.8286441752378712,
         "per_market": {
           "CAISO_NP15": {
-            "peak_change_mw": -91.28913762664888,
-            "squared_ramp_cut_pct": 1.8891559490567713
+            "peak_change_mw": -73.74290742381709,
+            "squared_ramp_cut_pct": 1.8032885338481193
           },
           "ISONE_NEMA": {
-            "peak_change_mw": -140.01311293106664,
-            "squared_ramp_cut_pct": 14.077390624691976
+            "peak_change_mw": -87.00532251953337,
+            "squared_ramp_cut_pct": 10.876716041867214
           },
           "MISO_MINN_HUB": {
-            "peak_change_mw": 34.820554466568865,
-            "squared_ramp_cut_pct": -0.015211301543758228
+            "peak_change_mw": 10.764817739342107,
+            "squared_ramp_cut_pct": -0.28314344878281955
           },
           "SPP_NORTH_HUB": {
-            "peak_change_mw": -62.005133034333994,
-            "squared_ramp_cut_pct": 0.9014009280920344
+            "peak_change_mw": -21.838942387505085,
+            "squared_ramp_cut_pct": 1.6430641821366359
           }
         },
-        "service_moved_pct": 31.06942970651415
+        "service_moved_pct": 32.01996840593509
       },
       "no_flexibility_percentage_reductions": {
-        "summed_normalized_adjusted_regional_peaks_pct": 0.3558242548149405,
-        "summed_normalized_fleet_added_peak_impact_pct": 27.89348823599375,
-        "total_squared_adjusted_ramps_pct": 3.1390731414807993
+        "summed_normalized_adjusted_regional_peaks_pct": 0.22910470698613528,
+        "summed_normalized_fleet_added_peak_impact_pct": 19.884350491554084,
+        "total_squared_adjusted_ramps_pct": 2.754253271810992
       },
-      "training_minutes": 71.51633105333312
+      "training_minutes": 51.19604349833292
     }
   },
-  "tag": "impact-50-50-1m"
+  "tag": "ols-forecast-50-50-1m"
 }

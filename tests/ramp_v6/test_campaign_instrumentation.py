@@ -152,8 +152,8 @@ def _completed_campaign_summary(
         "requested_interactions": REQUESTED_TIMESTEPS,
         "effective_interactions": training_geometry["effective_interactions"],
         "safe_boundary_interactions": training_geometry["safe_quantum"],
-        "validation_window_ids": windows,
-        "validation": {
+        "test_window_ids": windows,
+        "test": {
             "objective": campaign._environment_identity()["objective"],
             "episode_count": 1,
             "day_count": 31,
@@ -398,8 +398,8 @@ class CampaignInstrumentationTests(unittest.TestCase):
     def test_full_campaign_restarts_from_a_valid_completed_subset(self) -> None:
         directory = ROOT / ".test-campaign-subset-restart"
         shutil.rmtree(directory, ignore_errors=True)
-        windows = ["2025-05"]
-        geometry = {"train": [], "validation": windows}
+        windows = ["2026-05"]
+        geometry = {"train": [], "test": windows}
         training_geometry = {
             "n_envs": 4,
             "n_steps": 512,
@@ -463,7 +463,7 @@ class CampaignInstrumentationTests(unittest.TestCase):
         directory = ROOT / ".test-campaign-ppo-identity"
         shutil.rmtree(directory, ignore_errors=True)
         seed = SEEDS[0]
-        windows = ["2025-05"]
+        windows = ["2026-05"]
         training_geometry = {
             "n_envs": 2,
             "n_steps": 16,
@@ -494,7 +494,7 @@ class CampaignInstrumentationTests(unittest.TestCase):
                 ):
                     campaign._load_completed_seed_summary(
                         seed,
-                        {"train": [], "validation": windows},
+                        {"train": [], "test": windows},
                         training_geometry,
                         output_root=directory,
                         model_root=model_root,
@@ -506,8 +506,8 @@ class CampaignInstrumentationTests(unittest.TestCase):
         directory = ROOT / ".test-stale-identity-aggregation"
         shutil.rmtree(directory, ignore_errors=True)
         model_root = directory / "models"
-        windows = ["2025-05"]
-        geometry = {"train": [], "validation": windows}
+        windows = ["2026-05"]
+        geometry = {"train": [], "test": windows}
         training_geometry = {
             "n_envs": 2,
             "n_steps": 16,

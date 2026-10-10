@@ -4,21 +4,34 @@ data:
   interval_minutes: 60
   markets: [CAISO_NP15, MISO_MINN_HUB, SPP_NORTH_HUB, ISONE_NEMA]
   workload_mapping: [a, b, c, d]
+  test_workload_mapping: [e, f, g, h]
   episode_unit: one continuous calendar month; queues and power history reset only at the month boundary
   history_hours: 1
   split:
-    train: {months: [2025-01, 2025-02, 2025-03, 2025-04, 2025-06, 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12]}
-    validation: {months: [2025-05]}
-    test: {months: []}
+    # Mirrors energy_model_v3/splits.py; a test keeps the two in sync.
+    development: {months: [2025-01, 2025-02, 2025-03, 2025-04, 2025-05, 2025-06, 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12]}
+    cross_validation:
+      method: grouped four-fold over whole months; each fold trains on nine months and validates on three interleaved months
+      folds: {k1: [2025-01, 2025-05, 2025-09], k2: [2025-02, 2025-06, 2025-10], k3: [2025-03, 2025-07, 2025-11], k4: [2025-04, 2025-08, 2025-12]}
+    final: {train_months: all development months}
+    test: {months: [2026-05], workload_cells: [e, f, g, h], scored: "once, with the final policies only"}
   forecast:
-    model_id: causal-ridge-shortlag-v2
+    model_id: causal-least-squares-v4
     decision_hour_reads_grid_rows_through: t-1
     realized_future_features_prohibited: true
 fleet:
   site_count: 4
-  compute_capacity_per_site: 1.0
-  rated_power_mw_per_site: 500.0
-  total_rated_power_mw: 2000.0
+  sizing: compute capacity = cell CPU capacity / cell c CPU capacity (data/cell_capacity.json); rated power = 500 MW x compute capacity
+  reference_power_mw_largest_site: 500.0
+  compute_capacity: {CAISO_NP15: 0.897102, MISO_MINN_HUB: 0.995048, SPP_NORTH_HUB: 1.0, ISONE_NEMA: 0.846328}
+  rated_power_mw: {CAISO_NP15: 448.551, MISO_MINN_HUB: 497.524, SPP_NORTH_HUB: 500.0, ISONE_NEMA: 423.164}
+  total_rated_power_mw: 1869.239
+test_fleet:
+  site_count: 4
+  sizing: same rule as the training fleet, relative to training cell c; sites may exceed 500 MW
+  compute_capacity: {CAISO_NP15: 0.953698, MISO_MINN_HUB: 1.442849, SPP_NORTH_HUB: 1.045064, ISONE_NEMA: 1.353984}
+  rated_power_mw: {CAISO_NP15: 476.849, MISO_MINN_HUB: 721.425, SPP_NORTH_HUB: 522.532, ISONE_NEMA: 676.992}
+  total_rated_power_mw: 2397.798
 workload:
   deadline_hours: [24, 24, 24, 24]
   deadline_semantics: inclusive execution-window length H; an arrival in slot t may run in slots t .. t+H-1, so the longest delay is H-1 hours. Uniform across sites.

@@ -1,0 +1,1564 @@
+{
+  "cv_mean_improvement_J": 0.016538977066119686,
+  "cv_mean_improvement_J_by_seed": {
+    "4101": 0.016505130989345987,
+    "4102": 0.01667456672470954,
+    "4103": 0.016437233484303527
+  },
+  "cv_seed_std_improvement_J": 0.00012223311513306443,
+  "isone_window": {
+    "fold": "k1",
+    "month": "2025-05",
+    "no_flex_power_at_peak_mw": 288.0950129550334,
+    "no_flex_power_window_range_mw": [
+      267.9934283409333,
+      305.42229392554344
+    ],
+    "peak_hour_utc": "2025-05-16T23:00:00+00:00",
+    "policy_power_at_peak_mw": 170.6237606781755,
+    "policy_power_window_range_mw": [
+      170.6237606781755,
+      403.0251387603022
+    ],
+    "seed": 4102,
+    "window_end_utc": "2025-05-18T10:00:00+00:00",
+    "window_start_utc": "2025-05-15T11:00:00+00:00"
+  },
+  "max_abs_recomputed_J_error": 4.336808689942018e-17,
+  "mean_improvement_J_by_checkpoint": {
+    "4101": {
+      "1024000": 0.016505130989345987,
+      "153600": 0.012860309290765546,
+      "512000": 0.015812819953978853
+    },
+    "4102": {
+      "1024000": 0.01667456672470954,
+      "153600": 0.012332250254977854,
+      "512000": 0.015511035381818805
+    },
+    "4103": {
+      "1024000": 0.016437233484303527,
+      "153600": 0.01257127582112359,
+      "512000": 0.015449436951532175
+    }
+  },
+  "no_flex_J_by_month": {
+    "2025-01": 0.004985477221638009,
+    "2025-02": 0.005011497963320825,
+    "2025-03": 0.004904300623212446,
+    "2025-04": 0.005138109415623672,
+    "2025-05": 0.005111366326506117,
+    "2025-06": 0.0053582422736158245,
+    "2025-07": 0.005089919149851757,
+    "2025-08": 0.004752085372925037,
+    "2025-09": 0.0048385383628262914,
+    "2025-10": 0.004871388553717646,
+    "2025-11": 0.004824992216818353,
+    "2025-12": 0.004937371777277006
+  },
+  "no_flex_training_mean_J_by_fold": {
+    "k1": 0.004964668761691228,
+    "k2": 0.005018411415658791,
+    "k3": 0.0049364931985442055,
+    "k4": 0.005021714181048371
+  },
+  "regional_mean_of_months": {
+    "4101": {
+      "CAISO_NP15": {
+        "peak_change_mw": -71.47214514994782,
+        "squared_ramp_cut_pct": 2.059867012975578
+      },
+      "ISONE_NEMA": {
+        "peak_change_mw": -93.45019007371123,
+        "squared_ramp_cut_pct": 10.164111888381006
+      },
+      "MISO_MINN_HUB": {
+        "peak_change_mw": 1.8955796124731326,
+        "squared_ramp_cut_pct": 0.03157306860535477
+      },
+      "SPP_NORTH_HUB": {
+        "peak_change_mw": -63.68642381329786,
+        "squared_ramp_cut_pct": 1.1107100609727516
+      }
+    },
+    "4102": {
+      "CAISO_NP15": {
+        "peak_change_mw": -72.99656040241614,
+        "squared_ramp_cut_pct": 2.165641411953874
+      },
+      "ISONE_NEMA": {
+        "peak_change_mw": -101.75590934913755,
+        "squared_ramp_cut_pct": 9.742259159201307
+      },
+      "MISO_MINN_HUB": {
+        "peak_change_mw": -1.6831374239324457,
+        "squared_ramp_cut_pct": -0.021499651099740984
+      },
+      "SPP_NORTH_HUB": {
+        "peak_change_mw": -80.47586838666787,
+        "squared_ramp_cut_pct": 1.3601864438943825
+      }
+    },
+    "4103": {
+      "CAISO_NP15": {
+        "peak_change_mw": -65.09738651629839,
+        "squared_ramp_cut_pct": 1.9565947227871392
+      },
+      "ISONE_NEMA": {
+        "peak_change_mw": -99.1839312226313,
+        "squared_ramp_cut_pct": 10.56794634688603
+      },
+      "MISO_MINN_HUB": {
+        "peak_change_mw": -9.268000131932544,
+        "squared_ramp_cut_pct": -0.022378285223472946
+      },
+      "SPP_NORTH_HUB": {
+        "peak_change_mw": -71.29753509464565,
+        "squared_ramp_cut_pct": 1.0577221093514682
+      }
+    }
+  },
+  "runs": {
+    "k1/4101": {
+      "interactions_per_second": 187.04707945712738,
+      "months": {
+        "2025-01": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 76.47849462365592,
+            "mean_batch_wait_hours": 1.2416852486921288,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.22151547112126177,
+              "summed_normalized_fleet_added_peak_impact_pct": 21.84106404183355,
+              "total_squared_adjusted_ramps_pct": 2.845445429965951
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -44.92723055870374,
+                "squared_ramp_cut_pct": 1.7950880464319592
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -79.53353289154984,
+                "squared_ramp_cut_pct": 9.707273459342641
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -1.3972799922630657,
+                "squared_ramp_cut_pct": 0.15624389251532458
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -105.54777203968115,
+                "squared_ramp_cut_pct": 0.12003912920531518
+              }
+            },
+            "service_moved_pct": 29.703931041184184
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.01576403278061207,
+          "peak_weighted_improvement": 0.001100740777863514,
+          "policy_J": -0.010778555558974062,
+          "ramp_weighted_improvement": 0.014663292002748555,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004985477221638006
+        },
+        "2025-05": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 69.08602150537635,
+            "mean_batch_wait_hours": 0.8853814296925422,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2888587419696273,
+              "summed_normalized_fleet_added_peak_impact_pct": 25.074451108797657,
+              "total_squared_adjusted_ramps_pct": 3.0051272100173207
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -75.22568544466048,
+                "squared_ramp_cut_pct": 2.0800407429827845
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -123.79436940357482,
+                "squared_ramp_cut_pct": 11.93446968706154
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 12.310895608447026,
+                "squared_ramp_cut_pct": -0.23676844821542134
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -14.014206097192073,
+                "squared_ramp_cut_pct": 1.0115586195573683
+              }
+            },
+            "service_moved_pct": 32.14745109491186
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.01637717216722799,
+          "peak_weighted_improvement": 0.001276532639286342,
+          "policy_J": -0.011265805840721885,
+          "ramp_weighted_improvement": 0.015100639527941651,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005111366326506108
+        },
+        "2025-09": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 70.97222222222223,
+            "mean_batch_wait_hours": 0.974356672755357,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.24101222518314078,
+              "summed_normalized_fleet_added_peak_impact_pct": 25.882043021159163,
+              "total_squared_adjusted_ramps_pct": 2.999574480919712
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -71.00300223845261,
+                "squared_ramp_cut_pct": 2.1627273290572084
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -104.43023183064543,
+                "squared_ramp_cut_pct": 9.385958749712831
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 35.724049028372974,
+                "squared_ramp_cut_pct": -0.21609136960712685
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -81.60440607889905,
+                "squared_ramp_cut_pct": 2.12324184970547
+              }
+            },
+            "service_moved_pct": 34.785028751598375
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.017968738672417914,
+          "peak_weighted_improvement": 0.001277801425912406,
+          "policy_J": -0.013130200309591616,
+          "ramp_weighted_improvement": 0.016690937246505506,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.0048385383628262975
+        }
+      },
+      "training_minutes": 91.24262573999974
+    },
+    "k1/4102": {
+      "interactions_per_second": 186.92517072013328,
+      "months": {
+        "2025-01": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 81.04838709677419,
+            "mean_batch_wait_hours": 1.4905035755676848,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2625981406147797,
+              "summed_normalized_fleet_added_peak_impact_pct": 25.8917482259939,
+              "total_squared_adjusted_ramps_pct": 2.9898681005281094
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -71.13223544528228,
+                "squared_ramp_cut_pct": 1.866983543656182
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -113.93729045363943,
+                "squared_ramp_cut_pct": 9.875257087413985
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 44.557479333729134,
+                "squared_ramp_cut_pct": 0.3031719431048395
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -70.00338674661907,
+                "squared_ramp_cut_pct": 0.8231435312073823
+              }
+            },
+            "service_moved_pct": 30.921967556776472
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.01671242434808178,
+          "peak_weighted_improvement": 0.0013048862009624972,
+          "policy_J": -0.011726947126443772,
+          "ramp_weighted_improvement": 0.01540753814711928,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004985477221638006
+        },
+        "2025-05": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 81.85483870967742,
+            "mean_batch_wait_hours": 0.893561595440353,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2295883201995721,
+              "summed_normalized_fleet_added_peak_impact_pct": 19.929468191758097,
+              "total_squared_adjusted_ramps_pct": 2.8892136656852285
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -82.0151287575718,
+                "squared_ramp_cut_pct": 1.9939224436112561
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -81.23587603449596,
+                "squared_ramp_cut_pct": 11.207301511687877
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -17.218308342518867,
+                "squared_ramp_cut_pct": -0.13766276765183635
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -12.01586913603387,
+                "squared_ramp_cut_pct": 1.3318799218019581
+              }
+            },
+            "service_moved_pct": 33.393994707751126
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.01553278190977342,
+          "peak_weighted_improvement": 0.0010146031320889828,
+          "policy_J": -0.010421415583267313,
+          "ramp_weighted_improvement": 0.014518178777684439,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005111366326506108
+        },
+        "2025-09": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 80.69444444444444,
+            "mean_batch_wait_hours": 0.8441599303580923,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.17746405637564658,
+              "summed_normalized_fleet_added_peak_impact_pct": 19.057673685778447,
+              "total_squared_adjusted_ramps_pct": 2.934299716938714
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -69.61102669817774,
+                "squared_ramp_cut_pct": 2.007535096184106
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -63.11449677212477,
+                "squared_ramp_cut_pct": 9.736793982095021
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 10.141282719399896,
+                "squared_ramp_cut_pct": -0.09683843564003272
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -64.0708937481977,
+                "squared_ramp_cut_pct": 1.9052347768880191
+              }
+            },
+            "service_moved_pct": 34.77949761717608
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.017268601068258137,
+          "peak_weighted_improvement": 0.0009408810034954654,
+          "policy_J": -0.01243006270543184,
+          "ramp_weighted_improvement": 0.01632772006476267,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.0048385383628262975
+        }
+      },
+      "training_minutes": 91.30213229666697
+    },
+    "k1/4103": {
+      "interactions_per_second": 187.08196141324223,
+      "months": {
+        "2025-01": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 80.3763440860215,
+            "mean_batch_wait_hours": 0.8391685786241747,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.16604903373779084,
+              "summed_normalized_fleet_added_peak_impact_pct": 16.372163811378282,
+              "total_squared_adjusted_ramps_pct": 2.8849394355709785
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -21.63394160245298,
+                "squared_ramp_cut_pct": 1.7904811920006731
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -78.60835166391189,
+                "squared_ramp_cut_pct": 9.572794424333011
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 18.414580246433616,
+                "squared_ramp_cut_pct": 0.22108519770802557
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -55.631525775992486,
+                "squared_ramp_cut_pct": 0.8644693996859151
+              }
+            },
+            "service_moved_pct": 30.84038358825781
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015691934929883578,
+          "peak_weighted_improvement": 0.000825120438021137,
+          "policy_J": -0.010706457708245572,
+          "ramp_weighted_improvement": 0.01486681449186244,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004985477221638006
+        },
+        "2025-05": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 71.7741935483871,
+            "mean_batch_wait_hours": 0.9686012331285888,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2774606330215597,
+              "summed_normalized_fleet_added_peak_impact_pct": 24.08503557786317,
+              "total_squared_adjusted_ramps_pct": 2.871567411907533
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -65.31513722980162,
+                "squared_ramp_cut_pct": 1.791023581287894
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -122.83539571189976,
+                "squared_ramp_cut_pct": 12.718665996582217
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 8.849543968884973,
+                "squared_ramp_cut_pct": 0.046744477118140115
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -11.666761818654777,
+                "squared_ramp_cut_pct": 0.8045305955187222
+              }
+            },
+            "service_moved_pct": 30.67191731967975
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015655668881836275,
+          "peak_weighted_improvement": 0.0012261617971261502,
+          "policy_J": -0.010544302555330166,
+          "ramp_weighted_improvement": 0.014429507084710125,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005111366326506108
+        },
+        "2025-09": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 64.86111111111111,
+            "mean_batch_wait_hours": 1.296263899114038,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2459135519393069,
+              "summed_normalized_fleet_added_peak_impact_pct": 26.408391217261688,
+              "total_squared_adjusted_ramps_pct": 3.0780488954595917
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -68.32570085846237,
+                "squared_ramp_cut_pct": 2.1133624175404075
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -100.38319383590897,
+                "squared_ramp_cut_pct": 10.632432262639506
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -25.81199596391525,
+                "squared_ramp_cut_pct": 0.17385268225937628
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -76.48423904885567,
+                "squared_ramp_cut_pct": 1.4006088215864392
+              }
+            },
+            "service_moved_pct": 30.5938052349626
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.018431390363155383,
+          "peak_weighted_improvement": 0.001303787337262464,
+          "policy_J": -0.013592852000329086,
+          "ramp_weighted_improvement": 0.017127603025892918,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.0048385383628262975
+        }
+      },
+      "training_minutes": 91.22561329666836
+    },
+    "k2/4101": {
+      "interactions_per_second": 186.78706009162383,
+      "months": {
+        "2025-02": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 71.27976190476191,
+            "mean_batch_wait_hours": 1.0703381357177266,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": -0.034223180042680476,
+              "summed_normalized_fleet_added_peak_impact_pct": -3.4128041752164204,
+              "total_squared_adjusted_ramps_pct": 3.601801022235593
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -82.1055796047549,
+                "squared_ramp_cut_pct": 2.11008079563061
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": 90.3503609742911,
+                "squared_ramp_cut_pct": 11.255561193208749
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -4.032176957611227,
+                "squared_ramp_cut_pct": 0.13779265801050686
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -64.32218122619088,
+                "squared_ramp_cut_pct": 1.9847688498047928
+              }
+            },
+            "service_moved_pct": 32.202440697732214
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.014466260852087819,
+          "peak_weighted_improvement": -0.00017359191895650937,
+          "policy_J": -0.009454762888766986,
+          "ramp_weighted_improvement": 0.014639852771044327,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005011497963320832
+        },
+        "2025-06": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 73.19444444444444,
+            "mean_batch_wait_hours": 1.1720120402136727,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.28401456691865495,
+              "summed_normalized_fleet_added_peak_impact_pct": 30.828615388420033,
+              "total_squared_adjusted_ramps_pct": 2.7528357555632494
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -71.37913026357273,
+                "squared_ramp_cut_pct": 1.831469241830397
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -133.95756072181757,
+                "squared_ramp_cut_pct": 9.079389139426995
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 47.294999376536,
+                "squared_ramp_cut_pct": -0.10410348832761798
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -129.15664314336755,
+                "squared_ramp_cut_pct": 1.7213192657089262
+              }
+            },
+            "service_moved_pct": 32.75641976083925
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.016241412573693315,
+          "peak_weighted_improvement": 0.0016562752556626753,
+          "policy_J": -0.010883170300077488,
+          "ramp_weighted_improvement": 0.01458513731803064,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005358242273615828
+        },
+        "2025-10": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 75.80645161290323,
+            "mean_batch_wait_hours": 1.1174298167715329,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.29071845369623567,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.70961356413006,
+              "total_squared_adjusted_ramps_pct": 3.2489274910382604
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -74.71867670590291,
+                "squared_ramp_cut_pct": 2.094616373127912
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -102.67611332156594,
+                "squared_ramp_cut_pct": 11.893193108685521
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -8.129227849232848,
+                "squared_ramp_cut_pct": 0.2875237005554143
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -84.7677297298942,
+                "squared_ramp_cut_pct": 0.758270515298372
+              }
+            },
+            "service_moved_pct": 32.22865274084582
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.021195671053051354,
+          "peak_weighted_improvement": 0.0013692046154452097,
+          "policy_J": -0.016324282499333705,
+          "ramp_weighted_improvement": 0.019826466437606147,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004871388553717651
+        }
+      },
+      "training_minutes": 91.36964122833257
+    },
+    "k2/4102": {
+      "interactions_per_second": 187.0898098215835,
+      "months": {
+        "2025-02": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 69.49404761904762,
+            "mean_batch_wait_hours": 1.0263798183847261,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.18887836054354998,
+              "summed_normalized_fleet_added_peak_impact_pct": 18.83532905670619,
+              "total_squared_adjusted_ramps_pct": 3.4977014563728215
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -80.01632652715489,
+                "squared_ramp_cut_pct": 2.417330435773557
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -51.35168912411973,
+                "squared_ramp_cut_pct": 9.854826096515417
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 82.3118535259564,
+                "squared_ramp_cut_pct": -0.4661208886306559
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -115.71939496421692,
+                "squared_ramp_cut_pct": 1.9738451351115442
+              }
+            },
+            "service_moved_pct": 31.935640589584263
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015174787470916343,
+          "peak_weighted_improvement": 0.0009580569957324268,
+          "policy_J": -0.01016328950759551,
+          "ramp_weighted_improvement": 0.014216730475183915,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005011497963320832
+        },
+        "2025-06": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 81.66666666666667,
+            "mean_batch_wait_hours": 1.0373310804427147,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2786027274450837,
+              "summed_normalized_fleet_added_peak_impact_pct": 30.241182428607168,
+              "total_squared_adjusted_ramps_pct": 2.738761337690722
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -76.93509284653192,
+                "squared_ramp_cut_pct": 1.8877374851526434
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -124.62346543555759,
+                "squared_ramp_cut_pct": 8.80027790124271
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 14.48494148865575,
+                "squared_ramp_cut_pct": -0.2165762161945368
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -120.27621683139296,
+                "squared_ramp_cut_pct": 1.7243272331186708
+              }
+            },
+            "service_moved_pct": 33.51951171742904
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.0161352831850579,
+          "peak_weighted_improvement": 0.0016247152694797019,
+          "policy_J": -0.010777040911442073,
+          "ramp_weighted_improvement": 0.014510567915578199,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005358242273615828
+        },
+        "2025-10": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 74.86559139784946,
+            "mean_batch_wait_hours": 1.1117450081079725,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.28993885860900315,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.635307037217235,
+              "total_squared_adjusted_ramps_pct": 3.2494129581184743
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -79.83286817456246,
+                "squared_ramp_cut_pct": 2.270432363725563
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -98.44743906368058,
+                "squared_ramp_cut_pct": 11.244978768560811
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 25.27716030967713,
+                "squared_ramp_cut_pct": -0.0981476712620727
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -103.0339320558196,
+                "squared_ramp_cut_pct": 0.9093092321481181
+              }
+            },
+            "service_moved_pct": 32.87922148228001
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.021194961918732498,
+          "peak_weighted_improvement": 0.0013655329352403854,
+          "policy_J": -0.016323573365014846,
+          "ramp_weighted_improvement": 0.01982942898349211,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004871388553717651
+        }
+      },
+      "training_minutes": 91.22178638666713
+    },
+    "k2/4103": {
+      "interactions_per_second": 187.0603958134091,
+      "months": {
+        "2025-02": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 68.30357142857143,
+            "mean_batch_wait_hours": 1.096904921516534,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.06152761079136728,
+              "summed_normalized_fleet_added_peak_impact_pct": 6.135656789868642,
+              "total_squared_adjusted_ramps_pct": 3.658434742731257
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -76.71934288891498,
+                "squared_ramp_cut_pct": 2.165477252093126
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": 24.148902307108074,
+                "squared_ramp_cut_pct": 11.631613211029583
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -6.276562797269435,
+                "squared_ramp_cut_pct": -0.25257790229526994
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -60.32874931623519,
+                "squared_ramp_cut_pct": 1.7785596035468507
+              }
+            },
+            "service_moved_pct": 31.43913458929087
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015182135282050337,
+          "peak_weighted_improvement": 0.0003120895256594355,
+          "policy_J": -0.010170637318729504,
+          "ramp_weighted_improvement": 0.014870045756390901,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005011497963320832
+        },
+        "2025-06": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 75.55555555555556,
+            "mean_batch_wait_hours": 0.9696196707149367,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.28327106415148845,
+              "summed_normalized_fleet_added_peak_impact_pct": 30.74791121504609,
+              "total_squared_adjusted_ramps_pct": 2.782520382989982
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -86.0725486992742,
+                "squared_ramp_cut_pct": 1.8883139939781264
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -127.12739269898157,
+                "squared_ramp_cut_pct": 9.328318271947156
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 13.720376926896279,
+                "squared_ramp_cut_pct": -0.014279579578061228
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -110.17241950617608,
+                "squared_ramp_cut_pct": 1.3897089116095476
+              }
+            },
+            "service_moved_pct": 32.071341287688796
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.01639435249280819,
+          "peak_weighted_improvement": 0.0016519394032831947,
+          "policy_J": -0.011036110219192364,
+          "ramp_weighted_improvement": 0.014742413089524996,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005358242273615828
+        },
+        "2025-10": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 71.23655913978494,
+            "mean_batch_wait_hours": 1.1933795464164343,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.2761260977126193,
+              "summed_normalized_fleet_added_peak_impact_pct": 26.318753987947733,
+              "total_squared_adjusted_ramps_pct": 3.124682971291905
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -78.76171078916013,
+                "squared_ramp_cut_pct": 2.0594441456756076
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -102.53146616804224,
+                "squared_ramp_cut_pct": 11.374894200362064
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -7.925810117856599,
+                "squared_ramp_cut_pct": -0.12686949202545553
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -56.910375394058065,
+                "squared_ramp_cut_pct": 0.8149714490084164
+              }
+            },
+            "service_moved_pct": 31.396383883499425
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.020368747198440323,
+          "peak_weighted_improvement": 0.0013004785992292995,
+          "policy_J": -0.015497358644722672,
+          "ramp_weighted_improvement": 0.019068268599211024,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004871388553717651
+        }
+      },
+      "training_minutes": 91.23613040833347
+    },
+    "k3/4101": {
+      "interactions_per_second": 270.53397754195475,
+      "months": {
+        "2025-03": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 72.44623655913979,
+            "mean_batch_wait_hours": 1.031028462238791,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.3239858304476824,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.06323223532615,
+              "total_squared_adjusted_ramps_pct": 3.6079439903363557
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -77.52647205029643,
+                "squared_ramp_cut_pct": 2.17123887929145
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -109.064306674416,
+                "squared_ramp_cut_pct": 10.679352127920637
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -39.97461987227143,
+                "squared_ramp_cut_pct": 0.3657223397988282
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -47.65590753379729,
+                "squared_ramp_cut_pct": 0.04758194204489278
+              }
+            },
+            "service_moved_pct": 30.7424424308361
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.02032737288395452,
+          "peak_weighted_improvement": 0.0013344067333273817,
+          "policy_J": -0.015423072260742078,
+          "ramp_weighted_improvement": 0.01899296615062714,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004904300623212441
+        },
+        "2025-07": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 80.64516129032258,
+            "mean_batch_wait_hours": 1.2197503946036643,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.23994241629174712,
+              "summed_normalized_fleet_added_peak_impact_pct": 28.265355738359663,
+              "total_squared_adjusted_ramps_pct": 2.251603994543937
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -84.97526047480642,
+                "squared_ramp_cut_pct": 1.6315312767588923
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -126.0861792478936,
+                "squared_ramp_cut_pct": 7.236665693614987
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 6.152705976855941,
+                "squared_ramp_cut_pct": -0.09027556226337473
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -58.463239691380295,
+                "squared_ramp_cut_pct": 1.2892156045830274
+              }
+            },
+            "service_moved_pct": 34.23082491253617
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.016770246974839094,
+          "peak_weighted_improvement": 0.001462892376009676,
+          "policy_J": -0.01168032782498734,
+          "ramp_weighted_improvement": 0.015307354598829415,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.0050899191498517534
+        },
+        "2025-11": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 65.13888888888889,
+            "mean_batch_wait_hours": 1.050701236391169,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.23521384694441502,
+              "summed_normalized_fleet_added_peak_impact_pct": 20.58300081094582,
+              "total_squared_adjusted_ramps_pct": 3.756226063143969
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -82.8624851969289,
+                "squared_ramp_cut_pct": 2.471498810514375
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -113.74059611614575,
+                "squared_ramp_cut_pct": 11.917806876340736
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -41.805435431568185,
+                "squared_ramp_cut_pct": 0.3134140359931714
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": 72.99500421118137,
+                "squared_ramp_cut_pct": 0.1351825488655574
+              }
+            },
+            "service_moved_pct": 29.714349952082667
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.014251620726176986,
+          "peak_weighted_improvement": 0.0010303447761285294,
+          "policy_J": -0.00942662850935862,
+          "ramp_weighted_improvement": 0.013221275950048456,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004824992216818365
+        }
+      },
+      "training_minutes": 63.0851134550001
+    },
+    "k3/4102": {
+      "interactions_per_second": 270.0798772441063,
+      "months": {
+        "2025-03": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 72.31182795698925,
+            "mean_batch_wait_hours": 1.1945833689389918,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.31999786782036405,
+              "summed_normalized_fleet_added_peak_impact_pct": 26.73010915219667,
+              "total_squared_adjusted_ramps_pct": 3.5472700035154108
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -59.954204081011994,
+                "squared_ramp_cut_pct": 2.154589360183775
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -110.85985582159265,
+                "squared_ramp_cut_pct": 10.268945431852092
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -49.76545753401297,
+                "squared_ramp_cut_pct": 0.3089273912872644
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -55.94958223682261,
+                "squared_ramp_cut_pct": 0.43944284131589745
+              }
+            },
+            "service_moved_pct": 30.046506131653704
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.019991547122667756,
+          "peak_weighted_improvement": 0.0013179814341875947,
+          "policy_J": -0.015087246499455314,
+          "ramp_weighted_improvement": 0.01867356568848016,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004904300623212441
+        },
+        "2025-07": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 80.3763440860215,
+            "mean_batch_wait_hours": 1.002213445534911,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.24823800026477455,
+              "summed_normalized_fleet_added_peak_impact_pct": 29.24258033949012,
+              "total_squared_adjusted_ramps_pct": 2.1756268036480884
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -82.28280077630188,
+                "squared_ramp_cut_pct": 1.6620504931244773
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -130.00189801476154,
+                "squared_ramp_cut_pct": 6.267809494057915
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -18.148434499409632,
+                "squared_ramp_cut_pct": 0.059265029057822896
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -57.74278588020388,
+                "squared_ramp_cut_pct": 1.5039361571168048
+              }
+            },
+            "service_moved_pct": 32.50032880876513
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.016304298865306977,
+          "peak_weighted_improvement": 0.0015134692883215463,
+          "policy_J": -0.011214379715455223,
+          "ramp_weighted_improvement": 0.014790829576985428,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.0050899191498517534
+        },
+        "2025-11": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 70.55555555555556,
+            "mean_batch_wait_hours": 1.2267353338128755,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.30824000874276675,
+              "summed_normalized_fleet_added_peak_impact_pct": 26.973345457071673,
+              "total_squared_adjusted_ramps_pct": 3.9020102099105767
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -83.64488941536183,
+                "squared_ramp_cut_pct": 2.664354430114451
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -109.03488350950829,
+                "squared_ramp_cut_pct": 11.605872009023276
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -35.14488879282726,
+                "squared_ramp_cut_pct": 0.5705096554053327
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -47.259990916474635,
+                "squared_ramp_cut_pct": 0.6935305653776097
+              }
+            },
+            "service_moved_pct": 30.08552451218232
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015084644250007394,
+          "peak_weighted_improvement": 0.0013502329345303527,
+          "policy_J": -0.01025965203318903,
+          "ramp_weighted_improvement": 0.013734411315477044,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004824992216818365
+        }
+      },
+      "training_minutes": 63.19118195999957
+    },
+    "k3/4103": {
+      "interactions_per_second": 270.0183428072224,
+      "months": {
+        "2025-03": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 69.48924731182797,
+            "mean_batch_wait_hours": 0.8171686983032966,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.33160639938221514,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.699794724974122,
+              "total_squared_adjusted_ramps_pct": 3.5717720792131575
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -54.044146488871775,
+                "squared_ramp_cut_pct": 1.7113214193650987
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -110.42114462465179,
+                "squared_ramp_cut_pct": 11.78685620056504
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -44.168276246098685,
+                "squared_ramp_cut_pct": 0.2088475383286473
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -83.15710168563965,
+                "squared_ramp_cut_pct": 0.25559022166729123
+              }
+            },
+            "service_moved_pct": 31.1525266949367
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.020168343420051735,
+          "peak_weighted_improvement": 0.0013657937186284618,
+          "policy_J": -0.015264042796839294,
+          "ramp_weighted_improvement": 0.018802549701423275,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004904300623212441
+        },
+        "2025-07": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 73.79032258064517,
+            "mean_batch_wait_hours": 1.2172489133327522,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.23595953291499083,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.79616976762331,
+              "total_squared_adjusted_ramps_pct": 2.139510052944375
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -51.33983041733882,
+                "squared_ramp_cut_pct": 1.4729609427375663
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -131.3689637708885,
+                "squared_ramp_cut_pct": 7.676714444578619
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -28.56366260109644,
+                "squared_ramp_cut_pct": 0.01579132318271547
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -64.75187044625636,
+                "squared_ramp_cut_pct": 0.7679941651057137
+              }
+            },
+            "service_moved_pct": 30.880871920797606
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015983901999478155,
+          "peak_weighted_improvement": 0.0014386093425366737,
+          "policy_J": -0.010893982849626402,
+          "ramp_weighted_improvement": 0.014545292656941482,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.0050899191498517534
+        },
+        "2025-11": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 69.30555555555556,
+            "mean_batch_wait_hours": 0.9181866352933357,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.31507722696178153,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.57165405996519,
+              "total_squared_adjusted_ramps_pct": 3.8201402654043846
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -81.33606037198842,
+                "squared_ramp_cut_pct": 2.240882070535588
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -114.13317699589061,
+                "squared_ramp_cut_pct": 12.397329246586056
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -30.65001385443611,
+                "squared_ramp_cut_pct": 0.0617020526568939
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -49.299750707737985,
+                "squared_ramp_cut_pct": 1.180424673803282
+              }
+            },
+            "service_moved_pct": 30.65788437346199
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.014826426148958422,
+          "peak_weighted_improvement": 0.0013801830933612392,
+          "policy_J": -0.010001433932140058,
+          "ramp_weighted_improvement": 0.013446243055597185,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004824992216818365
+        }
+      },
+      "training_minutes": 63.20558258833286
+    },
+    "k4/4101": {
+      "interactions_per_second": 270.7831840138492,
+      "months": {
+        "2025-04": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 67.63888888888889,
+            "mean_batch_wait_hours": 1.0105340443750914,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.3744596544160488,
+              "summed_normalized_fleet_added_peak_impact_pct": 29.591224492559927,
+              "total_squared_adjusted_ramps_pct": 3.1786202851132996
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -83.5436761712881,
+                "squared_ramp_cut_pct": 1.8947659433944406
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -124.06070335121694,
+                "squared_ramp_cut_pct": 10.660456671088333
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -39.627505300188204,
+                "squared_ramp_cut_pct": 0.04007996133163258
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -56.10044368110175,
+                "squared_ramp_cut_pct": 1.2938740471888164
+              }
+            },
+            "service_moved_pct": 31.473913428228528
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.01704495834964003,
+          "peak_weighted_improvement": 0.0015066775196158505,
+          "policy_J": -0.011906848934016362,
+          "ramp_weighted_improvement": 0.015538280830024181,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005138109415623669
+        },
+        "2025-08": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 73.79032258064517,
+            "mean_batch_wait_hours": 0.845975865295115,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.1969801326818656,
+              "summed_normalized_fleet_added_peak_impact_pct": 25.331162962458414,
+              "total_squared_adjusted_ramps_pct": 2.581780330828809
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -42.279355539583776,
+                "squared_ramp_cut_pct": 1.908805432555707
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -101.84898277472166,
+                "squared_ramp_cut_pct": 8.60490100106454
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 4.320331945360522,
+                "squared_ramp_cut_pct": -0.08627300058195436
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -96.99805124424893,
+                "squared_ramp_cut_pct": 1.0723671665140087
+              }
+            },
+            "service_moved_pct": 30.849691443452457
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015346672986617724,
+          "peak_weighted_improvement": 0.0012300179201249527,
+          "policy_J": -0.010594587613692684,
+          "ramp_weighted_improvement": 0.014116655066492768,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004752085372925039
+        },
+        "2025-12": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 59.946236559139784,
+            "mean_batch_wait_hours": 1.0273467522894,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.24759919672595398,
+              "summed_normalized_fleet_added_peak_impact_pct": 23.48033704010023,
+              "total_squared_adjusted_ramps_pct": 3.739565458113157
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -67.1191875504228,
+                "squared_ramp_cut_pct": 2.566541284131205
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -92.56006552527833,
+                "squared_ramp_cut_pct": 9.614314953104572
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 51.91021881724009,
+                "squared_ramp_cut_pct": -0.1883878959451255
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -98.60150950500247,
+                "squared_ramp_cut_pct": 1.7711011931964729
+              }
+            },
+            "service_moved_pct": 29.36320862792928
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.012307411851832987,
+          "peak_weighted_improvement": 0.001203692120355154,
+          "policy_J": -0.007370040074555992,
+          "ramp_weighted_improvement": 0.011103719731477833,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004937371777276996
+        }
+      },
+      "training_minutes": 63.027055128333934
+    },
+    "k4/4102": {
+      "interactions_per_second": 269.6225646750049,
+      "months": {
+        "2025-04": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 77.08333333333334,
+            "mean_batch_wait_hours": 1.082159968289351,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.36361245605068826,
+              "summed_normalized_fleet_added_peak_impact_pct": 28.734037668400372,
+              "total_squared_adjusted_ramps_pct": 3.365988711134156
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -83.42804584648547,
+                "squared_ramp_cut_pct": 2.15714027026512
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -113.25340755220532,
+                "squared_ramp_cut_pct": 10.513963506879266
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -16.568128072060063,
+                "squared_ramp_cut_pct": 0.015514288242587146
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -79.37329101178693,
+                "squared_ramp_cut_pct": 1.7046896832184617
+              }
+            },
+            "service_moved_pct": 33.35874521314542
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.017917240225045015,
+          "peak_weighted_improvement": 0.0014630326843574502,
+          "policy_J": -0.012779130809421346,
+          "ramp_weighted_improvement": 0.016454207540687566,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005138109415623669
+        },
+        "2025-08": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 81.85483870967742,
+            "mean_batch_wait_hours": 1.0564151728356928,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.21979881645730256,
+              "summed_normalized_fleet_added_peak_impact_pct": 28.265589848229652,
+              "total_squared_adjusted_ramps_pct": 2.6156887640543234
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -44.91440628172859,
+                "squared_ramp_cut_pct": 1.8340088817006215
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -105.97636437145411,
+                "squared_ramp_cut_pct": 8.269676003826568
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -16.057310288975714,
+                "squared_ramp_cut_pct": -0.3791030612204778
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -121.29814210904442,
+                "squared_ramp_cut_pct": 1.9233933177650313
+              }
+            },
+            "service_moved_pct": 35.408071416897556
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.015674565903367188,
+          "peak_weighted_improvement": 0.0013725063506855365,
+          "policy_J": -0.01092248053044215,
+          "ramp_weighted_improvement": 0.014302059552681651,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004752085372925039
+        },
+        "2025-12": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 73.25268817204301,
+            "mean_batch_wait_hours": 0.990002091811404,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.3240876538712782,
+              "summed_normalized_fleet_added_peak_impact_pct": 30.73389350231043,
+              "total_squared_adjusted_ramps_pct": 3.882499493219688
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -62.191699978822726,
+                "squared_ramp_cut_pct": 3.071612139954733
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -119.23424603651074,
+                "squared_ramp_cut_pct": 9.261408117260757
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -44.06783893480315,
+                "squared_ramp_cut_pct": -0.12093507969512614
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -118.96693500340189,
+                "squared_ramp_cut_pct": 1.389504931663092
+              }
+            },
+            "service_moved_pct": 31.081179045634798
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.013103664429300079,
+          "peak_weighted_improvement": 0.0015755372409427563,
+          "policy_J": -0.008166292652023083,
+          "ramp_weighted_improvement": 0.011528127188357322,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004937371777276996
+        }
+      },
+      "training_minutes": 63.29836186833369
+    },
+    "k4/4103": {
+      "interactions_per_second": 269.3487636491534,
+      "months": {
+        "2025-04": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 74.86111111111111,
+            "mean_batch_wait_hours": 1.449487714127798,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.36997270713258645,
+              "summed_normalized_fleet_added_peak_impact_pct": 29.236648871967375,
+              "total_squared_adjusted_ramps_pct": 3.219742141610849
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -68.98702035171664,
+                "squared_ramp_cut_pct": 1.8689713105677175
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -116.53153761899921,
+                "squared_ramp_cut_pct": 11.073092638959533
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -45.72822360043938,
+                "squared_ramp_cut_pct": -0.09125775183879002
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -86.55563756344418,
+                "squared_ramp_cut_pct": 1.3100680572116534
+              }
+            },
+            "service_moved_pct": 31.245317567555606
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.017227923612052956,
+          "peak_weighted_improvement": 0.0014886238187058066,
+          "policy_J": -0.012089814196429285,
+          "ramp_weighted_improvement": 0.01573929979334715,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.005138109415623669
+        },
+        "2025-08": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 72.58064516129032,
+            "mean_batch_wait_hours": 0.8675412177346533,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.21586048719490453,
+              "summed_normalized_fleet_added_peak_impact_pct": 27.759130343978654,
+              "total_squared_adjusted_ramps_pct": 2.4765087458892654
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -59.391215018760704,
+                "squared_ramp_cut_pct": 1.7486511831706315
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -104.84777429267706,
+                "squared_ramp_cut_pct": 8.739041648588087
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": -8.626966272524442,
+                "squared_ramp_cut_pct": -0.11372202387225995
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -99.154549720457,
+                "squared_ramp_cut_pct": 0.8983755146317651
+              }
+            },
+            "service_moved_pct": 30.758277065448457
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.014888965177887903,
+          "peak_weighted_improvement": 0.0013479139438161967,
+          "policy_J": -0.010136879804962865,
+          "ramp_weighted_improvement": 0.013541051234071705,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004752085372925039
+        },
+        "2025-12": {
+          "batch_unfinished": 0.0,
+          "behavior": {
+            "decoder_adjustment_pct": 68.01075268817203,
+            "mean_batch_wait_hours": 1.123376871525166,
+            "no_flexibility_percentage_reductions": {
+              "summed_normalized_adjusted_regional_peaks_pct": 0.27315880875683235,
+              "summed_normalized_fleet_added_peak_impact_pct": 25.904207202180746,
+              "total_squared_adjusted_ramps_pct": 3.7379972438490574
+            },
+            "per_market": {
+              "CAISO_NP15": {
+                "peak_change_mw": -69.24198347883794,
+                "squared_ramp_cut_pct": 2.62824716449323
+              },
+              "ISONE_NEMA": {
+                "peak_change_mw": -105.56767959683202,
+                "squared_ramp_cut_pct": 9.883603616461498
+              },
+              "MISO_MINN_HUB": {
+                "peak_change_mw": 45.551008728230954,
+                "squared_ramp_cut_pct": -0.39785594432563737
+              },
+              "SPP_NORTH_HUB": {
+                "peak_change_mw": -101.45744015224045,
+                "squared_ramp_cut_pct": 1.2273638988420217
+              }
+            },
+            "service_moved_pct": 29.5823099147895
+          },
+          "certificate_violations": 0,
+          "improvement_J": 0.012427012305039068,
+          "peak_weighted_improvement": 0.001327949000053156,
+          "policy_J": -0.007489640527762072,
+          "ramp_weighted_improvement": 0.01109906330498591,
+          "service_unserved": 0.0,
+          "status_quo_J": 0.004937371777276996
+        }
+      },
+      "training_minutes": 63.36270653500105
+    }
+  },
+  "tag": "cv-50-50-1m"
+}

@@ -52,8 +52,9 @@ def load_active_decision_rows() -> tuple[pd.DataFrame, dict[str, Any]]:
     window_count = 0
     active_hours = 0
 
-    for split in ("train", "validation"):
-        for record in calendar[split]:
+    # Every development month trains the final policies, so all are "train".
+    for split, records in (("train", calendar["development"]),):
+        for record in records:
             window_id = record["window_id"]
             panel_path = ROOT / record["panel_path"]
             if not panel_path.is_file():

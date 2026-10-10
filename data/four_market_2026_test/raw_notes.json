@@ -1,0 +1,72 @@
+{
+  "fetch_end_utc": "2026-06-01T11:00:00+00:00",
+  "fetch_start_utc": "2026-04-23T00:00:00+00:00",
+  "hour_label_convention": "panel timestamps are hour-beginning UTC",
+  "markets": {
+    "CAISO_NP15": {
+      "missing_after_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "missing_before_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "negatives_clipped": {
+        "solar": 370,
+        "wind": 0
+      }
+    },
+    "ISONE_NEMA": {
+      "missing_after_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "missing_before_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "negatives_clipped": {
+        "solar": 0,
+        "wind": 0
+      }
+    },
+    "MISO_MINN_HUB": {
+      "missing_after_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "missing_before_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "negatives_clipped": {
+        "solar": 0,
+        "wind": 0
+      }
+    },
+    "SPP_NORTH_HUB": {
+      "missing_after_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "missing_before_fill": {
+        "demand": 0,
+        "solar": 0,
+        "wind": 0
+      },
+      "negatives_clipped": {
+        "solar": 0,
+        "wind": 0
+      }
+    }
+  },
+  "test_month": "2026-05"
+}

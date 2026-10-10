@@ -9,7 +9,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from energy_model_v3.four_market_v2 import FACTORY_ROOT, MARKETS, objective_from_factory
+from energy_model_v3.four_market_v2 import MARKETS, factory_root, objective_from_factory
+from energy_model_v3.splits import DEVELOPMENT_MONTHS, FINAL_SPEC
 from env.ramp_v6.objective import update_peak
 from env.ramp_v6.panel import CanonicalMarketPanel
 from scripts.build_four_market_v2_factory import _raw_arrivals, _site_configs, build
@@ -21,16 +22,15 @@ ROOT = Path(__file__).resolve().parents[2]
 class MonthlyRampImpactTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        build()
-        cls.factory = json.loads((FACTORY_ROOT / "factory.json").read_text())
+        build(FINAL_SPEC)
+        cls.factory = json.loads((factory_root(FINAL_SPEC) / "factory.json").read_text())
         cls.objective = objective_from_factory(cls.factory)
 
     def test_references_match_positive_training_month_totals(self) -> None:
-        self.assertAlmostEqual(self.objective.ramp_reference, 6.034057752312674, places=11)
-        self.assertAlmostEqual(self.objective.peak_reference, 3.664598536383508, places=11)
+        self.assertAlmostEqual(self.objective.ramp_reference, 6.1090715469484635, places=11)
+        self.assertAlmostEqual(self.objective.peak_reference, 3.6508349888967455, places=11)
         calibration = self.factory["objective_calibration"]
-        self.assertEqual(len(calibration["fit_months"]), 11)
-        self.assertNotIn("2025-05", calibration["fit_months"])
+        self.assertEqual(calibration["fit_months"], list(DEVELOPMENT_MONTHS))
         scores = calibration["reference_scores_by_month"]
         self.assertTrue(all(row["ramp_squared_sum"] > 0.0 for row in scores.values()))
         self.assertAlmostEqual(
@@ -54,7 +54,7 @@ class MonthlyRampImpactTests(unittest.TestCase):
         routed[index, caiso] += amount
         np.testing.assert_allclose(work.sum(axis=1), routed.sum(axis=1))
         self.assertTrue(np.all(routed >= 0.0))
-        self.assertTrue(np.all(routed <= 1.0))
+        self.assertTrue(np.all(routed <= np.asarray([site.compute_capacity for site in sites]) + 1e-12))
         np.testing.assert_array_equal(routed[index + 1], work[index + 1])
 
         net = panel.frame.pivot(
@@ -98,11 +98,11 @@ class MonthlyRampImpactTests(unittest.TestCase):
             results.append((score, peaks, impact_sum))
 
         baseline, shifted = results
-        self.assertAlmostEqual(baseline[0], 0.005620865581107415, places=10)
-        self.assertAlmostEqual(shifted[0], 0.004800576997076811, places=10)
-        self.assertAlmostEqual(baseline[0] - shifted[0], 0.000820288584030604, places=10)
-        self.assertAlmostEqual(baseline[1][isone], 24432.61158786, places=6)
-        self.assertAlmostEqual(shifted[1][isone], 24331.40723248, places=6)
+        self.assertAlmostEqual(baseline[0], 0.005142116389914115, places=10)
+        self.assertAlmostEqual(shifted[0], 0.004440345250184958, places=10)
+        self.assertAlmostEqual(baseline[0] - shifted[0], 0.0007017711397291574, places=10)
+        self.assertAlmostEqual(baseline[1][isone], 24378.73236193, places=6)
+        self.assertAlmostEqual(shifted[1][isone], 24293.08029437, places=6)
         other_regions = [index for index in range(len(MARKETS)) if index != isone]
         np.testing.assert_allclose(baseline[1][other_regions], shifted[1][other_regions])
         self.assertLess(shifted[2], baseline[2])

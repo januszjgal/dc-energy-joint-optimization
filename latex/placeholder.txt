@@ -1,0 +1,265 @@
+\section{Data Centers as Grid Loads}
+\label{subsec:lit-grid-loads}
+
+In \emph{Key Questions on Energy and AI}, the International Energy Agency
+\cite{iea2026energyai} reports that data-center electricity consumption grew
+by more than 15\% between 2024 and 2025, to almost 500 TWh, and projects it to
+roughly double, to about 950 TWh, by 2030. The report describes large-load
+connection queues, notes that AI workloads can trigger steep and sudden load
+ramps as clusters of GPUs transition synchronously between tasks, and observes
+that peak demand often remains meaningfully below nameplate capacity. It
+recommends that system operators explore non-firm connections and incentives
+for demand response in return for faster grid access, arguing that demand
+response and dynamic contracts could reduce the need for additional reserves,
+network upgrades, and peaking capacity. These are grid-side concerns: what
+matters to the system operator is the shape of the load, its ramps and its
+peaks, rather than the data center's bill.
+
+Vasques, Moura, and de Almeida, in \emph{A review on energy efficiency and
+demand response with focus on small and medium data centers}
+\cite{vasques2019review}, review the same relationship from the
+demand-response side. They distinguish two roles for workload flexibility:
+load management that lowers the data center's own operating cost, and
+demand-response services that support the efficient and reliable operation of
+the grid. Flexibility in their account may be a temporary load reduction or a
+temporary load increase during a renewable surplus, and it is usually split
+into ICT-flexible workload, meaning delay-tolerant jobs that can run at another
+time, and non-ICT measures such as cooling set points and uninterruptible
+power supplies.
+
+Sakalkar \emph{et al.}, in \emph{Data Center Power Oversubscription with a
+Medium Voltage Power Plane and Priority-Aware Capping}
+\cite{sakalkar2020oversubscription}, show how Google manages power inside the
+facility. A capping service that throttles only low-priority workloads on
+every node lets the fleet oversubscribe its power infrastructure by 25\% or
+more, with the achievable oversubscription limited by the share of power drawn
+by high-priority work that must not be disrupted. Priority is thus already the
+lever by which an operator sheds kilowatts, and the same priority structure
+defines the deferrable work in Section~\ref{subsec:clusterdata-tier-split}.
+That capping, however, protects electrical limits inside the facility; it does
+not address the shape of the regional load.
+
+\section{Geographic Routing Among Sites}
+\label{subsec:lit-spatial}
+
+Qureshi \emph{et al.}, in \emph{Cutting the Electric Bill for Internet-Scale
+Systems} \cite{qureshi2009cutting}, combine hourly wholesale electricity
+prices at 29 United States locations with Akamai traffic data and simulate
+price-conscious request routing. Existing systems could reduce energy cost by
+at least 2\% without increasing bandwidth cost, and a fully energy-elastic
+system with relaxed bandwidth constraints by over 30\%. The savings hinge on
+energy elasticity, the fraction of a cluster's power that follows its load
+rather than being drawn at idle, and they fall when routing reacts late to
+price changes. Rao \emph{et al.}, in \emph{Minimizing Electricity Cost:
+Optimization of Distributed Internet Data Centers in a Multi-Electricity-Market
+Environment} \cite{rao2010minimizing}, formulate the same routing problem as a
+mixed-integer program with service-delay guarantees, approximate it by a
+linear program, and report hourly cost reductions of 30\% and 18\% on two sets
+of real price data.
+
+Liu \emph{et al.}, in \emph{Geographical Load Balancing with Renewables}
+\cite{liu2011glb}, replace price with renewable availability. In a
+trace-based study, ``follow the renewables'' routing significantly reduces the
+renewable capacity needed to reach a given share of clean energy, small-scale
+storage helps most in combination with routing, and wind is more valuable than
+solar because its output is weakly correlated across sites and available at
+night. Zhao, Zhou, and Li, in \emph{CFWS: DRL-Based Framework for Energy Cost
+and Carbon Footprint Optimization in Cloud Data Centers} \cite{zhao2025cfws},
+bring learned control to the same lever: a deep reinforcement learning agent
+migrates virtual machines among geo-distributed data centers under
+time-varying prices and location-varying carbon rates, reducing brown energy
+by 6\% to 13\% while cutting the number of migrations.
+
+In all four studies the grid enters only through a price or a carbon signal,
+and the score is the data center's own cost, renewable use, or carbon. None
+measures what the routed load does to the ramps or the peak of the receiving
+region. The routing model in Section~\ref{sec:problem-statement}, with
+conservation of work, per-site capacity, and no transfer cost, descends from
+these formulations; the objective does not.
+
+\section{Temporal Deferral of Batch Work}
+\label{subsec:lit-temporal}
+
+Liu \emph{et al.}, in \emph{Renewable and Cooling Aware Workload Management
+for Sustainable Data Centers} \cite{liu2012renewable}, split the workload into
+interactive services that run continuously and delay-tolerant batch jobs whose
+deadlines range from several hours to multiple days. Predictions of renewable
+supply and IT demand feed a plan that shifts batch work toward hours of
+renewable availability and efficient cooling, reducing recurring power cost
+and non-renewable energy by as much as 60\% against existing techniques.
+Grange, Da Costa, and Stolf, in \emph{Green IT scheduling for data center
+powered with renewable energy} \cite{grange2018green}, schedule batch jobs
+with due dates in a single data center with on-site solar generation, keeping
+the scheduler agnostic of the electrical infrastructure by having a separate
+system supply the objective function. Brown energy falls by up to 49\%, and
+the authors find that the freedom allowed by the service-level agreement, the
+due-date slack, largely determines the achievable saving. Xu, Toosi, and
+Buyya, in \emph{A Self-Adaptive Approach for Managing Applications and
+Harnessing Renewable Energy for Sustainable Cloud Computing}
+\cite{xu2021selfadaptive}, pair a brownout mechanism, which temporarily
+switches off optional parts of interactive applications to save power, with a
+deferral algorithm for batch workloads and reduce brown energy by 21\%
+in a prototype driven by real traces. Haghshenas \emph{et al.}, in
+\emph{Infrastructure Aware Heterogeneous-Workloads Scheduling for Data Center
+Energy Cost Minimization} \cite{haghshenas2022infrastructure}, schedule
+service and batch jobs against renewable supply, cooling efficiency, and a
+tariff that combines time-of-use prices with peak demand charges; batch jobs
+must finish within 24 hours of submission, and cost falls by up to 46\%.
+
+Radovanovi\'{c} \emph{et al.}, in \emph{Carbon-Aware Computing for
+Datacenters} \cite{radovanovic2021carbonaware}, describe the system in
+production across Google's fleet. Day-ahead forecasts of grid carbon intensity
+and of cluster demand feed a risk-aware optimization that produces hourly
+Virtual Capacity Curves: limits on the resources available to temporally
+flexible workloads that preserve total daily capacity, so that all such work
+completes within a day. The optimizer minimizes a weighted sum of expected
+carbon footprint and daily power peak over all clusters, on the reasoning that
+data centers are planned around peak power, so smaller peaks reduce the need
+for new capacity. Cluster-level flexible usage proves predictable within a
+day-ahead horizon despite job-level uncertainty.
+
+The batch window \(H=24\) used in Section~\ref{subsec:problem-batch} follows
+Radovanovi\'{c} \emph{et al.} and Haghshenas \emph{et al.}, and the
+service/batch split follows Liu \emph{et al.} and Haghshenas \emph{et al.}
+The finding of Grange \emph{et al.} that due-date slack governs the saving is
+why \(H\) is reported as an assumption whose value matters. In this line of
+work the objective is cost, brown energy, or carbon; the peak appears only as
+a demand charge or as a capacity-cost term, and hour-to-hour ramps do not
+appear at all.
+
+\section{Learned Schedulers}
+\label{subsec:lit-rl}
+
+Kahil \emph{et al.}, in \emph{Reinforcement learning for data center energy
+efficiency optimization: A systematic literature review and research roadmap}
+\cite{kahil2025rl}, review 65 studies from 2019 to 2024 that apply
+reinforcement learning to cooling and to ICT tasks such as task scheduling,
+resource allocation, and virtual-machine consolidation. Almost all are
+evaluated in simulation, and the review names the lack of real-world
+validation and of standardized metrics as the main gaps. Ran \emph{et al.}, in
+\emph{DeepEE: Joint Optimization of Job Scheduling and Cooling Control for
+Data Center Energy Efficiency Using Deep Reinforcement Learning}
+\cite{ran2019deepee}, train a deep reinforcement-learning agent whose actions
+combine a job-scheduling choice with an airflow setting, on a simulation
+platform that runs scheduling and cooling at two different time scales,
+saving up to 15\% of energy against siloed control. Naug \emph{et al.}, in
+\emph{SustainDC: Benchmarking for Sustainable Data Center Control}
+\cite{naug2024sustaindc}, provide simulation environments, built on the
+Gymnasium reinforcement-learning toolkit, in which a
+load-shifting agent, a cooling agent, and a battery agent act on a simulated
+data center driven by public Alibaba and Google utilization traces. The
+load-shifting agent observes the time of day, current and forecast grid carbon
+intensity, and the amount of flexible work still to be placed; it is penalized
+if flexible work is not rescheduled within its horizon; and its reward is the
+carbon footprint. The baseline assumes no shifting, which the authors describe
+as current practice. Outside data centers, Zhang and Lam, in \emph{Practical
+Implementation and Evaluation of Deep Reinforcement Learning Control for a
+Radiant Heating System} \cite{zhang2018practical}, train an agent on a
+calibrated building simulator and deploy it in an office building for three
+months, reducing heating demand by 17\% to 18\% while documenting the data
+requirements and training cost that such a deployment entails.
+
+This thesis follows the pattern set by SustainDC and DeepEE: a simulated
+environment driven by public traces, a reinforcement-learning agent, and a
+no-flexibility baseline. The forecasts in
+Section~\ref{subsec:energy-forecasts} play the role that carbon-intensity
+forecasts play in SustainDC and in Google's system, as the scheduler's only
+view of the hours ahead. The reward differs: where SustainDC's load-shifting
+agent minimizes carbon, the agent here is charged for the change its fleet
+makes to the region's net-load ramps and monthly peak. As in the studies Kahil
+\emph{et al.} review, the results are simulation results; no deployment is
+claimed.
+
+\section{Workload Traces and Power Models}
+\label{subsec:lit-data}
+
+The workload here comes from Google's 2019 cluster trace, documented by Wilkes
+in \emph{Google cluster-usage traces v3} \cite{wilkes2020clusterdata2019} and
+analyzed by Tirmazi \emph{et al.} in \emph{Borg: The Next Generation}
+\cite{tirmazi2020borg}. The analysis defines priority tiers, of which the
+free and best-effort batch tiers carry no service-level objective, finds that
+best-effort batch has grown to about 20\% of cell capacity, and reports
+resource consumption so heavy-tailed that the top 1\% of jobs consume over
+99\% of resources. It summarizes each cell as each tier's CPU usage as a
+fraction of cell capacity over time, the same aggregate view adopted in
+Section~\ref{sec:clusterdata2019}. Da Costa, Grange, and De Courchelle, in
+\emph{Modeling and Generating large-scale Google-like Workload}
+\cite{dacosta2016modeling}, fit a generative model to the earlier 2011 trace
+so that scheduling experiments can be reproduced on synthetic workloads; here
+the measured aggregate usage is replayed instead. Lin \emph{et al.}, in
+\emph{A systematic review of green-aware management techniques for
+sustainable data center} \cite{lin2024systematic}, catalog the public
+workload traces, renewable data, and price series used across this literature
+and note the growing use of the temporal and spatial flexibility of batch
+work.
+
+For power, Dayarathna, Wen, and Fan, in \emph{Data Center Energy Consumption
+Modeling: A Survey} \cite{dayarathna2016survey}, organize more than 200
+models and observe that most rest on a few CPU or server metrics. They cite
+the finding of Fan \emph{et al.} at Google that a linear function of CPU
+utilization tracks dynamic power accurately at the power-distribution-unit
+level, which is the form fitted in Section~\ref{sec:powerdata2019}. Cooling
+is a large share of facility power: Zhang \emph{et al.}, in \emph{A survey on
+data center cooling systems: Technology, power consumption modeling and
+control strategy optimization} \cite{zhang2021cooling}, put it near 30\%, and
+Zhang \emph{et al.}, in \emph{Towards Joint Optimization Over ICT and Cooling
+Systems in Data Centre: A Survey} \cite{zhang2016joint}, review the coupling
+models that joint ICT-and-cooling control requires. Cooling control is outside
+the scope of this thesis. Its power is not omitted, however: the PowerData2019
+measurements \cite{googlePowerData2019} fitted in
+Section~\ref{sec:powerdata2019} include data-center-floor cooling, so the
+straight-line power model carries cooling's response to load without modeling it
+separately. Software-level efficiency measures, such as the virtualization,
+consolidation, and placement techniques surveyed by Katal, Dahiya, and
+Choudhury in \emph{Energy efficiency in cloud computing data centers: a
+survey on software technologies} \cite{katal2023energy} and by Panwar,
+Rauthan, and Barthwal in \emph{A systematic review on effective energy
+utilization management strategies in cloud data centers}
+\cite{panwar2022systematic}, reduce the energy needed per unit of work. They
+are complementary to, and separate from, the question asked here, which holds
+the work fixed and changes only when and where it runs.
+
+\section{Research Gap and Position of This Thesis}
+\label{subsec:lit-position}
+
+The reviewed work supplies both levers used here, geographic routing from
+Section~\ref{subsec:lit-spatial} and temporal deferral from
+Section~\ref{subsec:lit-temporal}, and the learned-control pattern of
+Section~\ref{subsec:lit-rl}. What it does not supply is a measurement of the
+effect of a specific scheduling policy on the ramps and peak of a specific
+region's net load. The cost- and carbon-driven studies see the grid through a
+price or an intensity signal; the grid-side reports describe flexibility as
+valuable without attaching it to a scheduler.
+
+This thesis takes the operator perspective on grid-ramp and peak-kW
+reduction. The decision-maker is the operator of a multi-site fleet, who
+controls only what such an operator controls: where service work runs, and
+when and where batch work runs. Regional demand, wind, and solar are exogenous
+history. The score is what those decisions do to the grid, namely the change
+in each region's squared one-hour net-load ramp and in each region's monthly
+net-load peak, measured in MW relative to the grid without the fleet and
+normalized by a fixed regional scale (Equation~\eqref{eq:objective}).
+Electricity cost, carbon, and energy use are neither optimized nor reported.
+This is the operator's view of the ramp and kW quantities that the system
+operator cares about; no demand-response program, tariff, market signal, or
+payment is modeled, and reductions are reported as reductions in the modeled
+score rather than as reserve, cost, or reliability savings. The forecasts, the
+priority-based split, the 24-hour window, and the no-flexibility baseline are
+each taken from the studies above, so that the departure lies in the objective
+alone.
+
+\planned{A summary table of the reviewed studies (lever, objective, data, and
+method) that shows the gap at a glance.}
+
+
+It is broken into three narrower questions:
+\begin{list}{}{\setlength{\leftmargin}{3.5em}\setlength{\labelwidth}{3em}%
+  \setlength{\labelsep}{0.5em}}
+  \item[RQ1] How large is the joint ramp-and-peak improvement over the
+        no-flexibility baseline, both in cross-validation over the months of
+        2025 and in a later test month served by a different fleet?
+  \item[RQ2] Which lever produces that improvement: routing service between
+        sites, or delaying and moving batch work?
+  \item[RQ3] Which regions benefit, and how does that depend on the fleet's
+        size relative to each region's hourly ramps?
+\end{list}

@@ -1,4 +1,4 @@
-\documentclass[conference]{IEEEtran}
+\documentclass{UNCC-thesis}
 
 \usepackage{newtxtext,newtxmath}
 \usepackage{amsmath}
@@ -9,34 +9,221 @@
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta}
+\usetikzlibrary{arrows.meta,positioning}
 
 \urlstyle{tt}
 \setlength{\emergencystretch}{3em}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcommand{\codepath}[1]{{\Urlmuskip=0mu plus 1mu\relax\nolinkurl{#1}}}
+% A section that is not yet written shows this note, which says what the
+% section will contain. latex/outline.txt has the full plan.
+\newcommand{\planned}[1]{\par\noindent[\emph{planned:} #1]\par}
 
 \begin{document}
 
+% Front matter, laid out by UNCC-thesis.cls and unccspecs.sty.
+\pagenumbering{roman}
+\fbmatterchapterformat
+\doctype{thesis}
+% Title Caps: the title page prints the title in ALL CAPS, and the abstract
+% page prints it as written here.
 \title{Geo-Distributed Data Center Scheduling to Smooth Grid Ramps and Reduce Monthly Net-Load Peaks}
+\author{Janusz Gal}
+\degree{Master of Science}
+\major{Applied Energy and Electromechanical Engineering}
+\publicationyear{2026}
+% \advisor is the thesis chair; it also fills "Under the direction of" on the
+% abstract page.
+\advisor{Dr. Weimin Wang}
+\committeeMember{Dr. Maciej Noras}
+\committeeMember{Dr. Sheldon Xie}
 
-\author{\IEEEauthorblockN{Janusz Gal}
-\IEEEauthorblockA{jgal@charlotte.edu}}
+\maketitlepage
+\makecopyright
 
-\maketitle
+\begin{abstract}
+\planned{One page covering the problem (data-center load and regional
+net-load ramps and peaks), the data (Google workload and power traces and EIA
+grid data), the method (a scheduler trained with proximal policy
+optimization), and the main results against the no-flexibility baseline: the
+four-fold cross-validation over 2025 and the held-out test month.}
 
-\begin{IEEEkeywords}
-data centers, demand response, grid ramp, net-load peak, reinforcement learning,
-workload scheduling
-\end{IEEEkeywords}
+\noindent Keywords: data centers, demand response, grid ramp, net-load peak,
+reinforcement learning, workload scheduling
+\end{abstract}
 
-\section{Introduction and Scope}
-\label{sec:introduction}
+\tableofcontents
+\listoftables
+\listoffigures
+
+% Written as a table: the template's nomencl list needs a makeindex run,
+% which tectonic does not perform.
+\chapter*{LIST OF ABBREVIATIONS}
+\addcontentsline{toc}{chapter}{LIST OF ABBREVIATIONS}
+\begin{singlespace}
+\noindent
+\begin{tabular}{@{}L{0.18\textwidth}L{0.78\textwidth}@{}}
+  AI     & artificial intelligence \\[4pt]
+  CAISO  & California Independent System Operator \\[4pt]
+  CPU    & central processing unit \\[4pt]
+  EIA    & U.S. Energy Information Administration \\[4pt]
+  GPU    & graphics processing unit \\[4pt]
+  ICT    & information and communication technology \\[4pt]
+  ISO-NE & ISO New England \\[4pt]
+  IT     & information technology \\[4pt]
+  MAE    & mean absolute error \\[4pt]
+  MISO   & Midcontinent Independent System Operator \\[4pt]
+  MW     & megawatt \\[4pt]
+  PPO    & proximal policy optimization \\[4pt]
+  Q95    & 95th percentile \\[4pt]
+  SLO    & service-level objective \\[4pt]
+  SPP    & Southwest Power Pool \\[4pt]
+  TiB    & tebibyte (\(2^{40}\) bytes) \\[4pt]
+  TWh    & terawatt-hour \\[4pt]
+  UTC    & Coordinated Universal Time \\
+\end{tabular}
+\end{singlespace}
+
+% Symbols are listed with the plain name used for them in the text, their
+% units, and where each is defined. Indices and sets come first in each group.
+\chapter*{LIST OF SYMBOLS}
+\addcontentsline{toc}{chapter}{LIST OF SYMBOLS}
+\begingroup
+\small
+\singlespacing
+\setlength{\LTpre}{0pt}
+\begin{longtable}{@{}L{0.15\textwidth}L{0.37\textwidth}L{0.25\textwidth}L{0.13\textwidth}@{}}
+  \toprule
+  Symbol & Name & Units & Defined \\
+  \midrule
+\endfirsthead
+  \toprule
+  Symbol & Name & Units & Defined \\
+  \midrule
+\endhead
+  \multicolumn{4}{@{}l}{\emph{Workload and power (Chapter~\ref{chap:data})}} \\
+  \(\mathrm{cell}\) & cell index: one of Google's Borg cells \(a\)--\(h\) & --- & Sec.~\ref{subsec:clusterdata-role} \\
+% [symbols 2026-10-09] removed row:
+%  \(\mathcal J_c\), \(n\) & machine set of cell \(c\); machine & --- & Eq.~\eqref{eq:reference-capacity} \\
+% [symbols 2026-10-09] removed row:
+%  \(\kappa_n\) & machine CPU capacity & normalized CPU (largest machine \(=1\)) & Eq.~\eqref{eq:reference-capacity} \\
+  \(C^{\mathrm{ref}}_{\mathrm{cell}}\) & reference capacity of a cell & normalized CPU (work units per hour) & Eq.~\eqref{eq:reference-capacity} \\
+  \(k\) & five-minute window & --- & Eq.~\eqref{eq:clusterdata-utilization} \\
+% [symbols 2026-10-09] was:
+%  \(\mathcal E_{c,k}\), \(r\) & measurement set of window \(k\); usage measurement & --- & Eq.~\eqref{eq:clusterdata-utilization} \\
+  \(r\) & usage measurement & --- & Eq.~\eqref{eq:clusterdata-utilization} \\
+  \(a_r\) & measured CPU use & normalized CPU & Eq.~\eqref{eq:clusterdata-utilization} \\
+  \(u_{\mathrm{cell},k}\) & cell CPU utilization & fraction of \(C^{\mathrm{ref}}_{\mathrm{cell}}\) & Eq.~\eqref{eq:clusterdata-utilization} \\
+% [symbols 2026-10-09] removed rows:
+%  \(p_r\) & job priority & 0 to 450 & Eq.~\eqref{eq:batch-utilization} \\
+%  \(\mathcal E^{\mathrm{bat}}_{c,k}\) & batch measurement set & --- & Eq.~\eqref{eq:batch-utilization} \\
+  \(u^{\mathrm{bat}}_{\mathrm{cell},k}\), \(u^{\mathrm{svc}}_{\mathrm{cell},k}\) & batch utilization; service utilization & fraction of \(C^{\mathrm{ref}}_{\mathrm{cell}}\) & Eqs.~\eqref{eq:batch-utilization}--\eqref{eq:service-utilization} \\
+  \(\widehat p_{\mathrm{cell}}(u)\) & modeled power fraction at hourly CPU utilization \(u\) & fraction of reference power & Eq.~\eqref{eq:powerdata-affine-fit} \\
+  \(\alpha_{\mathrm{cell}}\) & idle power fraction & fraction of reference power & Eq.~\eqref{eq:powerdata-affine-fit} \\
+  \(\beta_{\mathrm{cell}}\) & dynamic power fraction & fraction of reference power & Eq.~\eqref{eq:powerdata-affine-fit} \\
+  \addlinespace
+  \multicolumn{4}{@{}l}{\emph{Grid data and forecasts (Chapter~\ref{chap:data})}} \\
+  \(m\) & market, and the site placed in it & --- & Sec.~\ref{subsec:energy-sources} \\
+  \(\tau\) & UTC hour & --- & Eq.~\eqref{eq:energy-net-load} \\
+  \(D_m\) & gross demand & MW & Eq.~\eqref{eq:energy-net-load} \\
+  \(G^{\mathrm{wnd}}_m\), \(G^{\mathrm{sol}}_m\) & wind output; solar output & MW & Eq.~\eqref{eq:energy-net-load} \\
+  \(N_m\) & net load & MW & Eq.~\eqref{eq:energy-net-load} \\
+  \(\mathcal E_{\mathrm{train}}\) & training set (training months of a split) & --- & Sec.~\ref{subsec:energy-calendar} \\
+% [symbols 2026-10-09] removed row:
+%  \(\mathcal R\) & training hours & --- & Eq.~\eqref{eq:market-scale} \\
+  \(S_m\) & market scale & MW & Eq.~\eqref{eq:market-scale} \\
+  \(Y\) & forecast quantity (\(D_m\) or \(N_m\)) & MW & Eq.~\eqref{eq:forecast-model} \\
+  \(h\) & lead & hours & Eq.~\eqref{eq:forecast-model} \\
+  \(\mathrm{hour}(\tau)\) & hour of day & 0 to 23 & Eq.~\eqref{eq:forecast-model} \\
+  \(\widehat Y(\tau+h\mid\tau)\) & forecast issued at \(\tau\) for the target hour \(\tau+h\) & MW & Eq.~\eqref{eq:forecast-model} \\
+% [forecast-eq 2026-10-10] added the x_1,...,x_9 row:
+  \(x_1,\dots,x_9\) & forecast inputs & MW; \(x_6\), \(x_7\) unitless & Eq.~\eqref{eq:forecast-model} \\
+  \(b_0,\dots,b_9\) & forecast weights & MW per unit of input & Eq.~\eqref{eq:forecast-model} \\
+% [mae-only 2026-10-10] was: MAE, RMSE, MAPE row
+  MAE & mean absolute error & MW & Eq.~\eqref{eq:forecast-metrics} \\
+  \addlinespace
+  \multicolumn{4}{@{}l}{\emph{Fleet and monthly simulation (Chapter~\ref{chap:problem})}} \\
+% [no-K 2026-10-10] removed row:
+%  \(K_m\) & compute capacity & work units per hour & Sec.~\ref{subsec:transform-mapping} \\
+  \(\overline P_m\) & reference power & MW & Sec.~\ref{subsec:transform-mapping} \\
+  \(e\), \(T_e\) & simulated month; month length & ---; hours & Sec.~\ref{subsec:transform-pairing} \\
+  \(t\), \(\mathcal T_e\) & decision hour; decision hours of month \(e\) & --- & Sec.~\ref{subsec:transform-pairing} \\
+% [symbols 2026-10-09] removed row:
+%  \(\mathcal W\) & warm-up hour & --- & Sec.~\ref{subsec:transform-pairing} \\
+  \(s_{m,t}\), \(q_{m,t}\) & service arrivals; batch arrivals & work units & Eqs.~\eqref{eq:synthetic-service-arrivals}--\eqref{eq:synthetic-batch-arrivals} \\
+% [symbols 2026-10-09] removed row, and the next row pointed to Eq.~\eqref{eq:episode-grid-map}:
+%  \(\tau_e\) & month start & UTC hour & Eq.~\eqref{eq:episode-grid-map} \\
+% [no-D 2026-10-10] was: D_{m,t}, N_{m,t} -- gross demand and net load of decision hour t
+  \(N_{m,t}\) & net load of decision hour \(t\) & MW & Sec.~\ref{subsec:transform-pairing} \\
+  \addlinespace
+  \multicolumn{4}{@{}l}{\emph{Decisions and constraints (Chapter~\ref{chap:problem})}} \\
+  \(\mathcal M\) & site set & --- & Sec.~\ref{subsec:problem-given-inputs} \\
+  \(i\), \(j\) & origin; destination & --- & Sec.~\ref{subsec:problem-given-inputs} \\
+  \(x^{\mathrm{svc}}_{j,t}\) & executed service & work units & Sec.~\ref{subsec:problem-decisions} \\
+  \(z_t\) & batch release & work units & Sec.~\ref{subsec:problem-decisions} \\
+  \(x^{\mathrm{bat}}_{j,t}\) & executed batch & work units & Sec.~\ref{subsec:problem-decisions} \\
+  \(y_{i,t}\) & origin release & work units & Eq.~\eqref{eq:batch-total} \\
+  \(B_{i,t}\) & batch backlog & work units & Eq.~\eqref{eq:queue-balance} \\
+  \(H\) & completion window & hourly slots & Sec.~\ref{subsec:problem-batch} \\
+  \(\nu\), \(d_\nu\) & arrival slot; deadline slot & hourly slot & Eq.~\eqref{eq:batch-deadline} \\
+% [symbols 2026-10-09] removed row:
+%  \(\rho\) & hour index in a cumulative sum & --- & Eq.~\eqref{eq:deadline-feasibility} \\
+  \(w_{m,t}\) & executed work & work units & Eq.~\eqref{eq:executed-work} \\
+  \(P_{m,t}\) & site power & MW & Eq.~\eqref{eq:runtime-power} \\
+  \addlinespace
+  \multicolumn{4}{@{}l}{\emph{Ramps, peaks, and the objective (Chapter~\ref{chap:problem})}} \\
+  \(A_{m,t}\) & adjusted net load & MW & Eq.~\eqref{eq:adjusted-net-load} \\
+  \(\Delta^{\mathrm{original}}_{m,t}\) & original ramp & fraction of \(S_m\) per hour & Eq.~\eqref{eq:native-ramp} \\
+  \(\Delta^{\mathrm{adjusted}}_{m,t}\) & adjusted ramp & fraction of \(S_m\) per hour & Eq.~\eqref{eq:adjusted-ramp} \\
+  \(I_{m,t}\) & ramp impact & squared fraction of \(S_m\) per hour & Eq.~\eqref{eq:incremental-impact} \\
+  \(\mu\) & scheduling policy & --- & Sec.~\ref{subsec:problem-objective} \\
+% [peaks 2026-10-10] removed row:
+%  \(Q^{\mathrm{adjusted}}_{m,e}\), \(Q^{\mathrm{original}}_{m,e}\) & adjusted peak; original peak & fraction of \(S_m\) & Eqs.~\eqref{eq:monthly-peak}--\eqref{eq:monthly-original-peak} \\
+  \(\Phi_{m,e}\) & peak impact & fraction of \(S_m\) & Eq.~\eqref{eq:peak-impact} \\
+  \(\mu_{\mathrm{NF}}\) & no-flexibility baseline & --- & Sec.~\ref{subsec:problem-normalization} \\
+  \(C_R\) & ramp reference & squared fraction of \(S_m\) per hour & Eq.~\eqref{eq:ramp-reference} \\
+  \(C_Q\) & peak reference & fraction of \(S_m\) & Eq.~\eqref{eq:peak-reference} \\
+  \(J_e\) & joint score & --- & Eq.~\eqref{eq:objective} \\
+  \(\mathfrak M\) & feasible policy set & --- & Eq.~\eqref{eq:objective} \\
+% [symbols 2026-10-09] removed row:
+%  \(\mathcal I_t\) & information set & --- & Sec.~\ref{subsec:problem-causality} \\
+  Improvement & joint-score improvement over the baseline & --- & Eq.~\eqref{eq:improvement} \\
+  \bottomrule
+\end{longtable}
+\endgroup
+
+% Body: Arabic page numbers from 1; chapter openings have a 2-inch top margin.
+\clearpage
+\pagenumbering{arabic}
+\bodychapterformat
+
+\chapter{INTRODUCTION}
+\label{chap:introduction}
+
+\section{Background: Data Centers on the Electric Grid}
+\label{sec:intro-background}
 
 Large data centers draw enough electrical power that the timing and location
-of their computing work matter to the grids that serve them. Some work must
-run immediately, while lower-priority work may be delayed. An operator with
-multiple sites may also choose where that work runs.
+of their computing work matter to the grids that serve them.
+
+\planned{The growth of data-center load; why grid operators care about the
+shape of that load, meaning how fast net load changes from hour to hour (its
+ramps) and how high it rises each month (its peaks); and how wind and solar
+generation make net-load ramps steeper.}
+
+\section{Workload Flexibility: Timing and Location}
+\label{sec:intro-flexibility}
+
+Some work must run immediately, while lower-priority work may be delayed. An
+operator with multiple sites may also choose where that work runs. In this
+thesis, work that must run immediately is called service, and work that may
+wait is called batch. These two levers, delaying batch work and routing work
+between sites, are the only ones the scheduler controls. Each hour, the
+scheduler chooses where service runs, how much batch work to execute, and
+where to execute it.
+
+\section{Research Questions and Objectives}
+\label{sec:intro-questions}
 
 The question asked here is:
 \begin{quote}
@@ -46,273 +233,157 @@ routing while satisfying immediate-service, batch-window, and site-capacity
 constraints?}
 \end{quote}
 
+A scheduler is \emph{causal} when each hourly decision uses only information
+available at that hour, never future demand, generation, or workload
+(Section~\ref{subsec:problem-causality}). The scheduler moves aggregate
+amounts of work between sites and hours, not individual jobs.
+
 Google workload traces and EIA grid data are used to model a synthetic fleet
-of four data centers. Each hour, the scheduler chooses where service runs,
-how much batch work to execute, and where to execute it. Proximal policy
-optimization (PPO) will be used to train a policy that minimizes an equally
+of four data centers. Proximal policy
+optimization (PPO) is used to train a policy that minimizes an equally
 weighted combination of scaled monthly ramp impact and regional peak impact
-while meeting workload deadlines and site-capacity limits.
-Section~\ref{sec:literature} places this question in the literature, and the
-remaining sections define the data, the synthetic fleet, and the problem.
+while meeting workload deadlines and site-capacity limits. The objective is
+therefore to build the fleet from public data, to define a joint score for
+ramps and peaks, to train the scheduler, and to compare it with a
+no-flexibility baseline that runs all work where and when it arrives. The
+comparison is made by four-fold cross-validation over the twelve months of
+2025 and, once at the end, on May 2026, a test month served by a second fleet
+built from different Google cells.
 
-\section{Literature Review}
-\label{sec:literature}
+\section{Scope and Assumptions}
+\label{sec:intro-scope}
 
-The references are grouped by the lever they study and by the perspective
-from which that lever is judged: data centers as loads on the electric grid,
-geographic routing among sites, temporal deferral of batch work, learned
-schedulers, and the workload and power models on which such studies rest.
-The section closes by positioning this thesis against that work and stating
-the perspective adopted here.
+The thesis takes the view of the operator of a multi-site data-center fleet,
+who controls only where service runs and when and where batch work runs.
+Regional demand, wind, and solar come from historical records, and the
+scheduler cannot change them. Electricity prices, carbon emissions, on-site
+generation, and demand-response programs or payments are not modeled.
+Cooling is not controlled, although the measured power used in
+Section~\ref{sec:powerdata2019} already includes data-center-floor cooling.
+The scheduler is compared with one baseline, which runs all work at its
+original site in its arrival hour.
 
-\subsection{Data centers as grid loads}
-\label{subsec:lit-grid-loads}
+Three modeling assumptions shape most of the model: the site built from
+cell \(c\), the largest training cell, has a reference power of 500~MW and
+every other site, in both fleets, is scaled by its measured CPU capacity
+relative to cell \(c\) (Section~\ref{subsec:powerdata-coefficients}), each
+Google cell is placed in one electricity region
+(Section~\ref{subsec:transform-mapping}), and batch work must finish within
+24 hours (Section~\ref{subsec:problem-batch}). Each is stated where it is
+introduced, and Section~\ref{sec:limitations} lists the limitations that
+follow from these choices.
 
-In \emph{Key Questions on Energy and AI}, the International Energy Agency
-\cite{iea2026energyai} reports that data-center electricity consumption grew
-by more than 15\% between 2024 and 2025, to almost 500 TWh, and projects it to
-roughly double, to about 950 TWh, by 2030. The report describes large-load
-connection queues, notes that AI workloads can trigger steep and sudden load
-ramps as clusters of GPUs transition synchronously between tasks, and observes
-that peak demand often remains meaningfully below nameplate capacity. It
-recommends that system operators explore non-firm connections and incentives
-for demand response in return for faster grid access, arguing that demand
-response and dynamic contracts could reduce the need for additional reserves,
-network upgrades, and peaking capacity. These are grid-side concerns: what
-matters to the system operator is the shape of the load, its ramps and its
-peaks, rather than the data center's bill.
+\chapter{LITERATURE REVIEW}
+\label{chap:literature}
 
-Vasques, Moura, and de Almeida, in \emph{A review on energy efficiency and
-demand response with focus on small and medium data centers}
-\cite{vasques2019review}, review the same relationship from the
-demand-response side. They distinguish two roles for workload flexibility:
-load management that lowers the data center's own operating cost, and
-demand-response services that support the efficient and reliable operation of
-the grid. Flexibility in their account may be a temporary load reduction or a
-temporary load increase during a renewable surplus, and it is usually split
-into ICT-flexible workload, meaning delay-tolerant jobs that can run at another
-time, and non-ICT measures such as cooling set points and uninterruptible
-power supplies.
+\planned{Lit review intro: grouping of topics, simple definitions, perspective.}
 
-Sakalkar \emph{et al.}, in \emph{Data Center Power Oversubscription with a
-Medium Voltage Power Plane and Priority-Aware Capping}
-\cite{sakalkar2020oversubscription}, show how Google manages power inside the
-facility. A capping service that throttles only low-priority workloads on
-every node lets the fleet oversubscribe its power infrastructure by 25\% or
-more, with the achievable oversubscription limited by the share of power drawn
-by high-priority work that must not be disrupted. Priority is thus already the
-lever by which an operator sheds kilowatts, and the same priority structure
-defines the deferrable work in Section~\ref{subsec:clusterdata-tier-split}.
-That capping, however, protects electrical limits inside the facility; it does
-not address the shape of the regional load.
+\section{Net Load, Ramps, and Peaks in Power Systems}
+\label{sec:lit-net-load}
 
-\subsection{Geographic routing among sites}
-\label{subsec:lit-spatial}
+\planned{Background from the grid side: what net load is, why solar and wind
+generation make evening ramps steep (duck curve), and why monthly
+peaks drive capacity needs. Power-system sources.}
 
-Qureshi \emph{et al.}, in \emph{Cutting the Electric Bill for Internet-Scale
-Systems} \cite{qureshi2009cutting}, combine hourly wholesale electricity
-prices at 29 United States locations with Akamai traffic data and simulate
-price-conscious request routing. Existing systems could reduce energy cost by
-at least 2\% without increasing bandwidth cost, and a fully energy-elastic
-system with relaxed bandwidth constraints by over 30\%. The savings hinge on
-energy elasticity, the fraction of a cluster's power that follows its load
-rather than being drawn at idle, and they fall when routing reacts late to
-price changes. Rao \emph{et al.}, in \emph{Minimizing Electricity Cost:
-Optimization of Distributed Internet Data Centers in a Multi-Electricity-Market
-Environment} \cite{rao2010minimizing}, formulate the same routing problem as a
-mixed-integer program with service-delay guarantees, approximate it by a
-linear program, and report hourly cost reductions of 30\% and 18\% on two sets
-of real price data.
 
-Liu \emph{et al.}, in \emph{Geographical Load Balancing with Renewables}
-\cite{liu2011glb}, replace price with renewable availability. In a
-trace-based study, ``follow the renewables'' routing significantly reduces the
-renewable capacity needed to reach a given share of clean energy, small-scale
-storage helps most in combination with routing, and wind is more valuable than
-solar because its output is weakly correlated across sites and available at
-night. Zhao, Zhou, and Li, in \emph{CFWS: DRL-Based Framework for Energy Cost
-and Carbon Footprint Optimization in Cloud Data Centers} \cite{zhao2025cfws},
-bring learned control to the same lever: a deep reinforcement learning agent
-migrates virtual machines among geo-distributed data centers under
-time-varying prices and location-varying carbon rates, reducing brown energy
-by 6\% to 13\% while cutting the number of migrations.
+\chapter{DATA SOURCES AND PREPARATION}
+\label{chap:data}
 
-In all four studies the grid enters only through a price or a carbon signal,
-and the score is the data center's own cost, renewable use, or carbon. None
-measures what the routed load does to the ramps or the peak of the receiving
-region. The routing model in Section~\ref{sec:problem-statement}, with
-conservation of work, per-site capacity, and no transfer cost, descends from
-these formulations; the objective does not.
+This chapter describes where each input comes from and how it becomes the
+hourly series used by the model. 
 
-\subsection{Temporal deferral of batch work}
-\label{subsec:lit-temporal}
+\section{Overview of the Data Pipeline}
+\label{sec:data-overview}
 
-Liu \emph{et al.}, in \emph{Renewable and Cooling Aware Workload Management
-for Sustainable Data Centers} \cite{liu2012renewable}, split the workload into
-interactive services that run continuously and delay-tolerant batch jobs whose
-deadlines range from several hours to multiple days. Predictions of renewable
-supply and IT demand feed a plan that shifts batch work toward hours of
-renewable availability and efficient cooling, reducing recurring power cost
-and non-renewable energy by as much as 60\% against existing techniques.
-Grange, Da Costa, and Stolf, in \emph{Green IT scheduling for data center
-powered with renewable energy} \cite{grange2018green}, schedule batch jobs
-with due dates in a single data center with on-site solar generation, keeping
-the scheduler agnostic of the electrical infrastructure by having a separate
-system supply the objective function. Brown energy falls by up to 49\%, and
-the authors find that the freedom allowed by the service-level agreement, the
-due-date slack, largely determines the achievable saving. Xu, Toosi, and
-Buyya, in \emph{A Self-Adaptive Approach for Managing Applications and
-Harnessing Renewable Energy for Sustainable Cloud Computing}
-\cite{xu2021selfadaptive}, pair a brownout mechanism for interactive workloads
-with a deferral algorithm for batch workloads and reduce brown energy by 21\%
-in a prototype driven by real traces. Haghshenas \emph{et al.}, in
-\emph{Infrastructure Aware Heterogeneous-Workloads Scheduling for Data Center
-Energy Cost Minimization} \cite{haghshenas2022infrastructure}, schedule
-service and batch jobs against renewable supply, cooling efficiency, and a
-tariff that combines time-of-use prices with peak demand charges; batch jobs
-must finish within 24 hours of submission, and cost falls by up to 46\%.
+Three public data sources are used: Google's ClusterData2019 workload trace,
+Google's PowerData2019 power trace, and the hourly grid data of the U.S.
+Energy Information Administration (EIA). Figure~\ref{fig:data-pipeline} shows
+how each is processed.
 
-Radovanovi\'{c} \emph{et al.}, in \emph{Carbon-Aware Computing for
-Datacenters} \cite{radovanovic2021carbonaware}, describe the system in
-production across Google's fleet. Day-ahead forecasts of grid carbon intensity
-and of cluster demand feed a risk-aware optimization that produces hourly
-Virtual Capacity Curves: limits on the resources available to temporally
-flexible workloads that preserve total daily capacity, so that all such work
-completes within a day. The optimizer minimizes a weighted sum of expected
-carbon footprint and daily power peak over all clusters, on the reasoning that
-data centers are planned around peak power, so smaller peaks reduce the need
-for new capacity. Cluster-level flexible usage proves predictable within a
-day-ahead horizon despite job-level uncertainty.
+\begin{figure}[tbp]
+  \centering
+  \begin{tikzpicture}[
+    font=\scriptsize,
+    box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt,
+      text width=40mm,
+      execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+    head/.style={box, fill=black!7, font=\scriptsize\bfseries},
+    arr/.style={-{Latex[length=1.4mm]}, semithick}
+  ]
+    \node[head] (h1) at (-4.8,0) {ClusterData2019 (Google)};
+    \node[head] (h2) at (0,0) {PowerData2019 (Google)};
+    \node[head] (h3) at (4.8,0) {EIA Grid Monitor};
 
-The batch window \(H=24\) used in Section~\ref{subsec:problem-batch} follows
-Radovanovi\'{c} \emph{et al.} and Haghshenas \emph{et al.}, and the
-service/batch split follows Liu \emph{et al.} and Haghshenas \emph{et al.}
-The finding of Grange \emph{et al.} that due-date slack governs the saving is
-why \(H\) is reported as an assumption whose value matters. In this line of
-work the objective is cost, brown energy, or carbon; the peak appears only as
-a demand charge or as a capacity-cost term, and hour-to-hour ramps do not
-appear at all.
+    \node[box, below=4mm of h1, minimum height=17mm] (r1)
+      {\textbf{Raw:} machine list, task CPU usage, and job priorities for
+       8 cells; usage over 5-minute windows; May 2019};
+    \node[box, below=4mm of h2, minimum height=17mm] (r2)
+      {\textbf{Raw:} power of each power domain as a fraction of its
+       capacity, including floor cooling; 5-minute; May 2019};
+    \node[box, below=4mm of h3, minimum height=17mm] (r3)
+      {\textbf{Raw:} demand, wind, and solar output in MW for 4 balancing
+       authorities; hourly, labeled by hour end; 2025 and May 2026};
 
-\subsection{Learned schedulers}
-\label{subsec:lit-rl}
+    \node[box, below=5mm of r1, minimum height=21mm] (p1)
+      {\textbf{Process:} sum machine capacities; sum CPU used per window and
+       divide by capacity; split at priority 115 into service and batch
+       (Sections~\ref{sec:clusterdata2019}--\ref{subsec:clusterdata-tier-split})};
+    \node[box, below=5mm of r2, minimum height=21mm] (p2)
+      {\textbf{Process:} drop flagged readings; average by cell and hour; fit a
+       straight line of power against the cell's hourly CPU utilization
+       (Section~\ref{sec:powerdata2019})};
+    \node[box, below=5mm of r3, minimum height=21mm] (p3)
+      {\textbf{Process:} relabel hours by their start; fill short gaps;
+       net load \(=\) demand \(-\) wind \(-\) solar; regional scale \(S_m\);
+       forecasts
+       (Sections~\ref{sec:energy-data}--\ref{subsec:energy-forecasts})};
 
-Kahil \emph{et al.}, in \emph{Reinforcement learning for data center energy
-efficiency optimization: A systematic literature review and research roadmap}
-\cite{kahil2025rl}, review 65 studies from 2019 to 2024 that apply
-reinforcement learning to cooling and to ICT tasks such as task scheduling,
-resource allocation, and virtual-machine consolidation. Almost all are
-evaluated in simulation, and the review names the lack of real-world
-validation and of standardized metrics as the main gaps. Ran \emph{et al.}, in
-\emph{DeepEE: Joint Optimization of Job Scheduling and Cooling Control for
-Data Center Energy Efficiency Using Deep Reinforcement Learning}
-\cite{ran2019deepee}, train a parameterized-action deep Q-network that jointly
-schedules jobs and adjusts airflow on a two-time-scale simulation platform,
-saving up to 15\% of energy against siloed control. Naug \emph{et al.}, in
-\emph{SustainDC: Benchmarking for Sustainable Data Center Control}
-\cite{naug2024sustaindc}, provide Gymnasium environments in which a
-load-shifting agent, a cooling agent, and a battery agent act on a simulated
-data center driven by public Alibaba and Google utilization traces. The
-load-shifting agent observes the time of day, current and forecast grid carbon
-intensity, and the amount of flexible work still to be placed; it is penalized
-if flexible work is not rescheduled within its horizon; and its reward is the
-carbon footprint. The baseline assumes no shifting, which the authors describe
-as current practice. Outside data centers, Zhang and Lam, in \emph{Practical
-Implementation and Evaluation of Deep Reinforcement Learning Control for a
-Radiant Heating System} \cite{zhang2018practical}, train an agent on a
-calibrated building simulator and deploy it in an office building for three
-months, reducing heating demand by 17\% to 18\% while documenting the data
-requirements and training cost that such a deployment entails.
+    \node[box, below=5mm of p1, minimum height=16mm] (o1)
+      {\textbf{Kept:} per cell, five-minute total, service, and batch
+       utilization; CPU capacity};
+    \node[box, below=5mm of p2, minimum height=16mm] (o2)
+      {\textbf{Kept:} per cell, idle level \(\alpha_{\mathrm{cell}}\) and slope
+       \(\beta_{\mathrm{cell}}\) of the power line};
+    \node[box, below=5mm of p3, minimum height=16mm] (o3)
+      {\textbf{Kept:} 12 monthly panels for 2025 and a test panel for May
+       2026, with hourly demand, wind, solar, net load, \(S_m\), and 8
+       forecasts per market};
 
-This thesis follows the pattern set by SustainDC and DeepEE: a simulated
-environment driven by public traces, a reinforcement-learning agent, and a
-no-flexibility baseline. The forecasts in
-Section~\ref{subsec:energy-forecasts} play the role that carbon-intensity
-forecasts play in SustainDC and in Google's system, as the scheduler's only
-view of the hours ahead. The reward differs: where SustainDC's load-shifting
-agent minimizes carbon, the agent here is charged for the change its fleet
-makes to the region's net-load ramps and monthly peak. As in the studies Kahil
-\emph{et al.} review, the results are simulation results; no deployment is
-claimed.
+    \node[box, fill=black!7, text width=132mm, below=6mm of o2] (sim)
+      {Chapter~\ref{chap:problem}: synthetic four-site fleet and monthly
+       simulation, which turn these into hourly work arrivals, site power,
+       and regional net load};
 
-\subsection{Workload traces and power models}
-\label{subsec:lit-data}
+    \foreach \i in {1,2,3} {
+      \draw[arr] (h\i) -- (r\i);
+      \draw[arr] (r\i) -- (p\i);
+      \draw[arr] (p\i) -- (o\i);
+      \draw[arr] (o\i.south) -- (o\i.south |- sim.north);
+    }
+    \draw[arr, dashed] (p1) -- (p2);
+  \end{tikzpicture}
+  \caption{Data pipeline from the three public sources to the inputs of the
+  simulation. The dashed arrow marks the hourly CPU utilization that the power
+  fit uses.}
+  \label{fig:data-pipeline}
+\end{figure}
 
-The workload here comes from Google's 2019 cluster trace, documented by Wilkes
-in \emph{Google cluster-usage traces v3} \cite{wilkes2020clusterdata2019} and
-analyzed by Tirmazi \emph{et al.} in \emph{Borg: The Next Generation}
-\cite{tirmazi2020borg}. The analysis defines priority tiers, of which the
-free and best-effort batch tiers carry no service-level objective, finds that
-best-effort batch has grown to about 20\% of cell capacity, and reports
-resource consumption so heavy-tailed that the top 1\% of jobs consume over
-99\% of resources. It summarizes each cell as each tier's CPU usage as a
-fraction of cell capacity over time, the same aggregate view adopted in
-Section~\ref{sec:clusterdata2019}. Da Costa, Grange, and De Courchelle, in
-\emph{Modeling and Generating large-scale Google-like Workload}
-\cite{dacosta2016modeling}, fit a generative model to the earlier 2011 trace
-so that scheduling experiments can be reproduced on synthetic workloads; here
-the measured aggregate usage is replayed instead. Lin \emph{et al.}, in
-\emph{A systematic review of green-aware management techniques for
-sustainable data center} \cite{lin2024systematic}, catalog the public
-workload traces, renewable data, and price series used across this literature
-and note the growing use of the temporal and spatial flexibility of batch
-work.
+The raw data is large and detailed, and most of that detail is not needed.
+The workload trace records every task on about 96,000 machines, but the
+scheduler moves aggregate amounts of work, not individual jobs. The trace is
+therefore reduced to how busy each cell is in each five-minute window, split
+into work that must run at once (service) and work that may wait (batch).
+The power trace is reduced to one straight line per cell that converts CPU
+utilization into power. The grid data is kept hourly, as recorded, and gain
+three derived quantities: net load, a fixed size scale for each region, and
+forecasts of the coming hours.
 
-For power, Dayarathna, Wen, and Fan, in \emph{Data Center Energy Consumption
-Modeling: A Survey} \cite{dayarathna2016survey}, organize more than 200
-models and observe that most rest on a few CPU or server metrics. They cite
-the finding of Fan \emph{et al.} at Google that a linear function of CPU
-utilization tracks dynamic power accurately at the power-distribution-unit
-level, which is the form fitted in Section~\ref{sec:powerdata2019}. Cooling
-is a large share of facility power: Zhang \emph{et al.}, in \emph{A survey on
-data center cooling systems: Technology, power consumption modeling and
-control strategy optimization} \cite{zhang2021cooling}, put it near 30\%, and
-Zhang \emph{et al.}, in \emph{Towards Joint Optimization Over ICT and Cooling
-Systems in Data Centre: A Survey} \cite{zhang2016joint}, review the coupling
-models that joint ICT-and-cooling control requires. Cooling control is outside
-the scope of this thesis. Its power is not omitted, however: the PowerData2019
-measurements \cite{googlePowerData2019} fitted in
-Section~\ref{sec:powerdata2019} include data-center-floor cooling, so the
-affine power model carries cooling's response to load without modeling it
-separately. Software-level efficiency measures, such as the virtualization,
-consolidation, and placement techniques surveyed by Katal, Dahiya, and
-Choudhury in \emph{Energy efficiency in cloud computing data centers: a
-survey on software technologies} \cite{katal2023energy} and by Panwar,
-Rauthan, and Barthwal in \emph{A systematic review on effective energy
-utilization management strategies in cloud data centers}
-\cite{panwar2022systematic}, reduce the energy needed per unit of work. They
-are complementary to, and separate from, the question asked here, which holds
-the work fixed and changes only when and where it runs.
+The two Google traces cover May 2019, and the grid data covers 2025 and May
+2026. They are merged in Chapter~\ref{chap:problem}, where the
+744-hour workload of cells \(a\)--\(d\) is replayed in every month of 2025,
+and then cells \(e\)--\(h\) alongside the May 2026 grid data data.
 
-\subsection{Position of this thesis}
-\label{subsec:lit-position}
-
-The reviewed work supplies both levers used here, geographic routing from
-Section~\ref{subsec:lit-spatial} and temporal deferral from
-Section~\ref{subsec:lit-temporal}, and the learned-control pattern of
-Section~\ref{subsec:lit-rl}. What it does not supply is a measurement of the
-effect of a specific scheduling policy on the ramps and peak of a specific
-region's net load. The cost- and carbon-driven studies see the grid through a
-price or an intensity signal; the grid-side reports describe flexibility as
-valuable without attaching it to a scheduler.
-
-This thesis takes the operator perspective on grid-ramp and peak-kW
-reduction. The decision-maker is the operator of a multi-site fleet, who
-controls only what such an operator controls: where service work runs, and
-when and where batch work runs. Regional demand, wind, and solar are exogenous
-history. The score is what those decisions do to the grid, namely the change
-in each region's squared one-hour net-load ramp and in each region's monthly
-net-load peak, measured in MW relative to the grid without the fleet and
-normalized by a fixed regional scale (Equation~\eqref{eq:objective}).
-Electricity cost, carbon, and energy use are neither optimized nor reported.
-This is the operator's view of the ramp and kW quantities that the system
-operator cares about; no demand-response program, tariff, market signal, or
-payment is modeled, and reductions are reported as reductions in the modeled
-score rather than as reserve, cost, or reliability savings. The forecasts, the
-priority-based split, the 24-hour window, and the no-flexibility baseline are
-each taken from the studies above, so that the departure lies in the objective
-alone.
-
-\section{Google ClusterData2019 Workload Trace}
+\section{Workload Data: Google ClusterData2019}
 \label{sec:clusterdata2019}
 
 \subsection{Dataset}
@@ -320,127 +391,147 @@ alone.
 
 A \emph{Borg cell} is a group of machines managed as one computing cluster.
 Google provides records for eight cells, labeled \(a\)--\(h\), from May 2019
-\cite{wilkes2020clusterdata2019, tirmazi2020borg}. The trace includes machine
-capacity, per-instance resource usage, collection events, priorities, and
-resource requests. It is sanitized: it contains no user, application,
-location, or other identifying information.
+\cite{wilkes2020clusterdata2019, tirmazi2020borg}. Two of Google's terms are
+needed. A \emph{job} is a computation that a user wants to run, made up of one
+or more \emph{tasks}, each a program running on one machine. An
+\emph{allocation set} is a reservation of machine resources inside which a
+job's tasks can run. Google's documentation calls jobs and allocation sets
+\emph{collections}, and tasks and the reserved blocks \emph{instances}
+\cite{wilkes2020clusterdata2019}. The trace records each machine's size, the
+resources each task requested, the CPU each task used, and each job's
+priority. It contains no user, application, or other identifying
+information.
 
-Three tables supply the workload data used here: \codepath{machine_events}
-for the CPU reference capacity, \codepath{instance_usage} for measured CPU
-execution, and \codepath{collection_events} for priority. The full trace is
-approximately 2.4 TiB, so it is queried through BigQuery rather than
-downloaded.
+Three parts of the trace are used: the machine list, for each cell's CPU
+capacity; the task usage measurements, for the CPU actually used; and the job
+records, for priority. The trace is about 2.4 TiB compressed, too large to
+download, so it is queried online through BigQuery, Google's cloud database
+service.
 
 Rather than tracking individual jobs and their execution, the aggregate CPU
 utilization in each five-minute window is used as demand. This is how the
 trace is summarized by Tirmazi \emph{et al.} in \emph{Borg: The Next
 Generation} \cite{tirmazi2020borg}, who plot each priority tier's CPU usage as
-a fraction of cell capacity over hour-long intervals (their Fig.~2). Aggregate
-flexible and inflexible CPU usage per cluster is likewise the quantity
-scheduled by Radovanovi\'{c} \emph{et al.} in \emph{Carbon-Aware Computing
-for Datacenters} \cite{radovanovic2021carbonaware}, from Google's internal
-fleet data rather than this trace, and utilization curves from Alibaba and
-Google traces drive the workload environment of \emph{SustainDC}
-\cite{naug2024sustaindc}.
+a fraction of cell capacity over hour-long intervals, and by the utilization
+code example in Google's GitHub repository, \emph{Google Trace Analysis Colab}
+\cite{googleClusterAnalysisColab}.
 
-\begin{figure}[!ht]
-  \centering
-  \begin{tikzpicture}[
-    font=\scriptsize,
-    box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt},
-    shaded/.style={box, fill=black!7},
-    arr/.style={-{Latex[length=1.4mm]}, semithick}
-  ]
-    \node[box, minimum width=34mm] (jobs) at (0,0)
-      {Collections and instances\\priority 0--450};
-
-    \node[shaded, minimum width=80mm] (cell) at (0,-1.05)
-      {\textbf{Borg cells} \(a\)--\(h\)\ \ ---\ \ thousands of machines};
-
-    \node[box, minimum width=26mm] (me) at (-2.75,-2.45)
-      {\texttt{\tiny machine\_events}\\[1pt]capacity};
-    \node[box, minimum width=26mm] (iu) at (0,-2.45)
-      {\texttt{\tiny instance\_usage}\\[1pt]executed CPU};
-    \node[box, minimum width=26mm] (ce) at (2.75,-2.45)
-      {\texttt{\tiny collection\_events}\\[1pt]priority};
-
-    \node[shaded, minimum width=80mm] (csv) at (0,-3.95)
-      {\texttt{cell\_c\_tiers.csv}\ \ ---\ \ aggregate, service, batch};
-
-    \draw[arr] (jobs) -- (cell);
-    \draw[arr] (cell.south -| me) -- (me.north);
-    \draw[arr] (cell.south -| iu) -- (iu.north);
-    \draw[arr] (cell.south -| ce) -- (ce.north);
-    \draw[arr] (me.south) -- (me.south |- csv.north);
-    \draw[arr] (iu.south) -- (iu.south |- csv.north);
-    \draw[arr] (ce.south) -- (ce.south |- csv.north);
-  \end{tikzpicture}
-  \caption{Extraction path from the Google trace to the retained five-minute
-  tier curves. The symbol \(c\) identifies a Google cell.}
-  \label{fig:clusterdata-pipeline}
-\end{figure}
-
-\subsection{Fixed reference capacity}
+\subsection{Fixed Reference Capacity}
 \label{subsec:clusterdata-capacity}
 
-Google expresses CPU capacity in normalized units, with the largest machine in
-a cell equal to 1.0. A cell's reference capacity is then defined as the sum
-over its machines:
+Google measures CPU in Google compute units, an internal metric. The trace Google provides rescales them so that the largest
+machine across all eight cells has a CPU capacity of 1.0, and every cell uses
+this same scale \cite{wilkes2020clusterdata2019}. A machine with capacity 0.5
+therefore has half the CPU of that largest machine. A cell's
+\emph{reference capacity} \(C^{\mathrm{ref}}_{\mathrm{cell}}\) is the sum of these
+capacities over its machines:
+% [symbols 2026-10-09] was:
+%   \sum_{n\in\mathcal{J}_c}\kappa_n ,
+% where \(\mathcal{J}_c\), the \emph{machine set} of cell \(c\), is all
+% machines ever observed in the cell, and \(\kappa_n\), the \emph{machine CPU
+% capacity}, is machine \(n\)'s CPU capacity.
 \begin{equation}
-  C^{\mathrm{ref}}_c
+  C^{\mathrm{ref}}_{\mathrm{cell}}
   =
-  \sum_{n\in\mathcal{J}_c}\kappa_n ,
+  \sum_{\text{machines in } cell}
+  \bigl(\text{machine CPU capacity}\bigr),
   \label{eq:reference-capacity}
 \end{equation}
-where \(\mathcal{J}_c\) is all machines ever observed in cell \(c\)
-and \(\kappa_n\) is machine \(n\)'s largest reported
-\codepath{capacity.cpus}. Machines can have multiple add, update, and
-snapshot records in \codepath{machine_events}; the largest reported capacity
-is kept. This gives a fixed monthly reference rather than the active capacity
-in each five-minute interval, so the utilization defined next is measured
-relative to that fixed reference.
+where the sum covers every machine ever observed in the cell. A machine can appear in the
+machine list several times during the month, for example when it is added,
+removed, or changed, so its largest recorded capacity is used. Google's own
+analysis notebook computes a cell's capacity the same way, by summing each
+machine's largest recorded CPU capacity \cite{googleClusterAnalysisColab},
+and divides hourly CPU use by it to plot usage as a fraction of cell
+capacity, the measure reported by Tirmazi \emph{et al.} \cite{tirmazi2020borg}.
+This gives a fixed monthly reference rather than the capacity active in each five-minute
+interval, so the utilization defined next is measured relative to that fixed
+reference.
 
-\subsection{Five-minute executed CPU}
+Eight cells are captured in the trace. Cells \(a\)--\(d\) supply the training fleet, and
+cells \(e\)--\(h\) supply the test fleet (Section~\ref{subsec:energy-calendar}).
+Table~\ref{tab:cell-capacity} lists their reference capacities. Because every
+cell uses the same scale, the sums can be compared across cells. One important note is that machine counts are a poor
+guide to size: cell \(d\) has the second-largest number of machines among
+\(a\)--\(d\) but the smallest capacity, because most of its machines are
+small, and cell \(e\) has the most machines of all but less capacity than
+\(f\), \(g\), or \(h\). 
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{Reference CPU capacity of the eight cells: \(a\)--\(d\) form the
+  training fleet and \(e\)--\(h\) the test fleet.}
+  \label{tab:cell-capacity}
+  \begin{tabular}{@{}clrrr@{}}
+    \toprule
+    Cell & Fleet & Machines & \(C^{\mathrm{ref}}_{\mathrm{cell}}\) & Relative to cell \(c\) \\
+    \midrule
+    \(a\) & training & 10,001 & 6,835.7 & 0.897 \\
+    \(b\) & training & 10,047 & 7,582.0 & 0.995 \\
+    \(c\) & training & 13,245 & 7,619.8 & 1.000 \\
+    \(d\) & training & 12,576 & 6,448.8 & 0.846 \\
+    \addlinespace
+    \(e\) & test & 14,122 & 7,266.9 & 0.954 \\
+    \(f\) & test & 12,201 & 10,994.2 & 1.443 \\
+    \(g\) & test & 12,796 & 7,963.1 & 1.045 \\
+    \(h\) & test & 11,592 & 10,317.0 & 1.354 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Five-Minute Executed CPU}
 \label{subsec:clusterdata-utilization}
 
-For each five-minute window, recorded CPU usage is summed and divided by the
-cell's fixed reference capacity. Let \(k\) identify the window and
-\(\mathcal{E}_{c,k}\) denote its set of retained usage rows:
+For each five-minute window, the CPU used by all tasks is summed and divided
+by the cell's fixed reference capacity. The result, the \emph{cell CPU
+utilization} \(u_{\mathrm{cell},k}\), is the share of the cell's capacity in use in
+window \(k\):
+% [symbols 2026-10-09] was:
+% utilization} \(u_{c,k}\), is the share of the cell's capacity in use. Let \(k\)
+% identify the window and \(\mathcal{E}_{c,k}\), the window's \emph{measurement
+% set}, denote its retained usage measurements:
+%   \frac{\displaystyle\sum_{r\in\mathcal{E}_{c,k}} a_r}
+% where \(a_r\), the \emph{measured CPU use}, is the average CPU used during
+% measurement \(r\), on the same scale as machine capacity: a task that keeps a
 \begin{equation}
-  u_{c,k}
+  u_{\mathrm{cell},k}
   =
-  \frac{\displaystyle\sum_{r\in\mathcal{E}_{c,k}} a_r}
-         {C^{\mathrm{ref}}_c} ,
+  \frac{\displaystyle\sum_{r\ \text{in window}\ k} a_r}
+         {C^{\mathrm{ref}}_{\mathrm{cell}}} ,
   \label{eq:clusterdata-utilization}
 \end{equation}
-where \(a_r\) is row \(r\)'s \codepath{average_usage.cpus} value. Both the
-numerator and denominator use Google's normalized CPU units, so
-\(u_{c,k}\) is dimensionless.
+where \(k\) numbers the five-minute windows, and the sum runs over every
+usage measurement \(r\) kept for window \(k\): one for each task or reserved
+block running in it, after the two filters described below. The
+\emph{measured CPU use} \(a_r\) is the average CPU used during
+measurement \(r\), on the same scale as machine capacity: a task that keeps a
+whole capacity-0.5 machine
+busy for the full window has \(a_r=0.5\). The numerator and denominator are
+on the same scale, so \(u_{\mathrm{cell},k}\) is a fraction of the cell's capacity.
 
-Only top-level instances and full five-minute measurement windows are
-retained. Using only top-level instances avoids counting both an allocation
-set and the work running inside it. Google reports each instance's usage over
-windows of at most 300 seconds \cite{googleTraceFormatV3}. Following the
-instance-usage query example in Google's analysis notebook
-\cite{googleClusterAnalysisColab}, rows whose \codepath{end_time-start_time}
-is at least 300 seconds are kept, so each retained \(a_r\) is an average over
-a whole window. An audit of cells \(a\)--\(d\) found that the 300-second
-filter removes 6.5\% of CPU work, proportionally more batch (11--15\% of batch
-work) than service (2--8\%). Hour by hour, the retained curves correlate with
-all-row curves at 0.96--0.99 in level and 0.88--0.97 in one-hour ramps, with
-slightly larger relative ramps (2.6--4.9\%). The retained curves therefore
-describe retained execution rather than all execution.
+Two kinds of usage measurements are left out. First, a task that runs inside
+an allocation set draws its resources from a reserved block on its machine,
+and Google reports the block's usage as the total for all the tasks running
+inside it \cite{wilkes2020clusterdata2019}. Counting both the block and its
+tasks would count the same CPU twice, so measurements of tasks inside a block
+are dropped and the block's own measurement is kept. Second, Google reports
+usage over measurement windows that are normally five minutes long but are
+shorter when a task starts, stops, or changes during the window
+\cite{wilkes2020clusterdata2019, googleTraceFormatV3}. Following the example
+query in Google's analysis notebook \cite{googleClusterAnalysisColab}, only
+measurements covering a full five minutes are kept, so each retained \(a_r\)
+is an average over a whole window. An audit of cells \(a\)--\(d\) found that
+dropping the shorter measurements only removes 6.5\% of CPU work.
 
-\subsection{Modeled service and batch classes}
+\section{Service and Batch Classification}
 \label{subsec:clusterdata-tier-split}
 
 Google records job priorities rather than explicit service and batch
 labels. The priority bands from Google's analysis in
-Table~\ref{tab:priority-bands} are used, and work in the no-SLO bands is
-assumed to be deferrable. Priority comes from \codepath{collection_events}:
-\codepath{type=0} events are kept, the highest priority recorded for each
-\codepath{collection_id} is taken, and that priority is joined to the usage
-rows in BigQuery.
+Table~\ref{tab:priority-bands} are used. Work in the two lowest bands has weak
+or no service-level objectives (SLOs), meaning it is assumed to be deferrable.Each usage measurement takes the
+priority of its job, or of its allocation set for a reserved block.
 
 \begin{table}[htbp]
   \centering
@@ -460,112 +551,144 @@ rows in BigQuery.
   \end{tabular}
 \end{table}
 
-Priority 115 or below is classified as batch and the remaining usage as
-service. Let \(p_r\) be the priority attached to row \(r\), and
-\(\mathcal{E}^{\mathrm{bat}}_{c,k}\) the set of rows in
-\(\mathcal{E}_{c,k}\) with \(p_r\leq115\). Usage rows without a matching
-priority record remain in the service residual. The two classes are
+% [symbols 2026-10-09] was:
+% Priority 115 or below is classified as batch and the remaining usage as
+% service. Let \(p_r\), the \emph{job priority}, be the priority of
+% measurement \(r\)'s job, and \(\mathcal{E}^{\mathrm{bat}}_{c,k}\), the
+% \emph{batch measurement set}, the measurements in \(\mathcal{E}_{c,k}\) with
+% \(p_r\leq115\). Usage from a job with no recorded priority is counted as
+% service.
+%   \sum_{r\in\mathcal{E}^{\mathrm{bat}}_{c,k}} a_r,
+Usage from jobs with priority 115 or below is classified as batch, and the
+remaining usage as service. Usage from a job with no recorded priority is
+counted as service. The two classes are the \emph{batch utilization}
+\(u^{\mathrm{bat}}_{\mathrm{cell},k}\) and the \emph{service utilization}
+\(u^{\mathrm{svc}}_{\mathrm{cell},k}\):
 \begin{align}
-  u^{\mathrm{bat}}_{c,k}
+  u^{\mathrm{bat}}_{\mathrm{cell},k}
   &=
-  \frac{1}{C^{\mathrm{ref}}_c}
-  \sum_{r\in\mathcal{E}^{\mathrm{bat}}_{c,k}} a_r,
+  \frac{1}{C^{\mathrm{ref}}_{\mathrm{cell}}}
+  \sum_{\substack{r\ \text{in window}\ k\\ \text{priority}\,\leq\,115}} a_r,
   \label{eq:batch-utilization}\\
-  u^{\mathrm{svc}}_{c,k}
+  u^{\mathrm{svc}}_{\mathrm{cell},k}
   &=
-  u_{c,k}-u^{\mathrm{bat}}_{c,k}.
+  u_{\mathrm{cell},k}-u^{\mathrm{bat}}_{\mathrm{cell},k}.
   \label{eq:service-utilization}
 \end{align}
 These curves are referred to as \emph{deferrable batch} and
-\emph{nondeferrable service}. Four cells supply the workload profiles, which
-are converted to hourly arrivals in Section~\ref{sec:data-transformations}.
-Appendix~\ref{app:data-schemas} lists the stored columns and example values.
+\emph{nondeferrable service}. Cells \(a\)--\(d\) supply the training
+workload and cells \(e\)--\(h\) the test workload; both are converted to
+hourly arrivals in Section~\ref{subsec:transform-pairing}. Appendix~\ref{app:data-schemas} lists the stored columns and example values.
 
-\section{Google PowerData2019 Power Model}
+\section{Power Model: Google PowerData2019}
 \label{sec:powerdata2019}
 
-\subsection{Data fit}
+\subsection{Data Fit}
 \label{subsec:powerdata-purpose}
 
-PowerData2019 \cite{googlePowerData2019} provides five-minute normalized
-power-domain measurements for the same Borg cells. These measurements
-include data-center-floor cooling, as documented under
-\codepath{measured_power_util} on p.~2 of the \emph{Google Data Center Power
-Trace} documentation \cite{googlePowerTraceDocumentation}.
-CPU utilization is used to predict measured power-domain utilization; both
-series are averaged by cell and hour before an ordinary least-squares line is
-fitted:
+PowerData2019 \cite{googlePowerData2019} provides five-minute power
+measurements for the same Borg cells. Electricity reaches a data center's
+machines through power distribution units, each feeding several rows of
+server racks. Google calls the machines behind one such unit a
+\emph{power domain}, and each cell has several. Every five minutes, the trace
+reports each domain's power use as a fraction of what its unit can supply: a
+value of 0.6 means the domain drew 60\% of its rated power. Power in MW is
+not published. The measurements include data-center-floor cooling,
+as stated on p.~2 of the \emph{Google Data Center Power Trace} documentation
+\cite{googlePowerTraceDocumentation}. CPU utilization is used to predict this
+measured power fraction; both series are averaged by cell and hour before an
+ordinary least-squares line is fitted. The line gives the \emph{modeled power
+fraction} \(\widehat p_{\mathrm{cell}}(u)\) of a cell at hourly CPU utilization \(u\):
 \begin{equation}
-  \widehat p_c(u)
+  \widehat p_{\mathrm{cell}}(u)
   =
-  \alpha_c+\beta_c u.
+  \alpha_{\mathrm{cell}}+\beta_{\mathrm{cell}} u.
   \label{eq:powerdata-affine-fit}
 \end{equation}
-The intercept \(\alpha_c\) is the modeled power draw at zero CPU utilization,
-and \(\beta_c\) describes how power increases with utilization. The fitted
-idle draw ranges from
-about 38\% to 55\% of reference power across the cells.
+The intercept \(\alpha_{\mathrm{cell}}\), the \emph{idle power fraction}, is the modeled
+power draw at zero CPU utilization, and the slope \(\beta_{\mathrm{cell}}\), the
+\emph{dynamic power fraction}, is how much power rises from zero to full
+utilization. The intercept
+is an extrapolation: hourly CPU utilization ranges only from 0.35 to 0.68 in
+the training cells and from 0.32 to 0.76 in the test cells, so the
+least-squares line is extended beyond the observed data to reach zero. 
 
-\subsection{Active coefficients and power range}
+\subsection{Active Coefficients and Power Range}
 \label{subsec:powerdata-coefficients}
 
 Table~\ref{tab:powerdata-coefficients} lists the fitted coefficients for the
-four cells used here.\footnote{Stored in
-\codepath{data/power_model_params.json}.} Google reports normalized power,
-so a reference power of 500 MW per site is assumed. At this scale, modeled
-idle power ranges from 191 to 274 MW, with full utilization adding
-170 to 285 MW, depending on the cell.
+eight cells. Google reports power only as a fraction of capacity, so absolute
+power must be assumed. The site built from the largest training cell, \(c\),
+is assigned a reference power of 500 MW. Every other site's reference power,
+in either fleet, is 500 MW multiplied by its cell's capacity relative to
+\(c\) in Table~\ref{tab:cell-capacity}, which assumes that a cell's power
+capacity is proportional to its CPU capacity. The reference powers then range
+from 423 to 500 MW in the training fleet and from 477 to 721 MW in the test
+fleet. 
 
-\begin{table*}[htbp]
+\begin{table}[htbp]
   \centering
-  \small
-  \caption{Power fits using CPU utilization as the sole predictor, at the
-  500 MW reference scale.}
+  \footnotesize
+  \caption{Power fits using CPU utilization as the sole predictor, with
+  power in MW at each site's reference power \(\overline P\). Cells
+  \(a\)--\(d\) form the training fleet and \(e\)--\(h\) the test fleet.}
   \label{tab:powerdata-coefficients}
-  \begin{tabular}{@{}crrrcrrr@{}}
+  \begin{tabular}{@{}crrrcrrrr@{}}
     \toprule
-    Cell & \(\alpha_c\) & \(\beta_c\) & \(R^2\) & Observed \(u\)
-         & \(u=0\) & \(u=1\) & Swing \\
-         & & & & & \multicolumn{3}{c}{MW} \\
+    Cell & \(\alpha_{\mathrm{cell}}\) & \(\beta_{\mathrm{cell}}\) & \(R^2\) & Observed \(u\)
+         & \(\overline P\) & \(u=0\) & \(u=1\) & Swing \\
+         & & & & & \multicolumn{4}{c}{MW} \\
     \midrule
     \(a\) & 0.528016 & 0.339728 & 0.7885 & 0.363--0.682
-          & 264 & 434 & 170 \\
+          & 449 & 237 & 389 & 152 \\
     \(b\) & 0.548190 & 0.375761 & 0.7479 & 0.415--0.654
-          & 274 & 462 & 188 \\
+          & 498 & 273 & 460 & 187 \\
     \(c\) & 0.439604 & 0.525740 & 0.7642 & 0.397--0.667
-          & 220 & 483 & 263 \\
+          & 500 & 220 & 483 & 263 \\
     \(d\) & 0.382039 & 0.570370 & 0.8005 & 0.346--0.627
-          & 191 & 476 & 285 \\
+          & 423 & 162 & 403 & 241 \\
+    \addlinespace
+    \(e\) & 0.388045 & 0.601116 & 0.9062 & 0.317--0.710
+          & 477 & 185 & 472 & 287 \\
+    \(f\) & 0.427230 & 0.440739 & 0.6472 & 0.405--0.700
+          & 721 & 308 & 626 & 318 \\
+    \(g\) & 0.456218 & 0.492296 & 0.7938 & 0.321--0.744
+          & 523 & 238 & 496 & 257 \\
+    \(h\) & 0.383827 & 0.392821 & 0.9432 & 0.318--0.763
+          & 677 & 260 & 526 & 266 \\
     \bottomrule
   \end{tabular}
-\end{table*}
+\end{table}
 
 
 
-\section{Grid, Market, and Forecast Data}
+\section{Grid Data: EIA Demand, Wind, and Solar}
 \label{sec:energy-data}
 
-\subsection{Four market cases}
+\subsection{Four Market Cases}
 \label{subsec:energy-sources}
 
 Each modeled site is assigned to an electricity market. Hourly demand and
-generation by fuel are taken from the EIA grid monitor \cite{eiaGridMonitor}.
-CAISO NP15 draws on the CISO balancing authority, MISO Minnesota on MISO,
-SPP North on SWPP, and ISO-NE NEMA on ISNE.
+generation by fuel are taken from the EIA grid monitor \cite{eiaGridMonitor}
+for four balancing authorities: CAISO, MISO, SPP, and ISO-NE. Each series
+covers the whole balancing authority.
 
-For each region, demand, wind generation, and solar generation are
-used.\footnote{The EIA fields \codepath{D},
-\codepath{NG.WND}, and \codepath{NG.SUN} are stored as
-\codepath{gross_demand_mw}, \codepath{wind_mw}, and \codepath{solar_mw}.}
-EIA labels each interval by its ending hour. One hour is subtracted to store
-hour-beginning UTC timestamps, giving one row per market per hour.
+For each region, demand, wind generation, and solar generation are used.
+EIA labels each interval by its ending hour. One hour is subtracted so that
+each hour is labeled by its beginning, in UTC, giving one record per market
+per hour. The records for each month are stored in one table, called a
+\emph{panel}; Appendix~\ref{app:data-schemas} lists its columns. For the test
+month, the same three series are taken for May 2026, together with the week
+before it and the first twelve hours of June, which the forecasts need as
+past inputs and as targets. 
 
-\subsection{Net load}
+\subsection{Net Load}
 \label{subsec:energy-net-load}
 
 Net load is demand minus wind and solar generation. Let \(\tau\) be a UTC
-hour, \(D_m\) demand, and \(G^{\mathrm{wnd}}_m\), \(G^{\mathrm{sol}}_m\)
-observed wind and solar output, all in MW:
+hour, \(D_m\) the \emph{gross demand} of market \(m\), and
+\(G^{\mathrm{wnd}}_m\) and \(G^{\mathrm{sol}}_m\) its observed \emph{wind
+output} and \emph{solar output}, all in MW. The \emph{net load} \(N_m\) is
 \begin{equation}
   N_m(\tau)
   =
@@ -578,433 +701,634 @@ observed wind and solar output, all in MW:
 
 
 
-\subsection{Calendar and frozen statistics}
+% [dev-data 2026-10-10] was: \section{Development, Cross-Validation, and Test Data}
+\section{Cross-Validation and Test Data}
 \label{subsec:energy-calendar}
 
-Grid data from 2025 are used. The training set, \(\mathcal E_{\mathrm{train}}\),
-contains the eleven months outside May (334 UTC days). May (31 UTC days)
-is used for validation. Each month is a continuous simulation, as
-described in Section~\ref{subsec:transform-pairing}.
+The data is divided by calendar month, because each month is one
+continuous simulation (Section~\ref{subsec:transform-pairing}) and the hours
+within a month are linked: queued work carries from hour to hour, and every
+ramp joins two neighboring hours. Two groups of months are used:
+% [dev-data 2026-10-10] was: "Three groups of months are used:" and the bullets
+%   \item The \emph{development data} is the twelve months of 2025, served by
+%         the training fleet built from cells \(a\)--\(d\). Every design choice
+%         and every fitted quantity comes from these months.
+%   \item Within the development data, \emph{four-fold cross-validation}
+%         estimates how well the method does on months it has not seen.
+\begin{itemize}
+  \item The twelve months of 2025, served by the training fleet built from
+        cells \(a\)--\(d\). Every design choice and every fitted quantity
+        comes from these months, and \emph{four-fold cross-validation} over
+        them estimates how well the method does on months it has not seen.
+  \item The \emph{test data} is May 2026, served by a second fleet built
+        from cells \(e\)--\(h\) (Section~\ref{subsec:transform-mapping}). The
+        test month is scored once, after every choice has been fixed.
+\end{itemize}
 
-To compare markets of different sizes, a fixed scale
-\(S_m\) is defined for each market: the empirical 95th percentile of gross demand over
-the training months,
+In \(k\)-fold cross-validation, the data is divided into \(k\) equal parts,
+called folds. A model is fitted on \(k-1\) folds and scored on the fold left
+out, and this is repeated until every fold has been left out once; the \(k\)
+scores are then averaged. Every
+observation is scored exactly once, by a model that did not see it, so the
+estimate does not depend on which part of the data happened to be held out,
+as it would with a single validation month. Here \(k=4\), and each fold is
+three whole months. 
+
+Each fold uses one month from each third of the year, so its nine training
+months include all four seasons, as the final training set does. Within a
+fold, everything fitted to data is fitted on the fold's nine training months
+only: the forecast weights (Section~\ref{subsec:energy-forecasts}), the market
+scales \(S_m\) below, the statistics that standardize the scheduler's
+observations, and the objective references \(C_R\) and \(C_Q\)
+(Section~\ref{subsec:problem-normalization}). The scheduler is then trained
+on those nine months and scored on each of the three held-out months. With
+three training seeds per fold, every 2025 month is scored three times, each
+time by a policy that never saw it, and the cross-validation estimate is the
+average over the twelve months. After cross-validation, the final policies
+are trained on all twelve months, with every fitted quantity refitted on all
+twelve, and are scored once on the test month. Nothing is changed after that
+score has been seen to ensure it remains casual. 
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{Training and scored months of the four cross-validation folds and
+  of the final policies. The 2025 months are served by the fleet from cells
+  \(a\)--\(d\) and the test month by the fleet from cells \(e\)--\(h\).}
+  \label{tab:data-splits}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Stage & Training months & Scored months \\
+    \midrule
+    Fold 1 & the other nine months of 2025 & January, May, September 2025 \\
+    Fold 2 & the other nine months of 2025 & February, June, October 2025 \\
+    Fold 3 & the other nine months of 2025 & March, July, November 2025 \\
+    Fold 4 & the other nine months of 2025 & April, August, December 2025 \\
+    \addlinespace
+    Final & all twelve months of 2025 & May 2026 (test) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% [held-out 2026-10-10] was:
+% Due to the forecasting input requirements, a training month that follows a held-out month starts from the last hour of
+% that held-out month, and the forecasts for its first week use that month's
+% observations as past inputs. These enter only as the starting point of the
+% month's first ramp and as observations that were already available at the
+% time. No held-out hour is ever scored during training, and the forecast
+% weights leave out every row whose inputs reach into a held-out month
+% (Section~\ref{subsec:energy-forecasts}).
+In each fold, the held-out months sit between training months. For example,
+fold 1 holds out May but trains on June. June can still look back into May:
+its warm-up hour is the last hour of May, and its forecasts in the first week
+use May's values as the yesterday and last week inputs.  What June cannot do is learn
+from May. No May hour is scored during training, and no May hour is used to
+fit the forecast model (Section~\ref{subsec:energy-forecasts}).
+
+% [dev-data 2026-10-10] was: "differs from the development data" and "Every development month"
+The test month differs from the 2025 months in three ways: its grid
+data is a year later, its workload comes from cells \(e\)--\(h\) rather than
+\(a\)--\(d\), and its fleet is larger, 2,398 MW against 1,869 MW
+(Section~\ref{subsec:transform-mapping}). Every 2025 month replays the
+same 744-hour workload of cells \(a\)--\(d\), so cross-validation scores new
+grid months with familiar workload, while the test month also brings unseen
+workload and an unseen fleet.
+
+The training months of a split are written \(\mathcal E_{\mathrm{train}}\),
+the \emph{training set}: nine months in a fold, and all twelve for the final
+policies. To compare markets of different sizes, a fixed \emph{market scale}
+\(S_m\) is defined for each market: the empirical 95th percentile of gross
+demand over the training months,
+% [symbols 2026-10-09] was:
+%   Q_{0.95}\!\left(\{D_m(\tau):\tau\in\mathcal{R}\}\right),
+% where \(\mathcal{R}\), the \emph{training hours}, is every hour of the
+% training months.
 \begin{equation}
   S_m
   =
-  Q_{0.95}\!\left(\{D_m(\tau):\tau\in\mathcal{R}\}\right),
+  Q_{0.95}\!\left(\{D_m(\tau):\tau\ \text{in the training months}\}\right).
   \label{eq:market-scale}
 \end{equation}
-where \(\mathcal{R}\) is every hour of 2025 outside May.
-The scales in Table~\ref{tab:frozen-stats} are held fixed throughout training
-and validation and are used to express net-load ramps and peaks relative to
-each market's demand scale.
+Each fold
+computes its own scales from its nine months. The final scales in
+Table~\ref{tab:frozen-stats} use all of 2025 and also serve the test month;
+the fold scales lie within 4\% of them. The scales are held fixed throughout
+training and evaluation and express net-load ramps and peaks relative to each
+market's demand scale.
+Using the 95th percentile rather than the highest hour keeps a few demand
+spikes from dominating the scale. For example, ISO-NE's highest hour in 2025
+reached 25,898~MW, 45\% above its 95th percentile, and only six hours of the
+year came within 5\% of that peak. Scaling by that hour would make every
+ISO-NE ramp and peak look about 30\% smaller.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Regional normalization scale \(S_m\), in MW.}
+  \caption{Regional normalization scale \(S_m\), in MW: the final value from
+  all of 2025, and the range of the four fold values.}
   \label{tab:frozen-stats}
-  \begin{tabular}{@{}lr@{}}
+  \begin{tabular}{@{}lrr@{}}
     \toprule
-    Market case & \(S_m\) \\
+    Market case & Final \(S_m\) & Fold range \\
     \midrule
-    CAISO NP15     & 33,983 \\
-    MISO Minnesota & 101,250 \\
-    SPP North      & 46,367 \\
-    ISO-NE NEMA    & 18,007 \\
+    CAISO          & 33,781  & 32,506--34,568 \\
+    MISO           & 100,521 & 97,618--102,611 \\
+    SPP            & 45,876  & 44,457--47,237 \\
+    ISO-NE         & 17,888  & 17,502--18,142 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsection{Forecasts}
+\section{Demand and Net-Load Forecasts}
 \label{subsec:energy-forecasts}
 
-Each panel row carries gross-demand and net-load forecasts with lead times of
-one, three, six, and twelve hours from its issue time, which is the row's own
-hour. The decision at hour \(t\) reads the row for \(t-1\), so the forecasts
-available to it target \(t\), \(t+2\), \(t+5\), and \(t+11\): the current
-decision hour and two, five, and eleven hours later. Queue urgency is reported
-separately as work due within one, three, six, twelve, and twenty-four
-execution slots.
+Each hour of a panel is stored with gross-demand and net-load forecasts
+issued at that hour, with lead times of one, three, six, and twelve hours.
+The decision for hour \(t\) is made at the start of that hour, before its
+demand and generation are known. Because each record is labeled by the hour
+it begins (Section~\ref{subsec:energy-sources}), the latest complete record
+at that moment is hour \(t-1\). The decision therefore reads the panel for
+hour \(t-1\), so the forecasts available to it target \(t\), \(t+2\),
+\(t+5\), and \(t+11\): the current decision hour and two, five, and eleven
+hours later. The forecasts are produced from the EIA data by least-squares
+regression.
 
-No external forecast product is used. The forecasts are produced from the EIA
-data by ridge regression, fitted and written by
-\codepath{scripts/build_causal_forecasts.py}, so that their inputs, their
-fitting, their output, and their accuracy are known exactly. Each is described
-in turn.
-
-\subsubsection{Model}
-For each market \(m\), each quantity \(Y\in\{D_m,N_m\}\), and each lead
-\(h\in\{1,3,6,12\}\), a separate direct multi-step model predicts the value
-\(h\) hours after the issue hour \(\tau\) from 28 inputs \(x_k(\tau)\)
-observed at or before \(\tau\):
-\begin{align}
+\subsection{Forecast Model}
+Each forecast is a linear regression: a constant plus a weighted sum of nine
+inputs, all observed at or before the hour at which the forecast is issued.
+Let the \emph{forecast quantity} \(Y\) stand for either gross demand \(D_m\)
+or net load \(N_m\) of one market, let \(\tau\) be the \emph{issue hour},
+\(\mathrm{hour}(\tau)\) its UTC \emph{hour of day} (0 to 23), and
+\(h\in\{1,3,6,12\}\) the \emph{lead} in hours. The \emph{forecast}
+\(\widehat Y(\tau+h\mid\tau)\) of \(Y\) at the \emph{target hour} \(\tau+h\)
+is a constant \(b_0\) plus each \emph{forecast input} \(x_1,\dots,x_9\) times
+its weight:
+% [forecast-eq 2026-10-10] was the three-line form:
+%   b_0
+%   +b_1\,Y(\tau)
+%   +b_2\,\bigl[Y(\tau)-Y(\tau-1)\bigr]
+%   +b_3\,Y(\tau-24)
+%   +b_4\,Y(\tau+h-24)
+%   +b_5\,Y(\tau+h-168)
+%   +b_6\sin\frac{2\pi\,\mathrm{hour}(\tau)}{24}
+%   +b_7\cos\frac{2\pi\,\mathrm{hour}(\tau)}{24}
+%   +b_8\,G^{\mathrm{wnd}}_m(\tau)
+%   +b_9\,G^{\mathrm{sol}}_m(\tau).
+\begin{equation}
   \widehat Y(\tau+h\mid\tau)
-  &=
-  \bar y+\sum_{k=1}^{28} w_k\,\frac{x_k(\tau)-\bar x_k}{\sigma_k},
-  \label{eq:forecast-model}\\
-  \mathbf w
-  &=
-  \left(\mathbf X^{\mathsf T}\mathbf X+\alpha\mathbf I\right)^{-1}
-  \mathbf X^{\mathsf T}\left(\mathbf y-\bar y\mathbf 1\right).
-  \label{eq:forecast-ridge}
-\end{align}
-Here \(\bar x_k\) and \(\sigma_k\) are the mean and standard deviation of
-input \(k\) over the training rows, \(\mathbf X\) is the matrix of
-standardized inputs over those rows, \(\mathbf y\) is the vector of targets
-\(Y(\tau+h)\), \(\bar y\) is its mean, and \(\alpha>0\) is the ridge penalty.
-The intercept is the training mean of the target and is not penalized, and the
-coefficients are computed in closed form. Four markets, two quantities, and
-four leads give 32 models. A separate model per lead is what makes the four
-forecast columns differ; one one-step model applied recursively, or one series
-copied into every column, would not.
-
-\subsubsection{Inputs}
-Table~\ref{tab:forecast-inputs} lists the inputs. Every input is a function of
-observations at or before the issue hour. The level at \(\tau\) alone
-reproduces a persistence forecast, so any improvement over persistence must
-come from the other inputs. The one- and three-hour changes are included
-because the objective concerns ramps: the rate at which a series is already
-moving carries information beyond its level. Wind and solar output at the
-issue hour drive the gap between gross demand and net load, and the calendar
-terms carry the daily and weekly cycles. Causality is checked mechanically:
-the inputs are rebuilt from a copy of the series truncated six hours early,
-and every value on the overlapping hours must be unchanged to within
-\(10^{-9}\). A column that used a later row would move, and the build stops.
-The panel loader separately rejects any forecast whose recorded issue time is
-later than its row's hour.
+  =
+  b_0+b_1x_1+b_2x_2+\dots+b_9x_9 .
+  \label{eq:forecast-model}
+\end{equation}
+Table~\ref{tab:forecast-inputs} lists the nine inputs: five past values of
+\(Y\), two terms for the time of day, and the wind and solar output at the
+issue hour. 
+% [forecast-eq 2026-10-10] was: "Table~\ref{tab:forecast-inputs} lists the nine
+% inputs. Two of the lagged inputs look back ... The sine and cosine together ..."
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Forecast inputs for one market at issue hour \(\tau\). \(D\) is
-  gross demand and \(N\) is net load; every value is observed at or before
-  \(\tau\).}
+  % [forecast-eq 2026-10-10] added the first column (x_1 to x_9), the sine
+  % and cosine formula, and split wind and solar into their own rows.
+  \caption{Inputs \(x_1,\dots,x_9\) of the forecast model in
+  Equation~\eqref{eq:forecast-model}. \(Y\) is the gross demand or the net
+  load of one market, \(\tau\) is the issue hour, and \(h\) is the lead.}
   \label{tab:forecast-inputs}
-  \begin{tabular}{@{}L{0.27\columnwidth}L{0.55\columnwidth}r@{}}
+  \begin{tabular}{@{}L{0.07\columnwidth}L{0.23\columnwidth}L{0.27\columnwidth}L{0.33\columnwidth}@{}}
     \toprule
-    Group & Inputs & Count \\
+    Input & Value & Meaning & Role \\
     \midrule
-    Recent levels
-      & \(D\) and \(N\) at \(\tau\), \(\tau-1\), \(\tau-2\), and \(\tau-3\)
-      & 8 \\
+    \(x_1\) & \(Y(\tau)\)
+      & latest value
+      & starting point \\
     \addlinespace
-    Daily and weekly lags
-      & \(D\) and \(N\) at \(\tau-24\), \(\tau-25\), and \(\tau-168\)
-      & 6 \\
+    \(x_2\) & \(Y(\tau)-Y(\tau-1)\)
+      & change over the last hour
+      & how fast the series is already moving \\
     \addlinespace
-    Trailing means
-      & means of \(D\) and \(N\) over the 24 and the 168 hours ending at
-        \(\tau-1\)
-      & 4 \\
+    \(x_3\) & \(Y(\tau-24)\)
+      & issue hour, one day earlier
+      & with \(x_4\), yesterday's change from the issue hour to the
+        target hour \\
     \addlinespace
-    Recent changes
-      & \(D\) and \(N\) at \(\tau\) minus their values at \(\tau-1\) and at
-        \(\tau-3\)
-      & 4 \\
+    \(x_4\) & \(Y(\tau+h-24)\)
+      & target hour, one day earlier
+      & daily cycle \\
     \addlinespace
-    Renewable output
-      & wind and solar generation at \(\tau\)
-      & 2 \\
+    \(x_5\) & \(Y(\tau+h-168)\)
+      & target hour, one week earlier
+      & weekly cycle, such as weekdays versus weekends \\
     \addlinespace
-    Calendar
-      & sine and cosine of the UTC hour of day and of the day of week
-      & 4 \\
-    \midrule
-    Total & & 28 \\
+    \(x_6\), \(x_7\) & sine and cosine of \(2\pi\,\mathrm{hour}(\tau)/24\)
+      & time of day of the issue hour
+      & typical level for that time of day \\
+    \addlinespace
+    \(x_8\) & \(G^{\mathrm{wnd}}_m(\tau)\)
+      & wind output at the issue hour
+      & current weather \\
+    \addlinespace
+    \(x_9\) & \(G^{\mathrm{sol}}_m(\tau)\)
+      & solar output at the issue hour
+      & current weather \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsubsection{Fitting}
-A model is fitted on rows whose issue hour and target hour both fall in the
-eleven training months. No April row with a May target is used, and no May
-hour serves as an issue hour or a target hour in any fit or in the penalty
-selection. Rows without a complete input set are excluded: the weekly lag and
-the 168-hour mean need a week of history, so the first 168 hours of the panel,
-through 2025-01-07 22:00 UTC, carry no model forecast. The rows that remain
-number 7,847 per model at the one-hour lead and 7,825 at the twelve-hour lead.
-The penalty \(\alpha\) is chosen from \(\{0.01, 0.1, 1, 10, 100, 1000\}\) by
-rolling-origin cross-validation: the training rows are placed in time order,
-their second half is divided into four consecutive blocks of 981 rows, and for
-each block a model is fitted on every earlier row and scored on that block by
-mean absolute error. The penalty with the lowest mean error over the four
-blocks is kept, and the model is refitted on all training rows. A model is
-therefore never scored on an hour that precedes the hours it was fitted on.
-The selected penalties range from 0.01, for most ISO-NE and SPP models, to
-1000, for the CAISO net-load models at the three- and six-hour leads. The
-standardization statistics \(\bar x_k\) and \(\sigma_k\) are computed once on
-all training rows before the cross-validation.
+The \emph{forecast weights} \(b_0,\dots,b_9\) are found by ordinary least
+squares. Weights is fitted for
+each market, quantity, and lead, so four markets, two quantities, and four
+leads give 32 models. The weights differ by lead because a twelve-hour
+forecast leans less on the latest value, and more on the value one week
+earlier, than a one-hour forecast does. The simplest possible forecast,
+\emph{persistence}, assumes that the value \(h\) hours ahead equals the latest
+observed value. It is Equation~\eqref{eq:forecast-model} with \(b_1=1\) and
+every other weight zero, and it is the benchmark the model must beat.
 
-\subsubsection{Output}
-The output of each model is a point forecast, in MW, of the target quantity
-at \(\tau+h\). For every panel row, the eight forecasts are written to the
-columns \codepath{forecast_gross_h1_mw} through
-\codepath{forecast_gross_h12_mw} and \codepath{forecast_net_h1_mw} through
-\codepath{forecast_net_h12_mw}, listed in Appendix~\ref{app:data-schemas};
-the issue time is recorded as the row's own hour in
-\codepath{forecast_issue_time_utc}; and the model version is recorded in
-\codepath{forecast_vintage_id} and in the calendar file. Rows without a
-complete input set receive the persistence value, the issue-hour observation
-of the target quantity, in every forecast column. The scheduler reads these
-columns as part of its observation and never calls the model. Scoring always
-uses the realized net load, as Section~\ref{subsec:problem-causality} states.
+The model is static: its weights are fitted once, on the training months,
+and then held fixed. They are not refitted as the simulation advances; each
+hour, only the inputs change, as the newest observations enter
+Equation~\eqref{eq:forecast-model}. A forecast for May 2026 therefore uses
+weights learned from 2025 alone and values observed up to its issue hour.
 
-\subsubsection{Accuracy}
-Accuracy is measured by the mean absolute error (MAE) between each forecast
-and the realized value at its target hour, and it is compared with the
-persistence forecast, which assumes that the target hour equals the issue
-hour. Two sets of hours are scored. The in-sample set is the training rows
-that fitted each model. The out-of-sample set is the 744 issue hours of May
-2025, which no fit and no penalty selection used; May was consulted only when
-the four lead times were chosen, which is why it is called validation rather
-than test. Table~\ref{tab:forecast-accuracy} reports both.
+\subsection{Fitting}
+% [held-out 2026-10-10] was:
+% The training data is the hourly EIA gross demand, net load, wind output,
+% and solar output of each balancing authority over the training months. A
+% fitting row pairs an issue hour with its target \(h\) hours later. A row is
+% used only if its target hour, and every hour its inputs read, lie in training
+% months. In a fold, this leaves out the rows whose target falls in a held-out
+% month and the week of rows after each held-out month, whose week-ago input
+% would otherwise read the held-out month; without this purge, a held-out
+% month would shape the weights through the lagged inputs.
+The forecast weights are fitted on the training months only. Each fitting
+example, or \emph{row}, is one issue hour: its nine inputs and the value
+that actually occurred \(h\) hours later. A row is used only if all of its
+hours, inputs and target, fall in training months. Because one input looks
+back a week, this removes the held-out months and the first week after each
+held-out month. Forecasts are still made for those hours; their rows are
+only left out of fitting the weights, so that the held-out months never
+shape the forecast model.
 
-\begin{table*}[htbp]
+Each model outputs a forecast in MW. For every hour, the eight forecasts of
+each market are stored in the panel next to that hour's grid data
+(Appendix~\ref{app:data-schemas}); each fold stores its own forecasts, and
+the final models' forecasts fill the 2025 panels and the test panel. The
+scheduler reads these stored forecasts as part of its observation and never
+runs the model itself. 
+
+\subsection{Accuracy}
+% [mae-only 2026-10-10] was: "Three measures of forecast error are reported." with MAE,
+% RMSE, and MAPE in one align block, plus a paragraph explaining RMSE and MAPE.
+Forecast error is measured by the mean absolute error (MAE). For \(n\)
+forecasts \(\widehat Y_i\) of realized values \(Y_i\),
+\begin{equation}
+  \mathrm{MAE}
+  =
+  \frac{1}{n}\sum_{i=1}^{n}\bigl|\widehat Y_i-Y_i\bigr|.
+  \label{eq:forecast-metrics}
+\end{equation}
+The MAE is the typical size of a miss, in MW.
+% [mae-only 2026-10-10] cut: "To compare markets of different size, it is also
+% given as a share of the market scale \(S_m\)."
+
+The MAE is computed on two sets of hours and compared with persistence.
+The cross-validation set is every hour of 2025, each forecast by the fold
+model that did not see its month. The test set is the 744 issue hours of May
+2026, forecast by the final models. Table~\ref{tab:forecast-accuracy} reports
+the MAE of both.
+
+\begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Forecast mean absolute error in MW, ridge model versus persistence,
-  by lead \(h\) in hours from the issue hour. The out-of-sample rows score the
-  744 issue hours of May 2025; the in-sample rows score the training rows that
-  fitted each model.}
+  \caption{Forecast mean absolute error in MW, least-squares model (LS)
+  versus persistence, by lead \(h\) in hours from the issue hour. The
+  cross-validation rows pool every 2025 hour, each forecast by the fold model
+  that held its month out; the test rows score May 2026 with the final
+  models.}
   \label{tab:forecast-accuracy}
+  \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}llrrrrrrrr@{}}
     \toprule
     & & \multicolumn{2}{c}{\(h=1\)} & \multicolumn{2}{c}{\(h=3\)}
         & \multicolumn{2}{c}{\(h=6\)} & \multicolumn{2}{c}{\(h=12\)} \\
     \cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(l){9-10}
-    Market case & Quantity & Ridge & Persist. & Ridge & Persist.
-                & Ridge & Persist. & Ridge & Persist. \\
+    Market case & Quantity & LS & Persist. & LS & Persist.
+                & LS & Persist. & LS & Persist. \\
     \midrule
-    \multicolumn{10}{@{}l}{\emph{May 2025, out of sample}} \\
-    CAISO NP15     & gross demand &   447 &   815 & 1,163 & 2,110 & 1,480 & 3,111 & 1,819 &  2,723 \\
-    CAISO NP15     & net load     & 1,056 & 1,745 & 2,787 & 4,795 & 3,019 & 8,455 & 2,745 & 12,496 \\
-    MISO Minnesota & gross demand &   433 & 1,426 & 1,329 & 4,140 & 2,172 & 7,557 & 3,011 & 10,360 \\
-    MISO Minnesota & net load     &   825 & 1,558 & 2,423 & 4,109 & 3,618 & 6,531 & 4,443 &  7,932 \\
-    SPP North      & gross demand &   255 &   594 &   840 & 1,721 & 1,471 & 3,133 & 1,720 &  4,384 \\
-    SPP North      & net load     &   541 &   787 & 1,661 & 2,183 & 2,791 & 3,832 & 3,500 &  5,383 \\
-    ISO-NE NEMA    & gross demand &   187 &   403 &   569 & 1,073 &   741 & 1,656 &   810 &  1,699 \\
-    ISO-NE NEMA    & net load     &   200 &   433 &   622 & 1,147 &   801 & 1,763 &   851 &  1,787 \\
+    \multicolumn{10}{@{}l}{\emph{Cross-validation, 2025}} \\
+    CAISO          & gross demand &   387 &   863 &   729 & 2,234 &   940 & 3,438 & 1,044 &  3,546 \\
+    CAISO          & net load     &   548 & 1,584 & 1,075 & 4,259 & 1,412 & 7,253 & 1,611 &  9,369 \\
+    MISO           & gross demand &   452 & 1,745 & 1,230 & 4,968 & 1,989 & 8,628 & 2,629 & 10,960 \\
+    MISO           & net load     &   876 & 2,035 & 2,391 & 5,406 & 3,789 & 8,545 & 4,949 &  9,978 \\
+    SPP            & gross demand &   247 &   758 &   716 & 2,164 & 1,161 & 3,783 & 1,453 &  4,866 \\
+    SPP            & net load     &   581 & 1,049 & 1,731 & 2,925 & 2,986 & 5,204 & 4,018 &  7,391 \\
+    ISO-NE         & gross demand &   217 &   497 &   554 & 1,336 &   800 & 2,062 &   912 &  2,081 \\
+    ISO-NE         & net load     &   232 &   525 &   603 & 1,406 &   869 & 2,155 &   984 &  2,151 \\
     \addlinespace
-    \multicolumn{10}{@{}l}{\emph{Training months, in sample}} \\
-    CAISO NP15     & gross demand &   509 &   868 & 1,169 & 2,246 & 1,318 & 3,469 & 1,474 &  3,626 \\
-    CAISO NP15     & net load     & 1,052 & 1,569 & 2,514 & 4,209 & 2,521 & 7,137 & 2,439 &  9,073 \\
-    MISO Minnesota & gross demand &   537 & 1,775 & 1,766 & 5,046 & 2,875 & 8,730 & 3,250 & 11,019 \\
-    MISO Minnesota & net load     &   999 & 2,079 & 3,022 & 5,527 & 4,437 & 8,735 & 5,027 & 10,176 \\
-    SPP North      & gross demand &   276 &   773 &   909 & 2,206 & 1,515 & 3,844 & 1,733 &  4,913 \\
-    SPP North      & net load     &   570 & 1,074 & 1,667 & 2,995 & 2,791 & 5,333 & 3,785 &  7,581 \\
-    ISO-NE NEMA    & gross demand &   224 &   506 &   679 & 1,361 &   921 & 2,099 & 1,105 &  2,117 \\
-    ISO-NE NEMA    & net load     &   241 &   534 &   740 & 1,430 &   991 & 2,191 & 1,173 &  2,186 \\
-    \bottomrule
-  \end{tabular}
-\end{table*}
-
-Every model beats persistence at every lead in both sets. In May, the ridge
-errors are 24\% to 78\% below persistence. The gain is largest for CAISO net
-load at the six- and twelve-hour leads, 64\% and 78\%, where persistence
-carries the midday solar trough forward into the evening, and smallest for SPP
-North net load, 24\% to 35\%, where wind dominates the hour-to-hour variation.
-In-sample errors are within about 30\% of the May errors for every model, in
-both directions, so the models do not overfit the training months. Relative
-to each market's scale \(S_m\), the May MAE is 0.4\% to 3.1\% of \(S_m\) at
-the one-hour lead and 3.0\% to 8.1\% at the twelve-hour lead; persistence is
-1.3\% to 5.1\% and 7.8\% to 36.8\% at the same leads. When the columns are
-written, any model whose in-sample MAE failed to beat persistence would be
-replaced by persistence outright, and the newly fitted forecasts are compared
-with the columns already in the panels. No model triggered the replacement,
-and the committed panels match the current model within rounding. The
-forecasts therefore give the scheduler a materially better view of the coming
-hours than the last observation alone, with errors that stay within a few
-percent of the regional demand scale.
-
-The hourly grid panels contain demand, wind and solar generation, net load,
-the fixed market scale, and forecasts for each market.
-Appendix~\ref{app:data-schemas} lists the columns and an example row.
-
-\section{The Synthetic Four-Site Fleet}
-\label{sec:data-transformations}
-
-\subsection{Cell-to-market mapping and standardized work}
-\label{subsec:transform-mapping}
-
-The fixed cell-to-market mapping in Table~\ref{tab:active-market-map} is
-assumed; Google does not report cell locations. The site index \(m\)
-therefore identifies the source cell for its workload curves
-\(u^{\mathrm{svc}},u^{\mathrm{bat}}\) and power coefficients
-\(\alpha_m,\beta_m\). All four sites have compute capacity \(K_m=1\) and
-reference power \(\overline P_m=500\) MW.
-
-\begin{table}[htbp]
-  \centering
-  \footnotesize
-  \caption{Source cell for each modeled site, named by its market case.}
-  \label{tab:active-market-map}
-  \begin{tabular}{@{}ll@{}}
-    \toprule
-    Market case & Source cell \\
-    \midrule
-    CAISO NP15     & \(a\) \\
-    MISO Minnesota & \(b\) \\
-    SPP North      & \(c\) \\
-    ISO-NE NEMA    & \(d\) \\
+    \multicolumn{10}{@{}l}{\emph{Test, May 2026}} \\
+    CAISO          & gross demand &   413 &   841 &   832 & 2,180 & 1,019 & 3,163 & 1,096 &  2,811 \\
+    CAISO          & net load     &   528 & 1,519 &   988 & 4,131 & 1,244 & 7,213 & 1,395 & 10,675 \\
+    MISO           & gross demand &   420 & 1,499 & 1,075 & 4,290 & 1,727 & 7,734 & 2,323 & 10,535 \\
+    MISO           & net load     & 1,035 & 1,958 & 2,726 & 5,109 & 4,094 & 7,843 & 5,025 &  9,598 \\
+    SPP            & gross demand &   225 &   780 &   656 & 2,271 & 1,026 & 4,149 & 1,356 &  5,727 \\
+    SPP            & net load     &   554 &   993 & 1,550 & 2,760 & 2,572 & 4,975 & 3,905 &  7,212 \\
+    ISO-NE         & gross demand &   236 &   420 &   584 & 1,110 &   779 & 1,720 &   866 &  1,886 \\
+    ISO-NE         & net load     &   264 &   456 &   643 & 1,202 &   850 & 1,851 &   962 &  2,025 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Decisions are hourly, so \(\Delta t=1\) h. One work unit means
-\emph{one site running at full utilization for one hour}; 0.5 work units
-means half utilization for that hour. Although sites share this capacity and
-the 500 MW reference scale, their different power coefficients
-\(\alpha_m,\beta_m\) mean the same work can draw different power at each site.
+% [mae-only 2026-10-10] cut the RMSE and MAPE sentences, then (same day) the
+% rest of the paragraph: MAE as 0.4-1.6% (h1) / 2.3-8.8% (h12) of S_m vs
+% persistence 1.5-4.7% / 8.3-31.6%; training/CV error ratio 92-99% (no
+% overfitting); test errors close to CV, so 2025 weights carry over to 2026.
+Every model beats persistence at every lead on both sets, with a mean
+absolute error 41\% to 87\% lower. The hourly grid panels contain demand, wind and solar generation, net load, the fixed market scale, and forecasts for each market. Appendix~\ref{app:data-schemas} lists the columns and an example row.
 
-\subsection{Pairing repeated workload with grid time}
-\label{subsec:transform-pairing}
+\section{Data Quality Checks}
+\label{sec:data-quality}
 
-The 744-hour Google workload restarts at the beginning of each calendar
-month; shorter months use only the hours they need. The same workload is
-used in the eleven training months and the May validation month.
+% [data-quality 2026-10-10] replaced the \planned note (gap filling, hour shift,
+% forecast causality checks).
+No hour was missing in the EIA data for 2025 or the test month. Negative
+wind or solar values are set to zero.
 
-Each month is an independent, continuous simulation. Queues and site-power
-history carry across midnight, and every decision hour is scored. The
-decision hours for month \(e\) are \(\mathcal T_e=\{0,\ldots,T_e-1\}\), where
-\(T_e\) is its length in hours. One preceding hour,
-\(\mathcal W=\{-1\}\), initializes the grid and site-power history for the
-first decision and ramp calculation.
-Its power is computed by executing the preceding workload in place;
-that warm-up work is not added to the queues. The warm-up hour is excluded
-from monthly peak maxima.
+One implausible value is kept as EIA published it. CAISO's demand at
+2025-07-31 20:00 UTC is 11,819 MW, against 29,881 and 29,886 MW in the hours
+before and after, so its net load that hour is \(-7{,}242\) MW and two
+artificial ramps of about 18,000 MW appear in July. Reviewing every market
+and both years for one-hour spikes of this kind found no other.
 
-Queues start empty and must be empty at month-end. Arrivals in the final
-23 hours receive shorter completion windows under
-Equation~\eqref{eq:batch-deadline}.
+\chapter{SYNTHETIC FLEET AND PROBLEM FORMULATION}
+\label{chap:problem}
 
-Let \(s_{m,t}\) and \(q_{m,t}\) denote hourly service and batch arrivals at
-site \(m\). Service must run immediately; batch may wait.
+This chapter turns the prepared data into synthetic four-site fleets, one
+for training and one for the test month, and states the optimization problem
+the scheduler must solve. Nothing in it
+depends on the learning method, so any scheduler can be scored against the
+same problem.
 
-The five-minute utilization curves from
-Section~\ref{sec:clusterdata2019} are converted to work by averaging the
-twelve windows in each hour, then multiplying by the site's hourly capacity
-\(K_m\Delta t\). Each hour's recorded CPU execution is treated as work
-arriving at the start of the corresponding simulation hour, and the hour's
-aggregate work is assumed known at that moment; for example, average
-utilization of 60\% becomes 0.6 work units. Let \(t\) be the hour within the
-month:
-\begin{align}
-  s_{m,t}
-  &=
-  \frac{K_m\Delta t}{12}
-  \sum_{b=0}^{11} u^{\mathrm{svc}}_{m,12t+b},
-  \label{eq:synthetic-service-arrivals}\\
-  q_{m,t}
-  &=
-  \frac{K_m\Delta t}{12}
-  \sum_{b=0}^{11} u^{\mathrm{bat}}_{m,12t+b}.
-  \label{eq:synthetic-batch-arrivals}
-\end{align}
-With \(K_m=1\) work unit per hour
-and \(\Delta t=1\) h, the resulting work amounts equal the hourly average
-utilization values numerically.
+\section{The Four-Site Fleet}
+\label{sec:data-transformations}
+\label{subsec:transform-mapping}
 
-Grid data from the corresponding UTC hours are used. If \(\tau_e\) is the
-month's UTC start time,
-\begin{equation}
-  \begin{aligned}
-    D_{m,t} &= D_m(\tau_e+t\Delta t), \\
-    N_{m,t} &= N_m(\tau_e+t\Delta t).
-  \end{aligned}
-  \label{eq:episode-grid-map}
-\end{equation}
-This mapping also applies to the preceding warm-up hour.
-
-\subsection{Available control scale}
-\label{subsec:transform-control-authority}
-
-At the 500 MW reference scale, the sum of the four individual idle-to-full
-modeled power ranges is approximately 906 MW. Table~\ref{tab:workload-feasibility} summarizes the repeated 744-hour
-workload.
+The study uses its own fixed cell-to-market mapping in
+Table~\ref{tab:active-market-map}, which is an assumption rather than a
+statement about where the cells are. The site index \(m\)
+therefore identifies the source cell for its workload curves
+\(u^{\mathrm{svc}},u^{\mathrm{bat}}\) and power coefficients
+\(\alpha_m,\beta_m\). Each site also keeps the size of its source cell.
+% [no-K 2026-10-10] was: compute capacity K_m = cell's reference capacity divided
+% by that of cell c; reference power \overline P_m = 500 K_m MW.
+Its capacity is the cell's reference capacity \(C^{\mathrm{ref}}_m\) from
+Equation~\eqref{eq:reference-capacity}, and its \emph{reference power} is
+\(\overline P_m=500\,C^{\mathrm{ref}}_m/7{,}619.8\) MW, where 7,619.8 is the
+reference capacity of cell \(c\), the largest training cell; the site built
+from cell \(c\) therefore has 500 MW (Table~\ref{tab:active-market-map}). The training fleet is built from
+cells \(a\)--\(d\) and serves every 2025 month. The test fleet is built in the
+same way from cells \(e\)--\(h\), placed in the same four markets in the same
+order, and serves only the test month. Its sites are measured against the
+same cell \(c\), so two of them exceed 500 MW, and the test fleet totals
+2,398 MW against the training fleet's 1,869 MW.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Fleet workload statistics in standardized work units.}
+  \caption{Source cell and size of each modeled site, named by its market
+  case, for the training fleet and the test fleet.}
+  \label{tab:active-market-map}
+  % [no-K 2026-10-10] the K_m columns (0.897/0.995/1.000/0.846, total 3.738;
+  % 0.954/1.443/1.045/1.354, total 4.796) became C^ref_m.
+  \begin{tabular}{@{}lcrrcrr@{}}
+    \toprule
+    & \multicolumn{3}{c}{Training fleet} & \multicolumn{3}{c}{Test fleet} \\
+    \cmidrule(lr){2-4}\cmidrule(l){5-7}
+    Market case & Cell & \(C^{\mathrm{ref}}_m\) & \(\overline P_m\) (MW)
+                & Cell & \(C^{\mathrm{ref}}_m\) & \(\overline P_m\) (MW) \\
+    \midrule
+    CAISO          & \(a\) & 6,835.7 & 449 & \(e\) & 7,266.9 & 477 \\
+    MISO           & \(b\) & 7,582.0 & 498 & \(f\) & 10,994.2 & 721 \\
+    SPP            & \(c\) & 7,619.8 & 500 & \(g\) & 7,963.1 & 523 \\
+    ISO-NE         & \(d\) & 6,448.8 & 423 & \(h\) & 10,317.0 & 677 \\
+    \addlinespace
+    Total          &       & 28,486.3 & 1,869 &     & 36,541.2 & 2,398 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Decisions are hourly, and every work and power quantity below is for one
+hour.
+% [no-K 2026-10-10] was: a work unit = what the site built from cell c completes
+% in one hour at full utilization; ISO-NE completes at most K_m = 0.846; one work
+% unit adds 500 beta_m MW at any site m.
+One \emph{work unit} uses the CPU scale of
+Section~\ref{subsec:clusterdata-capacity}, on which
+\(C^{\mathrm{ref}}_{\mathrm{cell}}\) is built: a work unit is the largest machine in
+the trace running at full capacity for one hour. Each site carries this over
+to its market case: its capacity \(C^{\mathrm{ref}}_m\) is the
+\(C^{\mathrm{ref}}_{\mathrm{cell}}\) of the cell placed in market \(m\), and
+is the most work the site can complete in one hour. A work unit
+is the same amount of computation at every site, so work from different
+sites can be added and moved between them. A site's utilization is its work
+divided by \(C^{\mathrm{ref}}_m\). Because the power coefficients
+\(\alpha_m,\beta_m\) differ, the same work draws different power at each
+site.
+
+\section{Monthly Simulation and Hourly Arrivals}
+\label{subsec:transform-pairing}
+
+The 744-hour Google workload restarts at the beginning of each calendar
+month; shorter months use only the hours they need. The workload of cells
+\(a\)--\(d\) is used in every 2025 month, whether a month is used for training
+or held out in a fold, and the workload of cells \(e\)--\(h\) is used in the
+test month.
+
+Each month is an independent, continuous simulation. Queues and site-power
+history carry across midnight, and every decision hour is scored. The
+\emph{decision hours} for month \(e\) are \(\mathcal T_e=\{0,\ldots,T_e-1\}\),
+where the \emph{month length} \(T_e\) is the month's number of hours.
+
+% [symbols 2026-10-09] was: \(\mathcal W=\{-1\}\); for February 2025, ...
+Each month's simulation starts one hour early, at the \emph{warm-up hour}
+\(t=-1\); for February 2025, this is 31~January 23:00 UTC. The
+warm-up hour is not a decision hour and is never scored. It exists because
+the month's first decision needs two things from the hour before it: the
+grid data the scheduler observes for hour \(t-1\)
+(Section~\ref{subsec:problem-causality}), and the site power from which the
+month's first ramp, \(A_{m,0}-A_{m,-1}\), is measured
+(Equation~\eqref{eq:adjusted-ramp}). Its grid data is what was recorded
+for that hour, and its site power is what each site would have drawn running
+that hour's arriving work in place. That work is not added to the queues, so
+every month starts with empty queues, and the warm-up hour is left out of the
+monthly peaks. Queues start empty and must be empty at month-end. 
+
+Let the \emph{service arrivals} \(s_{m,t}\) and the \emph{batch arrivals}
+\(q_{m,t}\) denote the hourly service and batch work arriving at site \(m\).
+Service must run immediately; batch may wait.
+
+The five-minute utilization curves from
+Section~\ref{sec:clusterdata2019} are converted to work by averaging the
+twelve windows in each hour, then multiplying by the site's capacity
+\(C^{\mathrm{ref}}_m\). Multiplying by \(C^{\mathrm{ref}}_m\) is what lets work from different sites be
+combined: a utilization is a fraction of one site's own capacity, and the
+sites differ in size, so utilizations cannot be added across sites or moved
+between them, while work units can. Each hour's recorded CPU execution is
+treated as work
+arriving at the start of the corresponding simulation hour, and the hour's
+aggregate work is assumed known at that moment; for example, average
+utilization of 60\% at the ISO-NE site becomes \(0.6\times6{,}448.8\approx3{,}869\) work
+units. Let \(t\) be the hour within the month:
+% [no-K 2026-10-10] was: K_m/12 in both arrival equations; examples 0.6 x 0.846 =
+% 0.508, and 0.0897 + 0.0846 = 0.174 work units.
+\begin{align}
+  s_{m,t}
+  &=
+  C^{\mathrm{ref}}_m\,
+  \frac{\displaystyle\sum_{b=0}^{11} u^{\mathrm{svc}}_{m,12t+b}}{12},
+  \label{eq:synthetic-service-arrivals}\\[6pt]
+  q_{m,t}
+  &=
+  C^{\mathrm{ref}}_m\,
+  \frac{\displaystyle\sum_{b=0}^{11} u^{\mathrm{bat}}_{m,12t+b}}{12}.
+  \label{eq:synthetic-batch-arrivals}
+\end{align}
+Each arrival is the site's average utilization over the hour's
+twelve five-minute windows, times its capacity. Arrivals are
+therefore amounts of work, not fractions of a site's capacity. If the CAISO
+and ISO-NE sites are each 10\% utilized, they receive 683.6 and 644.9 work
+units, 1,328.5 in total; moving all of it to the SPP site would make that site
+17.4\% utilized. 
+
+% [symbols 2026-10-09] was:
+% Grid data from the corresponding UTC hours are used. If \(\tau_e\), the
+% \emph{month start}, is the month's first UTC hour, the hourly demand
+% \(D_{m,t}\) and net load \(N_{m,t}\) of decision hour \(t\), which falls
+% \(t\) hours after the month start, are
+% \begin{equation}
+%   \begin{aligned}
+%     D_{m,t} &= D_m(\tau_e+t), \\
+%     N_{m,t} &= N_m(\tau_e+t).
+%   \end{aligned}
+%   \label{eq:episode-grid-map}
+% \end{equation}
+% This mapping also applies to the preceding warm-up hour.
+% [no-D 2026-10-10] dropped D_{m,t}, which no equation uses.
+Grid data comes from the matching UTC hours. The net load \(N_{m,t}\) of
+decision hour \(t\) is the value of \(N_m\) recorded for the UTC hour \(t\)
+hours after the month starts.
+
+\section{Fleet Size Relative to Regional Ramps}
+\label{subsec:transform-control-authority}
+
+With the reference powers in Table~\ref{tab:active-market-map}, the sum of
+the four individual idle-to-full modeled power ranges is approximately
+844 MW for the training fleet, which can complete 28,486 work units per hour,
+and 1,128 MW for the test fleet, which can complete 36,541.
+% [no-K 2026-10-10] was: 3.738 and 4.796 work units per hour.
+Table~\ref{tab:workload-feasibility} summarizes the repeated 744-hour
+workloads. In the training fleet, median total arrivals use 55\% of capacity
+and the largest hour uses 61\%; in the test fleet, they use 58\% and 68\%.
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{Fleet workload statistics in work units per hour.}
   \label{tab:workload-feasibility}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
     Quantity & Median & Q95 & Maximum \\
     \midrule
-    Service arrivals & 1.723 & 1.971 & 2.090 \\
-    Batch arrivals   & 0.440 & 0.602 & 0.779 \\
-    Total arrivals   & 2.197 & 2.364 & 2.424 \\
+    % [no-K 2026-10-10] values were in the old unit (cell c's hourly capacity):
+    % training 1.614/1.843/1.958, 0.408/0.557/0.724, 2.054/2.210/2.269;
+    % test 2.108/2.393/2.542, 0.669/0.899/1.033, 2.793/3.116/3.253.
+    \multicolumn{4}{@{}l}{\emph{Training fleet, cells \(a\)--\(d\)}} \\
+    Service arrivals & 12,301 & 14,045 & 14,916 \\
+    Batch arrivals   & 3,107 & 4,243 & 5,520 \\
+    Total arrivals   & 15,651 & 16,836 & 17,291 \\
+    \addlinespace
+    \multicolumn{4}{@{}l}{\emph{Test fleet, cells \(e\)--\(h\)}} \\
+    Service arrivals & 16,063 & 18,236 & 19,371 \\
+    Batch arrivals   & 5,099 & 6,849 & 7,873 \\
+    Total arrivals   & 21,285 & 23,743 & 24,785 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-For grid context, Table~\ref{tab:native-ramp-scale} reports absolute one-hour
-original grid ramps over the 334 training days. These are raw MW changes; the
-objective later divides by \(S_m\Delta t\) to express them as fractions of
-each market's demand scale per hour.
-Against the median one-hour original ramp, a site's idle-to-full power range
-is 19\% in CAISO NP15,
-11\% in MISO Minnesota, 33\% in SPP North, and 64\% in ISO-NE NEMA; against
-the Q90 ramp these ranges fall to between 4\% and 26\%. The site's power
-range is a larger fraction of typical ramps than extreme ramps, particularly
-in the smaller markets.
+% [ramp-table 2026-10-10] was a paragraph comparing each site's idle-to-full
+% range with the median and Q90 "original grid ramps" (training 17/11/34/55%,
+% Q90 4-22%; test 32/19/33/61%); the numbers now sit in the table.
+Table~\ref{tab:native-ramp-scale} compares each site's power swing, from
+idle to full, with the hour-to-hour change in its market's net load over
+2025. A training site's swing is about half of a typical change in ISO-NE
+and a third in SPP, but only a tenth to a sixth in MISO and CAISO, so the
+fleet has the most influence where hourly changes are small.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Absolute one-hour original net-load ramp magnitudes over training
-  hours, in MW.}
+  % [ramp-table 2026-10-10] dropped the Q90 column (4,270 / 4,316 / 2,423 / 1,089 MW).
+  \caption{Typical (median) hour-to-hour change in net load over 2025, and
+  each site's power swing from idle to full
+  (Table~\ref{tab:powerdata-coefficients}), in MW and as a share of that
+  change.}
   \label{tab:native-ramp-scale}
-  \begin{tabular}{@{}lrr@{}}
+  \begin{tabular}{@{}lrrrrr@{}}
     \toprule
-    Market case & Median & Q90 \\
+    & & \multicolumn{2}{c}{Training site} & \multicolumn{2}{c}{Test site} \\
+    \cmidrule(lr){3-4}\cmidrule(l){5-6}
+    Market case & Median change & Swing & \% of median & Swing & \% of median \\
     \midrule
-    CAISO NP15     & 900   & 4,144 \\
-    MISO Minnesota & 1,691 & 4,396 \\
-    SPP North      & 805   & 2,453 \\
-    ISO-NE NEMA    & 445   & 1,102 \\
+    CAISO          & 909   & 152 & 17 & 287 & 32 \\
+    MISO           & 1,640 & 187 & 11 & 318 & 19 \\
+    SPP            & 778   & 263 & 34 & 257 & 33 \\
+    ISO-NE         & 435   & 241 & 55 & 266 & 61 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 
-\section{Problem Statement}
+\section{Decisions and Constraints}
 \label{sec:problem-statement}
 
-\subsection{Sets, inputs, and units}
+\subsection{Sets, Inputs, and Units}
 \label{subsec:problem-given-inputs}
 
-Let \(\mathcal M=\{1,\ldots,4\}\) be the modeled sites and their paired market
-cases. Indices \(i\) and \(j\) identify batch origin and execution
-destination, respectively. Let
-\(\mathcal T_e=\{0,\ldots,T_e-1\}\) be the decision-slot indices of simulated
-month \(e\) with \(T_e\) hours, and \(\mathcal W=\{-1\}\) the preceding warm-up
-slot. One interval has duration \(\Delta t=1\) h. The month index is omitted
-from hourly quantities.
+Let the \emph{site set} \(\mathcal M=\{1,\ldots,4\}\) be the modeled sites
+and their paired market cases. The \emph{origin} index \(i\) and the
+\emph{destination} index \(j\) identify where batch work arrived and where it
+executes. As in Section~\ref{subsec:transform-pairing}, the decision hours
+\(\mathcal T_e=\{0,\ldots,T_e-1\}\) index simulated month \(e\), which has
+\(T_e\) hours, and \(t=-1\) is the warm-up hour. Each interval
+% [symbols 2026-10-09] was: \(T_e\) hours, and \(\mathcal W=\{-1\}\) is the warm-up hour.
+is one hour. 
 
-For each site and hour, the model uses synthetic service arrivals
-\(s_{m,t}\), synthetic batch arrivals \(q_{m,t}\), standardized compute
-capacity \(K_m\), reference power \(\overline P_m\), power coefficients
-\(\alpha_m,\beta_m\), the batch window \(H\), regional net load \(N_{m,t}\),
-and training-only scale \(S_m\).
+For each site and hour, the model uses the service arrivals \(s_{m,t}\) and
+batch arrivals \(q_{m,t}\), the capacity \(C^{\mathrm{ref}}_m\), the reference power
+\(\overline P_m\), the idle and dynamic power fractions \(\alpha_m,\beta_m\),
+the completion window \(H\), the regional net load \(N_{m,t}\), and the market
+scale \(S_m\), fitted on training months only. Every work quantity below, including
+arrivals, executed work, and backlogs, is in work units
+(Section~\ref{subsec:transform-mapping}), so it can be summed across sites.
 
 Work can be divided among sites. Individual jobs, memory limits, machine
 types, application dependencies, and scheduling within a site are not
-modeled.
+modeled. 
 
-\subsection{Scheduler controls}
+\subsection{Scheduler Controls}
 \label{subsec:problem-decisions}
 
 Each hour, the scheduler chooses:
 \begin{enumerate}
-  \item \(x^{\mathrm{svc}}_{j,t}\), service executed at destination \(j\);
-  \item \(z_t\), total queued batch work executed now; and
-  \item \(x^{\mathrm{bat}}_{j,t}\), that batch total divided by destination.
+  \item the \emph{executed service} \(x^{\mathrm{svc}}_{j,t}\), service work
+        executed at destination \(j\);
+  \item the \emph{batch release} \(z_t\), the total queued batch work
+        executed now; and
+  \item the \emph{executed batch} \(x^{\mathrm{bat}}_{j,t}\), that batch
+        total divided by destination.
 \end{enumerate}
 
-\subsection{Immediate service}
+\subsection{Immediate Service}
 \label{subsec:problem-service}
 
 All service arrivals must execute in the same hour; the scheduler chooses
@@ -1017,16 +1341,26 @@ where:
   x^{\mathrm{svc}}_{j,t}\geq0.
   \label{eq:service-conservation}
 \end{equation}
+Both sides are in work units, so the sum holds even though the sites differ
+in size. For example, if one site has a capacity of 10,000 work units and
+another 1,000, and both are 10\% utilized, they receive 1,000 and 100 work
+units of service. Equation~\eqref{eq:service-conservation} then requires
+1,100 work units of service to run somewhere in the fleet that hour, split
+among the sites in any way that fits their capacity.
+% [no-K 2026-10-10] replaced the example, which ended: one site ten times another's capacity,
+% both 10% utilized, receive 1,000 and 100 work units; the equation requires
+% 1,100 in total, "which the larger site alone can execute".
 
 
-\subsection{Batch queue and deadlines}
+\subsection{Batch Queue and Deadlines}
 \label{subsec:problem-batch}
 
 The scheduler chooses how much batch work to execute and distributes it
 among sites with available capacity. Its execution site determines its
-power consumption. Let \(z_t\) be the total release, \(y_{i,t}\) the work
-released from origin \(i\)'s backlog, and \(x^{\mathrm{bat}}_{j,t}\) the work
-executed at destination \(j\). Released work executes within the same hour:
+power consumption. Let \(z_t\) be the batch release, the \emph{origin
+release} \(y_{i,t}\) the work released from origin \(i\)'s backlog, and
+\(x^{\mathrm{bat}}_{j,t}\) the executed batch at destination \(j\). Released
+work executes within the same hour:
 \begin{equation}
   z_t
   =
@@ -1037,9 +1371,11 @@ executed at destination \(j\). Released work executes within the same hour:
   x^{\mathrm{bat}}_{j,t}\geq0.
   \label{eq:batch-total}
 \end{equation}
-Let \(B_{i,t}\) be origin \(i\)'s backlog before the current arrivals.
-Arrivals increase the backlog, and execution reduces it. Released work
-cannot exceed available work:
+Let the \emph{batch backlog} \(B_{i,t}\) be origin \(i\)'s queued batch work
+before the current arrivals. The batch arrivals \(q_{i,t}\) of
+Equation~\eqref{eq:synthetic-batch-arrivals}, written here with the origin
+index \(i\), increase the backlog, and the origin release \(y_{i,t}\) reduces
+it. Released work cannot exceed available work:
 \begin{align}
   B_{i,t+1}
   &=
@@ -1049,25 +1385,35 @@ cannot exceed available work:
   &\leq y_{i,t}\leq B_{i,t}+q_{i,t}.
   \label{eq:queue-availability}
 \end{align}
-With \(H=24\), batch may execute immediately or in the following 23 hourly
-slots, completing within 24 hours and by month-end. A 24-hour completion
+The \emph{completion window} \(H\) is the number of hourly slots in which a
+batch arrival may run, counting its arrival slot. With \(H=24\), batch may
+execute immediately or in the following 23 hourly slots, completing within
+24 hours and by month-end. A 24-hour completion
 window for flexible work is the convention of Google's carbon-aware system
 \cite{radovanovic2021carbonaware} and of the batch model of Haghshenas
 \emph{et al.} \cite{haghshenas2022infrastructure}. \(H\) is an assumption
 rather than a measurement, because the trace records when work ran, not when
 it was due.
 
-An arrival in slot \(\nu\) must therefore run by slot
+An arrival in the \emph{arrival slot} \(\nu\) must therefore run by its
+\emph{deadline slot}
 \begin{equation}
   d_{\nu}
   =
   \min\{\nu+H-1,\;T_e-1\}.
   \label{eq:batch-deadline}
 \end{equation}
-Releases follow one global earliest-deadline-first queue, breaking ties by
-origin index and then arrival order. They are increased when necessary to
-leave enough capacity to complete the remaining work on time. For each
-origin, cumulative execution must cover all work due:
+Releases follow one global earliest-deadline-first queue. All queued batch
+work, from every origin, waits in one list ordered by deadline slot. Each
+hour, the batch release \(z_t\) is taken from the front of the list, the work
+due soonest first, whichever site it came from; work with equal deadlines is
+taken from the lowest-numbered origin first, then in order of arrival.
+\emph{Global} means the four origins share one list rather than each keeping
+its own. Releases are increased when necessary to leave enough capacity to
+complete the remaining work on time. For each
+origin, cumulative execution, summed over hours 0 to \(t\),
+must cover all work due:
+% [symbols 2026-10-09] was: summed over the hours \(\rho\) up to \(t\),
 \begin{equation}
   \sum_{\rho=0}^{t}y_{i,\rho}
   \geq
@@ -1075,6 +1421,12 @@ origin, cumulative execution must cover all work due:
   \qquad i\in\mathcal M,\ t\in\mathcal T_e.
   \label{eq:deadline-feasibility}
 \end{equation}
+In words: by the end of hour \(t\), origin \(i\) must have released at least
+as much work as all of its arrivals that are due by \(t\). With \(H=24\), for
+example, by hour 30 every batch arrival from hours 0 to 7 (deadline slots 23
+to 30) must have run. Because each origin's work is released in deadline
+order, which within one origin is also arrival order, releasing that much
+means every due arrival has run, not just the same amount of other work.
 Finally, the month must end with every backlog empty:
 \begin{equation}
   B_{i,T_e}=0,
@@ -1082,11 +1434,11 @@ Finally, the month must end with every backlog empty:
   \label{eq:terminal-queue}
 \end{equation}
 
-\subsection{Capacity and site power}
+\subsection{Capacity and Site Power}
 \label{subsec:problem-feasibility}
 
-Service and batch execution together cannot exceed the site's hourly
-capacity:
+Service and batch execution together, the \emph{executed work}
+\(w_{m,t}\), cannot exceed the site's hourly capacity:
 \begin{align}
   w_{m,t}
   &=
@@ -1094,17 +1446,22 @@ capacity:
   +x^{\mathrm{bat}}_{m,t},
   \label{eq:executed-work}\\
   0
-  &\leq w_{m,t}\leq K_m\Delta t.
+  &\leq w_{m,t}\leq C^{\mathrm{ref}}_m.
   \label{eq:site-capacity}
 \end{align}
+% [no-K 2026-10-10] was: w <= K_m; reference power 500 K_m MW; ratio w/K_m.
 Executed work is converted to power using the model from
-Section~\ref{sec:powerdata2019} and the 500 MW reference scale:
+Section~\ref{sec:powerdata2019} and the site's reference power
+\(\overline P_m\) (Section~\ref{subsec:transform-mapping}). The ratio \(w_{m,t}/C^{\mathrm{ref}}_m\) is the
+site's utilization, the quantity on which the fit in
+Equation~\eqref{eq:powerdata-affine-fit} was estimated, and the \emph{site
+power} \(P_{m,t}\) is
 \begin{equation}
   P_{m,t}
   =
   \overline P_m
   \left(
-    \alpha_m+\beta_m\frac{w_{m,t}}{K_m\Delta t}
+    \alpha_m+\beta_m\frac{w_{m,t}}{C^{\mathrm{ref}}_m}
   \right)
   \quad\mathrm{MW}.
   \label{eq:runtime-power}
@@ -1115,32 +1472,38 @@ modeled latency, bandwidth limit, data-residency restriction, energy cost,
 or movement charge. This gives the model an optimistic upper bound on
 geographic flexibility.
 
-\subsection{Adjusted net load, ramps, and peaks}
+\section{Net-Load Ramps and Peaks with the Fleet}
 \label{subsec:problem-objective}
 
-The regional net load after adding modeled site power is
+% [two-goals 2026-10-10] added the opening sentence and "For the first goal,"
+% so that "The second goal" below has something to refer to.
+The scheduler has two goals: to make each region's hourly net load ramps smaller, and to lower each region's highest net
+load of the month. Both are measured on the regional net load after adding
+modeled site power, the \emph{adjusted net load} \(A_{m,t}\):
 \begin{equation}
   A_{m,t}
   =
   N_{m,t}+P_{m,t}.
   \label{eq:adjusted-net-load}
 \end{equation}
-Changes in net load between consecutive hours are measured, before and after
+For the first goal, changes in net load between consecutive hours are measured, before and after
 adding fleet power. This one-hour interval matches the data and scheduling
-decisions. Dividing by \(S_m\Delta t\) expresses each change as a fraction of
-the market's demand scale per hour:
+decisions. Dividing by \(S_m\) expresses each one-hour change as a fraction
+of the market's demand scale per hour, giving the \emph{original ramp}
+\(\Delta^{\mathrm{original}}_{m,t}\) of the grid alone and the \emph{adjusted
+ramp} \(\Delta^{\mathrm{adjusted}}_{m,t}\) with the fleet:
 \begin{align}
   \Delta^{\mathrm{original}}_{m,t}
   &=
-  \frac{N_{m,t}-N_{m,t-1}}{S_m\Delta t},
+  \frac{N_{m,t}-N_{m,t-1}}{S_m},
   \label{eq:native-ramp}\\
   \Delta^{\mathrm{adjusted}}_{m,t}
   &=
-  \frac{A_{m,t}-A_{m,t-1}}{S_m\Delta t}.
+  \frac{A_{m,t}-A_{m,t-1}}{S_m}.
   \label{eq:adjusted-ramp}
 \end{align}
 Squaring penalizes larger ramps and treats upward and downward ramps
-equally. The fleet's ramp impact is measured by
+equally. The fleet's \emph{ramp impact} \(I_{m,t}\) is measured by
 subtracting the original grid's squared ramp:
 \begin{equation}
   I_{m,t}
@@ -1153,26 +1516,22 @@ subtracting the original grid's squared ramp:
 A negative value means the scheduled fleet reduced the squared ramp relative
 to the original grid; a positive value means it increased it.
 
-The reduction of each region's monthly net-load peak is the second aim. Under
-scheduling policy \(\mu\), its normalized adjusted and original peaks in
-month \(e\) are
-\begin{align}
-  Q^{\mathrm{adjusted}}_{m,e}(\mu)
-  &=
-  \max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m},
-  \label{eq:monthly-peak}\\
-  Q^{\mathrm{original}}_{m,e}
-  &=
-  \max_{t\in\mathcal T_e}\frac{N_{m,t}}{S_m}.
-  \label{eq:monthly-original-peak}
-\end{align}
-Each takes the highest net load during the month and divides it by the
-region's demand scale, \(S_m\). As with ramps, the fleet's peak
-impact is measured by subtracting the original grid's peak:
+% [peaks 2026-10-10] was: separate equations for the adjusted peak
+% Q^adjusted_{m,e}(mu) = max_t A_{m,t}(mu)/S_m (eq:monthly-peak) and the original
+% peak Q^original_{m,e} = max_t N_{m,t}/S_m (eq:monthly-original-peak), then
+% Phi = Q^adjusted - Q^original.
+The second goal is to lower each region's highest net load of the month. A
+\emph{scheduling policy} \(\mu\) is a rule that chooses every hour's
+controls. As with ramps, the fleet's effect is measured against the grid
+alone. The fleet's \emph{peak impact} \(\Phi_{m,e}(\mu)\) in month \(e\) is
+the month's highest adjusted net load under policy \(\mu\), the
+\emph{adjusted peak}, minus its highest original net load, the
+\emph{original peak}, divided by \(S_m\):
 \begin{equation}
   \Phi_{m,e}(\mu)
   =
-  Q^{\mathrm{adjusted}}_{m,e}(\mu)-Q^{\mathrm{original}}_{m,e}.
+  \frac{\displaystyle\max_{t\in\mathcal T_e} A_{m,t}(\mu)
+        -\max_{t\in\mathcal T_e} N_{m,t}}{S_m}.
   \label{eq:peak-impact}
 \end{equation}
 No schedule can change the original peak, so subtracting it changes every
@@ -1180,11 +1539,15 @@ schedule's score by the same amount. It keeps the grid's own peak records,
 which the scheduler cannot influence, out of the hourly training signal.
 Site power is positive, so \(\Phi_{m,e}(\mu)>0\).
 
+\section{Joint Objective}
+\label{subsec:problem-normalization}
+
 Ramp impact and monthly peaks have different numerical scales. To combine
 them in one objective, each is divided by a fixed positive reference value.
-The no-flexibility policy,
+The \emph{no-flexibility baseline} policy,
 \(\mu_{\mathrm{NF}}\), runs all work immediately at its original site.
-Using this policy over \(\mathcal E_{\mathrm{train}}\), the references are
+Using this policy over the training set \(\mathcal E_{\mathrm{train}}\), the
+\emph{ramp reference} \(C_R\) and the \emph{peak reference} \(C_Q\) are
 calculated as
 \begin{align}
   C_R
@@ -1198,7 +1561,8 @@ calculated as
   &=
   \frac{1}{|\mathcal E_{\mathrm{train}}|}
   \sum_{e\in\mathcal E_{\mathrm{train}}}\sum_{m\in\mathcal M}
-  Q^{\mathrm{adjusted}}_{m,e}(\mu_{\mathrm{NF}}).
+  \max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu_{\mathrm{NF}})}{S_m}.
+  % [peaks 2026-10-10] was: Q^{\mathrm{adjusted}}_{m,e}(\mu_{\mathrm{NF}})
   \label{eq:peak-reference}
 \end{align}
 Both references are totals for the whole grid with the no-flexibility fleet:
@@ -1206,19 +1570,16 @@ Both references are totals for the whole grid with the no-flexibility fleet:
 average monthly sum of normalized regional peaks. Dividing by them expresses
 a change in \(\sum_{t,m}I_{m,t}\) or \(\sum_m\Phi_{m,e}\) as a fraction of total
 squared ramp or of total peak, so the equal weights below value equal
-fractional reductions of the two totals. The fleet can change total ramps
-proportionally more than total peaks, so ramp gains usually contribute more
-to the joint score. Both references remain fixed during training and May
-validation.
-
-\subsection{Joint objective}
-\label{subsec:problem-normalization}
+fractional reductions of the two totals.  After cross-validation, the final references are computed from all twelve months of 2025: \(C_R=6.109\) and
+\(C_Q=3.651\). They also score the test month, which is never used to set
+them. 
 
 Each simulated month \(e\) is one optimization episode. Decisions are hourly,
-and the objective covers the full month. The schedule with the
-smallest equally weighted combination of scaled monthly ramp impact and
-regional monthly peak impact is sought.
-Let \(\mathfrak M\) be the causal scheduling policies satisfying
+and the objective covers the full month. The goal is to find the schedule
+with the smallest equally weighted combination of scaled monthly ramp impact
+and regional monthly peak impact. That combination is the \emph{joint
+score} \(J_e(\mu)\). Let the \emph{feasible policy set} \(\mathfrak M\) be the
+causal scheduling policies satisfying
 Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
 \begin{equation}
   \begin{aligned}
@@ -1236,7 +1597,32 @@ Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}:
 The 0.5 weights apply after dividing each term by its reference scale.
 A lower joint score need not improve both components.
 
-\subsection{No-flexibility comparison}
+\section{Information Available to the Scheduler}
+\label{subsec:problem-causality}
+
+The scheduler chooses an action before the hour-\(t\) net load is revealed.
+Once the hour ends, the action is scored using that realized net load.
+% [symbols 2026-10-09] was: Its available information, the \emph{information set}
+% \(\mathcal I_t\), consists of:
+At decision hour \(t\), the scheduler can see only the following:
+\begin{itemize}
+  \item gross demand and net load for hour \(t-1\);
+  \item the gross-demand and net-load forecasts issued at hour \(t-1\),
+        which target \(t\), \(t+2\), \(t+5\), and \(t+11\) (the current
+        decision hour and two, five, and eleven hours later);
+  \item the hour-\(t\) service and batch arrivals, queue totals, and urgency;
+  \item modeled site power from hour \(t-1\);
+  \item each region's running adjusted and original net-load peaks over
+        completed decision hours, normalized by \(S_m\) (zero before the
+        first decision); and
+  \item UTC hour, UTC day of week, and the fraction of the month remaining.
+\end{itemize}
+
+% [symbols 2026-10-09] was: ... must use only \(\mathcal I_t\).
+Each decision under policy \(\mu\) may use only this information. Chapter~\ref{chap:method} will describe the observation features and
+the solution algorithm.
+
+\section{Baseline and Formal Problem Statement}
 \label{subsec:problem-evaluation}
 
 The scheduler is compared with \(\mu_{\mathrm{NF}}\) using
@@ -1256,29 +1642,7 @@ the no-flexibility fleet. Since site power is nonnegative, peak reduction
 means improvement over that fleet without flexibility, not a peak below the
 original grid without the fleet.
 
-\subsection{Causal information}
-\label{subsec:problem-causality}
-
-The scheduler chooses an action before the hour-\(t\) net load is revealed.
-Once the hour ends, the action is scored using that realized net load.
-Its available information, \(\mathcal I_t\), consists of:
-\begin{itemize}
-  \item gross demand and net load for hour \(t-1\);
-  \item the gross-demand and net-load forecasts issued at hour \(t-1\),
-        which target \(t\), \(t+2\), \(t+5\), and \(t+11\) (the current
-        decision hour and two, five, and eleven hours later);
-  \item the hour-\(t\) service and batch arrivals, queue totals, and urgency;
-  \item modeled site power from hour \(t-1\);
-  \item each region's running adjusted and original net-load peaks over
-        completed decision hours, normalized by \(S_m\) (zero before the
-        first decision); and
-  \item UTC hour, UTC day of week, and the fraction of the month remaining.
-\end{itemize}
-
-Each decision under policy \(\mu\) must use only \(\mathcal I_t\). The methods
-chapter will describe the observation features and solution algorithm.
-
-\subsection{Formal problem statement}
+The full problem can now be stated.
 \label{subsec:problem-formal-statement}
 
 \begin{quote}
@@ -1291,32 +1655,36 @@ baseline using Equation~\eqref{eq:improvement}.
 \end{quote}
 
 
-\subsection{Worked example: joint ramp and peak reduction}
+\section{Worked Example: Joint Ramp and Peak Reduction}
 \label{subsec:problem-worked-joint}
 
-An hour from the completed July 2025 data is selected to illustrate the joint
+An hour from July 2025 is selected to illustrate the joint
 objective. This is a worked calculation, not a PPO result. The
 no-flexibility baseline is compared with a schedule that changes one hour's
 service routing and leaves all other work in place.
 
-At 2025-07-29 22:00 UTC (hour \(t=694\)), ISO-NE NEMA receives 0.3549 work
-units of service and 0.2047 of batch. Under the baseline, it executes
-\(w=0.5596\) work units, drawing approximately
+% [no-K 2026-10-10] was: 0.3003 service, 0.1733 batch, w = 0.4736, utilization
+% 0.4736/0.8463, CAISO spare 0.4306 (old unit = cell c's hourly capacity).
+At 2025-07-29 22:00 UTC (hour \(t=694\)), ISO-NE receives 2,288.5 work
+units of service and 1,320.3 of batch. Under the baseline, it executes
+\(w=3{,}608.8\) work units, a utilization of \(3{,}608.8/6{,}448.8=0.5596\), drawing
+approximately
 \begin{equation*}
-  P = 500\,(0.382039 + 0.570370 \times 0.5596)
-  \approx 350.6\ \mathrm{MW}.
+  P = 423.16\,(0.382039 + 0.570370 \times 0.5596)
+  \approx 296.7\ \mathrm{MW}.
 \end{equation*}
-CAISO NP15 draws 352.3 MW and has 0.4799 work units of spare capacity.
-Moving ISO-NE's 0.3549 service work units to CAISO fits within that capacity.
-ISO-NE's power falls to 249.4 MW, and CAISO's rises to 412.6 MW. Batch work
+CAISO draws 316.1 MW and has 3,280.7 work units of spare capacity.
+Moving ISO-NE's 2,288.5 service work units to CAISO fits within that capacity.
+ISO-NE's power falls to 211.1 MW, and CAISO's rises to 367.1 MW. Batch work
 still runs at its original sites in its arrival hour.
 
 Table~\ref{tab:joint-example-hour} shows the two regions' grid conditions
 and the fleet's ramp impact. Routing changes ISO-NE's impact from positive
 to negative, while increasing CAISO's positive impact.
 The 21:00 forecasts available at this decision
-predicted current-hour net loads of 23,439 MW for ISO-NE and 10,150 MW for
-CAISO; scoring uses the realized net load.
+predicted current-hour net loads of 23,894 MW for ISO-NE
+(Section~\ref{subsec:energy-forecasts} works through this forecast) and
+9,133 MW for CAISO; scoring uses the realized net load.
 
 \begin{table}[htbp]
   \centering
@@ -1326,21 +1694,21 @@ CAISO; scoring uses the realized net load.
   \label{tab:joint-example-hour}
   \begin{tabular}{@{}lrr@{}}
     \toprule
-    Quantity & ISO-NE NEMA & CAISO NP15 \\
+    Quantity & ISO-NE      & CAISO \\
     \midrule
     Original net load at 21:00 (MW) & 23,204 & 9,153 \\
     Original net load at 22:00 (MW) & 24,082 & 9,390 \\
-    Ramp impact \(I_{m,t}\), baseline & \(+0.000032\) & \(+0.000006\) \\
-    Ramp impact \(I_{m,t}\), with routing & \(-0.000488\) & \(+0.000035\) \\
+    Ramp impact \(I_{m,t}\), baseline & \(+0.000028\) & \(+0.000005\) \\
+    Ramp impact \(I_{m,t}\), with routing & \(-0.000422\) & \(+0.000030\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-ISO-NE NEMA is now examined closely. This hour sets its monthly adjusted
-net-load peak under the baseline: \(24{,}082+350.6=24{,}432.6\) MW.
-After routing, its peak is \(24{,}082+249.4=24{,}331.4\) MW, a reduction
-of 101.2 MW. Checking every July hour confirms that no other hour exceeds
-this new peak. CAISO's monthly peak remains 33,872.9 MW, and the MISO and
+ISO-NE's peak shows the effect most clearly. This hour sets the region's monthly adjusted
+net-load peak under the baseline: \(24{,}082+296.73=24{,}378.73\) MW.
+After routing, its peak is \(24{,}082+211.08=24{,}293.08\) MW, a reduction
+of 85.65 MW. Checking every July hour confirms that no other hour exceeds
+this new peak. CAISO's monthly peak remains 33,835.4 MW, and the MISO and
 SPP peaks are unchanged.
 
 Both schedules are calculated over all 744 hours, including the next-hour
@@ -1359,401 +1727,144 @@ weighted mean; calculations use unrounded inputs.
     \toprule
     Quantity & Baseline & With routing \\
     \midrule
-    ISO-NE monthly peak (MW) & 24,432.6 & 24,331.4 \\
-    CAISO monthly peak (MW) & 33,872.9 & 33,872.9 \\
-    Scaled ramp impact & \(-0.000200\) & \(-0.000307\) \\
-    Scaled peak impact & 0.011442 & 0.009908 \\
-    Joint score \(J_e\) & 0.005621 & 0.004801 \\
+    ISO-NE monthly peak (MW) & 24,378.7 & 24,293.1 \\
+    CAISO monthly peak (MW) & 33,835.4 & 33,835.4 \\
+    Scaled ramp impact & \(-0.000150\) & \(-0.000242\) \\
+    Scaled peak impact & 0.010434 & 0.009123 \\
+    Joint score \(J_e\) & 0.005142 & 0.004440 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 The scaled peak impact is \(\sum_m\Phi_{m,e}/C_Q\), using July's original
-peaks, including 24,082 MW for ISO-NE. The joint improvement is
-\(0.005621-0.004801\approx0.000820\), most of it from the lower ISO-NE peak.
+peaks, including 24,082 MW for ISO-NE, and the final references \(C_R\) and
+\(C_Q\). The joint improvement is \(0.005142-0.004440\approx0.000702\), most
+of it from the lower ISO-NE peak.
 This one-hour routing change reduces both monthly scores while executing
 the same work within the service, deadline, and capacity constraints.
 
-\section{Scope and Limitations}
+\chapter{SCHEDULING METHOD: PROXIMAL POLICY OPTIMIZATION}
+\label{chap:method}
+
+\planned{intro to ppo}
+
+\section{Reinforcement Learning in Brief}
+\label{sec:method-rl}
+
+\planned{agent/observation/action/reward/episode/policy, w/ the monthly sim as the example}
+
+\section{Observation}
+\label{sec:method-observation}
+
+\planned{everything the policy sees each hour}
+
+\section{Actions and the Feasibility Decoder}
+\label{sec:method-actions}
+
+\planned{how the actions turn into a schedule that follows the rules}
+
+\section{Reward}
+\label{sec:method-reward}
+
+\planned{hourly reward, -j over e over the month}
+
+\section{The PPO Algorithm}
+\label{sec:method-ppo}
+
+\planned{how ppo works, actor/critic etc}
+
+\section{Training Setup}
+\label{sec:method-training}
+
+\planned{network, settings, training months, seeds}
+
+\section{Evaluation Protocol}
+\label{sec:method-evaluation}
+
+\planned{how policies get scored on held out months + the test month}
+
+\section{Comparison Runs}
+\label{sec:method-comparisons}
+
+\planned{10 seed run, ramp only / peak only, maybe other baselines}
+
+\chapter{RESULTS}
+\label{chap:results}
+
+\planned{cv results + test month, in rq order}
+
+\section{Training Behavior}
+\label{sec:results-training}
+
+\planned{learning curves}
+
+\section{Improvement over the Baseline}
+\label{sec:results-may}
+
+\planned{rq1 - how much better than the baseline}
+
+\section{Regional Results}
+\label{sec:results-regions}
+
+\planned{rq3 - results per region, tie back to sec.~\ref{subsec:transform-control-authority}}
+
+\section{How the Policy Achieves the Improvement}
+\label{sec:results-behavior}
+
+\planned{rq2 - what the policy actually does (service moved, batch waits etc)}
+
+\section{Ablations and Comparisons}
+\label{sec:results-comparisons}
+
+\planned{rq2 cont. - comparison runs from sec.~\ref{sec:method-comparisons}}
+
+\chapter{DISCUSSION AND CONCLUSIONS}
+\label{chap:discussion}
+
+\section{Summary of Findings}
+\label{sec:discussion-findings}
+
+\planned{rq1-3 }
+
+\section{Interpretation for Fleet and Grid Operators}
+\label{sec:discussion-interpretation}
+
+\planned{ramp and peak reductions mean in each region}
+
+\section{Limitations}
 \label{sec:limitations}
 
 The study has the following limitations:
 \begin{itemize}
   \item The workload comes from one company and one month in 2019, and
-        measured execution is reused as synthetic arrival demand.
-  \item The service/batch split, completion windows, standardized compute
-        capacity, 500 MW scale, and cell-to-market mapping all include
+        measured execution is reused as synthetic arrival demand. Every 2025
+        month replays the same workload of cells \(a\)--\(d\), so
+        cross-validation tests new grid months but not new workload; only the
+        test month, with cells \(e\)--\(h\), tests unseen workload..
+  \item The service/batch split, completion windows, the 500 MW scale of the
+        site built from cell \(c\), the assumption that power capacity scales
+        with CPU capacity, and the cell-to-market mapping all include
         modeling assumptions.
-  \item The workload extraction uses a fixed monthly capacity denominator,
-        removes partial five-minute rows, and places unmatched priorities in
-        the service residual.
-  \item The affine power fit is deterministic, omits fit uncertainty,
-        and is extrapolated when scheduling pushes a site
-        outside its commonly observed CPU range.
-  \item The forecasts are ridge regressions fitted here on public EIA data.
+  \item The forecasts are simple least-squares regressions fitted here on
+        public EIA data.
         An operator would hold system-operator or commercial forecasts of
         different accuracy, and the scheduler's benefit may depend on that
         accuracy.
-  \item The warm-up period provides only one hour, which limits the
-        scheduler's history of grid observations.
 \end{itemize}
 
+\section{Future Work}
+\label{sec:discussion-future}
 
+\planned{ideas}
 
+\section{Conclusions}
+\label{sec:discussion-conclusions}
 
+\planned{concl}
 
-\appendices
-\onecolumn
-
-\section{Data Schemas}
-\label{app:data-schemas}
-
-The tables below document the stored workload curves and hourly grid panels.
-
-\subsection{Five-minute workload curves}
-Each stored curve contains 8,929 rows. The final row is dropped because it
-cannot form a complete group of twelve, leaving 744 whole hours.
-
-\begingroup
-\small
-\begin{longtable}{@{}L{0.22\textwidth}L{0.39\textwidth}rrr@{}}
-\caption{Stored workload columns for cell \(a\), with examples at minimum,
-  median, and maximum CPU utilization. The example rows are not consecutive.}
-  \label{tab:clusterdata-tier-columns}\\
-    \toprule
-     & & \multicolumn{3}{c}{Cell \(a\)} \\
-    \cmidrule(l){3-5}
-    Column & Meaning & Quiet & Median & Busy \\
-    \midrule
-  \endfirsthead
-    \toprule
-     & & \multicolumn{3}{c}{Cell \(a\)} \\
-    \cmidrule(l){3-5}
-    Column & Meaning & Quiet & Median & Busy \\
-    \midrule
-  \endhead
-    \codepath{timestep}
-      & Five-minute index in the stored curve.
-      & 255 & 5257 & 2681 \\
-    \addlinespace
-    \codepath{cpu_demand_norm}
-      & All retained CPU execution divided by fixed reference capacity.
-      & 0.3320 & 0.5652 & 0.6931 \\
-    \addlinespace
-    \codepath{service_demand_norm}
-      & Residual not classified as no-SLO batch, including unmatched priority.
-      & 0.2432 & 0.4416 & 0.6341 \\
-    \addlinespace
-    \codepath{batch_demand_norm}
-      & Usage matched to priority 115 or below.
-      & 0.0888 & 0.1236 & 0.0590 \\
-    \bottomrule
-\end{longtable}
-\endgroup
-
-
-\subsection{Hourly grid panels}
-For each calendar month, the simulation uses the month's grid rows and the
-immediately preceding hour. Workload arrivals are attached separately as
-described in Section~\ref{subsec:transform-pairing}.
-
-\begingroup
-\small
-\begin{longtable}{@{}L{0.26\textwidth}L{0.40\textwidth}r@{}}
-\caption{Example hourly grid record for CAISO NP15, 2025-07-19 16:00 UTC.}
-  \label{tab:panel-columns}\\
-    \toprule
-    Column & Meaning & Value \\
-    \midrule
-  \endfirsthead
-    \toprule
-    Column & Meaning & Value \\
-    \midrule
-  \endhead
-    \codepath{timestamp_utc}
-      & Beginning of the UTC hour the row describes.
-      & 2025-07-19 16:00Z \\
-    \codepath{market_id}
-      & Market case.
-      & \codepath{CAISO_NP15} \\
-    \addlinespace
-    \codepath{gross_demand_mw}
-      & Balancing-authority demand, \(D_m\).
-      & 29,214 \\
-    \codepath{wind_mw}
-      & Observed wind generation, \(G^{\mathrm{wnd}}_m\).
-      & 2,096 \\
-    \codepath{solar_mw}
-      & Observed solar generation, \(G^{\mathrm{sol}}_m\).
-      & 15,279 \\
-    \codepath{net_load_mw}
-      & Net load \(N_m\) from Equation~\eqref{eq:energy-net-load}.
-      & 11,839 \\
-    \addlinespace
-    \codepath{market_scale_mw}
-      & Ramp and peak normalizer \(S_m\) from Equation~\eqref{eq:market-scale};
-        constant within a market.
-      & 33,983 \\
-    \addlinespace
-    \codepath{forecast_gross_h1/h3/h6/h12_mw}
-      & Gross-demand forecast at each of the four lead times, from
-        Equation~\eqref{eq:forecast-model}.
-      & 30,358 / 31,230 / 30,177 / 30,648 \\
-    \codepath{forecast_net_h1/h3/h6/h12_mw}
-      & Net-load forecast at each of the four lead times, from
-        Equation~\eqref{eq:forecast-model}.
-      & 11,230 / 11,008 / 11,247 / 26,814 \\
-    \codepath{forecast_issue_time_utc},
-    \codepath{forecast_vintage_id},
-    \codepath{quality_ok}
-      & Forecast provenance and quality checks.
-      & --- \\
-    \bottomrule
-\end{longtable}
-\endgroup
-
-
-\clearpage
-\section{Implementation Notes}
-\label{app:implementation}
-
-Paths are relative to the repository root. Several names predate the current
-design: \codepath{energy_model_v3}, \codepath{env/ramp_v6}, and the
-\codepath{four_market_v2} prefix. \codepath{README.md} gives the rebuild
-commands. Training, evaluation, and campaign code will be documented with the
-methods chapter.
-
-\subsection{Workload extraction (Section~\ref{sec:clusterdata2019})}
-\begin{itemize}
-  \item \codepath{extract_cells.ipynb} runs the BigQuery queries in
-        Google Colab or a local Jupyter kernel. It needs a Google Cloud
-        project and installs its extraction dependencies in the first code cell.
-  \item Its \codepath{cap} common-table expression computes
-        \(C^{\mathrm{ref}}_c\) (Equation~\eqref{eq:reference-capacity}) by
-        taking \codepath{MAX(capacity.cpus)} for each \codepath{machine_id}
-        and summing over machines.
-  \item The usage query assigns each row to a 300-second bucket by
-        \codepath{start_time}, sums \codepath{average_usage.cpus}, divides by
-        \(C^{\mathrm{ref}}_c\), and clips the result to \([0,1]\), a bound no
-        retained bucket reaches. Its \codepath{WHERE} clause keeps top-level
-        rows and requires \codepath{end_time-start_time} of at least
-        300 seconds.
-  \item The \codepath{prio} common-table expression takes the highest
-        \codepath{type=0} priority for each \codepath{collection_id}. A left
-        join keeps usage rows without a match, which fall into the service
-        residual.
-  \item \codepath{scripts/bigquery/audit_300s_filter.sql} audits the
-        300-second filter with the same top-level filter and priority join.
-        Its first query measures the rows and CPU work removed by cell and
-        class, saved as
-        \codepath{scripts/bigquery/results/query1_filter_volume.csv}; its
-        second compares hourly level, one-hour ramps, and peaks with and
-        without the filter, saved as
-        \codepath{scripts/bigquery/results/query2_hourly_shape.csv}. Work is
-        \codepath{average_usage.cpus} times window duration.
-  \item The notebook writes \codepath{data/cells/cell_a_tiers.csv} through
-        \codepath{data/cells/cell_d_tiers.csv}, which also carry an unused
-        \codepath{batch_share} column. Cells \(e\)--\(h\) are optional
-        exports from the same notebook and are unused. Outputs are staged under
-        \codepath{build/clusterdata2019/} before being copied into the repository.
-\end{itemize}
-
-\subsection{Power model (Section~\ref{sec:powerdata2019})}
-\begin{itemize}
-  \item The power-extraction cell of
-        \codepath{extract_cells.ipynb} averages
-        \codepath{measured_power_util} by hour from \codepath{powerdata_2019},
-        excluding rows flagged \codepath{bad_measurement_data}. It builds hourly
-        CPU utilization with the filters above and fits each cell with
-        \codepath{numpy.linalg.lstsq}.
-  \item Coefficients are stored under \codepath{per_cell_cpu_model} in
-        \codepath{data/power_model_params.json} as \codepath{idle_power}
-        (\(\alpha_c\)), \codepath{slope} (\(\beta_c\)), \codepath{r_squared},
-        and the number of fitted hours, \codepath{n}. The file's top-level
-        pooled fit, \codepath{cpu_mem_model}, and entries for cells
-        \(e\)--\(h\) are unused.
-  \item \codepath{_site_configs} in
-        \codepath{scripts/build_four_market_v2_factory.py} copies
-        \(\alpha_m,\beta_m\) into each site's \codepath{SiteConfig}, whose
-        \codepath{power_mw} method in \codepath{env/ramp_v6/models.py}
-        evaluates Equation~\eqref{eq:runtime-power}.
-\end{itemize}
-
-\subsection{Grid data and forecasts (Section~\ref{sec:energy-data})}
-\begin{itemize}
-  \item \codepath{scripts/fetch_eia_panels.py} downloads the series from the
-        EIA API v2 with the key \codepath{EIA_API_KEY} in an untracked
-        \codepath{.env} file. \codepath{MARKETS} maps each market case to its
-        balancing authority, and \codepath{fetch_series} requests demand from
-        \codepath{region-data} and wind and solar from
-        \codepath{fuel-type-data}. \codepath{HOUR_LABEL_IS_ENDING} applies the
-        one-hour shift.
-  \item \codepath{build_frame} fills gaps of up to three hours by
-        interpolation, clips negative wind and solar values to zero, and
-        computes \codepath{net_load_mw}.
-  \item \codepath{write_panels} writes
-        \codepath{data/four_market_2025/months/YYYY-MM/canonical_panel.csv},
-        holding the warm-up hour and the month, and
-        \codepath{data/four_market_2025/calendar.json}, which lists the months
-        and panel paths. The same split appears under \codepath{data.split} in
-        \codepath{env/protocols/four_market_v2.yaml}, the single protocol
-        file.
-  \item \codepath{compute_scales} computes \(S_m\). It is stored as
-        \codepath{gross_q95_mw} in
-        \codepath{data/four_market_2025/frozen_stats.json}, with training means
-        and standard deviations used to standardize observations, and repeated
-        as \codepath{market_scale_mw} in every panel row.
-        \codepath{RampAwareEnv} refuses to run if the two copies disagree.
-  \item \codepath{CanonicalMarketPanel} in \codepath{env/ramp_v6/panel.py}
-        checks that the columns in \codepath{REQUIRED_COLUMNS} are present and
-        finite, that timestamps are contiguous hourly UTC with every market in
-        every hour, and that no forecast is issued after its row's hour.
-  \item \codepath{scripts/build_causal_forecasts.py} implements
-        Section~\ref{subsec:energy-forecasts}. \codepath{build_features}
-        constructs the 28 inputs of Table~\ref{tab:forecast-inputs},
-        \codepath{assert_causal} performs the truncation check,
-        \codepath{fit_ridge} solves Equation~\eqref{eq:forecast-ridge} in
-        closed form, \codepath{select_alpha} runs the rolling-origin
-        cross-validation, and \codepath{fit_market_quantity_horizon} applies
-        the two-ended training mask. \codepath{build_all} fills rows without a
-        week of history with persistence and would replace any model that
-        failed to beat persistence on training hours; none does.
-        \codepath{--report} prints the accuracy in
-        Table~\ref{tab:forecast-accuracy} without writing, and
-        \codepath{--write} rewrites the panels' forecast columns and records
-        the vintage \codepath{causal-ridge-shortlag-v2} in
-        \codepath{calendar.json}.
-  \item Forecast lead times are \codepath{FORECAST_HOURS} and urgency horizons
-        are \codepath{deadline_bucket_hours}, both in
-        \codepath{env/ramp_v6/models.py}. \codepath{EDFQueue.due_by} computes
-        urgency.
-\end{itemize}
-
-\subsection{Fleet construction and monthly simulation
-  (Section~\ref{sec:data-transformations})}
-\begin{itemize}
-  \item \codepath{MARKET_TO_CELL}, \codepath{RATED_POWER_MW},
-        \codepath{COMPUTE_CAPACITY}, and \codepath{DEADLINE_WINDOW_SLOTS} in
-        \codepath{energy_model_v3/four_market_v2.py} set the mapping, fleet
-        constants, and \(H\). The protocol file records them under
-        \codepath{fleet} and \codepath{deadline_hours}.
-  \item In \codepath{scripts/build_four_market_v2_factory.py},
-        \codepath{_hourly_curve} drops the unpaired final row and averages
-        groups of twelve, \codepath{_raw_arrivals} maps each UTC hour to trace
-        hour \((\text{day}-1)\cdot24+\text{hour}\), and \codepath{_workload}
-        stores warm-up power as \codepath{warm_power_mw}. The warm-up length is
-        \codepath{HISTORY_HOURS} in \codepath{env/ramp_v6/models.py}.
-  \item The factory writes one fixture per month to
-        \codepath{output/four_market_joint_v3/factory/windows/YYYY-MM/fixture.json},
-        holding site configurations, arrivals, batch windows, and warm-up
-        power, plus an index, \codepath{factory.json}. These generated files
-        are not tracked. \codepath{validate} rejects a factory whose input
-        files have changed since it was built, and \codepath{--rebuild}
-        regenerates it.
-  \item \codepath{RampAwareEnv} in \codepath{env/ramp_v6/environment.py}
-        simulates one month. Its \codepath{reset} empties the queue, clears the
-        running peaks, and loads warm-up power; each \codepath{step} advances
-        one hour. \codepath{FourMarketV2WindowEnv} in
-        \codepath{energy_model_v3/four_market_v2.py} loads a fresh month on
-        every reset through \codepath{_load_window}, which assembles the
-        \codepath{WorkloadTrace}, \codepath{SiteConfig},
-        \codepath{FrozenRampStats}, and \codepath{CanonicalMarketPanel}. It
-        cycles through the training months in shuffled order.
-  \item Hour \(t\) of a month is row \(t+1\) of its panel, after the warm-up
-        hour; \codepath{CanonicalMarketPanel.observation_rows} returns it.
-  \item No committed script produces the tables in
-        Section~\ref{subsec:transform-control-authority}. They follow from
-        \codepath{data/power_model_params.json}, the tier curves, and the
-        training panels.
-\end{itemize}
-
-\subsection{Constraints (Sections~\ref{subsec:problem-decisions}--\ref{subsec:problem-feasibility})}
-\begin{itemize}
-  \item \codepath{project_action} in \codepath{env/ramp_v6/projection.py}
-        turns each hourly action into \(x^{\mathrm{svc}}_{j,t}\), \(z_t\), and
-        \(x^{\mathrm{bat}}_{j,t}\) satisfying
-        Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}.
-        The action encoding belongs to the methods chapter.
-  \item \codepath{project_capped_simplex} splits total service among
-        destinations so that it is conserved and within capacity.
-        \codepath{EDFQueue.drain} in \codepath{models.py} gives \(y_{i,t}\),
-        and \codepath{exact_transport} pairs origins with destinations so both
-        totals match.
-  \item \codepath{EDFQueue} keeps the backlog ledger, and after every hour
-        \codepath{step} checks that arrived work equals completed plus queued
-        work. \codepath{_load_current_arrivals} stores each arrival with its
-        first late slot, \(\min\{\nu+H,\;T_e\}\), one past \(d_\nu\).
-  \item \codepath{project_action} raises the release to cover both the work due
-        now and, for each later deadline, the work due by then minus
-        \codepath{_guaranteed_future_batch_capacity_by_deadline}. That bound
-        assumes future service could reach the month's largest hourly arrival
-        total, so releases are sometimes earlier than strictly needed. In the
-        final slot it releases the whole queue.
-  \item \codepath{step} stops the simulation if due work remains, a site
-        exceeds capacity, or work is left at month-end.
-        \codepath{tests/ramp_v6/test_continuous_month.py} and
-        \codepath{tests/ramp_v6/test_ramp_math.py} test the window, drain order,
-        and deadline guard.
-\end{itemize}
-
-\subsection{Ramps, peaks, and the joint objective
-  (Sections~\ref{subsec:problem-objective}--\ref{subsec:problem-normalization})}
-\begin{itemize}
-  \item \codepath{closed_window_terms} in \codepath{env/ramp_v6/reward.py}
-        computes Equations~\eqref{eq:native-ramp}--\eqref{eq:incremental-impact};
-        \codepath{_step_info} in \codepath{environment.py} applies it to each
-        market, using the previous hour's site power.
-  \item \codepath{update_peak} in \codepath{env/ramp_v6/objective.py}
-        maintains running maxima. \codepath{_step_info} tracks each region's
-        adjusted and original peaks and charges each hour the adjusted increase
-        minus the original increase. Running maxima telescope, so a month of
-        these increments sums to \(\Phi_{m,e}\).
-  \item \codepath{reference_trajectory_scores} scores one month under
-        \(\mu_{\mathrm{NF}}\). \codepath{calibrate_objective} in the factory
-        script averages those scores over the training months and stores the
-        results, with each month's scores, under
-        \codepath{objective_calibration} in \codepath{factory.json}.
-        \codepath{objective_from_factory} loads them, and
-        \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that May
-        is never read.
-  \item \codepath{JointObjective} implements
-        Equation~\eqref{eq:objective}: \codepath{score} returns \(J_e\), and
-        \codepath{reward_components} gives each hour's share, which sums to
-        \(-J_e\) over a month. The weights are \codepath{component_weights} in
-        the protocol file, and \codepath{OBJECTIVE_VERSION} labels the
-        definition so that results under different definitions are never
-        mixed. \codepath{tests/ramp_v6/test_joint_objective.py} checks the
-        monthly identity.
-\end{itemize}
-
-\subsection{Baseline, causal information, and worked example
-  (Sections~\ref{subsec:problem-evaluation}--\ref{subsec:problem-worked-joint})}
-\begin{itemize}
-  \item \codepath{_status_quo_action} in \codepath{environment.py} encodes
-        \(\mu_{\mathrm{NF}}\), and
-        \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that it
-        runs every arrival in place. \codepath{ramp_rl/evaluation.py} computes
-        Equation~\eqref{eq:improvement}.
-  \item \codepath{_build_observation_schema} and \codepath{_observation} build
-        \(\mathcal I_t\), and \codepath{GRID_OBSERVATION_LAG_HOURS} sets the
-        one-hour lag. \codepath{tests/ramp_v6/test_continuous_month.py} changes
-        every grid row at or after hour \(t\) and checks that the hour-\(t\)
-        observation is unchanged.
-  \item \codepath{tests/energy_model_v3/test_monthly_ramp_impact.py}
-        recomputes the worked example's monthly scores and peaks from the
-        panel and trace data.
-\end{itemize}
-
-\subsection{Other tracked files}
-\codepath{scripts/build_energy_thesis_figures.py} draws the normalized
-net-load figures in \codepath{docs/figures/four_market_v2/}, which this
-document does not use. \codepath{docs/problem_statement_review_2026-09-07.md}
-reviews an earlier draft. The \codepath{output/} and \codepath{models/}
-folders named \codepath{four_market_v2}, \codepath{four_market_joint_v1}, and
-\codepath{four_market_joint_v2} hold results from superseded designs.
-\codepath{.gitignore} excludes model weights, generated factories, and
-\codepath{.env}; \codepath{.gitattributes} stores CSV files and notebooks
-verbatim.
+% References and appendices use the front-matter heading format (1-inch top
+% margin), as in the template's example thesis.
+\fbmatterchapterformat
 
 \begin{thebibliography}{99}
 
@@ -1918,7 +2029,7 @@ Google, ``ClusterData trace format v3,'' protocol-buffer schema, 2019.
 Accessed: Aug. 28, 2026.
 
 \bibitem{googleClusterAnalysisColab}
-Google, ``Google ClusterData2019 analysis Colab,'' 2020. [Online]. Available:
+Google, ``Google trace analysis Colab,'' 2020. [Online]. Available:
 \url{https://github.com/google/cluster-data/blob/master/clusterdata_analysis_colab.ipynb}.
 Accessed: Aug. 28, 2026.
 
@@ -1933,6 +2044,475 @@ U.S. Energy Information Administration, ``Hourly Electric Grid Monitor.''
 [Online]. Available: \url{https://www.eia.gov/electricity/gridmonitor/}.
 Accessed: Aug. 28, 2026.
 
+\bibitem{hastie2009elements}
+T. Hastie, R. Tibshirani, and J. Friedman, \emph{The Elements of Statistical
+Learning: Data Mining, Inference, and Prediction}, 2nd ed. New York, NY, USA:
+Springer, 2009, Sec.~7.10.
+
+\bibitem{bergmeir2012crossvalidation}
+C. Bergmeir and J. M. Ben\'{\i}tez, ``On the use of cross-validation for time
+series predictor evaluation,'' \emph{Inf. Sci.}, vol. 191, pp. 192--213, 2012.
+
 \end{thebibliography}
 
+% Appendix headings read "APPENDIX A: TITLE"; sections inside the appendices
+% are left out of the table of contents.
+\clearpage
+\uncctocformat{chapter}{0pt}{350pt}{\appendixname~\thecontentslabel:~}
+\renewcommand{\chaptertitlename}{APPENDIX}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{0}}
+\appendix
+
+\chapter{DATA SCHEMAS}
+\label{app:data-schemas}
+
+The tables below document the stored workload curves and hourly grid panels.
+
+\section{Five-Minute Workload Curves}
+Each stored curve contains 8,929 rows. The final row is dropped because it
+cannot form a complete group of twelve, leaving 744 whole hours.
+
+\begingroup
+\small
+\singlespacing
+\begin{longtable}{@{}L{0.22\textwidth}L{0.39\textwidth}rrr@{}}
+\caption{Stored workload columns for cell \(a\), with examples at minimum,
+  median, and maximum CPU utilization. The example rows are not consecutive.}
+  \label{tab:clusterdata-tier-columns}\\
+    \toprule
+     & & \multicolumn{3}{c}{Cell \(a\)} \\
+    \cmidrule(l){3-5}
+    Column & Meaning & Quiet & Median & Busy \\
+    \midrule
+  \endfirsthead
+    \toprule
+     & & \multicolumn{3}{c}{Cell \(a\)} \\
+    \cmidrule(l){3-5}
+    Column & Meaning & Quiet & Median & Busy \\
+    \midrule
+  \endhead
+    \codepath{timestep}
+      & Five-minute index in the stored curve.
+      & 255 & 5257 & 2681 \\
+    \addlinespace
+    \codepath{cpu_demand_norm}
+      & All retained CPU use divided by the cell's reference capacity,
+        \(u_{\mathrm{cell},k}\).
+      & 0.3320 & 0.5652 & 0.6931 \\
+    \addlinespace
+    \codepath{service_demand_norm}
+      & CPU use not classified as batch, including work with no recorded
+        priority, \(u^{\mathrm{svc}}_{\mathrm{cell},k}\).
+      & 0.2432 & 0.4416 & 0.6341 \\
+    \addlinespace
+    \codepath{batch_demand_norm}
+      & CPU use by jobs with priority 115 or below,
+        \(u^{\mathrm{bat}}_{\mathrm{cell},k}\).
+      & 0.0888 & 0.1236 & 0.0590 \\
+    \bottomrule
+\end{longtable}
+\endgroup
+
+
+\section{Hourly Grid Panels}
+For each calendar month, the simulation uses the month's grid rows and the
+immediately preceding hour. Workload arrivals are attached separately as
+described in Section~\ref{subsec:transform-pairing}. The committed 2025
+panels hold the final scales and forecasts, fitted on all of 2025; each
+cross-validation fold writes its own copies with its own scales and
+forecasts, and the May 2026 test panel has the same columns.
+
+\begingroup
+\small
+\singlespacing
+\begin{longtable}{@{}L{0.23\textwidth}L{0.36\textwidth}r@{}}
+\caption{Example hourly grid record for CAISO, 2025-07-19 16:00 UTC.}
+  \label{tab:panel-columns}\\
+    \toprule
+    Column & Meaning & Value \\
+    \midrule
+  \endfirsthead
+    \toprule
+    Column & Meaning & Value \\
+    \midrule
+  \endhead
+    \codepath{timestamp_utc}
+      & Beginning of the UTC hour the row describes.
+      & 2025-07-19 16:00Z \\
+    \codepath{market_id}
+      & Market case, as stored; the identifier predates the
+        balancing-authority names used in the text.
+      & \codepath{CAISO_NP15} \\
+    \addlinespace
+    \codepath{gross_demand_mw}
+      & Balancing-authority demand, \(D_m\) (EIA series \codepath{D}).
+      & 29,214 \\
+    \codepath{wind_mw}
+      & Observed wind generation, \(G^{\mathrm{wnd}}_m\) (EIA series
+        \codepath{NG.WND}).
+      & 2,096 \\
+    \codepath{solar_mw}
+      & Observed solar generation, \(G^{\mathrm{sol}}_m\) (EIA series
+        \codepath{NG.SUN}).
+      & 15,279 \\
+    \codepath{net_load_mw}
+      & Net load \(N_m\) from Equation~\eqref{eq:energy-net-load}.
+      & 11,839 \\
+    \addlinespace
+    \codepath{market_scale_mw}
+      & Ramp and peak normalizer \(S_m\) from Equation~\eqref{eq:market-scale};
+        constant within a market.
+      & 33,781 \\
+    \addlinespace
+    \codepath{forecast_gross_h1/h3/h6/h12_mw}
+      & Gross-demand forecast at each of the four lead times, from
+        Equation~\eqref{eq:forecast-model}.
+      & 30,394 / 31,016 / 29,976 / 32,611 \\
+    \codepath{forecast_net_h1/h3/h6/h12_mw}
+      & Net-load forecast at each of the four lead times, from
+        Equation~\eqref{eq:forecast-model}.
+      & 11,181 / 11,505 / 10,567 / 28,162 \\
+    \codepath{forecast_issue_time_utc},
+    \codepath{forecast_vintage_id},
+    \codepath{quality_ok}
+      & Forecast provenance and quality checks.
+      & --- \\
+    \bottomrule
+\end{longtable}
+\endgroup
+
+\chapter{IMPLEMENTATION NOTES}
+\label{app:implementation}
+% Ragged right: long code names cannot be hyphenated and would otherwise run
+% into the margin. \raggedright zeroes \parindent, so it is restored.
+\raggedright
+\setlength{\parindent}{.17in}
+
+Paths are relative to the repository root. Several names predate the current
+design: \codepath{energy_model_v3}, \codepath{env/ramp_v6}, the
+\codepath{four_market_v2} prefix, and the market identifiers
+\codepath{CAISO_NP15}, \codepath{MISO_MINN_HUB}, \codepath{SPP_NORTH_HUB}, and
+\codepath{ISONE_NEMA}, which stand for the whole CAISO, MISO, SPP, and ISO-NE
+balancing authorities. \codepath{README.md} gives the rebuild
+commands. Training, evaluation, and campaign code will be documented with the
+methods chapter.
+
+\section{Workload Extraction (Sections~\ref{sec:clusterdata2019}--\ref{subsec:clusterdata-tier-split})}
+\begin{itemize}
+  \item \codepath{extract_cells.ipynb} runs the BigQuery queries in
+        Google Colab or a local Jupyter kernel. It needs a Google Cloud
+        project and installs its extraction dependencies in the first code cell.
+  \item The trace's tables are \codepath{machine_events} (the machine list),
+        \codepath{instance_usage} (the task usage measurements), and
+        \codepath{collection_events} (the job records). The fields used are
+        \codepath{capacity.cpus}, a machine's CPU capacity on the scale of
+        Section~\ref{subsec:clusterdata-capacity};
+        \codepath{average_usage.cpus}, the average CPU used during one
+        measurement, \(a_r\); \codepath{start_time} and
+        \codepath{end_time}, the measurement window; and
+        \codepath{alloc_collection_id}, the allocation set a task runs in,
+        which is empty or 0 for tasks outside any set and for the reserved
+        blocks themselves.
+  \item The query's \codepath{cap} step, a common-table expression (a named
+        sub-query), computes
+        \(C^{\mathrm{ref}}_{\mathrm{cell}}\) (Equation~\eqref{eq:reference-capacity}) by
+        taking \codepath{MAX(capacity.cpus)} for each \codepath{machine_id}
+        and summing over machines. The capacity cell sums the same
+        per-machine maxima, counting machines that report both a CPU and a
+        memory capacity, as the machine-list exports behind the committed
+        values did, and saves the result, with each cell's machine count, to
+        \codepath{data/cell_capacity.json}, which sets the site sizes in
+        Table~\ref{tab:active-market-map}.
+  \item The usage query assigns each row to a 300-second bucket by
+        \codepath{start_time}, sums \codepath{average_usage.cpus}, divides by
+        \(C^{\mathrm{ref}}_{\mathrm{cell}}\), and clips the result to \([0,1]\), a bound no
+        retained bucket reaches. Its \codepath{WHERE} clause keeps rows whose
+        \codepath{alloc_collection_id} is empty or 0, which drops tasks
+        running inside an allocation set and keeps the blocks, and requires
+        \codepath{end_time-start_time} of at least 300 seconds.
+  \item The \codepath{prio} step takes, for each job
+        (\codepath{collection_id}), the highest priority among its
+        submission events, which have \codepath{type=0}. A left join keeps
+        usage rows with no matching priority, and those count as service.
+  \item \codepath{scripts/bigquery/audit_300s_filter.sql} audits the
+        300-second filter with the same top-level filter and priority join.
+        Its first query measures the rows and CPU work removed by cell and
+        class, saved as
+        \codepath{scripts/bigquery/results/query1_filter_volume.csv}; its
+        second compares hourly level, one-hour ramps, and peaks with and
+        without the filter, saved as
+        \codepath{scripts/bigquery/results/query2_hourly_shape.csv}. Work is
+        \codepath{average_usage.cpus} times window duration.
+  \item The notebook writes \codepath{data/cells/cell_a_tiers.csv} through
+        \codepath{data/cells/cell_h_tiers.csv}, which also carry an unused
+        \codepath{batch_share} column. \codepath{TRAIN_CELLS} lists
+        \(a\)--\(d\) and \codepath{TEST_CELLS} lists \(e\)--\(h\); setting
+        \codepath{INCLUDE_TEST_CELLS = False} extracts only the training
+        cells. Outputs are staged under \codepath{build/clusterdata2019/}
+        before being copied into the repository.
+\end{itemize}
+
+\section{Power Model (Section~\ref{sec:powerdata2019})}
+\begin{itemize}
+  \item The power-extraction cell of
+        \codepath{extract_cells.ipynb} averages
+        \codepath{measured_power_util} by hour from \codepath{powerdata_2019},
+        excluding rows flagged \codepath{bad_measurement_data}. It builds hourly
+        CPU utilization with the filters above and fits each cell with
+        \codepath{numpy.linalg.lstsq}.
+  \item Coefficients are stored under \codepath{per_cell_cpu_model} in
+        \codepath{data/power_model_params.json} as \codepath{idle_power}
+        (\(\alpha_{\mathrm{cell}}\)), \codepath{slope} (\(\beta_{\mathrm{cell}}\)), \codepath{r_squared},
+        and the number of fitted hours, \codepath{n}, for all eight cells.
+        The file's top-level pooled fit and \codepath{cpu_mem_model}, both
+        over \(a\)--\(d\), are unused.
+  \item \codepath{_site_configs} in
+        \codepath{scripts/build_four_market_v2_factory.py} copies
+        \(\alpha_m,\beta_m\) into each site's \codepath{SiteConfig}, whose
+        \codepath{power_mw} method in \codepath{env/ramp_v6/models.py}
+        evaluates Equation~\eqref{eq:runtime-power}.
+\end{itemize}
+
+\section{Grid Data and Forecasts (Sections~\ref{sec:energy-data}--\ref{subsec:energy-forecasts})}
+\begin{itemize}
+  \item \codepath{scripts/fetch_eia_panels.py} downloads the series from the
+        EIA API v2 with the key \codepath{EIA_API_KEY} in an untracked
+        \codepath{.env} file. \codepath{MARKETS} maps each market case to its
+        balancing authority, using the EIA codes \codepath{CISO},
+        \codepath{MISO}, \codepath{SWPP}, and \codepath{ISNE}, and \codepath{fetch_series} requests demand from
+        \codepath{region-data} and wind and solar from
+        \codepath{fuel-type-data}. \codepath{HOUR_LABEL_IS_ENDING} applies the
+        one-hour shift.
+  \item \codepath{build_frame} fills gaps of up to three hours by
+        interpolation, clips negative wind and solar values to zero, and
+        computes \codepath{net_load_mw}.
+  \item \codepath{write_panels} writes
+        \codepath{data/four_market_2025/months/YYYY-MM/canonical_panel.csv},
+        holding the warm-up hour and the month, and
+        \codepath{data/four_market_2025/calendar.json}, which lists the
+        twelve 2025 months, the folds, and the test month. The same split
+        appears under \codepath{data.split} in
+        \codepath{env/protocols/four_market_v2.yaml}, the single protocol
+        file, and a test keeps both in step with
+        \codepath{energy_model_v3/splits.py}. \codepath{--test-raw} fetches
+        23~April to 1~June 2026 into
+        \codepath{data/four_market_2026_test/raw_hourly.csv}.
+  \item \codepath{frozen_stats} in \codepath{energy_model_v3/splits.py}
+        computes \(S_m\) and the means and standard deviations used to
+        standardize observations from a given set of training months. The
+        final values, from all of 2025, are stored in
+        \codepath{data/four_market_2025/frozen_stats.json}, with \(S_m\) as
+        \codepath{gross_q95_mw}, and \(S_m\) is repeated as
+        \codepath{market_scale_mw} in every panel row.
+        \codepath{RampAwareEnv} refuses to run if the two copies disagree.
+  \item \codepath{CanonicalMarketPanel} in \codepath{env/ramp_v6/panel.py}
+        checks that the columns in \codepath{REQUIRED_COLUMNS} are present and
+        finite, that timestamps are contiguous hourly UTC with every market in
+        every hour, and that no forecast is issued after its row's hour.
+  \item \codepath{scripts/build_causal_forecasts.py} implements
+        Section~\ref{subsec:energy-forecasts}. \codepath{INPUT_SETS} holds
+        the five candidate input sets and \codepath{INPUT_SET} the chosen
+        one. \codepath{build_features} constructs a set's inputs for one
+        quantity and lead, \codepath{assert_causal} stops the build if any
+        input uses a later hour, \codepath{fit_rows} keeps only rows whose inputs and target
+        all lie in training months, and \codepath{fit_least_squares} fits the
+        weights of Equation~\eqref{eq:forecast-model} with the least-squares
+        solver of the numpy library. \codepath{fit_forecasts} fits all 32
+        models on any set of training months and flags any that fail to beat
+        persistence on their training rows. \codepath{predict}
+        applies fixed weights to any hourly series, filling rows without a
+        week of history with persistence. \codepath{--select} prints the
+        cross-validation comparison of the candidate input sets,
+        \codepath{--report} prints the
+        cross-validation and test accuracy of
+        Table~\ref{tab:forecast-accuracy}, and \codepath{--write} writes the
+        final forecasts into the 2025 panels and builds the test panel
+        \codepath{data/four_market_2026_test/months/2026-05/canonical_panel.csv},
+        recording the vintage \codepath{causal-least-squares-v4} in
+        \codepath{calendar.json}.
+  \item Forecast lead times are \codepath{FORECAST_HOURS} and urgency horizons
+        are \codepath{deadline_bucket_hours}, both in
+        \codepath{env/ramp_v6/models.py}. \codepath{EDFQueue.due_by} computes
+        urgency.
+\end{itemize}
+
+\section{Cross-Validation, Final Policies, and Test
+  (Section~\ref{subsec:energy-calendar})}
+\begin{itemize}
+  \item \codepath{energy_model_v3/splits.py} defines the twelve 2025 months,
+        \codepath{DEVELOPMENT_MONTHS}, the four \codepath{CV_FOLDS}, the
+        \codepath{TEST_MONTHS}, the two fleets \codepath{TRAIN_FLEET} and
+        \codepath{TEST_FLEET}, and the \codepath{REFERENCE_CELL} \(c\).
+        \codepath{spec_months} gives the training, validation, and test
+        months of each split specification: \codepath{cv-k1} to
+        \codepath{cv-k4} and \codepath{final}.
+  \item \codepath{scripts/build_data_splits.py} writes the final statistics,
+        the calendar, the final forecasts, and the test panel, and for each
+        fold its own statistics and a copy of every 2025 panel with the
+        fold's \(S_m\) and forecasts under
+        \codepath{output/four_market_joint_v3/cv-kX/data/}. These fold files
+        are generated, not tracked.
+  \item \codepath{scripts/build_four_market_v2_factory.py} builds one
+        factory per specification under
+        \codepath{output/four_market_joint_v3/<spec>/factory/}. Each window
+        records which fleet serves it, and \codepath{calibrate_objective}
+        reads only the specification's training months.
+        \codepath{make_four_market_env} in
+        \codepath{energy_model_v3/four_market_v2.py} loads a specification
+        through its \codepath{spec} argument and accepts the test split only
+        from the final factory.
+  \item \codepath{scripts/run_four_market_cv.py} trains every (fold, seed)
+        pair on the fold's training months and evaluates each saved
+        milestone on each held-out month. Results are under
+        \codepath{output/four_market_joint_v3/cv/<tag>/}, with
+        \codepath{cv.json} holding the improvement of every month and seed
+        and its averages; checkpoints are under
+        \codepath{models/four_market_joint_v3/cv/<tag>/}.
+  \item \codepath{scripts/run_four_market_v2_campaign.py} trains the final
+        policies on all of 2025 and evaluates each once on the test month;
+        \codepath{preflight} checks only the baseline's feasibility in every
+        month, without scoring the test month.
+  \item \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that
+        the folds partition 2025, that each fold's statistics and forecasts
+        come from its training months only (changing a held-out month leaves
+        every forecast weight unchanged), and that the test month exists only
+        in the final factory and is served by cells \(e\)--\(h\).
+\end{itemize}
+
+\section{Fleet Construction and Monthly Simulation
+  (Sections~\ref{sec:data-transformations}--\ref{subsec:transform-control-authority})}
+\begin{itemize}
+  \item \codepath{MARKET_TO_CELL}, \codepath{REFERENCE_POWER_MW}, and
+        \codepath{DEADLINE_WINDOW_SLOTS} in
+        \codepath{energy_model_v3/four_market_v2.py} set the training
+        mapping, cell \(c\)'s 500 MW, and \(H\). \codepath{site_capacities}
+        reads each cell's \(C^{\mathrm{ref}}_{\mathrm{cell}}\) from
+        \codepath{data/cell_capacity.json} and returns each site's capacity
+        relative to cell \(c\) for either fleet (0.846 to 1.443). The code
+        therefore counts work in units of cell \(c\)'s hourly capacity: its
+        capacities, arrivals, and executed work are this document's work
+        units divided by 7,619.8, while every utilization, power, and score
+        is the same. The protocol file records the sizes
+        under \codepath{fleet} and \codepath{test_fleet} and the window under
+        \codepath{deadline_hours}.
+  \item In \codepath{scripts/build_four_market_v2_factory.py},
+        \codepath{_hourly_curve} drops the unpaired final row and averages
+        groups of twelve, \codepath{_raw_arrivals} maps each UTC hour to trace
+        hour \((\text{day}-1)\cdot24+\text{hour}\) and multiplies by
+        that relative capacity, and \codepath{_workload}
+        stores warm-up power as \codepath{warm_power_mw}. The warm-up length is
+        \codepath{HISTORY_HOURS} in \codepath{env/ramp_v6/models.py}.
+  \item Each factory writes one fixture per month to
+        \codepath{output/four_market_joint_v3/<spec>/factory/windows/<split>/YYYY-MM/fixture.json},
+        holding site configurations, arrivals, batch windows, and warm-up
+        power, plus an index, \codepath{factory.json}. These generated files
+        are not tracked. \codepath{validate} rejects a factory whose input
+        files have changed since it was built, and \codepath{--rebuild}
+        regenerates it.
+  \item \codepath{RampAwareEnv} in \codepath{env/ramp_v6/environment.py}
+        simulates one month. Its \codepath{reset} empties the queue, clears the
+        running peaks, and loads warm-up power; each \codepath{step} advances
+        one hour. \codepath{FourMarketV2WindowEnv} in
+        \codepath{energy_model_v3/four_market_v2.py} loads a fresh month on
+        every reset through \codepath{_load_window}, which assembles the
+        \codepath{WorkloadTrace}, \codepath{SiteConfig},
+        \codepath{FrozenRampStats}, and \codepath{CanonicalMarketPanel}. It
+        cycles through the training months in shuffled order.
+  \item Hour \(t\) of a month is row \(t+1\) of its panel, after the warm-up
+        hour; \codepath{CanonicalMarketPanel.observation_rows} returns it.
+  \item No committed script produces the tables in
+        Section~\ref{subsec:transform-control-authority}. They follow from
+        \codepath{data/power_model_params.json}, the tier curves, and the
+        training panels.
+\end{itemize}
+
+\section{Constraints (Sections~\ref{subsec:problem-decisions}--\ref{subsec:problem-feasibility})}
+\begin{itemize}
+  \item \codepath{project_action} in \codepath{env/ramp_v6/projection.py}
+        turns each hourly action into \(x^{\mathrm{svc}}_{j,t}\), \(z_t\), and
+        \(x^{\mathrm{bat}}_{j,t}\) satisfying
+        Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}.
+        The action encoding belongs to the methods chapter.
+  \item \codepath{project_capped_simplex} splits total service among
+        destinations so that it is conserved and within capacity.
+        \codepath{EDFQueue.drain} in \codepath{models.py} gives \(y_{i,t}\),
+        and \codepath{exact_transport} pairs origins with destinations so both
+        totals match.
+  \item \codepath{EDFQueue} keeps the backlog ledger, and after every hour
+        \codepath{step} checks that arrived work equals completed plus queued
+        work. \codepath{_load_current_arrivals} stores each arrival with its
+        first late slot, \(\min\{\nu+H,\;T_e\}\), one past \(d_\nu\).
+  \item \codepath{project_action} raises the release to cover both the work due
+        now and, for each later deadline, the work due by then minus
+        \codepath{_guaranteed_future_batch_capacity_by_deadline}. That bound
+        assumes future service could reach the month's largest hourly arrival
+        total, so releases are sometimes earlier than strictly needed. In the
+        final slot it releases the whole queue.
+  \item \codepath{step} stops the simulation if due work remains, a site
+        exceeds capacity, or work is left at month-end.
+        \codepath{tests/ramp_v6/test_continuous_month.py} and
+        \codepath{tests/ramp_v6/test_ramp_math.py} test the window, drain order,
+        and deadline guard.
+\end{itemize}
+
+\section{Ramps, Peaks, and the Joint Objective
+  (Sections~\ref{subsec:problem-objective}--\ref{subsec:problem-normalization})}
+\begin{itemize}
+  \item \codepath{closed_window_terms} in \codepath{env/ramp_v6/reward.py}
+        computes Equations~\eqref{eq:native-ramp}--\eqref{eq:incremental-impact};
+        \codepath{_step_info} in \codepath{environment.py} applies it to each
+        market, using the previous hour's site power.
+  \item \codepath{update_peak} in \codepath{env/ramp_v6/objective.py}
+        maintains running maxima. \codepath{_step_info} tracks each region's
+        adjusted and original peaks and charges each hour the adjusted increase
+        minus the original increase. Running maxima telescope, so a month of
+        these increments sums to \(\Phi_{m,e}\).
+  \item \codepath{reference_trajectory_scores} scores one month under
+        \(\mu_{\mathrm{NF}}\). \codepath{calibrate_objective} in the factory
+        script averages those scores over the training months and stores the
+        results, with each month's scores, under
+        \codepath{objective_calibration} in \codepath{factory.json}.
+        \codepath{objective_from_factory} loads them, and
+        \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that
+        each specification's calibration reads only its training months.
+  \item \codepath{JointObjective} implements
+        Equation~\eqref{eq:objective}: \codepath{score} returns \(J_e\), and
+        \codepath{reward_components} gives each hour's share, which sums to
+        \(-J_e\) over a month. The weights are \codepath{component_weights} in
+        the protocol file, and \codepath{OBJECTIVE_VERSION} labels the
+        definition so that results under different definitions are never
+        mixed. \codepath{tests/ramp_v6/test_joint_objective.py} checks the
+        monthly identity.
+\end{itemize}
+
+\section{Baseline, Causal Information, and Worked Example
+  (Sections~\ref{subsec:problem-causality}--\ref{subsec:problem-worked-joint})}
+\begin{itemize}
+  \item \codepath{_status_quo_action} in \codepath{environment.py} encodes
+        \(\mu_{\mathrm{NF}}\), and
+        \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that it
+        runs every arrival in place. \codepath{ramp_rl/evaluation.py} computes
+        Equation~\eqref{eq:improvement}.
+% [symbols 2026-10-09] was: ... \codepath{_observation} build \(\mathcal I_t\), and ...
+  \item \codepath{_build_observation_schema} and \codepath{_observation} build
+        the information listed in Section~\ref{subsec:problem-causality}, and
+        \codepath{GRID_OBSERVATION_LAG_HOURS} sets the
+        one-hour lag. \codepath{tests/ramp_v6/test_continuous_month.py} changes
+        every grid row at or after hour \(t\) and checks that the hour-\(t\)
+        observation is unchanged.
+  \item \codepath{tests/energy_model_v3/test_monthly_ramp_impact.py}
+        recomputes the worked example's monthly scores and peaks from the
+        panel and trace data.
+\end{itemize}
+
+\section{Other Tracked Files}
+\codepath{scripts/build_energy_thesis_figures.py} draws the normalized
+net-load figures in \codepath{docs/figures/four_market_v2/}, which this
+document does not use. \codepath{docs/problem_statement_review_2026-09-07.md}
+reviews an earlier draft. The \codepath{output/} and \codepath{models/}
+folders named \codepath{four_market_v2}, \codepath{four_market_joint_v1}, and
+\codepath{four_market_joint_v2} hold results from superseded designs.
+\codepath{.gitignore} excludes model weights, generated factories, and
+\codepath{.env}; \codepath{.gitattributes} stores CSV files and notebooks
+verbatim.
 \end{document}

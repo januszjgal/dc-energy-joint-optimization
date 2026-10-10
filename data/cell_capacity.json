@@ -1,0 +1,39 @@
+{
+  "description": "Reference CPU capacity of each Google ClusterData2019 cell: the sum over machines of each machine's largest reported capacity.cpus in machine_events (normalized units, largest machine = 1.0), counting machines that report both a CPU and a memory capacity. All cells draw on the same per-machine values (0.259, 0.387, 0.5, 0.592, 0.709, 0.959, 1.0), so sums are comparable across cells. Cells a-d form the training fleet and e-h the test fleet; every site is sized relative to cell c.",
+  "query": "SELECT machine_id, MAX(capacity.cpus) AS cpu_capacity, MAX(capacity.memory) AS memory_capacity FROM clusterdata_2019_<cell>.machine_events GROUP BY 1 HAVING cpu_capacity IS NOT NULL AND memory_capacity IS NOT NULL",
+  "source": "data/machines/machines_{a..d}.csv in clusterdata2019_full.zip (extract_clusterdata2019_full.ipynb) and data/machines/machines_{e..h}.csv in cells_eh.zip (extract_cells_eh.ipynb, 2026-06-12); extract_cells.ipynb reproduces all eight with the same query",
+  "cells": {
+    "a": {
+      "machines": 10001,
+      "cpu_capacity": 6835.692383
+    },
+    "b": {
+      "machines": 10047,
+      "cpu_capacity": 7582.019531
+    },
+    "c": {
+      "machines": 13245,
+      "cpu_capacity": 7619.751465
+    },
+    "d": {
+      "machines": 12576,
+      "cpu_capacity": 6448.808105
+    },
+    "e": {
+      "machines": 14122,
+      "cpu_capacity": 7266.942383
+    },
+    "f": {
+      "machines": 12201,
+      "cpu_capacity": 10994.152344
+    },
+    "g": {
+      "machines": 12796,
+      "cpu_capacity": 7963.12793
+    },
+    "h": {
+      "machines": 11592,
+      "cpu_capacity": 10317.021484
+    }
+  }
+}

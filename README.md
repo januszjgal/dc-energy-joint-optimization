@@ -2,7 +2,8 @@
 
 This is a master's thesis repository for UNC Charlotte written by Janusz 'Jay' Gal. The 
 experiment schedules raw measured service and batch CPU curves from
-ClusterData2019 cells a-d against four hourly market panels.
+ClusterData2019 cells a-d (the training fleet) and e-h (the test fleet) against
+four hourly market panels.
 The working thesis document is
 [`latex/thesis_problemstatement.tex`](latex/thesis_problemstatement.tex).
 
@@ -10,8 +11,15 @@ The working thesis document is
 
 - One protocol: [`env/protocols/four_market_v2.yaml`](env/protocols/four_market_v2.yaml),
   including objective weights and fixed-reference normalization.
-- Four normalized-capacity sites, 500 MW each, map cells a-d to CAISO NP15, MISO
-  Minnesota, SPP North, and ISO-NE NEMA.
+- Four sites map cells a-d to CAISO NP15, MISO Minnesota, SPP North, and ISO-NE
+  NEMA. Each keeps its cell's measured CPU capacity relative to cell c, the largest
+  training cell (`data/cell_capacity.json`): compute capacity 0.897 / 0.995 / 1.000
+  / 0.846 and reference power 500 MW times that, 449 / 498 / 500 / 423 MW. Arrivals
+  are the cell's utilization times the site's capacity, in work units that add
+  across sites.
+- The test fleet maps cells e-h to the same four markets in the same order and is
+  sized by the same rule: 0.954 / 1.443 / 1.045 / 1.354, or 477 / 721 / 523 / 677
+  MW (2,398 MW against the training fleet's 1,869 MW). It serves only the test month.
 - **Continuous months.** Each calendar month of 2025 is one episode. Batch queues
   and site-power history carry across every midnight inside the month and reset
   only at the month boundary. One warm hour before the month gives the first
@@ -41,23 +49,32 @@ The working thesis document is
   it adds each region's running adjusted and original normalized net-load peaks
   over completed decision hours, plus the remaining-month fraction. These are
   causal features; peaks start at zero before the first decision.
-- [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json)
-  lists the eleven training months (2025 outside May), the May validation month,
-  the monthly panel paths, and the frozen-statistics path. May has already been
-  consulted to select forecast lead times, so it is validation rather than an
-  untouched test set. There is no separate test split.
-- The factory creates one fixture per month and
-  `output/four_market_joint_v3/factory/factory.json`; it references the panels in
-  `data/four_market_2025/months/` rather than copying them. It freezes the training
-  no-flexibility calibration and records its objective version and input identity.
+- **Splits** ([`energy_model_v3/splits.py`](energy_model_v3/splits.py), mirrored in
+  [`data/four_market_2025/calendar.json`](data/four_market_2025/calendar.json) and the
+  protocol). The twelve months of 2025 are the development data. Four-fold grouped
+  cross-validation holds out three interleaved months per fold (k1 Jan/May/Sep,
+  k2 Feb/Jun/Oct, k3 Mar/Jul/Nov, k4 Apr/Aug/Dec) and trains on the other nine, so
+  every 2025 month is validated once. The final policies train on all twelve
+  months. May 2026, served by the e-h fleet, is the test month; it is scored once,
+  with the final policies, after every design choice is fixed.
+- Everything fitted to data is fitted on a split's training months only: forecast
+  weights, the market scales $S_m$ and observation standardization, and the
+  objective references $C_R$ and $C_Q$. The committed panels and
+  `frozen_stats.json` hold the final (all-2025) values; each fold's own copies are
+  generated under `output/four_market_joint_v3/cv-kX/data/`.
+- There is one factory per split specification (`cv-k1` .. `cv-k4`, `final`) under
+  `output/four_market_joint_v3/<spec>/factory/`. Each records which fleet serves
+  each window, freezes the spec's training no-flexibility calibration, and records
+  its objective version and input identity.
 
 Day-ahead prices are not fetched and cost is not part of the study.
 
 ## Joint monthly objective
 
 Adjusted regional net load is $A_{m,t}=N_{m,t}+P_{m,t}$. Each fixed regional
-scale $S_m$ is the training gross-demand 95th percentile. With $\Delta t=1$ hour,
-$\Delta^{\mathrm{adj}}_{m,t}=(A_{m,t}-A_{m,t-1})/(S_m\Delta t)$.
+scale $S_m$ is the training gross-demand 95th percentile. Every interval is one
+hour, so $\Delta^{\mathrm{adj}}_{m,t}=(A_{m,t}-A_{m,t-1})/S_m$ is a fraction of the
+market scale per hour.
 The incremental impact subtracts the original grid's squared ramp. Each region
 also has its own monthly peak:
 
@@ -79,13 +96,13 @@ every improvement unchanged, and keeps the grid's own peak records out of the
 reward. It sums the separate regional peak impacts, not the maximum of the combined regions,
 data-center power peaks, or hourly squared loads. The warm hour participates
 in the first ramp only. The fixed positive references are arithmetic means
-over the eleven training months:
+over a split's training months (nine per fold, twelve for the final policies):
 
 $$
-C_R=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}
+C_R=\frac{1}{|\mathcal E_{\mathrm{train}}|}\sum_{e\in\mathcal E_{\mathrm{train}}}
   \sum_{t\in\mathcal T_e}\sum_m(\Delta^{\mathrm{adj}}_{m,t}(\mathrm{NF}))^2,
 \qquad
-C_Q=\frac{1}{11}\sum_{e\in\mathcal E_{\mathrm{train}}}\sum_m Q^{\mathrm{adj}}_{m,e}(\mathrm{NF}).
+C_Q=\frac{1}{|\mathcal E_{\mathrm{train}}|}\sum_{e\in\mathcal E_{\mathrm{train}}}\sum_m Q^{\mathrm{adj}}_{m,e}(\mathrm{NF}).
 $$
 
 Both references are whole-grid totals with the no-flexibility fleet: total
@@ -93,7 +110,9 @@ squared adjusted ramp and summed regional adjusted peaks. Dividing the impact
 terms by them expresses each change as a fraction of a grid total, so equal
 weights value equal fractional reductions. The fleet can move total ramps
 proportionally more than total peaks, so ramp gains usually dominate. For the
-committed data, $C_R\approx6.03405775$ and $C_Q\approx3.66459854$. Both remain frozen for training and May validation.
+final policies, $C_R\approx6.10907155$ and $C_Q\approx3.65083499$; the folds give
+$C_R$ from 5.86 to 6.62 and $C_Q$ from 3.57 to 3.74. Each stays frozen for its
+split's training and evaluation, and the final values also score the test month.
 The objective is
 
 $$
@@ -144,16 +163,27 @@ second scheduling baseline. With nonnegative
 added site power, peak reduction means relative to the same fleet without
 flexibility, never a peak below the native grid without the fleet.
 
-## Ten-seed validation campaign
+## Cross-validation
 
-The planned joint campaign uses seeds 4101-4110, each requesting 2,000,000
+[`scripts/run_four_market_cv.py`](scripts/run_four_market_cv.py) trains one fresh
+policy per (fold, seed) on the fold's nine training months and evaluates every
+saved milestone on each of its three held-out months, one continuous episode per
+month, against the status quo on the same hours. Results go to
+`output/four_market_joint_v3/cv/<tag>/<fold>/seed-<seed>/`, and `cv.json` collects
+the final improvement of every (month, seed) and its averages. The test month is
+never touched here.
+
+## Ten-seed final campaign and test
+
+The planned final campaign uses seeds 4101-4110, each requesting 2,000,000
 interactions and stopping at the first checkpoint boundary at or beyond it
 (2,048,000 interactions at 4 environments,
 512 steps per rollout, and a checkpoint every 25 rollouts).
-Each seed trains on the same eleven months and is evaluated on the single
-continuous May episode (744 hourly decisions, 31 UTC days), paired with the
-status quo on exactly the same hours. The optimizer seed is the statistical
-unit (`n=10`). Aggregation uses exact two-sided Wilcoxon signed-rank testing,
+Each seed trains on all twelve months of 2025 and is then evaluated once on the
+continuous May 2026 test episode (744 hourly decisions, 31 UTC days), served by
+the e-h fleet and paired with the status quo on exactly the same hours. Nothing
+about the design may change after this evaluation. The optimizer seed is the
+statistical unit (`n=10`). Aggregation uses exact two-sided Wilcoxon signed-rank testing,
 matched-pairs rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw
 seed-bootstrap intervals, per-UTC-day tables, safety totals, and learning-curve
 slopes.
@@ -175,19 +205,22 @@ python -m pip install -r requirements.txt
 To re-extract the Google workload and power inputs, run
 [`extract_cells.ipynb`](extract_cells.ipynb) from top to bottom in Colab or
 locally from the repository root. It defaults to billing project `aeee-thesis`
-and cells a-d; e-h are optional. It stages a zip under
-`build/clusterdata2019/` for review before replacing committed data.
-The existing inputs can be used without rerunning it.
+and all eight cells (a-d training, e-h test); set `INCLUDE_TEST_CELLS = False` for
+a-d only. It stages a zip under `build/clusterdata2019/` for review before
+replacing committed data. The existing inputs can be used without rerunning it.
 
-Rebuild the EIA panels and forecasts (optional; the committed monthly panels
-already carry the causal forecast columns):
+Rebuild the EIA panels, the test pull, and every split's data (optional; the
+committed panels already carry the final forecasts, and the factory builder
+regenerates the fold data it needs):
 
 ```powershell
 python scripts\fetch_eia_panels.py --write
-python scripts\build_causal_forecasts.py --write
+python scripts\fetch_eia_panels.py --test-raw
+python scripts\build_causal_forecasts.py --select
+python scripts\build_data_splits.py
 ```
 
-Build and preflight the one factory, then run the tests:
+Build the five factories and preflight the final one, then run the tests:
 
 ```powershell
 python scripts\build_four_market_v2_factory.py
@@ -195,24 +228,26 @@ python scripts\run_four_market_v2_campaign.py preflight
 python -m pytest -q tests
 ```
 
-Run a short joint pilot:
+Run the four-fold cross-validation (three seeds, six workers):
 
 ```powershell
-python scripts\run_four_market_v2_pilot.py --ramp-weight 0.5 --seeds 4101 --timesteps 51200 --tag impact-50-50-smoke --workers 1
+python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-50-50-1m --workers 6
 ```
 
 The default ramp weight is 0.5 from the protocol. Use `--ramp-weight 0` for
 peak-only, `0.5` for joint, or `1` for ramp-only comparisons, with distinct tags.
 These are three objective variants, not three additional scheduling baselines.
 
-The unchanged thesis's July routing example is a regression test: baseline
-$J=0.0056208656$, routed $J=0.0048005770$, improvement $0.0008202886$.
-This includes every July hour and the following hour's rebound ramp.
+The thesis's July routing example is a regression test against the final
+factory: baseline $J=0.0051421164$, routed $J=0.0044403453$, improvement
+$0.0007017711$. This includes every July hour and the following hour's rebound
+ramp.
 
-**Pilot results:** the three-seed pilot in
-`output/four_market_joint_v3/pilot/impact-50-50-1m/` uses the current
-calibration. On May its final policies improve $J$ by 0.0153 to 0.0170 over the
-no-flexibility baseline; `latex/ppo_solution.tex` reports the details.
+**Earlier pilots:** `output/four_market_joint_v3/pilot/` holds two three-seed
+pilots under the old 11-month/May split: `impact-50-50-1m` (equal-size fleet,
+ridge forecasts) and `ols-forecast-50-50-1m` (sized fleet, five-input
+least-squares forecasts). Both are superseded by the cross-validation and are
+not comparable with the current factories.
 
 Run and aggregate the locked campaign (only aggregate after all ten summaries
 exist):
@@ -237,19 +272,25 @@ use `four_market_joint_v3` to keep them separate from historical runs.
 |---|---|
 | `extract_cells.ipynb` | Single Google workload and power extraction notebook |
 | `data/cells/cell_X_tiers.csv` | Retained measured CPU/service/batch tier curves |
-| `data/four_market_2025/calendar.json` | Month split, monthly panel paths, and frozen-statistics path |
-| `data/four_market_2025/months/` | One continuous hourly EIA panel per month (one warm hour plus the month, hour-beginning UTC) |
-| `scripts/fetch_eia_panels.py` | Rebuilds the monthly panels from the EIA API |
-| `scripts/build_causal_forecasts.py` | Fits and writes the causal forecast columns |
+| `data/four_market_2025/calendar.json` | Development months, folds, test month, panel paths, and frozen-statistics path |
+| `data/four_market_2025/months/` | One continuous hourly EIA panel per 2025 month (one warm hour plus the month, hour-beginning UTC), with final scales and forecasts |
+| `data/four_market_2026_test/` | Raw May 2026 test pull and the test panel |
+| `energy_model_v3/splits.py` | Development months, cross-validation folds, test month, and both fleets |
+| `scripts/fetch_eia_panels.py` | Rebuilds the monthly panels and fetches the test window from the EIA API |
+| `scripts/build_causal_forecasts.py` | Selects the forecast inputs by cross-validation and fits the forecasts |
+| `scripts/build_data_splits.py` | Writes final statistics, calendar, forecasts, test panel, and each fold's data |
+| `scripts/run_four_market_cv.py` | Four-fold cross-validation of PPO |
 | `data/power_model_params.json` | Committed CPU-to-power coefficients |
+| `data/cell_capacity.json` | Per-cell CPU capacity that sets each site's relative size |
 | `env/protocols/four_market_v2.yaml` | Sole active protocol |
-| `energy_model_v3/four_market_v2.py` | One-factory runtime (one continuous episode per month) |
+| `energy_model_v3/four_market_v2.py` | Factory runtime (one continuous episode per month, one factory per split) |
 | `env/ramp_v6/` | Scheduler, queue, observation, and reward implementation |
 | `ramp_rl/` | Trainer boundary, PPO runner, evaluation, and campaign statistics |
-| `output/four_market_joint_v3/factory/` | Monthly fixtures, `factory.json`, and fixed objective calibration |
-| `output/four_market_joint_v3/campaign/` | Monthly-impact ten-seed summaries, statistics, and learning curves (full results pending) |
-| `output/four_market_joint_v3/pilot/<tag>/` | Tagged short pilot outputs |
-| `models/four_market_joint_v3/` | Monthly-impact campaign and pilot checkpoints |
+| `output/four_market_joint_v3/<spec>/` | Generated fold data and per-split factories with fixed objective calibration (not tracked) |
+| `output/four_market_joint_v3/cv/<tag>/` | Cross-validation summaries and learning curves |
+| `output/four_market_joint_v3/campaign/` | Final ten-seed test summaries, statistics, and learning curves (pending) |
+| `output/four_market_joint_v3/pilot/<tag>/` | Superseded pilots under the old split |
+| `models/four_market_joint_v3/` | Cross-validation, campaign, and pilot checkpoints |
 | `output/four_market_v2/`, `models/four_market_v2/` | Historical ramp-only artifacts |
 | `output/four_market_joint_v1/`, `models/four_market_joint_v1/` | Historical mean-squared joint artifacts |
 | `output/four_market_joint_v2/`, `models/four_market_joint_v2/` | Historical joint runs under the absolute-peak objective |

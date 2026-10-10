@@ -1,0 +1,455 @@
+THESIS OUTLINE (updated 2026-09-25)
+
+ GEO-DISTRIBUTED DATA CENTER SCHEDULING TO SMOOTH GRID RAMPS AND REDUCE
+  MONTHLY NET-LOAD PEAKS
+
+===========================================================================
+FRONT MATTER
+===========================================================================
+
+Title page                                                    [drafted]
+
+Copyright page                                                [drafted]
+  Page ii.
+
+Abstract                                                      [new]
+  One page: the problem (data-center load and grid ramps and peaks), the
+  data (Google traces, EIA grid data), the method (PPO scheduler), and the
+  main May result against the no-flexibility baseline. 
+
+Table of Contents
+
+List of Tables
+
+List of Figures
+
+List of Abbreviations                                         [drafted]
+
+===========================================================================
+RESEARCH QUESTIONS
+===========================================================================
+
+Main question:
+  How much can a causal scheduler jointly smooth normalized one-hour
+  regional net-load ramps and reduce regional monthly net-load peaks,
+  using temporal deferral and geographic routing while satisfying
+  immediate-service, batch-window, and site-capacity constraints?
+
+  RQ1  How large is the joint ramp-and-peak improvement over the
+       no-flexibility baseline in the May validation month?
+  RQ2  Which lever produces that improvement: routing service between
+       sites, or delaying and moving batch work?
+  RQ3  Which regions benefit, and how does that depend on the fleet's
+       size relative to each region's hourly ramps?
+
+
+===========================================================================
+CHAPTER 1: INTRODUCTION
+===========================================================================
+Why the timing and location of data-center load matter to the grid, what
+question the thesis asks, and what it contributes. Written for a reader
+who knows neither data centers nor grid operations.
+
+1.1 Background: Data Centers on the Electric Grid              [revise]
+    Data-center load is large and growing. Grid operators care about the
+    shape of that load: how fast net load changes from hour to hour
+    (ramps) and how high it gets each month (peaks). Wind and solar make
+    net-load ramps steeper.
+    Only the opening sentence is written; the rest is a "Planned:" note.
+
+1.2 Workload Flexibility: Timing and Location                  [drafted]
+    Some computing must run right away (service); some can wait (batch).
+    An operator with several sites can also choose where work runs. These
+    two levers, deferral and routing, are the only things the scheduler
+    controls.
+
+1.3 Research Questions and Objectives                          [drafted]
+    The main question and RQ1-RQ3 above, and the four objectives that
+    answer them: build a fleet from public data, define a joint
+    ramp-and-peak score, train a scheduler, and compare it with the
+    no-flexibility baseline.
+
+1.4 Scope and Assumptions                                      [drafted]
+    What is modeled and what is not. The thesis takes the fleet operator's
+    view. It models no electricity prices, carbon, cooling control,
+    on-site generation, or demand-response payments, and uses one
+    baseline. The main assumptions (500 MW sites, the cell-to-region
+    mapping, the 24-hour batch window) are named here and justified in
+    later chapters.
+
+1.5 Contributions                                              [drafted]
+    (1) An objective that scores a schedule by what it does to regional
+    net-load ramps and peaks, in MW. (2) A reproducible four-site fleet
+    built from public Google and EIA data, with causal forecasts. (3) A
+    learned scheduler evaluated against the no-flexibility baseline.
+
+1.6 Thesis Organization                                        [drafted]
+    One sentence per chapter.
+
+
+===========================================================================
+CHAPTER 2: LITERATURE REVIEW
+===========================================================================
+What prior work has done with each lever, and why its objectives differ
+from this thesis. The sections start with the grid, move through the two
+levers and the learning method, cover the data that such studies use,
+and end with the gap this thesis fills.
+
+2.1 Net Load, Ramps, and Peaks in Power Systems                [new]
+    Grid-side background: what net load is, why solar and wind make
+    evening ramps steep (the "duck curve"), and why monthly peaks drive
+    capacity needs. None of the 26 current references covers this
+    directly, so a few power-system sources are needed.
+
+2.2 Data Centers as Grid Loads                                 [drafted]
+    Data-center growth, data centers in demand response, and priority-
+    based power capping inside a facility (IEA; Vasques et al.;
+    Sakalkar et al.).
+
+2.3 Geographic Routing Among Sites                             [drafted]
+    Moving work between sites to follow electricity prices or renewable
+    output (Qureshi et al.; Rao et al.; Liu et al., geographic load
+    balancing; Zhao et al.).
+
+2.4 Temporal Deferral of Batch Work                            [drafted]
+    Delaying flexible work within a completion window to follow
+    renewables or carbon (Liu et al. 2012; Grange et al.; Xu et al.;
+    Haghshenas et al.; Radovanovic et al.).
+
+2.5 Learned Schedulers                                         [drafted]
+    Reinforcement-learning control of data centers and buildings, and
+    what each one optimizes (Kahil et al.; DeepEE; SustainDC;
+    Zhang et al.).
+
+2.6 Workload Traces and Power Models                           [drafted]
+    The public traces and power models that such studies rely on
+    (ClusterData2019 and Borg; Da Costa et al.; PowerData2019;
+    power-model and energy-efficiency surveys).
+
+2.7 Research Gap and Position of This Thesis                   [revise]
+    Prior schedulers see the grid through a price or carbon signal, and
+    grid-side reports value flexibility without a scheduler. This thesis
+    scores the schedule directly on regional ramps and peaks, from the
+    fleet operator's side.
+    Still to add: a summary table (study, lever, objective, data, method)
+    that shows the gap at a glance.
+
+
+===========================================================================
+CHAPTER 3: DATA SOURCES AND PREPARATION
+===========================================================================
+Where every input comes from and how it becomes the hourly series the
+model uses. The order follows the data: workload first, then power, then
+grid data, then the forecasts built from the grid data, and finally the
+checks that apply to all of it.
+
+3.1 Overview of the Data Pipeline                              [new]
+    One figure and one table: the three public sources (ClusterData2019,
+    PowerData2019, EIA), what is taken from each, and the hourly outputs
+    they become.
+
+3.2 Workload Data: Google ClusterData2019                      [drafted]
+    The Borg trace, the fixed reference capacity of each cell, and
+    five-minute CPU utilization. Includes the 300-second usage filter and
+    its measured effect (6.5% of CPU work removed). Subsections 3.2.1
+    Dataset, 3.2.2 Fixed Reference Capacity, 3.2.3 Five-Minute Executed
+    CPU.
+
+3.3 Service and Batch Classification                           [drafted]
+    Splitting work by priority: the no-SLO tiers (priority 115 or below)
+    are batch and may wait; everything else is service and must run
+    immediately.
+
+3.4 Power Model: Google PowerData2019                          [drafted]
+    A straight-line fit from CPU utilization to measured power for each
+    cell, scaled to 500 MW per site, with each site's idle power and
+    full-load swing. Floor cooling is already inside the measured power.
+
+3.5 Grid Data: EIA Demand, Wind, and Solar                     [drafted]
+    Hourly demand, wind, and solar for four balancing authorities in
+    2025, and net load (demand minus wind and solar). The regions are
+    named by their balancing authorities (CAISO, MISO, SPP, ISO-NE), since
+    the data cover each whole balancing authority.
+
+3.6 Training and Validation Calendar, and Regional Scale       [drafted]
+    Eleven months of 2025 for training and May for validation. The fixed
+    regional scale S_m (the 95th percentile of training-month demand)
+    lets regions of very different size be compared.
+
+3.7 Demand and Net-Load Forecasts                              [drafted]
+    The 32 ridge-regression forecasts (4 regions x 2 quantities x 4 lead
+    times): the model, its 28 inputs, fitting and penalty selection, the
+    output columns, and accuracy against persistence (24-78% lower error
+    in May). Subsections 3.7.1 Model, 3.7.2 Inputs, 3.7.3 Fitting,
+    3.7.4 Output, 3.7.5 Accuracy.
+
+3.8 Data Quality Checks                                        [new]
+    Missing hours and how gaps are filled, the hour-ending to
+    hour-beginning timestamp shift, and the causality checks on the
+    forecast inputs.
+    Open item: gap filling interpolates in both directions, so a filled
+    hour can use later data. This section should report how many hours
+    that affects.
+
+
+===========================================================================
+CHAPTER 4: SYNTHETIC FLEET AND PROBLEM FORMULATION
+===========================================================================
+How the prepared data become a four-site fleet, and the exact
+optimization problem the scheduler must solve. Nothing in this chapter
+depends on the learning method, so any scheduler could be scored against
+it.
+
+4.1 The Four-Site Fleet                                        [drafted]
+    Each Google cell is placed in one region. All sites have the same
+    compute capacity and a 500 MW reference power. One work unit is one
+    site at full use for one hour.
+
+4.2 Monthly Simulation and Hourly Arrivals                     [drafted]
+    One calendar month is one continuous simulation. The May 2019
+    workload repeats each month, and its five-minute use becomes hourly
+    service and batch arrivals. One warm-up hour starts the month, and
+    queues start and end empty.
+
+4.3 Fleet Size Relative to Regional Ramps                      [drafted]
+    How large the fleet's power swing is next to each region's typical
+    hourly ramps: large in ISO-NE, small in MISO. This sets expectations
+    for the regional results in 6.3.
+
+4.4 Decisions and Constraints                                  [drafted]
+    The three hourly decisions (where service runs, how much batch runs,
+    and where it runs) and the rules they must follow: service runs in
+    its arrival hour, batch finishes within 24 hours and by month-end,
+    and no site exceeds its capacity. Routing has no latency or cost,
+    which makes geographic flexibility optimistic. Subsections 4.4.1
+    Sets, Inputs, and Units; 4.4.2 Scheduler Controls; 4.4.3 Immediate
+    Service; 4.4.4 Batch Queue and Deadlines; 4.4.5 Capacity and Site
+    Power.
+
+4.5 Net-Load Ramps and Peaks with the Fleet                    [drafted]
+    Adjusted net load (grid plus fleet), the one-hour ramp impact, and
+    the monthly peak impact, each measured against the grid without the
+    fleet.
+
+4.6 Joint Objective                                            [drafted]
+    The two fixed reference scales C_R and C_Q, the equally weighted
+    score J, and what equal weights mean in practice (ramp gains
+    dominate).
+
+4.7 Information Available to the Scheduler                     [drafted]
+    What the scheduler knows when it decides (last hour's grid data,
+    forecasts, current arrivals, queues, running peaks) and what it
+    cannot know (this hour's net load).
+
+4.8 Baseline and Formal Problem Statement                      [drafted]
+    The no-flexibility baseline, the improvement measure
+    J(baseline) - J(policy), and the one-paragraph problem statement.
+
+4.9 Worked Example: Joint Ramp and Peak Reduction              [drafted]
+    One July hour in which moving ISO-NE service to CAISO lowers the
+    ISO-NE ramp and monthly peak, carried through to the change in J.
+
+
+===========================================================================
+CHAPTER 5: SCHEDULING METHOD: PROXIMAL POLICY OPTIMIZATION
+===========================================================================
+How the problem of Chapter 4 becomes a reinforcement-learning task, how
+it is trained with PPO, and how the trained policies are evaluated.
+
+5.1 Reinforcement Learning in Brief                            [new]
+    Agent, observation, action, reward, episode, and policy in plain
+    terms, using the monthly simulation as the example. Needed because
+    the committee may not know reinforcement learning.
+
+5.2 Observation                                                [in PPO]
+    The 82 numbers the policy sees each hour, grouped by region, site,
+    queue, and calendar.
+    Now: PPO 2.1.
+
+5.3 Actions and the Feasibility Decoder                        [in PPO]
+    Nine preferences in [-6, 6] turned into a feasible schedule: softmax
+    routing, the capacity projection, earliest-deadline-first batch
+    release, and forced release when deadlines require it. Constraints
+    are enforced here rather than penalized in the reward.
+    Now: PPO 2.2.
+
+5.4 Reward                                                     [in PPO]
+    The hourly reward, whose monthly sum equals -J exactly, so that
+    raising the return lowers the objective.
+    Now: PPO 2.3.
+
+5.5 The PPO Algorithm                                          [in PPO]
+    Actor and critic networks, generalized advantage estimation, the
+    clipped update, and observation and reward normalization, including
+    where training (discounted) differs from evaluation (undiscounted).
+    Full update equations go in Appendix C.
+    Now: PPO 3.1, 3.2.
+
+5.6 Training Setup                                             [in PPO]
+    Network size, hyperparameters (not tuned), the eleven training months
+    in shuffled order, 1,024,000 interactions per seed, and what a seed
+    controls.
+    Now: PPO 3.3.
+
+5.7 Evaluation Protocol                                        [in PPO]
+    The deterministic policy runs on May; the baseline runs on the same
+    inputs. Reported measures: joint improvement, its ramp and peak
+    parts, and regional MW. J is recomputed from the raw data and checked
+    against the return. May is a validation month, not an untouched test.
+    Now: PPO Chapter 4.
+
+5.8 Comparison Runs                                            [planned]
+    What else is run, and why: a ten-seed campaign (seeds 4101-4110);
+    ramp-only and peak-only policies, to test whether the peak term is
+    what causes the peak cuts; and, if chosen, a forecast-aware rule-based
+    scheduler and a local-service variant (service stays at its own site
+    and only batch moves).
+    Now: PPO Chapter 6 (listed as next steps).
+
+
+===========================================================================
+CHAPTER 6: RESULTS
+===========================================================================
+What the trained scheduler achieved in May, in the order of the research
+questions. Current numbers are from the three-seed pilot and will be
+replaced by the ten-seed campaign.
+
+6.1 Training Behavior                                          [in PPO]
+    Learning curves: how quickly each seed passes the baseline and where
+    it levels off.
+    Now: PPO 5.1.
+
+6.2 May Improvement over the Baseline (RQ1)                    [in PPO]
+    Joint improvement by checkpoint, its split into ramp and peak parts,
+    and the percentage cuts in total squared ramps and in peaks.
+    Now: PPO 5.2.
+
+6.3 Regional Results (RQ3)                                     [in PPO]
+    Ramp cuts and peak changes in MW for each region, and why ISO-NE
+    gains most and MISO least, tied back to Section 4.3.
+    Now: PPO 5.3.
+
+6.4 How the Policy Achieves the Improvement (RQ2)              [in PPO]
+    The share of service moved between sites, batch waiting times, how
+    often the decoder corrects the schedule, and a close-up of the ISO-NE
+    peak window.
+    Now: PPO 5.4.
+
+6.5 Ablations and Comparisons (RQ2)                            [planned]
+    Results of the runs in 5.8: joint versus ramp-only, the local-service
+    variant, and any rule-based scheduler.
+
+
+===========================================================================
+CHAPTER 7: DISCUSSION AND CONCLUSIONS
+===========================================================================
+What the results mean, where they stop applying, and what should come
+next.
+
+7.1 Summary of Findings                                        [new]
+    Answers to RQ1-RQ3 in plain numbers.
+
+7.2 Interpretation for Fleet and Grid Operators                [new]
+    What a ramp cut of about 3% and a peak cut of about 100 MW mean in
+    each region, and why the gains are reported as changes in the modeled
+    score rather than as cost or reliability savings.
+
+7.3 Limitations                                                [revise]
+    One month of workload from one company, reused every month; modeling
+    assumptions (service/batch split, 24-hour window, 500 MW scale,
+    cell-to-region mapping); free and instant routing; a deterministic
+    power fit; forecasts fitted here rather than the operator's own; one
+    validation month; whole-balancing-authority grid data.
+    The problem-statement list is in place; PPO Chapter 6 still has to be
+    merged into it.
+
+7.4 Future Work                                                [new]
+    Cooling control and on-site generation, price or carbon signals
+    alongside ramps, routing costs and latency, more test months or
+    years, and other learning algorithms.
+
+7.5 Conclusions                                                [new]
+    A short closing statement.
+
+
+===========================================================================
+REFERENCES
+===========================================================================
+IEEE style. The 26 current sources, plus the new grid-side sources for
+Section 2.1. The PPO draft adds four more (Sutton and Barto; the two
+Schulman et al. papers; Stable-Baselines3).
+
+
+===========================================================================
+APPENDICES
+===========================================================================
+
+APPENDIX A: DATA SCHEMAS                                      [drafted]
+  Columns and example rows of the five-minute workload curves and the
+  hourly grid panels.
+
+APPENDIX B: IMPLEMENTATION NOTES                              [drafted]
+  A file-by-file map from each chapter to the code that implements it.
+  The PPO appendix sections on the environment, training, and evaluation
+  (PPO A.1, A.3, A.4) still have to be merged here.
+
+APPENDIX C: PPO UPDATE EQUATIONS                              [in PPO]
+  The full equations behind Section 5.5.
+  Now: PPO A.2.
+
+APPENDIX D: REPRODUCTION COMMANDS                             [in PPO]
+  The commands that rebuild the data, retrain the policies, and redo the
+  evaluation and figures.
+  Now: PPO A.5.
+
+APPENDIX E: SUPPLEMENTARY RESULTS                             [optional]
+  Per-seed and per-checkpoint tables and figures that would crowd
+  Chapter 6.
+
+
+===========================================================================
+WHAT HAS CHANGED FROM THE ORIGINAL DRAFTS
+===========================================================================
+
+Done (2026-09-25):
+1. Both .tex files use the UNC Charlotte template instead of the
+   two-column IEEE conference layout.
+2. thesis_problemstatement.tex follows this outline. Its old Sections
+   I-VII became Chapters 1-4, the three data sections became one chapter,
+   and the old "Scope and Limitations" list became Section 7.3.
+   References now come before the appendices.
+3. Chapters 5 and 6 and the new sections (1.1 background, 2.1, 3.1, 3.8,
+   7.1, 7.2, 7.4, 7.5, and the abstract) show a "Planned:" note that says
+   what each will contain.
+
+Done (2026-09-27):
+4. Regions are named by their balancing authorities (CAISO, MISO, SPP,
+   ISO-NE) in both .tex files. Only the stored code identifiers
+   (CAISO_NP15, etc.) and the PPO figure labels keep the old names.
+
+Still to do:
+5. Merge ppo_solution.tex into Chapters 5-6, Section 7.3, and
+   Appendices B-D. Its text still uses "we" and needs the same
+   passive-voice rewrite as the problem statement.
+6. Write the new sections listed in item 3.
+
+
+===========================================================================
+OPEN DECISIONS THAT AFFECT THE OUTLINE
+===========================================================================
+
+- Main research question (1.3): the current wording is kept. A shorter,
+  plainer version is possible: "How much can a causal scheduler that
+  routes service work and defers batch work across four data centers
+  smooth one-hour regional net-load ramps and lower monthly net-load
+  peaks, compared with running all work where and when it arrives?"
+- Comparison runs (5.8 and 6.5): which of ramp-only, local-service, and a
+  rule-based scheduler to include. The ten-seed campaign is needed
+  either way.
+- Forecasts (3.7): keep as a section of Chapter 3, or make them their own
+  chapter if the committee wants more forecasting depth.
+- Wording in 4.4: "optimistic upper bound on geographic flexibility"
+  should become "optimistic scenario," since a trained policy does not
+  establish a bound.
+- Chapter 7: keep discussion and conclusions in one chapter (as here) or
+  split them into two.

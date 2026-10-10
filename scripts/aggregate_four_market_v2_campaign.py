@@ -1,4 +1,4 @@
-"""Aggregate the locked ten-seed one-factory PPO campaign."""
+"""Aggregate the locked ten-seed final PPO campaign's test results."""
 
 from __future__ import annotations
 
@@ -142,16 +142,16 @@ def aggregate_learning_curves(output_root: Path) -> dict[str, Any]:
 def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
     rows = _require_complete_summaries(output_root)
     differences = [
-        float(row["validation"]["status_quo_comparison"]["policy_minus_status_quo_joint_J"])
+        float(row["test"]["status_quo_comparison"]["policy_minus_status_quo_joint_J"])
         for row in rows
     ]
     markets = sorted(
-        rows[0]["validation"]["status_quo_comparison"]["per_market"]
+        rows[0]["test"]["status_quo_comparison"]["per_market"]
     )
     per_market = {}
     for market in markets:
         market_rows = [
-            row["validation"]["status_quo_comparison"]["per_market"][market]
+            row["test"]["status_quo_comparison"]["per_market"][market]
             for row in rows
         ]
         per_market[market] = {
@@ -198,58 +198,58 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
             "effective_interactions": int(row["effective_interactions"]),
             "resumed_from_interactions": int(row["resumed_from_interactions"]),
             "training_elapsed_seconds": float(row["training_elapsed_seconds"]),
-            "policy_joint_J": float(row["validation"]["status_quo_comparison"]["policy_J"]),
-            "status_quo_joint_J": float(row["validation"]["status_quo_comparison"]["status_quo_J"]),
-            "components": row["validation"]["status_quo_comparison"]["components"],
+            "policy_joint_J": float(row["test"]["status_quo_comparison"]["policy_J"]),
+            "status_quo_joint_J": float(row["test"]["status_quo_comparison"]["status_quo_J"]),
+            "components": row["test"]["status_quo_comparison"]["components"],
             "policy_native_relative_incremental_ramp_impact": float(
-                row["validation"]["mean_incremental_ramp_impact"]
+                row["test"]["mean_incremental_ramp_impact"]
             ),
             "status_quo_native_relative_incremental_ramp_impact": float(
-                row["validation"]["status_quo_comparison"][
+                row["test"]["status_quo_comparison"][
                     "status_quo_native_relative_mean_incremental_ramp_impact"
                 ]
             ),
             "policy_minus_status_quo_incremental_ramp_impact": float(
-                row["validation"]["status_quo_comparison"][
+                row["test"]["status_quo_comparison"][
                     "policy_minus_status_quo_mean_incremental_ramp_impact"
                 ]
             ),
             "improvement": float(
-                row["validation"]["status_quo_comparison"]["improvement"]
+                row["test"]["status_quo_comparison"]["improvement"]
             ),
         }
         for row in rows
     ]
     result = {
-        "objective": rows[0]["validation"]["objective"],
+        "objective": rows[0]["test"]["objective"],
         "seed_count": len(rows),
         "requested_interactions_per_seed": REQUESTED_TIMESTEPS,
-        "validation_month_ids": list(rows[0]["validation_window_ids"]),
-        "validation_days_per_seed": int(rows[0]["validation"]["day_count"]),
+        "test_month_ids": list(rows[0]["test_window_ids"]),
+        "test_days_per_seed": int(rows[0]["test"]["day_count"]),
         "improvement_definition": (
             "status-quo minus policy mean monthly normalized joint score; positive favors the policy"
         ),
         "mean_improvement": float(-mean(differences)),
         "statistical_unit": "optimizer seed",
-        "mean_monthly_ramp_impact": float(mean(row["validation"]["mean_monthly_ramp_impact"] for row in rows)),
-        "mean_joint_J": float(mean(row["validation"]["mean_joint_J"] for row in rows)),
-        "sample_standard_deviation_joint_J": float(stdev(row["validation"]["mean_joint_J"] for row in rows)),
+        "mean_monthly_ramp_impact": float(mean(row["test"]["mean_monthly_ramp_impact"] for row in rows)),
+        "mean_joint_J": float(mean(row["test"]["mean_joint_J"] for row in rows)),
+        "sample_standard_deviation_joint_J": float(stdev(row["test"]["mean_joint_J"] for row in rows)),
         "mean_incremental_ramp_impact": float(mean(
-            float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows
+            float(row["test"]["mean_incremental_ramp_impact"]) for row in rows
         )),
         "sample_standard_deviation_incremental_ramp_impact": float(stdev(
-            float(row["validation"]["mean_incremental_ramp_impact"]) for row in rows
+            float(row["test"]["mean_incremental_ramp_impact"]) for row in rows
         )),
         "per_market": per_market,
         "safety_totals": {
             field: float(
-                sum(float(row["validation"][field]) for row in rows)
+                sum(float(row["test"][field]) for row in rows)
             )
             for field in safety_fields
         },
         "mean_emergency_feasibility_rate": float(
             mean(
-                float(row["validation"]["emergency_feasibility_rate"])
+                float(row["test"]["emergency_feasibility_rate"])
                 for row in rows
             )
         ),
@@ -257,7 +257,7 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
         "component_comparisons": {
             component: paired_seed_summary(
                 [
-                    -float(row["validation"]["status_quo_comparison"]["components"][component]["improvement"])
+                    -float(row["test"]["status_quo_comparison"]["components"][component]["improvement"])
                     for row in rows
                 ],
                 metric=(

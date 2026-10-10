@@ -499,10 +499,10 @@ def evaluate_checkpoint(
     seeds: list[int],
     windows: list[str],
 ) -> dict[str, Any]:
-    if split != "validation":
-        raise ValueError("evaluation is validation-only")
+    if split not in {"validation", "test"}:
+        raise ValueError("evaluation runs on validation or test months only")
     if not seeds or not windows:
-        raise ValueError("evaluation requires at least one seed and validation window")
+        raise ValueError("evaluation requires at least one seed and window")
     metadata_path = checkpoint_dir / "training_summary.json"
     if not metadata_path.is_file():
         metadata_path = checkpoint_dir / "state.json"

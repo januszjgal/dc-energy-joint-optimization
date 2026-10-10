@@ -12,7 +12,7 @@ from unittest.mock import patch
 from env.ramp_v6.objective import JointObjective
 from ramp_rl.runner import LEARNING_CURVE_COLUMNS
 import scripts.aggregate_four_market_v2_campaign as aggregation
-import scripts.run_four_market_v2_pilot as pilot
+import scripts.run_four_market_cv as cv
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,10 +21,11 @@ ROOT = Path(__file__).resolve().parents[2]
 class JointReportingTests(unittest.TestCase):
     def test_re_evaluation_preserves_the_original_training_duration(self) -> None:
         training = {"effective_interactions": 96, "seed": 1}
-        with tempfile.TemporaryDirectory(prefix=".test-pilot-cache-", dir=ROOT) as directory:
+        held_out = ["2025-01", "2025-05", "2025-09"]
+        with tempfile.TemporaryDirectory(prefix=".test-cv-cache-", dir=ROOT) as directory:
             root = Path(directory)
-            output = root / "output" / pilot.ARTIFACT_NAMESPACE / "pilot" / "test" / "seed-1"
-            checkpoint = root / "models" / pilot.ARTIFACT_NAMESPACE / "pilot" / "test" / "seed-1"
+            output = root / "output" / cv.ARTIFACT_NAMESPACE / "cv" / "test" / "k1" / "seed-1"
+            checkpoint = root / "models" / cv.ARTIFACT_NAMESPACE / "cv" / "test" / "k1" / "seed-1"
             output.mkdir(parents=True)
             checkpoint.mkdir(parents=True)
             for name in ("training_summary.json", "model.zip", "vecnormalize.pkl"):
@@ -34,16 +35,38 @@ class JointReportingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with (
-                patch.object(pilot, "ROOT", root),
-                patch.object(pilot, "_validate_campaign_geometry", return_value={"validation": ["2025-05"]}),
-                patch.object(pilot, "run_training", return_value=training),
-                patch.object(pilot, "evaluate_checkpoint", return_value={"fixture": True}),
-                patch.object(pilot, "_compact", side_effect=lambda value: value),
+                patch.object(cv, "ROOT", root),
+                patch.object(cv, "_validate_fold", return_value=held_out),
+                patch.object(cv, "run_training", return_value=training),
+                patch.object(cv, "evaluate_checkpoint", return_value={"fixture": True}),
+                patch.object(cv, "_compact", side_effect=lambda value: value),
             ):
-                result = pilot.run_seed(1, timesteps=96, tag="test")
+                result = cv.run_job("k1", 1, timesteps=96, tag="test")
             self.assertTrue(result["training_reused"])
             self.assertEqual(result["training_elapsed_seconds"], 12.0)
             self.assertEqual(result["training_interactions_per_second"], 8.0)
+            # Each held-out month is evaluated as its own episode.
+            self.assertEqual(sorted(result["validation_by_interactions"]["96"]), held_out)
+            self.assertEqual(len(result["training_months"]), 9)
+            self.assertFalse(set(result["training_months"]) & set(held_out))
+
+    def test_cross_validation_averages_every_month_once_per_seed(self) -> None:
+        results = []
+        for fold, months in (("k1", ["2025-01", "2025-05", "2025-09"]),
+                             ("k2", ["2025-02", "2025-06", "2025-10"])):
+            for seed, offset in ((1, 0.0), (2, 0.002)):
+                results.append({
+                    "fold": fold, "seed": seed, "effective_interactions": 96,
+                    "validation_by_interactions": {"96": {
+                        month: {"improvement_J": 0.01 * (index + 1) + offset}
+                        for index, month in enumerate(months)
+                    }},
+                })
+        summary = cv.aggregate(results)
+        self.assertEqual(summary["months"], 6)
+        self.assertAlmostEqual(summary["mean_improvement_J_by_seed"]["1"], 0.02)
+        self.assertAlmostEqual(summary["mean_improvement_J_by_seed"]["2"], 0.022)
+        self.assertAlmostEqual(summary["mean_improvement_J"], 0.021)
 
     def test_complete_aggregation_reports_joint_gain_and_peak_regression(self) -> None:
         rows = []
@@ -95,8 +118,8 @@ class JointReportingTests(unittest.TestCase):
                 "effective_interactions": 2_048_000,
                 "resumed_from_interactions": 0,
                 "training_elapsed_seconds": 1.0,
-                "validation_window_ids": ["2025-05"],
-                "validation": validation,
+                "test_window_ids": ["2026-05"],
+                "test": validation,
             })
         with tempfile.TemporaryDirectory(prefix=".test-joint-report-", dir=ROOT) as directory:
             output = Path(directory)

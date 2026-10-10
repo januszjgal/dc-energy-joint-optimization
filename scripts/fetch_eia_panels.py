@@ -20,13 +20,18 @@ and the count is reported.
 
 Prices are deliberately absent. Day-ahead cost is not part of this study.
 
-Panel layout. One file per calendar month, holding the four warm hours before
-the month and every hour of the month. The scheduler runs each month as one
-continuous episode; the warm hours give the first decisions their lookback
-and the first ramps their starting point.
+Panel layout. One file per calendar month, holding the warm hour before the
+month and every hour of the month. The scheduler runs each month as one
+continuous episode; the warm hour gives the first decision its lookback and
+the first ramp its starting point.
 
-    python scripts/fetch_eia_panels.py --report   # fetch and summarize only
-    python scripts/fetch_eia_panels.py --write    # also write panels
+    python scripts/fetch_eia_panels.py --report    # fetch and summarize only
+    python scripts/fetch_eia_panels.py --write     # also write the 2025 panels
+    python scripts/fetch_eia_panels.py --test-raw  # fetch the May 2026 test window
+
+``--write`` stores placeholder forecasts, the development-year statistics, and
+the calendar; ``scripts/build_data_splits.py`` then writes the real forecasts,
+the test panel, and the cross-validation data.
 """
 
 from __future__ import annotations
@@ -45,6 +50,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from energy_model_v3.splits import DEVELOPMENT_MONTHS, frozen_stats  # noqa: E402
 from env.ramp_v6.models import FORECAST_HOURS, HISTORY_HOURS  # noqa: E402
 
 OUT_ROOT = ROOT / "data" / "four_market_2025"
@@ -73,7 +79,15 @@ YEAR_END = pd.Timestamp(f"{YEAR}-12-31T23:00:00Z")
 PANEL_START = YEAR_START - pd.Timedelta(hours=HISTORY_HOURS)
 PANEL_END = YEAR_END
 
-VALIDATION_MONTH = 5  # May is held out; every other month trains.
+# Test month, outside the simulated year. The raw pull starts a week early so
+# the forecast inputs (lags up to 168 hours) exist for its first hours, and it
+# ends twelve hours late so the last issue hours' longest-lead targets exist.
+# Scales and forecasts are not computed here; the test month only reuses
+# quantities frozen from training data.
+TEST_MONTH = "2026-05"
+TEST_ROOT = ROOT / "data" / "four_market_2026_test"
+TEST_FETCH_START = pd.Timestamp("2026-04-23T00:00:00Z")
+TEST_FETCH_END = pd.Timestamp("2026-06-01T11:00:00Z")
 
 REQUEST_PAUSE_S = 0.3
 
@@ -102,8 +116,11 @@ def read_api_key() -> str:
     raise RuntimeError("EIA_API_KEY not found in .env")
 
 
-def fetch_series(respondent: str, kind: str, key: str) -> pd.Series:
-    """One hourly series, indexed by the panel timestamp it belongs to."""
+def fetch_series(
+    respondent: str, kind: str, key: str,
+    start: pd.Timestamp = PANEL_START, end: pd.Timestamp = PANEL_END,
+) -> pd.Series:
+    """One hourly series over panel stamps ``start``..``end``, hour-beginning."""
     if kind == "demand":
         path, facets = "region-data", [("facets[respondent][]", respondent),
                                        ("facets[type][]", "D")]
@@ -113,8 +130,8 @@ def fetch_series(respondent: str, kind: str, key: str) -> pd.Series:
                                           ("facets[fueltype][]", fuel)]
 
     # Requests are chunked by quarter to stay well under the 5000-row cap.
-    lo = PANEL_START + pd.Timedelta(hours=1 if HOUR_LABEL_IS_ENDING else 0)
-    hi = PANEL_END + pd.Timedelta(hours=1 if HOUR_LABEL_IS_ENDING else 0)
+    lo = start + pd.Timedelta(hours=1 if HOUR_LABEL_IS_ENDING else 0)
+    hi = end + pd.Timedelta(hours=1 if HOUR_LABEL_IS_ENDING else 0)
     rows: list[dict] = []
     cursor = lo
     while cursor <= hi:
@@ -137,16 +154,18 @@ def fetch_series(respondent: str, kind: str, key: str) -> pd.Series:
     return series
 
 
-def build_frame(key: str) -> tuple[pd.DataFrame, dict]:
+def build_frame(
+    key: str, start: pd.Timestamp = PANEL_START, end: pd.Timestamp = PANEL_END,
+) -> tuple[pd.DataFrame, dict]:
     """Assemble the long-form hourly frame for all four markets."""
-    index = pd.date_range(PANEL_START, PANEL_END, freq="h", tz="UTC")
+    index = pd.date_range(start, end, freq="h", tz="UTC")
     notes: dict[str, dict] = {}
     parts = []
 
     for market, respondent in MARKETS.items():
         columns = {}
         for kind in ("demand", "wind", "solar"):
-            series = fetch_series(respondent, kind, key).reindex(index)
+            series = fetch_series(respondent, kind, key, start, end).reindex(index)
             columns[kind] = series
         frame = pd.DataFrame(columns, index=index)
 
@@ -176,19 +195,18 @@ def build_frame(key: str) -> tuple[pd.DataFrame, dict]:
     return pd.concat(parts, ignore_index=True), notes
 
 
-def training_mask(stamps: pd.Series) -> np.ndarray:
-    """True for hours inside the simulated year but outside the holdout month."""
-    inside = (stamps >= YEAR_START) & (stamps <= YEAR_END)
-    return (inside & (stamps.dt.month != VALIDATION_MONTH)).to_numpy()
+def development_stats(frame: pd.DataFrame) -> dict:
+    """S_m and the observation standardizers, fitted on all twelve 2025 months.
+
+    Cross-validation folds refit these on their own training months; see
+    ``scripts/build_data_splits.py``.
+    """
+    return frozen_stats(frame, DEVELOPMENT_MONTHS, "four-market-2025-development-stats-v2")
 
 
 def compute_scales(frame: pd.DataFrame) -> dict[str, float]:
-    """Ramp normalizer S_m: gross-demand Q95 over training hours only."""
-    mask = training_mask(frame["timestamp_utc"])
-    scales = {}
-    for market, group in frame[mask].groupby("market_id"):
-        scales[market] = float(group["gross_demand_mw"].quantile(0.95))
-    return scales
+    """Ramp normalizer S_m: gross-demand Q95 over the development months."""
+    return development_stats(frame)["gross_q95_mw"]
 
 
 def month_entries() -> list[dict]:
@@ -228,9 +246,8 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
     months_root.mkdir(parents=True, exist_ok=True)
 
     indexed = frame.set_index("timestamp_utc").sort_index()
-    train, validation = [], []
-
-    for entry in month_entries():
+    entries = month_entries()
+    for entry in entries:
         start = pd.Timestamp(f"{entry['month_id']}-01T00:00:00Z")
         lo = start - pd.Timedelta(hours=HISTORY_HOURS)
         hi = start + pd.Timedelta(hours=entry["hours"] - 1)
@@ -242,64 +259,61 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
 
         directory = months_root / entry["month_id"]
         directory.mkdir(parents=True, exist_ok=True)
-        block.to_csv(directory / "canonical_panel.csv", index=False)
-        (validation if entry["month"] == VALIDATION_MONTH else train).append(entry)
+        block.to_csv(directory / "canonical_panel.csv", index=False, lineterminator="\n")
 
-    calendar = {
-        "markets": list(MARKETS),  # canonical order, matches MARKET_TO_CELL
-        "frozen_stats_path": "data/four_market_2025/frozen_stats.json",
-        "forecast_model": "persistence-placeholder",
-        "hour_label_convention": "panel timestamps are hour-beginning UTC",
-        "episode_unit": (
-            "one continuous calendar month; queues and power history reset only "
-            "at the month boundary"
-        ),
-        "history_hours": HISTORY_HOURS,
-        "validation_month": VALIDATION_MONTH,
-        "train": train,
-        "validation": validation,
-        "test": [],
-    }
+    # The calendar lists the development months, the cross-validation folds,
+    # and the test month; scripts/build_data_splits.py records the real
+    # forecast model once it has written the forecasts.
+    from scripts.build_data_splits import calendar_payload
+
+    calendar = calendar_payload()
+    calendar["forecast_model"] = "persistence-placeholder"
     (OUT_ROOT / "calendar.json").write_text(
-        json.dumps(calendar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        json.dumps(calendar, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
 
     # The environment also standardizes its level and forecast features, so
     # the frozen statistics carry means and standard deviations alongside the
-    # ramp normalizer. All are fitted on training hours only.
-    mask = training_mask(frame["timestamp_utc"])
-    training = frame[mask]
-    grouped = training.groupby("market_id")
-    stats = {
-        "fit_start_utc": YEAR_START.isoformat(),
-        "fit_end_utc": YEAR_END.isoformat(),
-        "fit_months": [f"{YEAR}-{month:02d}" for month in range(1, 13)
-                       if month != VALIDATION_MONTH],
-        "gross_q95_mw": scales,
-        "gross_level_mean_mw": {k: float(v) for k, v in
-                                grouped["gross_demand_mw"].mean().items()},
-        "gross_level_std_mw": {k: float(v) for k, v in
-                               grouped["gross_demand_mw"].std().items()},
-        "net_level_mean_mw": {k: float(v) for k, v in
-                              grouped["net_load_mw"].mean().items()},
-        "net_level_std_mw": {k: float(v) for k, v in
-                             grouped["net_load_mw"].std().items()},
-        "stats_id": "four-market-2025-train-only-stats-v1",
-    }
+    # ramp normalizer, all fitted on the twelve development months.
     (OUT_ROOT / "frozen_stats.json").write_text(
-        json.dumps(stats, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        json.dumps(development_stats(frame), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8", newline="\n")
+    return len(entries), {"development_months": len(entries)}
 
-    return len(train) + len(validation), {"train_months": len(train), "validation_months": len(validation)}
+
+def write_test_raw(key: str) -> Path:
+    """Fetch the test window and store the raw hourly series, nothing derived."""
+    frame, notes = build_frame(key, TEST_FETCH_START, TEST_FETCH_END)
+    TEST_ROOT.mkdir(parents=True, exist_ok=True)
+    path = TEST_ROOT / "raw_hourly.csv"
+    frame.sort_values(["timestamp_utc", "market_id"]).to_csv(path, index=False)
+    (TEST_ROOT / "raw_notes.json").write_text(json.dumps({
+        "test_month": TEST_MONTH,
+        "fetch_start_utc": TEST_FETCH_START.isoformat(),
+        "fetch_end_utc": TEST_FETCH_END.isoformat(),
+        "hour_label_convention": "panel timestamps are hour-beginning UTC",
+        "markets": notes,
+    }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    for market, note in notes.items():
+        print(f"  {market:16s} gaps_filled={note['missing_before_fill']} "
+              f"remaining={note['missing_after_fill']} clipped={note['negatives_clipped']}")
+    return path
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", action="store_true", help="fetch and summarize only")
     parser.add_argument("--write", action="store_true", help="also write panels")
+    parser.add_argument("--test-raw", action="store_true",
+                        help=f"fetch only the {TEST_MONTH} test window and store raw series")
     args = parser.parse_args()
-    if not (args.report or args.write):
-        parser.error("pass --report or --write")
+    if not (args.report or args.write or args.test_raw):
+        parser.error("pass --report, --write, or --test-raw")
 
     key = read_api_key()
+    if args.test_raw:
+        print(f"fetching test window {TEST_FETCH_START} .. {TEST_FETCH_END}")
+        print(f"wrote {write_test_raw(key)}")
+        return 0
     print(f"fetching {PANEL_START} .. {PANEL_END}  (hour-beginning panel stamps)")
     frame, notes = build_frame(key)
 
@@ -310,18 +324,13 @@ def main() -> int:
               f"remaining={note['missing_after_fill']} clipped={note['negatives_clipped']}")
 
     scales = compute_scales(frame)
-    print("\nramp normalizer S_m (training hours only):")
+    print("\nramp normalizer S_m (development months):")
     for market in sorted(scales):
         print(f"  {market:16s} {scales[market]:10,.0f} MW")
 
-    mask = training_mask(frame["timestamp_utc"])
-    print(f"\ntraining hours: {int(mask.sum()) // len(MARKETS)}  "
-          f"holdout month: {VALIDATION_MONTH}")
-
     if args.write:
-        months, counts = write_panels(frame, scales)
+        months, _ = write_panels(frame, scales)
         print(f"\nwrote {months} monthly panels to {OUT_ROOT}")
-        print(f"  train months={counts['train_months']}  validation months={counts['validation_months']}")
     return 0
 
 
