@@ -2,10 +2,11 @@ protocol:
   id: four-market-joint-net-load-peak-impact-ramp-impact-v3
 data:
   interval_minutes: 60
-  markets: [CAISO_NP15, MISO_MINN_HUB, SPP_NORTH_HUB, ISONE_NEMA]
+  markets: [CAISO, MISO, SPP, ISONE]
   workload_mapping: [a, b, c, d]
   test_workload_mapping: [e, f, g, h]
-  episode_unit: one continuous calendar month; queues and power history reset only at the month boundary
+  month_clock: months follow the Google trace's clock, a fixed UTC-7; each month starts at 07:00 UTC on its first day
+  episode_unit: one continuous month on the trace clock; queues and power history reset only at the month boundary
   history_hours: 1
   split:
     # Mirrors energy_model_v3/splits.py; a test keeps the two in sync.
@@ -23,14 +24,14 @@ fleet:
   site_count: 4
   sizing: compute capacity = cell CPU capacity / cell c CPU capacity (data/cell_capacity.json); rated power = 500 MW x compute capacity
   reference_power_mw_largest_site: 500.0
-  compute_capacity: {CAISO_NP15: 0.897102, MISO_MINN_HUB: 0.995048, SPP_NORTH_HUB: 1.0, ISONE_NEMA: 0.846328}
-  rated_power_mw: {CAISO_NP15: 448.551, MISO_MINN_HUB: 497.524, SPP_NORTH_HUB: 500.0, ISONE_NEMA: 423.164}
+  compute_capacity: {CAISO: 0.897102, MISO: 0.995048, SPP: 1.0, ISONE: 0.846328}
+  rated_power_mw: {CAISO: 448.551, MISO: 497.524, SPP: 500.0, ISONE: 423.164}
   total_rated_power_mw: 1869.239
 test_fleet:
   site_count: 4
   sizing: same rule as the training fleet, relative to training cell c; sites may exceed 500 MW
-  compute_capacity: {CAISO_NP15: 0.953698, MISO_MINN_HUB: 1.442849, SPP_NORTH_HUB: 1.045064, ISONE_NEMA: 1.353984}
-  rated_power_mw: {CAISO_NP15: 476.849, MISO_MINN_HUB: 721.425, SPP_NORTH_HUB: 522.532, ISONE_NEMA: 676.992}
+  compute_capacity: {CAISO: 0.953698, MISO: 1.442849, SPP: 1.045064, ISONE: 1.353984}
+  rated_power_mw: {CAISO: 476.849, MISO: 721.425, SPP: 522.532, ISONE: 676.992}
   total_rated_power_mw: 2397.798
 workload:
   deadline_hours: [24, 24, 24, 24]

@@ -49,8 +49,8 @@ full utilization, the same computation everywhere:
 power_mw = 500 * K * (idle_power_fraction + dynamic_power_fraction * executed_work / K)
 ```
 
-Cells a-d map to CAISO NP15, MISO Minnesota, SPP North, and ISO-NE NEMA,
-respectively, and cells e-h to the same markets in the same order. Google gives
+Cells a-d map to the CAISO, MISO, SPP, and ISO-NE markets (IDs `CAISO`, `MISO`,
+`SPP`, `ISONE`), respectively, and cells e-h to the same markets in the same order. Google gives
 each cell's time zone in "Google cluster-usage traces v3" (p. 16): a, c, d
 America/New_York; b, f America/Chicago; e Europe/Helsinki; g Asia/Singapore;
 h Europe/Brussels. Those zones cannot give each fleet one cell per U.S. market,
@@ -75,10 +75,12 @@ from monthly peak maxima.
 
 Panels use demand and wind/solar generation from the CISO, MISO, SWPP, and ISNE
 balancing authorities. EIA's hour-ending labels are shifted back one hour to
-hour-beginning UTC. Net load is demand minus wind and solar. Day-ahead prices
+hour-beginning UTC. Monthly panels follow the Google trace's clock, a fixed
+UTC-7: each month runs from 07:00 UTC on its first day to 07:00 UTC on the
+first day of the next. Net load is demand minus wind and solar. Day-ahead prices
 are not fetched, and cost is not part of the study. `four_market_2026_test/`
-holds the raw test pull (23 April to 1 June 2026, so the forecasts have their
-week of history and their twelve-hour targets) and the May 2026 test panel.
+holds the raw test pull (23 April to 18:00 UTC on 1 June 2026, so the forecasts
+have their week of history and their twelve-hour targets) and the May 2026 test panel.
 One implausible value is kept as published: CAISO demand at 2025-07-31 20:00 UTC
 is 11,819 MW against about 29,880 MW on either side.
 

@@ -695,7 +695,7 @@ each hour is labeled by its beginning, in UTC, giving one record per market
 per hour. The records for each month are stored in one table, called a
 \emph{panel}; Appendix~\ref{app:data-schemas} lists its columns. For the test
 month, the same three series are taken for May 2026, together with the week
-before it and the first twelve hours of June, which the forecasts need as
+before it and the first eighteen hours of June (UTC), which the forecasts need as
 past inputs and as targets. 
 
 \subsection{Net Load}
@@ -742,7 +742,7 @@ output rises and climbs steeply in the evening.
 \section{Cross-Validation and Test Data}
 \label{subsec:energy-calendar}
 
-The data is divided by calendar month, because each month is one
+The data is divided by month, because each month is one
 continuous simulation (Section~\ref{subsec:transform-pairing}) and the hours
 within a month are linked: queued work carries from hour to hour, and every
 ramp joins two neighboring hours. Two groups of months are used:
@@ -754,8 +754,8 @@ ramp joins two neighboring hours. Two groups of months are used:
 %         estimates how well the method does on months it has not seen.
 \begin{itemize}
   \item The twelve months of 2025, served by the training fleet built from
-        cells \(a\)--\(d\). Every design choice and every fitted quantity
-        comes from these months, and \emph{four-fold cross-validation} over
+        cells \(a\)--\(d\). Every design choice, and every value taken from
+        the data, comes from these months, and \emph{four-fold cross-validation} over
         them estimates how well the method does on months it has not seen.
   \item The \emph{test data} is May 2026, served by a second fleet built
         from cells \(e\)--\(h\) (Section~\ref{subsec:transform-mapping}).
@@ -776,17 +776,17 @@ three whole months.
 
 Each fold uses one month from each third of the year, so its nine training
 months include all four seasons, as the final training set does. Within a
-fold, everything fitted to data is fitted on the fold's nine training months
-only: the forecast weights (Section~\ref{subsec:energy-forecasts}), the market
+fold, the forecast weights (Section~\ref{subsec:energy-forecasts}), the market
 scales \(S_m\) below, the statistics that standardize the scheduler's
 observations, and the objective references \(C_R\) and \(C_Q\)
-(Section~\ref{subsec:problem-normalization}). The scheduler is then trained
+(Section~\ref{subsec:problem-normalization}) all come from the fold's nine
+training months only. The scheduler is then trained
 on those nine months and scored on each of the three held-out months. With
 three training seeds per fold, every 2025 month is scored three times, each
 time by a policy that never saw it, and the cross-validation estimate is the
 average over the twelve months. After cross-validation, the final policies
-are trained on all twelve months, with every fitted quantity refitted on all
-twelve, and are scored once on the test month. Nothing is changed after that
+are trained on all twelve months, with the same four quantities taken from
+all twelve, and are scored once on the test month. Nothing is changed after that
 score has been seen, so the test month stays a true held-out test. 
 
 \begin{table}[htbp]
@@ -871,10 +871,10 @@ ISO-NE ramp and peak look about 30\% smaller.
     \toprule
     Market & Final \(S_m\) & Fold range \\
     \midrule
-    CAISO          & 33,781  & 32,506--34,568 \\
-    MISO           & 100,521 & 97,618--102,611 \\
+    CAISO          & 33,781  & 32,499--34,530 \\
+    MISO           & 100,521 & 97,645--102,611 \\
     SPP            & 45,876  & 44,457--47,237 \\
-    ISO-NE         & 17,888  & 17,502--18,142 \\
+    ISO-NE         & 17,888  & 17,507--18,142 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -1057,24 +1057,24 @@ the MAE of both.
                 & LS & Persist. & LS & Persist. \\
     \midrule
     \multicolumn{10}{@{}l}{\emph{Cross-validation, 2025}} \\
-    CAISO          & gross demand &   387 &   863 &   729 & 2,234 &   940 & 3,438 & 1,044 &  3,546 \\
-    CAISO          & net load     &   548 & 1,584 & 1,075 & 4,259 & 1,412 & 7,253 & 1,611 &  9,369 \\
-    MISO           & gross demand &   452 & 1,745 & 1,230 & 4,968 & 1,989 & 8,628 & 2,629 & 10,960 \\
-    MISO           & net load     &   876 & 2,035 & 2,391 & 5,406 & 3,789 & 8,545 & 4,949 &  9,978 \\
-    SPP            & gross demand &   247 &   758 &   716 & 2,164 & 1,161 & 3,783 & 1,453 &  4,866 \\
-    SPP            & net load     &   581 & 1,049 & 1,731 & 2,925 & 2,986 & 5,204 & 4,018 &  7,391 \\
-    ISO-NE         & gross demand &   217 &   497 &   554 & 1,336 &   800 & 2,062 &   912 &  2,081 \\
-    ISO-NE         & net load     &   232 &   525 &   603 & 1,406 &   869 & 2,155 &   984 &  2,151 \\
+    CAISO          & gross demand &   387 &   863 &   728 & 2,234 &   938 & 3,437 & 1,043 &  3,546 \\
+    CAISO          & net load     &   548 & 1,583 & 1,077 & 4,258 & 1,416 & 7,251 & 1,609 &  9,366 \\
+    MISO           & gross demand &   452 & 1,745 & 1,231 & 4,968 & 1,987 & 8,626 & 2,628 & 10,961 \\
+    MISO           & net load     &   876 & 2,034 & 2,393 & 5,405 & 3,789 & 8,544 & 4,952 &  9,981 \\
+    SPP            & gross demand &   248 &   758 &   716 & 2,164 & 1,161 & 3,782 & 1,453 &  4,868 \\
+    SPP            & net load     &   581 & 1,050 & 1,732 & 2,926 & 2,986 & 5,204 & 4,020 &  7,395 \\
+    ISO-NE         & gross demand &   217 &   497 &   554 & 1,336 &   800 & 2,063 &   912 &  2,080 \\
+    ISO-NE         & net load     &   232 &   525 &   604 & 1,406 &   869 & 2,156 &   984 &  2,151 \\
     \addlinespace
     \multicolumn{10}{@{}l}{\emph{Test, May 2026}} \\
-    CAISO          & gross demand &   413 &   841 &   832 & 2,180 & 1,019 & 3,163 & 1,096 &  2,811 \\
-    CAISO          & net load     &   528 & 1,519 &   988 & 4,131 & 1,244 & 7,213 & 1,395 & 10,675 \\
-    MISO           & gross demand &   420 & 1,499 & 1,075 & 4,290 & 1,727 & 7,734 & 2,323 & 10,535 \\
-    MISO           & net load     & 1,035 & 1,958 & 2,726 & 5,109 & 4,094 & 7,843 & 5,025 &  9,598 \\
-    SPP            & gross demand &   225 &   780 &   656 & 2,271 & 1,026 & 4,149 & 1,356 &  5,727 \\
-    SPP            & net load     &   554 &   993 & 1,550 & 2,760 & 2,572 & 4,975 & 3,905 &  7,212 \\
-    ISO-NE         & gross demand &   236 &   420 &   584 & 1,110 &   779 & 1,720 &   866 &  1,886 \\
-    ISO-NE         & net load     &   264 &   456 &   643 & 1,202 &   850 & 1,851 &   962 &  2,025 \\
+    CAISO          & gross demand &   415 &   845 &   836 & 2,186 & 1,021 & 3,169 & 1,111 &  2,814 \\
+    CAISO          & net load     &   532 & 1,524 &   993 & 4,141 & 1,250 & 7,226 & 1,395 & 10,693 \\
+    MISO           & gross demand &   420 & 1,509 & 1,083 & 4,321 & 1,765 & 7,772 & 2,407 & 10,609 \\
+    MISO           & net load     & 1,037 & 1,964 & 2,733 & 5,139 & 4,123 & 7,893 & 5,148 &  9,585 \\
+    SPP            & gross demand &   226 &   791 &   661 & 2,301 & 1,036 & 4,188 & 1,393 &  5,781 \\
+    SPP            & net load     &   558 & 1,011 & 1,561 & 2,804 & 2,595 & 5,033 & 4,001 &  7,303 \\
+    ISO-NE         & gross demand &   236 &   419 &   586 & 1,109 &   783 & 1,721 &   849 &  1,872 \\
+    ISO-NE         & net load     &   265 &   456 &   645 & 1,201 &   852 & 1,852 &   942 &  2,011 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -1178,7 +1178,13 @@ site.
 \section{Monthly Simulation and Hourly Arrivals}
 \label{subsec:transform-pairing}
 
-The 744-hour Google workload restarts at the beginning of each calendar
+Simulated months follow the clock of the Google trace, which starts at
+midnight Pacific daylight time on 1 May 2019, or 07:00 UTC. A fixed UTC\(-7\)
+is used all year, so that each workload hour is replayed at the UTC hour
+at which it was recorded: every month runs from 07:00 UTC on its first day
+to 07:00 UTC on the first day of the next, and its first hour replays the
+trace's first hour. Grid data stays in UTC; only the month boundaries
+follow the trace. The 744-hour workload restarts at the beginning of each
 month; shorter months use only the hours they need. The workload of cells
 \(a\)--\(d\) is used in every 2025 month, whether a month is used for training
 or held out in a fold, and the workload of cells \(e\)--\(h\) is used in the
@@ -1191,7 +1197,7 @@ where the \emph{month length} \(T_e\) is the month's number of hours.
 
 % [symbols 2026-10-09] was: \(\mathcal W=\{-1\}\); for February 2025, ...
 Each month's simulation starts one hour early, at the \emph{warm-up hour}
-\(t=-1\); for February 2025, this is 31~January 23:00 UTC. The
+\(t=-1\); for February 2025, this is 06:00 UTC on 1~February. The
 warm-up hour is not a decision hour and is never scored. It exists because
 the month's first decision needs two things from the hour before it: the
 grid data the scheduler observes for hour \(t-1\)
@@ -1320,8 +1326,8 @@ fleet has the most influence where hourly changes are small.
     Market & Median absolute change & Swing & \% of median & Swing & \% of median \\
     \midrule
     CAISO          & 909   & 152 & 17 & 287 & 32 \\
-    MISO           & 1,640 & 187 & 11 & 318 & 19 \\
-    SPP            & 778   & 263 & 34 & 257 & 33 \\
+    MISO           & 1,641 & 187 & 11 & 318 & 19 \\
+    SPP            & 779   & 263 & 34 & 257 & 33 \\
     ISO-NE         & 435   & 241 & 55 & 266 & 61 \\
     \bottomrule
   \end{tabular}
@@ -1609,8 +1615,8 @@ Both references are totals for the whole grid with the no-flexibility fleet:
 average monthly sum of the markets' normalized peaks. Dividing by them expresses
 a change in \(\sum_{t,m}I_{m,t}\) or \(\sum_m\Phi_{m,e}\) as a fraction of total
 squared ramp or of total peak, so the equal weights below value equal
-fractional reductions of the two totals.  After cross-validation, the final references are computed from all twelve months of 2025: \(C_R=6.109\) and
-\(C_Q=3.651\). They also score the test month, which is never used to set
+fractional reductions of the two totals.  After cross-validation, the final references are computed from all twelve months of 2025: \(C_R=6.102\) and
+\(C_Q=3.653\). They also score the test month, which is never used to set
 them. 
 
 Each simulated month \(e\) is one optimization episode. Decisions are hourly,
@@ -1708,25 +1714,25 @@ service routing and leaves all other work in place.
 
 % [no-K 2026-10-10] was: 0.3003 service, 0.1733 batch, w = 0.4736, utilization
 % 0.4736/0.8463, CAISO spare 0.4306 (old unit = cell c's hourly capacity).
-At 2025-07-29 22:00 UTC (hour \(t=694\)), ISO-NE receives 2,288.5 work
-units of service and 1,320.3 of batch. Under the baseline, it executes
-\(w=3{,}608.8\) work units, a utilization of \(3{,}608.8/6{,}448.8=0.5596\), drawing
+At 2025-07-29 22:00 UTC (hour \(t=687\)), ISO-NE receives 2,528.1 work
+units of service and 963.3 of batch. Under the baseline, it executes
+\(w=3{,}491.5\) work units, a utilization of \(3{,}491.5/6{,}448.8=0.5414\), drawing
 approximately
 \begin{equation*}
-  P = 423.16\,(0.382039 + 0.570370 \times 0.5596)
-  \approx 296.7\ \mathrm{MW}.
+  P = 423.16\,(0.382039 + 0.570370 \times 0.5414)
+  \approx 292.3\ \mathrm{MW}.
 \end{equation*}
-CAISO draws 316.1 MW and has 3,280.7 work units of spare capacity.
-Moving ISO-NE's 2,288.5 service work units to CAISO fits within that capacity.
-ISO-NE's power falls to 211.1 MW, and CAISO's rises to 367.1 MW. Batch work
+CAISO draws 330.2 MW and has 2,648.3 work units of spare capacity.
+Moving ISO-NE's 2,528.1 service work units to CAISO fits within that capacity.
+ISO-NE's power falls to 197.7 MW, and CAISO's rises to 386.5 MW. Batch work
 still runs at its original sites in its arrival hour.
 
 Table~\ref{tab:joint-example-hour} shows the two markets' grid conditions
 and the fleet's ramp impact. Routing changes ISO-NE's impact from positive
-to negative, while increasing CAISO's positive impact.
+to negative, while CAISO's goes from about zero to slightly positive.
 The 21:00 forecasts available at this decision
 predicted current-hour net loads of 23,894 MW for ISO-NE and
-9,133 MW for CAISO; scoring uses the realized net load.
+9,135 MW for CAISO; scoring uses the realized net load.
 
 \begin{table}[htbp]
   \centering
@@ -1740,17 +1746,17 @@ predicted current-hour net loads of 23,894 MW for ISO-NE and
     \midrule
     Original net load at 21:00 (MW) & 23,204 & 9,153 \\
     Original net load at 22:00 (MW) & 24,082 & 9,390 \\
-    Ramp impact \(I_{m,t}\), baseline & \(+0.000028\) & \(+0.000005\) \\
-    Ramp impact \(I_{m,t}\), with routing & \(-0.000422\) & \(+0.000030\) \\
+    Ramp impact \(I_{m,t}\), baseline & \(+0.000034\) & \(-0.0000002\) \\
+    Ramp impact \(I_{m,t}\), with routing & \(-0.000461\) & \(+0.000026\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 ISO-NE's peak shows the effect most clearly. This hour sets the market's monthly adjusted
-net-load peak under the baseline: \(24{,}082+296.73=24{,}378.73\) MW.
-After routing, its peak is \(24{,}082+211.08=24{,}293.08\) MW, a reduction
-of 85.65 MW. Checking every July hour confirms that no other hour exceeds
-this new peak. CAISO's monthly peak remains 33,835.4 MW, and the MISO and
+net-load peak under the baseline: \(24{,}082+292.34=24{,}374.34\) MW.
+After routing, its peak is \(24{,}082+197.72=24{,}279.72\) MW, a reduction
+of 94.62 MW. Checking every July hour confirms that no other hour exceeds
+this new peak. CAISO's monthly peak remains 33,829.1 MW, and the MISO and
 SPP peaks are unchanged.
 
 Both schedules are calculated over all 744 hours, including the next-hour
@@ -1769,19 +1775,19 @@ weighted mean; calculations use unrounded inputs.
     \toprule
     Quantity & Baseline & With routing \\
     \midrule
-    ISO-NE monthly peak (MW) & 24,378.7 & 24,293.1 \\
-    CAISO monthly peak (MW) & 33,835.4 & 33,835.4 \\
-    Scaled ramp impact & \(-0.000150\) & \(-0.000242\) \\
-    Scaled peak impact & 0.010434 & 0.009123 \\
-    Joint score \(J_e\) & 0.005142 & 0.004440 \\
+    ISO-NE monthly peak (MW) & 24,374.3 & 24,279.7 \\
+    CAISO monthly peak (MW) & 33,829.1 & 33,829.1 \\
+    Scaled ramp impact & \(-0.000178\) & \(-0.000279\) \\
+    Scaled peak impact & 0.010367 & 0.008919 \\
+    Joint score \(J_e\) & 0.005094 & 0.004320 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 The scaled peak impact is \(\sum_m\Phi_{m,e}/C_Q\), using July's original
 peaks, including 24,082 MW for ISO-NE, and the final references \(C_R\) and
-\(C_Q\). The joint improvement is \(0.005142-0.004440\approx0.000702\), most
-of it from the lower ISO-NE peak.
+\(C_Q\). The joint improvement is about 0.00077, most of it from the lower
+ISO-NE peak.
 This one-hour routing change reduces both monthly scores while executing
 the same work within the service, deadline, and capacity constraints.
 
@@ -1878,6 +1884,9 @@ the same work within the service, deadline, and capacity constraints.
 
 The study has the following limitations:
 \begin{itemize}
+  \item The trace is replayed from its first day in every month, so its
+        weekdays do not match the month's: 1 May 2019 was a Wednesday, while
+        February 2025, for example, starts on a Saturday.
   \item The workload comes from one company and one month in 2019, and
         measured execution is reused as synthetic arrival demand. Every 2025
         month replays the same workload of cells \(a\)--\(d\), so
@@ -2157,8 +2166,9 @@ cannot form a complete group of twelve, leaving 744 whole hours.
 
 
 \section{Hourly Grid Panels}
-For each calendar month, the simulation uses the month's grid rows and the
-immediately preceding hour. Workload arrivals are attached separately as
+For each month, which runs from 07:00 UTC on its first day
+(Section~\ref{subsec:transform-pairing}), the simulation uses the month's grid
+rows and the immediately preceding hour. Workload arrivals are attached separately as
 described in Section~\ref{subsec:transform-pairing}. The committed 2025
 panels hold the final scales and forecasts, fitted on all of 2025; each
 cross-validation fold writes its own copies with its own scales and
@@ -2182,9 +2192,8 @@ forecasts, and the May 2026 test panel has the same columns.
       & Beginning of the UTC hour the row describes.
       & 2025-07-19 16:00Z \\
     \codepath{market_id}
-      & Market, as stored; the identifier predates the
-        market names used in the text.
-      & \codepath{CAISO_NP15} \\
+      & Market.
+      & \codepath{CAISO} \\
     \addlinespace
     \codepath{gross_demand_mw}
       & Balancing-authority demand, \(D_m\) (EIA series \codepath{D}).
@@ -2209,11 +2218,11 @@ forecasts, and the May 2026 test panel has the same columns.
     \codepath{forecast_gross_h1/h3/h6/h12_mw}
       & Gross-demand forecast at each of the four lead times, from
         Equation~\eqref{eq:forecast-model}.
-      & 30,394 / 31,016 / 29,976 / 32,611 \\
+      & 30,396 / 31,019 / 29,981 / 32,612 \\
     \codepath{forecast_net_h1/h3/h6/h12_mw}
       & Net-load forecast at each of the four lead times, from
         Equation~\eqref{eq:forecast-model}.
-      & 11,181 / 11,505 / 10,567 / 28,162 \\
+      & 11,183 / 11,508 / 10,571 / 28,166 \\
     \codepath{forecast_issue_time_utc},
     \codepath{forecast_vintage_id},
     \codepath{quality_ok}
@@ -2231,11 +2240,12 @@ forecasts, and the May 2026 test panel has the same columns.
 \setlength{\parindent}{.17in}
 
 Paths are relative to the repository root. Several names predate the current
-design: \codepath{energy_model_v3}, \codepath{env/ramp_v6}, the
-\codepath{four_market_v2} prefix, and the market identifiers
-\codepath{CAISO_NP15}, \codepath{MISO_MINN_HUB}, \codepath{SPP_NORTH_HUB}, and
-\codepath{ISONE_NEMA}, which stand for the whole CAISO, MISO, SPP, and ISO-NE
-balancing authorities. \codepath{README.md} gives the rebuild
+design: \codepath{energy_model_v3}, \codepath{env/ramp_v6},
+and the \codepath{four_market_v2} prefix. The market identifiers are
+\codepath{CAISO}, \codepath{MISO}, \codepath{SPP}, and \codepath{ISONE}.
+\codepath{env/ramp_v6/clock.py} defines the month clock of
+Section~\ref{subsec:transform-pairing}, a fixed UTC\(-7\); every script that
+splits hours into months uses it. \codepath{README.md} gives the rebuild
 commands. Training, evaluation, and campaign code will be documented with the
 methods chapter.
 
@@ -2330,7 +2340,7 @@ methods chapter.
         \codepath{env/protocols/four_market_v2.yaml}, the single protocol
         file, and a test keeps both in step with
         \codepath{energy_model_v3/splits.py}. \codepath{--test-raw} fetches
-        23~April to 1~June 2026 into
+        23~April to 18:00 UTC on 1~June 2026 into
         \codepath{data/four_market_2026_test/raw_hourly.csv}.
   \item \codepath{frozen_stats} in \codepath{energy_model_v3/splits.py}
         computes \(S_m\) and the means and standard deviations used to
@@ -2434,8 +2444,9 @@ methods chapter.
         \codepath{deadline_hours}.
   \item In \codepath{scripts/build_four_market_v2_factory.py},
         \codepath{_hourly_curve} drops the unpaired final row and averages
-        groups of twelve, \codepath{_raw_arrivals} maps each UTC hour to trace
-        hour \((\text{day}-1)\cdot24+\text{hour}\) and multiplies by
+        groups of twelve, \codepath{_raw_arrivals} maps each UTC hour to the
+        trace hour at the same time on the trace clock
+        (\codepath{clock.trace_hours}) and multiplies by
         that relative capacity, and \codepath{_workload}
         stores warm-up power as \codepath{warm_power_mw}. The warm-up length is
         \codepath{HISTORY_HOURS} in \codepath{env/ramp_v6/models.py}.

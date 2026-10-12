@@ -13,7 +13,7 @@ Colors are the first three categorical slots of the reference data-viz palette,
 validated all-pairs for colorblind separation. The aqua slot is below 3:1 contrast
 on the surface, so every figure carries a legend and the chapter tabulates values.
 
-    python scripts/build_ppo_cv_figures.py --tag cv-50-50-1m
+    python scripts/build_ppo_cv_figures.py --tag cv-trace-clock-1m
 """
 
 from __future__ import annotations
@@ -53,10 +53,10 @@ SURFACE, INK, INK_2, MUTED, GRID, AXIS = (
     "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7",
 )
 MARKET_LABELS = {
-    "CAISO_NP15": "CAISO",
-    "MISO_MINN_HUB": "MISO",
-    "SPP_NORTH_HUB": "SPP",
-    "ISONE_NEMA": "ISO-NE",
+    "CAISO": "CAISO",
+    "MISO": "MISO",
+    "SPP": "SPP",
+    "ISONE": "ISO-NE",
 }
 MONTH_LABELS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 COLUMN_WIDTH_IN = 3.45
@@ -306,7 +306,7 @@ def figure_markets(metrics: dict[tuple[str, int, str], dict[str, Any]]) -> dict[
 
 def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], run: dict[str, np.ndarray],
                         seed: int, month: str) -> dict[str, Any]:
-    index = MARKETS.index("ISONE_NEMA")
+    index = MARKETS.index("ISONE")
     adjusted_nf = inputs.net[1:, index] + baseline["power"][:, index]
     peak_hour = int(np.argmax(adjusted_nf))
     start, stop = max(peak_hour - 36, 0), min(peak_hour + 36, len(adjusted_nf))
@@ -343,7 +343,7 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", default="cv-50-50-1m")
+    parser.add_argument("--tag", default="cv-trace-clock-1m")
     parser.add_argument("--figures-only", action="store_true",
                         help="redraw the summary figures from an existing figure_data.json, without replays")
     args = parser.parse_args()

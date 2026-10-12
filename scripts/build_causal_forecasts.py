@@ -39,6 +39,7 @@ sys.path.insert(0, str(ROOT))
 from energy_model_v3.splits import (  # noqa: E402
     CV_FOLDS, DEVELOPMENT_MONTHS, TEST_MONTHS, month_labels,
 )
+from env.ramp_v6 import clock  # noqa: E402
 from env.ramp_v6.models import HISTORY_HOURS  # noqa: E402
 
 PANEL_ROOT = ROOT / "data" / "four_market_2025" / "months"
@@ -406,8 +407,8 @@ def write_test_panel(predictions: pd.DataFrame, market_scales: dict[str, float])
     """
     (month_id,) = TEST_MONTHS
     raw = load_test_series()
-    start = pd.Timestamp(f"{month_id}-01T00:00:00Z")
-    end = start + pd.offsets.MonthBegin(1)
+    start = clock.month_start(month_id)
+    end = start + pd.Timedelta(hours=clock.month_hours(month_id))
     window = raw[(raw.timestamp_utc >= start - pd.Timedelta(hours=HISTORY_HOURS))
                  & (raw.timestamp_utc < end)].copy()
     window = window.merge(predictions, on=["timestamp_utc", "market_id"], how="left")

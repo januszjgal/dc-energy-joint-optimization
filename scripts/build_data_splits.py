@@ -25,7 +25,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -34,6 +33,7 @@ from energy_model_v3.splits import (  # noqa: E402
     CV_FOLDS, CV_SPECS, DEVELOPMENT_MONTHS, TEST_FLEET, TEST_MONTHS, spec_months,
     frozen_stats,
 )
+from env.ramp_v6 import clock  # noqa: E402
 from env.ramp_v6.models import HISTORY_HOURS  # noqa: E402
 from scripts import build_causal_forecasts as forecasts  # noqa: E402
 
@@ -41,7 +41,7 @@ ARTIFACT_NAMESPACE = "four_market_joint_v3"
 DATA_ROOT = ROOT / "data" / "four_market_2025"
 CALENDAR_PATH = DATA_ROOT / "calendar.json"
 FROZEN_STATS_PATH = DATA_ROOT / "frozen_stats.json"
-MARKETS = ("CAISO_NP15", "MISO_MINN_HUB", "SPP_NORTH_HUB", "ISONE_NEMA")
+MARKETS = ("CAISO", "MISO", "SPP", "ISONE")
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -54,8 +54,7 @@ def _relative(path: Path) -> str:
 
 
 def month_hours(month_id: str) -> int:
-    start = pd.Timestamp(f"{month_id}-01T00:00:00Z")
-    return int((start + pd.offsets.MonthBegin(1) - start) / pd.Timedelta(hours=1))
+    return clock.month_hours(month_id)
 
 
 def development_panel_path(month_id: str) -> Path:
@@ -87,9 +86,13 @@ def calendar_payload() -> dict[str, Any]:
     return {
         "markets": list(MARKETS),
         "hour_label_convention": "panel timestamps are hour-beginning UTC",
+        "month_clock": (
+            "months follow the Google trace's clock, a fixed UTC-7; each month "
+            "starts at 07:00 UTC on its first day"
+        ),
         "episode_unit": (
-            "one continuous calendar month; queues and power history reset only "
-            "at the month boundary"
+            "one continuous month on the trace clock; queues and power history "
+            "reset only at the month boundary"
         ),
         "history_hours": HISTORY_HOURS,
         "frozen_stats_path": _relative(FROZEN_STATS_PATH),

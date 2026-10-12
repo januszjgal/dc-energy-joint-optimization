@@ -191,17 +191,18 @@
       ]
     }
   ],
-  "episode_unit": "one continuous calendar month; queues and power history reset only at the month boundary",
+  "episode_unit": "one continuous month on the trace clock; queues and power history reset only at the month boundary",
   "forecast_model": "causal-least-squares-v4",
   "frozen_stats_path": "data/four_market_2025/frozen_stats.json",
   "history_hours": 1,
   "hour_label_convention": "panel timestamps are hour-beginning UTC",
   "markets": [
-    "CAISO_NP15",
-    "MISO_MINN_HUB",
-    "SPP_NORTH_HUB",
-    "ISONE_NEMA"
+    "CAISO",
+    "MISO",
+    "SPP",
+    "ISONE"
   ],
+  "month_clock": "months follow the Google trace's clock, a fixed UTC-7; each month starts at 07:00 UTC on its first day",
   "test": [
     {
       "history_hours": 1,

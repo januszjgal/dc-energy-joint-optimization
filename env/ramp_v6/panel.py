@@ -9,6 +9,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+from env.ramp_v6 import clock
 from env.ramp_v6.models import FORECAST_HOURS, FrozenRampStats
 
 
@@ -123,9 +124,9 @@ class CanonicalMarketPanel:
         months = tuple(train_months)
         if not months:
             raise ValueError("at least one training month is required")
-        month_labels = self.frame["timestamp_utc"].dt.strftime("%Y-%m")
-        train = self.frame[month_labels.isin(months)].copy()
-        if set(train["timestamp_utc"].dt.strftime("%Y-%m").unique()) != set(months):
+        labels = clock.month_labels(pd.DatetimeIndex(self.frame["timestamp_utc"]))
+        train = self.frame[labels.isin(months)].copy()
+        if set(clock.month_labels(pd.DatetimeIndex(train["timestamp_utc"]))) != set(months):
             raise ValueError("every requested training month must exist")
         _require_complete_months(train, months, self.markets)
 
@@ -170,7 +171,7 @@ class CanonicalMarketPanel:
             raise ValueError("month split groups must be disjoint")
         if flat != sorted(flat):
             raise ValueError("primary month split must be chronological")
-        labels = self.frame["timestamp_utc"].dt.strftime("%Y-%m")
+        labels = clock.month_labels(pd.DatetimeIndex(self.frame["timestamp_utc"]))
         outputs = []
         for months in groups:
             subset = self.frame[labels.isin(months)].copy()
@@ -190,9 +191,9 @@ def _require_complete_months(
 ) -> None:
     markets = tuple(markets)
     for month in months:
-        start = pd.Timestamp(f"{month}-01", tz="UTC")
-        end = start + pd.offsets.MonthBegin(1)
-        expected_hours = len(pd.date_range(start, end, freq="h", inclusive="left"))
+        start = clock.month_start(month)
+        expected_hours = clock.month_hours(month)
+        end = start + pd.Timedelta(hours=expected_hours)
         rows = frame[
             (frame["timestamp_utc"] >= start) & (frame["timestamp_utc"] < end)
         ]

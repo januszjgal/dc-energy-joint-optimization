@@ -39,8 +39,7 @@ GRID = "#e1e0d9"
 AXIS = "#c3c2b7"
 
 TRAIN_CELLS = ("a", "b", "c", "d")
-MARKETS = (("CAISO_NP15", "CAISO"), ("MISO_MINN_HUB", "MISO"),
-           ("SPP_NORTH_HUB", "SPP"), ("ISONE_NEMA", "ISO-NE"))
+MARKETS = (("CAISO", "CAISO"), ("MISO", "MISO"), ("SPP", "SPP"), ("ISONE", "ISO-NE"))
 WEEK_START = pd.Timestamp("2025-07-23T00:00:00Z")
 WEEK_END = pd.Timestamp("2025-07-30T00:00:00Z")
 WORKED_EXAMPLE_HOUR = pd.Timestamp("2025-07-29T22:00:00Z")
@@ -132,7 +131,7 @@ def net_load_week() -> None:
             ax.annotate("worked example", xy=(WORKED_EXAMPLE_HOUR, ax.get_ylim()[0]),
                         xytext=(-4, 3), textcoords="offset points", ha="right", va="bottom",
                         fontsize=7.5, color=INK_SECONDARY)
-    caiso = week[week.market_id == "CAISO_NP15"].sort_values("ts").reset_index(drop=True)
+    caiso = week[week.market_id == "CAISO"].sort_values("ts").reset_index(drop=True)
     i = 66
     axes[0].text(caiso.ts[i], caiso.gross_demand_mw[i] + 2600, "gross demand",
                  color=INK_SECONDARY, fontsize=8, ha="center")

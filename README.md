@@ -11,8 +11,8 @@ The working thesis document is
 
 - One protocol: [`env/protocols/four_market_v2.yaml`](env/protocols/four_market_v2.yaml),
   including objective weights and fixed-reference normalization.
-- Four sites map cells a-d to CAISO NP15, MISO Minnesota, SPP North, and ISO-NE
-  NEMA. Each keeps its cell's measured CPU capacity relative to cell c, the largest
+- Four sites map cells a-d to the CAISO, MISO, SPP, and ISO-NE balancing
+  authorities (market IDs `CAISO`, `MISO`, `SPP`, `ISONE`). Each keeps its cell's measured CPU capacity relative to cell c, the largest
   training cell (`data/cell_capacity.json`): compute capacity 0.897 / 0.995 / 1.000
   / 0.846 and reference power 500 MW times that, 449 / 498 / 500 / 423 MW. Arrivals
   are the cell's utilization times the site's capacity, in work units that add
@@ -20,7 +20,10 @@ The working thesis document is
 - The test fleet maps cells e-h to the same four markets in the same order and is
   sized by the same rule: 0.954 / 1.443 / 1.045 / 1.354, or 477 / 721 / 523 / 677
   MW (2,398 MW against the training fleet's 1,869 MW). It serves only the test month.
-- **Continuous months.** Each calendar month of 2025 is one episode. Batch queues
+- **Continuous months.** Each month of 2025 is one episode. Months follow the
+  Google trace's clock, a fixed UTC-7 (`env/ramp_v6/clock.py`), so each starts at
+  07:00 UTC on its first day and the trace's first hour lands on the month's
+  first hour. Batch queues
   and site-power history carry across every midnight inside the month and reset
   only at the month boundary. One warm hour before the month gives the first
   decision its hour t-1 observation and the first ramp its starting point; it
@@ -180,7 +183,7 @@ interactions and stopping at the first checkpoint boundary at or beyond it
 (2,048,000 interactions at 4 environments,
 512 steps per rollout, and a checkpoint every 25 rollouts).
 Each seed trains on all twelve months of 2025 and is then evaluated once on the
-continuous May 2026 test episode (744 hourly decisions, 31 UTC days), served by
+continuous May 2026 test episode (744 hourly decisions on the trace clock), served by
 the e-h fleet and paired with the status quo on exactly the same hours. Nothing
 about the design may change after this evaluation. The optimizer seed is the
 statistical unit (`n=10`). Aggregation uses exact two-sided Wilcoxon signed-rank testing,
@@ -231,7 +234,7 @@ python -m pytest -q tests
 Run the four-fold cross-validation (three seeds, six workers):
 
 ```powershell
-python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-50-50-1m --workers 6
+python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-trace-clock-1m --workers 6
 ```
 
 The default ramp weight is 0.5 from the protocol. Use `--ramp-weight 0` for

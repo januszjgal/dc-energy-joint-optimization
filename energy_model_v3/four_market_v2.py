@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from env.ramp_v6 import clock
 from env.ramp_v6.environment import RampAwareEnv
 from env.ramp_v6.models import (
     HISTORY_HOURS,
@@ -94,10 +95,8 @@ def objective_from_factory(
 
 
 def month_hours(month_id: str) -> int:
-    """Number of hourly decision slots in a calendar month such as ``2025-05``."""
-    start = pd.Timestamp(f"{month_id}-01T00:00:00Z")
-    end = start + pd.offsets.MonthBegin(1)
-    return int((end - start) / pd.Timedelta(hours=1))
+    """Number of hourly decision slots in a simulated month such as ``2025-05``."""
+    return clock.month_hours(month_id)
 
 
 def _load_window(
@@ -186,7 +185,11 @@ class FourMarketV2WindowEnv(gym.Env):
         if len(panel.timestamps) != HISTORY_HOURS + hours:
             raise ValueError("window panel must hold the warm history plus the whole month")
         active = panel.timestamps[HISTORY_HOURS:]
-        if len(active) != hours or set(active.strftime("%Y-%m")) != {month_id}:
+        if (
+            len(active) != hours
+            or set(clock.month_labels(active)) != {month_id}
+            or active[0] != clock.month_start(month_id)
+        ):
             raise ValueError("window month is invalid")
         return RampAwareEnv(
             panel,

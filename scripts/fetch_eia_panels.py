@@ -1,8 +1,8 @@
-"""Fetch a full calendar year of EIA grid data and build canonical monthly panels.
+"""Fetch a full year of EIA grid data and build canonical monthly panels.
 
 Replaces the opaque pre-built panels with a reproducible pull from the EIA
 Open Data API. Three series per balancing authority -- demand, wind, and
-solar -- for the four market cases, at hourly resolution.
+solar -- for the four markets, at hourly resolution.
 
 Two conventions are worth stating up front because they are easy to get wrong
 and expensive to get wrong silently.
@@ -20,8 +20,11 @@ and the count is reported.
 
 Prices are deliberately absent. Day-ahead cost is not part of this study.
 
-Panel layout. One file per calendar month, holding the warm hour before the
-month and every hour of the month. The scheduler runs each month as one
+Panel layout. One file per month, holding the warm hour before the month and
+every hour of the month. Months follow the Google trace's clock, a fixed UTC-7
+(``env/ramp_v6/clock.py``): "2025-07" runs from 07:00 UTC on 1 July to 07:00
+UTC on 1 August, so the pulled year runs from 06:00 UTC on 1 January 2025 (the
+warm hour) to 06:00 UTC on 1 January 2026. The scheduler runs each month as one
 continuous episode; the warm hour gives the first decision its lookback and
 the first ramp its starting point.
 
@@ -51,27 +54,28 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from energy_model_v3.splits import DEVELOPMENT_MONTHS, frozen_stats  # noqa: E402
+from env.ramp_v6 import clock  # noqa: E402
 from env.ramp_v6.models import FORECAST_HOURS, HISTORY_HOURS  # noqa: E402
 
 OUT_ROOT = ROOT / "data" / "four_market_2025"
 
 API = "https://api.eia.gov/v2/electricity/rto/"
 
-# market case -> EIA balancing-authority respondent code
+# market -> EIA balancing-authority respondent code
 MARKETS = {
-    "CAISO_NP15": "CISO",
-    "MISO_MINN_HUB": "MISO",
-    "SPP_NORTH_HUB": "SWPP",
-    "ISONE_NEMA": "ISNE",
+    "CAISO": "CISO",
+    "MISO": "MISO",
+    "SPP": "SWPP",
+    "ISONE": "ISNE",
 }
 
 # EIA hourly periods label the end of their interval; panels are hour-beginning.
 HOUR_LABEL_IS_ENDING = True
 
-# The simulated year, in panel (hour-beginning) terms.
+# The simulated year, in panel (hour-beginning) terms, on the trace clock.
 YEAR = 2025
-YEAR_START = pd.Timestamp(f"{YEAR}-01-01T00:00:00Z")
-YEAR_END = pd.Timestamp(f"{YEAR}-12-31T23:00:00Z")
+YEAR_START = clock.month_start(f"{YEAR}-01")
+YEAR_END = clock.month_start(f"{YEAR + 1}-01") - pd.Timedelta(hours=1)
 
 # Every month needs HISTORY_HOURS warm hours before it, so the retained span
 # starts that many hours before the year. Nothing after the year is needed:
@@ -81,13 +85,14 @@ PANEL_END = YEAR_END
 
 # Test month, outside the simulated year. The raw pull starts a week early so
 # the forecast inputs (lags up to 168 hours) exist for its first hours, and it
-# ends twelve hours late so the last issue hours' longest-lead targets exist.
+# ends twelve hours after the month's last hour (06:00 UTC on 1 June, on the
+# trace clock) so the last issue hours' longest-lead targets exist.
 # Scales and forecasts are not computed here; the test month only reuses
 # quantities frozen from training data.
 TEST_MONTH = "2026-05"
 TEST_ROOT = ROOT / "data" / "four_market_2026_test"
 TEST_FETCH_START = pd.Timestamp("2026-04-23T00:00:00Z")
-TEST_FETCH_END = pd.Timestamp("2026-06-01T11:00:00Z")
+TEST_FETCH_END = pd.Timestamp("2026-06-01T18:00:00Z")
 
 REQUEST_PAUSE_S = 0.3
 
@@ -213,14 +218,12 @@ def month_entries() -> list[dict]:
     """Calendar entries for the twelve monthly panels, in order."""
     entries = []
     for month in range(1, 13):
-        start = pd.Timestamp(f"{YEAR}-{month:02d}-01T00:00:00Z")
-        end = start + pd.offsets.MonthBegin(1)
         month_id = f"{YEAR}-{month:02d}"
         entries.append({
             "window_id": month_id,
             "month_id": month_id,
             "month": month,
-            "hours": int((end - start) / pd.Timedelta(hours=1)),
+            "hours": clock.month_hours(month_id),
             "history_hours": HISTORY_HOURS,
             "panel_path": f"data/four_market_2025/months/{month_id}/canonical_panel.csv",
         })
@@ -228,7 +231,7 @@ def month_entries() -> list[dict]:
 
 
 def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, dict]:
-    """Write one continuous panel per calendar month, plus the calendar."""
+    """Write one continuous panel per month (trace clock), plus the calendar."""
     frame = frame.copy()
     frame["market_scale_mw"] = frame["market_id"].map(scales)
 
@@ -248,7 +251,7 @@ def write_panels(frame: pd.DataFrame, scales: dict[str, float]) -> tuple[int, di
     indexed = frame.set_index("timestamp_utc").sort_index()
     entries = month_entries()
     for entry in entries:
-        start = pd.Timestamp(f"{entry['month_id']}-01T00:00:00Z")
+        start = clock.month_start(entry["month_id"])
         lo = start - pd.Timedelta(hours=HISTORY_HOURS)
         hi = start + pd.Timedelta(hours=entry["hours"] - 1)
         block = indexed.loc[lo:hi].reset_index()

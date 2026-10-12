@@ -1,9 +1,9 @@
 {
-  "fetch_end_utc": "2026-06-01T11:00:00+00:00",
+  "fetch_end_utc": "2026-06-01T18:00:00+00:00",
   "fetch_start_utc": "2026-04-23T00:00:00+00:00",
   "hour_label_convention": "panel timestamps are hour-beginning UTC",
   "markets": {
-    "CAISO_NP15": {
+    "CAISO": {
       "missing_after_fill": {
         "demand": 0,
         "solar": 0,
@@ -19,7 +19,7 @@
         "wind": 0
       }
     },
-    "ISONE_NEMA": {
+    "ISONE": {
       "missing_after_fill": {
         "demand": 0,
         "solar": 0,
@@ -35,7 +35,7 @@
         "wind": 0
       }
     },
-    "MISO_MINN_HUB": {
+    "MISO": {
       "missing_after_fill": {
         "demand": 0,
         "solar": 0,
@@ -51,7 +51,7 @@
         "wind": 0
       }
     },
-    "SPP_NORTH_HUB": {
+    "SPP": {
       "missing_after_fill": {
         "demand": 0,
         "solar": 0,

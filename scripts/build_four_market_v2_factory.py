@@ -37,6 +37,7 @@ from energy_model_v3.splits import (  # noqa: E402
     CV_FOLDS, CV_SPECS, DEVELOPMENT_MONTHS, FINAL_SPEC, SPECS, TEST_FLEET, TEST_MONTHS,
     TRAIN_FLEET, fleet_for_split, spec_months,
 )
+from env.ramp_v6 import clock  # noqa: E402
 from env.ramp_v6.models import HISTORY_HOURS, SiteConfig  # noqa: E402
 from env.ramp_v6.objective import (  # noqa: E402
     JointObjective, NORMALIZATION_METHOD, OBJECTIVE_VERSION, reference_trajectory_scores,
@@ -90,8 +91,10 @@ def _raw_arrivals(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Map each hour onto the workload trace, restarting the trace every month.
 
-    Day D of any calendar month draws on trace day D, so the pairing is
-    stateless: no epoch, no running offset, nothing to drift. Months shorter
+    Months run on the trace's own clock (UTC-7; ``env/ramp_v6/clock.py``), so
+    each UTC hour draws on the trace hour that was recorded at the same clock
+    time: the month's first hour, 07:00 UTC on the 1st, is trace hour 0 (00:00
+    PDT on 1 May 2019). Day D of a month draws on trace day D. Months shorter
     than 31 days simply stop early, so February never reaches trace days 29-31
     and the 30-day months never reach day 31.
 
@@ -99,7 +102,7 @@ def _raw_arrivals(
     site's compute capacity turns them into work units that are the same
     amount of computation at every site, so arrivals from different sites add.
     """
-    offsets = ((times.day - 1) * 24 + times.hour).to_numpy(dtype=np.int64)
+    offsets = clock.trace_hours(times)
     service_columns, batch_columns = [], []
     for cell, capacity in zip(_cells(fleet), site_capacities(_cells(fleet))):
         service, batch = _hourly_curve(cell)
@@ -273,7 +276,7 @@ def build(spec: str = FINAL_SPEC, *, rebuild: bool = False) -> dict[str, Any]:
             "markets": list(MARKETS),
             "fleets": {"train": list(_cells(TRAIN_FLEET)), "test": list(_cells(TEST_FLEET))},
             "history_hours": HISTORY_HOURS,
-            "episode_unit": "one continuous calendar month",
+            "episode_unit": "one continuous month on the trace clock (UTC-7)",
             "frozen_stats_path": inputs["frozen_stats_path"].relative_to(ROOT).as_posix(),
             "forecast_model": inputs["forecast_model"],
             "windows": windows,

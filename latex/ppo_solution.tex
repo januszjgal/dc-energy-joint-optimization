@@ -77,8 +77,9 @@ gives the code locations and reproduction commands.
 
 One interaction is one decision hour. The scheduler observes the available
 grid information and workload, chooses an action, and receives a reward
-once the hour's realized net load is known. One episode is a calendar month
-of 672 to 744 hours. Queues and site-power history carry across midnight;
+once the hour's realized net load is known. One episode is a month of 672 to
+744 hours on the Google trace's clock (UTC\(-7\)), starting at 07:00 UTC on
+its first day. Queues and site-power history carry across midnight;
 each month ends with empty queues.
 
 \section{Observation}
@@ -257,7 +258,7 @@ improvement.
 
 For each final policy and held-out month, we also recomputed \(J_e\) from the
 raw grid panel and site-power trajectory. The largest difference from the
-reported score was \(4\times10^{-17}\). All 36 evaluations finished with no
+reported score was \(5\times10^{-17}\). All 36 evaluations finished with no
 service, deadline, or capacity violation.
 
 The forecast inputs were chosen by the same four-fold cross-validation, and
@@ -274,8 +275,8 @@ the final policies.
 
 Fig.~\ref{fig:learning} shows the return of each completed training month for
 every fold and seed. All twelve runs pass their fold's average no-flexibility
-return within about 45,000 interactions, reach 0.0085 to 0.0098 by 400,000,
-and end between 0.0115 and 0.0131. Fold 4, which holds out April, August, and
+return within about 41,000 interactions, reach 0.0083 to 0.0100 by 400,000,
+and end between 0.0114 and 0.0129. Fold 4, which holds out April, August, and
 December, ends slightly lower than the others. Within a fold, the three seeds
 are almost indistinguishable.
 
@@ -285,7 +286,7 @@ are almost indistinguishable.
   \caption{Return of each completed training month (\(-J_e\), higher is
   better) for each fold, as a 10-rollout rolling mean. The gray line is the
   no-flexibility baseline's return averaged over the fold's nine training
-  months, \(-0.00494\) to \(-0.00502\).}
+  months, \(-0.00495\) to \(-0.00486\).}
   \label{fig:learning}
 \end{figure}
 
@@ -293,11 +294,11 @@ are almost indistinguishable.
 
 Every policy improves on the no-flexibility baseline in every held-out month
 (Fig.~\ref{fig:months} and Table~\ref{tab:months}). The cross-validation
-estimate, the mean over the twelve months, is 0.0165 for each seed (0.0164 to
-0.0167). In these months the baseline scores \(J_e\) between 0.0048 and
-0.0054, and the policies reach \(-0.0163\) to \(-0.0074\). The improvement is
-largest in October and March, about 0.020, and smallest in December, 0.0126.
-In every month the three seeds agree to within 0.0012.
+estimate, the mean over the twelve months, is 0.0163 (0.0159 to 0.0165
+across seeds). In these months the baseline scores \(J_e\) between 0.0047 and
+0.0053, and the policies reach \(-0.0163\) to \(-0.0075\). The improvement is
+largest in March and October, about 0.020, and smallest in December, 0.0133.
+In every month the three seeds agree to within 0.0020.
 
 \begin{figure}[!t]
   \centering
@@ -318,26 +319,26 @@ In every month the three seeds agree to within 0.0012.
     \toprule
     Month (2025) & Fold & \(J_e(\mu_{\mathrm{NF}})\) & Mean improvement & Seed range \\
     \midrule
-    January   & 1 & 0.00499 & 0.0161 & 0.0157--0.0167 \\
-    February  & 2 & 0.00501 & 0.0149 & 0.0145--0.0152 \\
-    March     & 3 & 0.00490 & 0.0202 & 0.0200--0.0203 \\
-    April     & 4 & 0.00514 & 0.0174 & 0.0170--0.0179 \\
-    May       & 1 & 0.00511 & 0.0159 & 0.0155--0.0164 \\
-    June      & 2 & 0.00536 & 0.0163 & 0.0161--0.0164 \\
-    July      & 3 & 0.00509 & 0.0164 & 0.0160--0.0168 \\
-    August    & 4 & 0.00475 & 0.0153 & 0.0149--0.0157 \\
-    September & 1 & 0.00484 & 0.0179 & 0.0173--0.0184 \\
-    October   & 2 & 0.00487 & 0.0209 & 0.0204--0.0212 \\
-    November  & 3 & 0.00482 & 0.0147 & 0.0143--0.0151 \\
-    December  & 4 & 0.00494 & 0.0126 & 0.0123--0.0131 \\
+    January   & 1 & 0.00475 & 0.0162 & 0.0161--0.0164 \\
+    February  & 2 & 0.00499 & 0.0140 & 0.0132--0.0152 \\
+    March     & 3 & 0.00468 & 0.0203 & 0.0194--0.0210 \\
+    April     & 4 & 0.00476 & 0.0174 & 0.0171--0.0178 \\
+    May       & 1 & 0.00495 & 0.0152 & 0.0149--0.0158 \\
+    June      & 2 & 0.00527 & 0.0156 & 0.0154--0.0158 \\
+    July      & 3 & 0.00507 & 0.0162 & 0.0158--0.0164 \\
+    August    & 4 & 0.00487 & 0.0150 & 0.0138--0.0158 \\
+    September & 1 & 0.00479 & 0.0173 & 0.0171--0.0175 \\
+    October   & 2 & 0.00470 & 0.0202 & 0.0195--0.0208 \\
+    November  & 3 & 0.00493 & 0.0151 & 0.0146--0.0155 \\
+    December  & 4 & 0.00501 & 0.0133 & 0.0125--0.0138 \\
     \midrule
-    All twelve &   &         & 0.0165 & 0.0164--0.0167 \\
+    All twelve &   &         & 0.0163 & 0.0159--0.0165 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 The ramp part supplies 92\% of the improvement. The peak part is positive in
-35 of the 36 month--seed pairs; the exception, February under seed 4101, is
+35 of the 36 month--seed pairs; the exception, February under seed 4103, is
 slightly negative. Table~\ref{tab:checkpoints} and
 Fig.~\ref{fig:checkpoints} show that about three quarters of both parts are
 already in place at the first checkpoint, 153,600 interactions.
@@ -353,12 +354,12 @@ already in place at the first checkpoint, 153,600 interactions.
     \toprule
     & Seed 4101 & Seed 4102 & Seed 4103 \\
     \midrule
-    153,600 interactions   & 0.0129 & 0.0123 & 0.0126 \\
-    512,000 interactions   & 0.0158 & 0.0155 & 0.0154 \\
-    1,024,000 interactions & 0.0165 & 0.0167 & 0.0164 \\
+    153,600 interactions   & 0.0123 & 0.0126 & 0.0123 \\
+    512,000 interactions   & 0.0154 & 0.0154 & 0.0148 \\
+    1,024,000 interactions & 0.0165 & 0.0165 & 0.0159 \\
     \midrule
-    Ramp part              & 0.0153 & 0.0154 & 0.0152 \\
-    Peak part              & 0.0012 & 0.0013 & 0.0012 \\
+    Ramp part              & 0.0152 & 0.0152 & 0.0147 \\
+    Peak part              & 0.0013 & 0.0013 & 0.0012 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -372,8 +373,8 @@ already in place at the first checkpoint, 153,600 interactions.
 \end{figure}
 
 Relative to no flexibility, the policies cut total squared normalized ramps
-by 3.1\% on average (2.1\% to 3.9\% across months) and the sum of normalized
-regional peaks by 0.25\% (Table~\ref{tab:nf-percentages}). The peak cut
+by 3.1\% on average (2.1\% to 4.2\% across months) and the sum of normalized
+regional peaks by 0.26\% (Table~\ref{tab:nf-percentages}). The peak cut
 removes about a quarter of the fleet's added peak impact,
 \(\sum_m\Phi_{m,e}\).
 
@@ -388,9 +389,9 @@ removes about a quarter of the fleet's added peak impact,
     \toprule
     Quantity & 4101 & 4102 & 4103 \\
     \midrule
-    Total squared ramps & 3.13 & 3.15 & 3.11 \\
-    Total regional peaks & 0.24 & 0.27 & 0.25 \\
-    Fleet-added peak impact & 23.5 & 26.0 & 24.7 \\
+    Total squared ramps & 3.14 & 3.13 & 3.02 \\
+    Total regional peaks & 0.27 & 0.26 & 0.24 \\
+    Fleet-added peak impact & 25.6 & 24.9 & 23.8 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -399,12 +400,12 @@ removes about a quarter of the fleet's added peak impact,
 
 Fig.~\ref{fig:regions} and Table~\ref{tab:regions} give the regional means
 over the twelve months. ISO-NE, where a site's power range is largest
-relative to typical ramps, gains most: its squared-ramp total falls 6\% to
-13\% below the original grid's, and its monthly peak falls about 100 MW below
-the baseline on average. CAISO cuts its ramps by 1.5\% to 3.1\% and lowers
+relative to typical ramps, gains most: its squared-ramp total falls 7\% to
+12\% below the original grid's, and its monthly peak falls about 100 MW below
+the baseline on average. CAISO cuts its ramps by 1.3\% to 3.0\% and lowers
 its peak in every month. SPP gains less on ramps but lowers its peak by about
 70 MW on average. MISO, where a site is smallest relative to the grid, barely
-changes: its squared ramps move by less than 0.6\%, and its peak rises in 15
+changes: its squared ramps move by less than 0.7\%, and its peak rises in 17
 of the 36 month--seed pairs.
 
 \begin{figure}[!t]
@@ -430,28 +431,28 @@ of the 36 month--seed pairs.
     & \multicolumn{3}{c}{Ramp cut (\%)}
     & \multicolumn{3}{c}{Peak change (MW)} \\
     \cmidrule(lr){2-4}\cmidrule(l){5-7}
-    Market case & 4101 & 4102 & 4103 & 4101 & 4102 & 4103 \\
+    Market & 4101 & 4102 & 4103 & 4101 & 4102 & 4103 \\
     \midrule
-    CAISO          & 2.1  & 2.2  & 2.0  & \(-71\)  & \(-73\)  & \(-65\) \\
-    MISO           & 0.0  & 0.0  & 0.0  & \(+2\)   & \(-2\)   & \(-9\)  \\
-    SPP            & 1.1  & 1.4  & 1.1  & \(-64\)  & \(-80\)  & \(-71\) \\
-    ISO-NE         & 10.2 & 9.7  & 10.6 & \(-93\)  & \(-102\) & \(-99\) \\
+    CAISO          & 2.0  & 2.1  & 2.0  & \(-65\)  & \(-67\)  & \(-63\) \\
+    MISO           & \(-0.2\) & \(-0.2\) & 0.1 & \(+11\)  & \(+1\)   & \(-8\)  \\
+    SPP            & 1.3  & 1.2  & 0.8  & \(-77\)  & \(-73\)  & \(-63\) \\
+    ISO-NE         & 10.4 & 10.3 & 10.1 & \(-108\) & \(-102\) & \(-99\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \section{How the Policies Act}
 
-The policies mainly move service between sites: 29\% to 35\% of each month's
-service work changes sites. Batch work waits 0.8 to 1.5 hours on average
+The policies mainly move service between sites: 29\% to 34\% of each month's
+service work changes sites. Batch work waits 0.8 to 1.3 hours on average
 within its 24-hour window, and the decoder adjusts the requested schedule in
-60\% to 82\% of hours to meet capacity and deadline requirements.
+66\% to 83\% of hours to meet capacity and deadline requirements.
 
 Fig.~\ref{fig:isone} shows ISO-NE over three days around its May peak hour,
 under the fold-1 policy of seed 4102. Under the baseline, site power stays
-between 268 and 305 MW. The policy runs the site near full power, about
-400 MW, while net load is low and cuts it to about 170 MW as net load climbs
-to its evening peak. At the peak hour it draws 171 MW, 117 MW less than the
+between 272 and 305 MW. The policy runs the site near full power, about
+400 MW, while net load is low and cuts it to about 167 MW as net load climbs
+to its evening peak. At the peak hour it draws 167 MW, 129 MW less than the
 baseline.
 
 \begin{figure}[!t]
@@ -624,9 +625,9 @@ to norm 0.5. These settings are listed in Table~\ref{tab:hyperparameters}.
 \begin{itemize}
   \item Each fold uses its own \(C_R\) and \(C_Q\), means over its nine
         training months under no flexibility of total squared adjusted ramps
-        and summed normalized adjusted peaks: \(C_R\) from 5.857 to 6.625 and
-        \(C_Q\) from 3.573 to 3.737. The final policies will use
-        \(C_R=6.109\) and \(C_Q=3.651\). All folds use the capacity-sized
+        and summed normalized adjusted peaks: \(C_R\) from 5.853 to 6.613 and
+        \(C_Q\) from 3.576 to 3.739. The final policies will use
+        \(C_R=6.102\) and \(C_Q=3.653\). All folds use the capacity-sized
         training fleet and least-squares forecasts fitted on the fold's
         training months, recorded as forecast vintage
         \codepath{causal-least-squares-v4+cv-kX}.
@@ -659,7 +660,7 @@ to norm 0.5. These settings are listed in Table~\ref{tab:hyperparameters}.
         tests these checks and checkpoint resumption.
 \end{itemize}
 On the eight-core laptop used here, six runs trained at a time and each took
-63 to 91 minutes; the whole cross-validation took 2.6 hours.
+55 to 63 minutes; the whole cross-validation took 2.0 hours.
 
 \section{Evaluation and Figures
   (Chapters~\ref{sec:evaluation}--\ref{sec:results})}
@@ -671,9 +672,9 @@ On the eight-core laptop used here, six runs trained at a time and each took
   \item \codepath{scripts/run_four_market_cv.py} trains every (fold, seed)
         pair and evaluates each saved milestone on each of the fold's
         held-out months. Summaries and learning curves are under
-        \codepath{output/four_market_joint_v3/cv/cv-50-50-1m/}, with
+        \codepath{output/four_market_joint_v3/cv/cv-trace-clock-1m/}, with
         \codepath{cv.json} collecting every month's improvement; checkpoints
-        are under \codepath{models/four_market_joint_v3/cv/cv-50-50-1m/}.
+        are under \codepath{models/four_market_joint_v3/cv/cv-trace-clock-1m/}.
   \item \codepath{scripts/build_ppo_cv_figures.py} replays each final policy
         and the baseline on every held-out month, recomputes \(J_e\) from the
         trajectories, draws the figures, and writes their supporting values to
@@ -699,8 +700,8 @@ From the repository root, run the following commands in PowerShell:
 python scripts/build_four_market_v2_factory.py
 python scripts/run_four_market_cv.py `
     --seeds 4101 4102 4103 --timesteps 1000000 `
-    --tag cv-50-50-1m --workers 6
-python scripts/build_ppo_cv_figures.py --tag cv-50-50-1m
+    --tag cv-trace-clock-1m --workers 6
+python scripts/build_ppo_cv_figures.py --tag cv-trace-clock-1m
 \end{verbatim}
 }
 The cross-validation script runs each (fold, seed) pair in its own process.

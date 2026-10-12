@@ -10,6 +10,9 @@ Each split specification ("spec") names its training, validation, and test
 months. Everything fitted to data -- forecast weights, the market scales S_m,
 the observation standardization, and the objective references C_R and C_Q --
 is fitted on the spec's training months only.
+
+Months follow the clock of the Google trace (UTC-7, see ``env/ramp_v6/clock.py``):
+"2025-07" runs from 07:00 UTC on 1 July to 07:00 UTC on 1 August.
 """
 
 from __future__ import annotations
@@ -17,6 +20,8 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
+
+from env.ramp_v6.clock import month_labels  # noqa: F401  (re-exported)
 
 
 DEVELOPMENT_MONTHS = tuple(f"2025-{month:02d}" for month in range(1, 13))
@@ -34,16 +39,16 @@ SPECS = CV_SPECS + (FINAL_SPEC,)
 # Market order is fixed everywhere. The training fleet comes from cells a-d and
 # the test fleet from cells e-h, matched to the same markets in the same order.
 TRAIN_FLEET = (
-    ("CAISO_NP15", "a"),
-    ("MISO_MINN_HUB", "b"),
-    ("SPP_NORTH_HUB", "c"),
-    ("ISONE_NEMA", "d"),
+    ("CAISO", "a"),
+    ("MISO", "b"),
+    ("SPP", "c"),
+    ("ISONE", "d"),
 )
 TEST_FLEET = (
-    ("CAISO_NP15", "e"),
-    ("MISO_MINN_HUB", "f"),
-    ("SPP_NORTH_HUB", "g"),
-    ("ISONE_NEMA", "h"),
+    ("CAISO", "e"),
+    ("MISO", "f"),
+    ("SPP", "g"),
+    ("ISONE", "h"),
 )
 # Site sizes are measured against cell c, the largest training cell: cell c's
 # site has compute capacity 1 and 500 MW. Test cells may be larger than 1.
@@ -72,11 +77,6 @@ def fleet_for_split(split: str) -> tuple[tuple[str, str], ...]:
     if split in {"train", "validation"}:
         return TRAIN_FLEET
     raise ValueError(f"unknown split {split!r}")
-
-
-def month_labels(index: pd.DatetimeIndex) -> pd.Index:
-    """Calendar month label (``YYYY-MM``) of each UTC timestamp."""
-    return pd.Index(index.strftime("%Y-%m"))
 
 
 def frozen_stats(frame: pd.DataFrame, months: tuple[str, ...], stats_id: str) -> dict[str, Any]:

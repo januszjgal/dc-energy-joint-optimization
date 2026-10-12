@@ -20,6 +20,7 @@ from energy_model_v3.splits import (
     CV_FOLDS, CV_SPECS, DEVELOPMENT_MONTHS, FINAL_SPEC, TEST_FLEET, TEST_MONTHS, TRAIN_FLEET,
     spec_months,
 )
+from env.ramp_v6 import clock
 from env.ramp_v6.models import HISTORY_HOURS
 from env.ramp_v6.panel import CanonicalMarketPanel
 from ramp_rl.contract import EnvRequest, RampEnvAdapter
@@ -130,7 +131,7 @@ class FourMarketV2DesignTests(unittest.TestCase):
             try:
                 current = env._current
                 times = current.panel.timestamps[HISTORY_HOURS:]
-                offsets = ((times.day - 1) * 24 + times.hour).to_numpy()
+                offsets = clock.trace_hours(times)
                 self.assertEqual(tuple(site.site_id[-1] for site in current.sites), tuple(c for _, c in fleet))
                 for index, (site, (_, cell)) in enumerate(zip(current.sites, fleet)):
                     service, batch = _hourly_curve(cell)
@@ -314,7 +315,9 @@ class FourMarketV2DesignTests(unittest.TestCase):
                     )
                     break
             self.assertEqual(steps, month_hours(self.window))
-            self.assertEqual(len(set(dates)), month_hours(self.window) // 24)
+            # A month starts at 07:00 UTC (trace clock, UTC-7), so its hours span
+            # one more UTC date than it has days.
+            self.assertEqual(len(set(dates)), month_hours(self.window) // 24 + 1)
         finally:
             adapter.close()
 
