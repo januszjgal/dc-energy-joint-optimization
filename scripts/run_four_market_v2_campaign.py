@@ -19,11 +19,13 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from env.ramp_v6 import clock  # noqa: E402
 from energy_model_v3.four_market_v2 import (  # noqa: E402
     ARTIFACT_NAMESPACE, factory_root, make_four_market_env,
 )
@@ -43,11 +45,19 @@ from ramp_rl.runner import (  # noqa: E402
 OUTPUT_ROOT = ROOT / "output" / ARTIFACT_NAMESPACE / "campaign"
 MODEL_ROOT = ROOT / "models" / ARTIFACT_NAMESPACE / "campaign"
 SEEDS = tuple(range(4101, 4111))
-REQUESTED_TIMESTEPS = 2_000_000
+# The length the cross-validation tested (1,024,000 interactions after
+# rounding up to a checkpoint boundary), so the CV estimate covers these policies.
+REQUESTED_TIMESTEPS = 1_000_000
 DEFAULT_WORKERS = 5
 TRAIN_MONTHS = len(DEVELOPMENT_MONTHS)
 TEST_WINDOWS = TEST_MONTHS
-TEST_DAYS = 31
+TEST_HOURS = clock.month_hours(TEST_WINDOWS[0])
+# UTC dates the test month touches: on the trace clock it runs from 07:00 UTC
+# on 1 May to 07:00 UTC on 1 June, so its 744 hours span 32 dates.
+TEST_DAYS = len({
+    (clock.month_start(TEST_WINDOWS[0]) + pd.Timedelta(hours=hour)).date()
+    for hour in range(TEST_HOURS)
+})
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -207,7 +217,7 @@ def _load_completed_seed_summary(
     for field, expected in (
         ("episode_count", len(geometry["test"])),
         ("day_count", TEST_DAYS),
-        ("step_count", TEST_DAYS * 24),
+        ("step_count", TEST_HOURS),
     ):
         value = evaluation.get(field)
         if isinstance(value, bool) or not isinstance(value, int) or value != expected:
@@ -296,6 +306,10 @@ def train_and_evaluate(seed: int) -> dict[str, Any]:
         "seed": seed,
         "requested_interactions": REQUESTED_TIMESTEPS,
     })
+    reused = all(
+        (checkpoint / name).is_file()
+        for name in ("training_summary.json", "model.zip", "vecnormalize.pkl")
+    )
     started = time.perf_counter()
     try:
         training = run_training(
@@ -305,6 +319,10 @@ def train_and_evaluate(seed: int) -> dict[str, Any]:
             progress_path=output / "progress.json",
         )
         elapsed = time.perf_counter() - started
+        if reused:
+            # Training finished in an earlier invocation; its time is the
+            # learning curve's last elapsed value.
+            elapsed = float(pd.read_csv(output / "learning_curve.csv")["elapsed_seconds"].iloc[-1])
         evaluation = evaluate_checkpoint(
             factory=make_four_market_env, checkpoint_dir=checkpoint, split="test",
             seeds=[seed], windows=geometry["test"],

@@ -156,7 +156,7 @@ def _completed_campaign_summary(
         "test": {
             "objective": campaign._environment_identity()["objective"],
             "episode_count": 1,
-            "day_count": 31,
+            "day_count": campaign.TEST_DAYS,
             "step_count": 744,
             "mean_joint_J": 1.0,
             "mean_monthly_ramp_impact": 744.0,
@@ -214,7 +214,7 @@ class CampaignInstrumentationTests(unittest.TestCase):
 
     def test_locked_campaign_geometry(self) -> None:
         self.assertEqual(SEEDS, tuple(range(4101, 4111)))
-        self.assertEqual(REQUESTED_TIMESTEPS, 2_000_000)
+        self.assertEqual(REQUESTED_TIMESTEPS, 1_000_000)
         self.assertEqual(DEFAULT_WORKERS, 5)
 
     def test_learning_curve_writer_persists_raw_metric_schema(self) -> None:

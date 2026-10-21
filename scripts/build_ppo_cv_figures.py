@@ -1,4 +1,4 @@
-"""Build the cross-validation figures and the numbers quoted in latex/ppo_solution.tex.
+"""Build the cross-validation figures and the numbers quoted in latex/thesis_draft.tex (Chapter 6).
 
 Reads a tagged cross-validation run from ``output/four_market_joint_v3/cv/<tag>/``
 and its checkpoints under ``models/``. For every fold it reruns the
@@ -140,12 +140,16 @@ def month_arrays(infos: list[dict[str, Any]], site_ids: list[str]) -> dict[str, 
 
 
 class MonthInputs:
-    """The panel, fixture, scales, and objective of one fold's held-out month."""
+    """The panel, fixture, scales, and objective of one fold's held-out month.
 
-    def __init__(self, fold: str, month: str) -> None:
-        spec = f"cv-{fold}"
+    ``spec`` and ``split`` select another factory's month instead, such as the
+    final factory's test month.
+    """
+
+    def __init__(self, fold: str, month: str, *, spec: str | None = None, split: str = "validation") -> None:
+        spec = spec or f"cv-{fold}"
         factory = json.loads((factory_root(spec) / "factory.json").read_text(encoding="utf-8"))
-        record = factory["windows"]["validation"][month]
+        record = factory["windows"][split][month]
         fixture = json.loads((ROOT / record["fixture_path"]).read_text(encoding="utf-8"))
         stats = json.loads((ROOT / factory["frozen_stats_path"]).read_text(encoding="utf-8"))
         panel = pd.read_csv(ROOT / record["panel_path"])
@@ -277,8 +281,8 @@ def figure_markets(metrics: dict[tuple[str, int, str], dict[str, Any]]) -> dict[
     positions = np.arange(len(MARKETS))
     width = 0.22
     panels = (
-        ("squared_ramp_cut_pct", "Cut in squared one-hour ramp (%)", "Ramp smoothing by region"),
-        ("peak_change_mw", "Peak change vs. no flexibility (MW)", "Monthly peak by region"),
+        ("squared_ramp_cut_pct", "Cut in squared one-hour ramp (%)", "Ramp smoothing by market"),
+        ("peak_change_mw", "Peak change vs. no flexibility (MW)", "Monthly peak by market"),
     )
     for seed in SEEDS:
         averages[str(seed)] = {
@@ -362,6 +366,12 @@ def main() -> None:
         figure_learning_curves(curves, {f: -v for f, v in saved["no_flex_training_mean_J_by_fold"].items()})
         figure_months(final, month_fold)
         figure_checkpoints(summaries)
+        # The per-month market metrics were saved by the last full run.
+        figure_markets({
+            (fold, seed, month): record["behavior"]
+            for fold in FOLDS for seed in SEEDS
+            for month, record in saved["runs"][f"{fold}/{seed}"]["months"].items()
+        })
         return
 
     training_J = {fold: {m: no_flex_month(f"cv-{fold}", "train", m)[0] for m in spec_months(f"cv-{fold}")["train"]}

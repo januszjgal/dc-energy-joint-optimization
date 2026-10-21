@@ -118,7 +118,7 @@ equal achieved savings or learned influence. Report $J_{\mathrm{NF}}-J_{\mathrm{
 peak scores. Use differences rather than percentages for the signed ramp
 component. Regional peak reductions in MW are measured against the same
 no-flexibility fleet, not the native no-fleet peak.
-The [thesis](../latex/thesis_problemstatement.tex) defines the objective.
+The [thesis](../latex/thesis_draft.tex) defines the objective.
 
 ## Factories, cross-validation, and campaign
 

@@ -5,7 +5,7 @@ experiment schedules raw measured service and batch CPU curves from
 ClusterData2019 cells a-d (the training fleet) and e-h (the test fleet) against
 four hourly market panels.
 The working thesis document is
-[`latex/thesis_problemstatement.tex`](latex/thesis_problemstatement.tex).
+[`latex/thesis_draft.tex`](latex/thesis_draft.tex).
 
 ## Active design
 
@@ -178,9 +178,9 @@ never touched here.
 
 ## Ten-seed final campaign and test
 
-The planned final campaign uses seeds 4101-4110, each requesting 2,000,000
-interactions and stopping at the first checkpoint boundary at or beyond it
-(2,048,000 interactions at 4 environments,
+The final campaign uses seeds 4101-4110, each requesting 1,000,000
+interactions, the length the cross-validation tested, and stopping at the first
+checkpoint boundary at or beyond it (1,024,000 interactions at 4 environments,
 512 steps per rollout, and a checkpoint every 25 rollouts).
 Each seed trains on all twelve months of 2025 and is then evaluated once on the
 continuous May 2026 test episode (744 hourly decisions on the trace clock), served by
@@ -191,7 +191,11 @@ matched-pairs rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw
 seed-bootstrap intervals, per-UTC-day tables, safety totals, and learning-curve
 slopes.
 
-**Full monthly-impact results are pending.** Earlier ramp-only artifacts under
+**Test-month result (May 2026, ten seeds):** mean improvement 0.0179 (0.0160-0.0194)
+over no flexibility, every seed positive; per-seed summaries and
+`aggregation.json` are under `output/four_market_joint_v3/campaign/`, and
+`scripts/build_test_month_results.py` writes the thesis numbers to
+`docs/figures/ppo_test/test_month.json`. Earlier ramp-only artifacts under
 `four_market_v2` and mean-squared joint artifacts under `four_market_joint_v1`
 are historical. The current objective and calibration have new version
 identifiers; incompatible checkpoints cannot be resumed or silently reused.
