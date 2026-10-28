@@ -13,7 +13,7 @@ Colors are the first three categorical slots of the reference data-viz palette,
 validated all-pairs for colorblind separation. The aqua slot is below 3:1 contrast
 on the surface, so every figure carries a legend and the chapter tabulates values.
 
-    python scripts/build_ppo_cv_figures.py --tag cv-trace-clock-1m
+    python scripts/build_ppo_cv_figures.py --tag cv-raw-obs-1m
 """
 
 from __future__ import annotations
@@ -49,6 +49,8 @@ SEEDS = (4101, 4102, 4103)
 FOLDS = tuple(CV_FOLDS)
 EXAMPLE = ("k1", "2025-05", 4102)  # fold, held-out month, seed for the ISO-NE window
 SEED_COLORS = dict(zip(SEEDS, ("#2a78d6", "#eb6834", "#1baf7a")))
+# Figures name the seeds by run number; Appendix B maps runs to seeds.
+RUN_LABELS = {seed: f"Run {index}" for index, seed in enumerate(SEEDS, start=1)}
 SURFACE, INK, INK_2, MUTED, GRID, AXIS = (
     "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7",
 )
@@ -219,7 +221,7 @@ def figure_learning_curves(curves: dict[tuple[str, int], pd.DataFrame], baseline
             frame = curves[(fold, seed)]
             done = frame[frame["episode_count"] > 0]
             smooth = done["mean_completed_episode_return"].rolling(10, min_periods=1).mean()
-            ax.plot(done["interaction_count"] / 1e6, smooth, color=SEED_COLORS[seed], label=f"Seed {seed}")
+            ax.plot(done["interaction_count"] / 1e6, smooth, color=SEED_COLORS[seed], label=RUN_LABELS[seed])
         ax.axhline(baselines[fold], color=MUTED, linewidth=1.0)
         held = ", ".join(MONTH_LABELS[int(m[-2:]) - 1] for m in CV_FOLDS[fold])
         ax.set_title(f"Fold {fold[-1]}\nheld out: {held}")
@@ -241,7 +243,7 @@ def figure_months(final: dict[tuple[str, int], dict[str, Any]], month_fold: dict
     for offset, seed in enumerate(SEEDS):
         values = [final[(month_fold[m], seed)][m]["improvement_J"] for m in months]
         ax.bar(positions + (offset - 1) * width, values, width=width * 0.9,
-               color=SEED_COLORS[seed], label=f"Seed {seed}", linewidth=0)
+               color=SEED_COLORS[seed], label=RUN_LABELS[seed], linewidth=0)
     ax.axhline(0.0, color=AXIS, linewidth=0.8)
     ax.set_xticks(positions, [f"{MONTH_LABELS[int(m[-2:]) - 1]}\nfold {month_fold[m][-1]}" for m in months])
     ax.tick_params(axis="x", length=0)
@@ -262,7 +264,7 @@ def figure_checkpoints(summaries: dict[tuple[str, int], dict[str, Any]]) -> dict
                 by_checkpoint.setdefault(int(count), []).extend(row["improvement_J"] for row in months.values())
         rows = sorted((count, float(np.mean(values))) for count, values in by_checkpoint.items() if len(values) == 12)
         means[str(seed)] = {str(count): value for count, value in rows}
-        ax.plot([c / 1e6 for c, _ in rows], [v for _, v in rows], color=SEED_COLORS[seed], label=f"Seed {seed}",
+        ax.plot([c / 1e6 for c, _ in rows], [v for _, v in rows], color=SEED_COLORS[seed], label=RUN_LABELS[seed],
                 marker="o", markersize=4.5, markeredgecolor=SURFACE, markeredgewidth=1.0)
     ax.set_xlim(0, 1.08)
     ax.set_ylim(bottom=0)
@@ -296,7 +298,7 @@ def figure_markets(metrics: dict[tuple[str, int, str], dict[str, Any]]) -> dict[
         for offset, seed in enumerate(SEEDS):
             values = [averages[str(seed)][market][field] for market in MARKETS]
             ax.bar(positions + (offset - 1) * width, values, width=width * 0.9,
-                   color=SEED_COLORS[seed], label=f"Seed {seed}", linewidth=0)
+                   color=SEED_COLORS[seed], label=RUN_LABELS[seed], linewidth=0)
         ax.axhline(0.0, color=AXIS, linewidth=0.8)
         ax.set_xticks(positions, [MARKET_LABELS[m] for m in MARKETS])
         ax.tick_params(axis="x", length=0)
@@ -322,7 +324,7 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
     top.set_ylabel("Original net load (MW)")
     top.set_title(f"ISO-NE around its {pd.Timestamp(month).strftime('%B %Y')} monthly peak hour")
     bottom.plot(hours, baseline["power"][start:stop, index], color=MUTED, label="No flexibility")
-    bottom.plot(hours, run["power"][start:stop, index], color=SEED_COLORS[seed], label=f"PPO, seed {seed}")
+    bottom.plot(hours, run["power"][start:stop, index], color=SEED_COLORS[seed], label=f"PPO, {RUN_LABELS[seed].lower()}")
     bottom.set_ylabel("Site power (MW)")
     for ax in (top, bottom):
         ax.axvline(inputs.timestamps[peak_hour], color=AXIS, linewidth=0.8)
@@ -347,7 +349,7 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", default="cv-trace-clock-1m")
+    parser.add_argument("--tag", default="cv-raw-obs-1m")
     parser.add_argument("--figures-only", action="store_true",
                         help="redraw the summary figures from an existing figure_data.json, without replays")
     args = parser.parse_args()

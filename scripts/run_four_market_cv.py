@@ -37,7 +37,7 @@ from ramp_rl.evaluation import evaluate_checkpoint  # noqa: E402
 from ramp_rl.runner import configure_single_thread_runtime, run_training  # noqa: E402
 
 PROTOCOL_PATH = ROOT / "env" / "protocols" / "four_market_v2.yaml"
-DEFAULT_TAG = "cv-trace-clock-1m"
+DEFAULT_TAG = "cv-raw-obs-1m"
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -89,12 +89,15 @@ def _compact(validation: dict[str, Any]) -> dict[str, Any]:
 
 def run_job(
     fold: str, seed: int, *, timesteps: int, tag: str, ramp_weight: float | None = None,
+    raw_observation: bool = True,
 ) -> dict[str, Any]:
     """Train one seed on one fold and evaluate it on the fold's held-out months."""
     configure_single_thread_runtime()
     spec = f"cv-{fold}"
     windows = _validate_fold(spec)
-    factory = partial(make_four_market_env, spec=spec, ramp_weight=ramp_weight)
+    factory = partial(
+        make_four_market_env, spec=spec, ramp_weight=ramp_weight, raw_observation=raw_observation,
+    )
     output = ROOT / "output" / ARTIFACT_NAMESPACE / "cv" / tag / fold / f"seed-{seed}"
     checkpoint = ROOT / "models" / ARTIFACT_NAMESPACE / "cv" / tag / fold / f"seed-{seed}"
     output.mkdir(parents=True, exist_ok=True)
@@ -144,6 +147,7 @@ def run_job(
         "spec": spec,
         "seed": seed,
         "tag": tag,
+        "raw_observation": raw_observation,
         "training_months": list(spec_months(spec)["train"]),
         "validation_window_ids": windows,
         "training_identity": training,
@@ -203,6 +207,9 @@ def main() -> None:
     parser.add_argument("--tag", default=DEFAULT_TAG)
     parser.add_argument("--ramp-weight", type=float, choices=(0.0, 0.5, 1.0), default=None)
     parser.add_argument("--workers", type=int, default=None)
+    parser.add_argument("--scaled-observation", action="store_true",
+                        help="use the environment's fixed observation scaling of the earlier "
+                             "cv-trace-clock-1m runs instead of raw observations")
     args = parser.parse_args()
     if Path(args.tag).name != args.tag or args.tag in {"", ".", ".."}:
         parser.error("--tag must be a single directory name")
@@ -213,7 +220,10 @@ def main() -> None:
     jobs = [(fold, seed) for fold in args.folds for seed in args.seeds]
     workers = args.workers or min(len(jobs), 6)
     started = time.perf_counter()
-    job = partial(_run_job_worker, timesteps=args.timesteps, tag=args.tag, ramp_weight=args.ramp_weight)
+    job = partial(
+        _run_job_worker, timesteps=args.timesteps, tag=args.tag, ramp_weight=args.ramp_weight,
+        raw_observation=not args.scaled_observation,
+    )
     with ProcessPoolExecutor(max_workers=workers) as executor:
         results = list(executor.map(job, jobs))
     summary = {

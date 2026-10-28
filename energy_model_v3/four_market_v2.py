@@ -127,12 +127,14 @@ class FourMarketV2WindowEnv(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(
-        self, payload: dict[str, Any], request: EnvRequest, objective: JointObjective
+        self, payload: dict[str, Any], request: EnvRequest, objective: JointObjective,
+        raw_observation: bool = True,
     ) -> None:
         super().__init__()
         self.payload = payload
         self.request = request
         self.objective = objective
+        self.raw_observation = raw_observation
         self._window_ids = tuple(sorted(payload["windows"][request.split]))
         if request.window_id is not None and request.window_id not in self._window_ids:
             raise ValueError(f"factory has no {request.window_id!r} in {request.split}")
@@ -213,8 +215,12 @@ class FourMarketV2WindowEnv(gym.Env):
                 "workload_cells": list(record["workload_cells"]),
                 "factory_spec": self.payload["spec"],
                 "total_rated_power_mw": float(sum(site.rated_power_mw for site in sites)),
-                "factory_id": self.payload["input_digest"],
+                # A raw-observation policy must never be scored on scaled
+                # observations, so the raw variant gets its own identity.
+                "factory_id": self.payload["input_digest"]
+                + ("+raw-observation" if self.raw_observation else ""),
             },
+            raw_observation=self.raw_observation,
         )
 
     def ramp_rl_contract(self) -> dict[str, Any]:
@@ -244,9 +250,16 @@ class FourMarketV2WindowEnv(gym.Env):
 
 
 def make_four_market_env(
-    request: EnvRequest, *, spec: str = FINAL_SPEC, ramp_weight: float | None = None
+    request: EnvRequest, *, spec: str = FINAL_SPEC, ramp_weight: float | None = None,
+    raw_observation: bool = True,
 ) -> FourMarketV2WindowEnv:
-    """Build the four-market environment of one split specification."""
+    """Build the four-market environment of one split specification.
+
+    The observation is left in the simulator's own units by default, so that
+    only the learner's normalization (VecNormalize) scales it;
+    ``raw_observation=False`` restores the environment's fixed scaling used by
+    the earlier cv-trace-clock-1m runs.
+    """
     if request.split not in {"train", "validation", "test"}:
         raise ValueError("four-market splits are train, validation, and test")
     payload = json.loads((factory_root(spec) / "factory.json").read_text(encoding="utf-8"))
@@ -254,4 +267,6 @@ def make_four_market_env(
         raise ValueError("factory specification does not match the request")
     if not payload.get("windows", {}).get(request.split):
         raise ValueError(f"factory {spec!r} has no {request.split} windows")
-    return FourMarketV2WindowEnv(payload, request, objective_from_factory(payload, ramp_weight))
+    return FourMarketV2WindowEnv(
+        payload, request, objective_from_factory(payload, ramp_weight), raw_observation
+    )

@@ -1,0 +1,597 @@
+{
+  "component_comparisons": {
+    "net_load_peak": {
+      "common_language_effect": {
+        "definition": "share of optimizer seeds with lower policy score than status quo, with ties counted as one half",
+        "value": 1.0
+      },
+      "difference_definition": "policy minus status-quo summed normalized regional monthly peaks; negative favors policy because lower is better",
+      "hodges_lehmann_paired_shift": -0.009973040110356737,
+      "mean_paired_difference": -0.010174074330878498,
+      "median_paired_difference": -0.009863927165107738,
+      "paired_bootstrap_95": {
+        "draws": 10000,
+        "hodges_lehmann_paired_shift": {
+          "estimate": -0.009973040110356737,
+          "lower_95": -0.0110527966452155,
+          "upper_95": -0.009495101358319904
+        },
+        "mean_difference": {
+          "estimate": -0.010174074330878498,
+          "lower_95": -0.010920353745208843,
+          "upper_95": -0.009569001792294595
+        },
+        "method": "seed-level paired percentile bootstrap",
+        "seed": 20260811
+      },
+      "rank_biserial_correlation": {
+        "definition": "(negative-difference rank sum minus positive-difference rank sum) / total nonzero rank sum; positive favors policy",
+        "value": 1.0
+      },
+      "seed_count": 10,
+      "seed_loss_count": 0,
+      "seed_tie_count": 0,
+      "seed_win_count": 10,
+      "wilcoxon_signed_rank": {
+        "method": "exact two-sided Wilcoxon signed-rank",
+        "negative_rank_sum": 55.0,
+        "nonzero_pair_count": 10,
+        "p_value": 0.001953125,
+        "positive_rank_sum": 0.0
+      }
+    },
+    "ramp": {
+      "common_language_effect": {
+        "definition": "share of optimizer seeds with lower policy score than status quo, with ties counted as one half",
+        "value": 1.0
+      },
+      "difference_definition": "policy minus status-quo monthly sum of incremental squared ramp impacts; negative favors policy because lower is better",
+      "hodges_lehmann_paired_shift": -0.20377242065517986,
+      "mean_paired_difference": -0.20158805883283729,
+      "median_paired_difference": -0.2065501167334851,
+      "paired_bootstrap_95": {
+        "draws": 10000,
+        "hodges_lehmann_paired_shift": {
+          "estimate": -0.20377242065517986,
+          "lower_95": -0.2122429667723397,
+          "upper_95": -0.19040446949549367
+        },
+        "mean_difference": {
+          "estimate": -0.20158805883283729,
+          "lower_95": -0.20995558807209874,
+          "upper_95": -0.19248296573216217
+        },
+        "method": "seed-level paired percentile bootstrap",
+        "seed": 20260811
+      },
+      "rank_biserial_correlation": {
+        "definition": "(negative-difference rank sum minus positive-difference rank sum) / total nonzero rank sum; positive favors policy",
+        "value": 1.0
+      },
+      "seed_count": 10,
+      "seed_loss_count": 0,
+      "seed_tie_count": 0,
+      "seed_win_count": 10,
+      "wilcoxon_signed_rank": {
+        "method": "exact two-sided Wilcoxon signed-rank",
+        "negative_rank_sum": 55.0,
+        "nonzero_pair_count": 10,
+        "p_value": 0.001953125,
+        "positive_rank_sum": 0.0
+      }
+    }
+  },
+  "improvement_definition": "status-quo minus policy mean monthly normalized joint score; positive favors the policy",
+  "learning_curves": {
+    "aggregate_csv": "output\\four_market_joint_v3\\campaign\\learning_curve_aggregate.csv",
+    "aggregate_png": "output\\four_market_joint_v3\\campaign\\learning_curve_aggregate.png",
+    "aligned_rollout_count": 500,
+    "convergence_diagnostic": {
+      "around_110592": {
+        "interpretation": "negative slope means a decreasing raw objective contribution; this descriptive learning-curve diagnostic makes no significance claim",
+        "point_count": 21,
+        "score_slope_per_interaction": -7.861743360019036e-11,
+        "window": "90,112 to 131,072 interactions around the prespecified 110,592 comparison point"
+      },
+      "final_20_percent": {
+        "interpretation": "negative slope means a decreasing raw objective contribution; this descriptive learning-curve diagnostic makes no significance claim",
+        "point_count": 101,
+        "score_slope_per_interaction": -4.075138784930611e-12,
+        "window": "final 20 percent of aligned interactions"
+      }
+    }
+  },
+  "mean_emergency_feasibility_rate": 0.0,
+  "mean_improvement": 0.017910923083260852,
+  "mean_incremental_ramp_impact": -0.0002842754021381077,
+  "mean_joint_J": -0.012524599287751483,
+  "mean_monthly_ramp_impact": -0.21150089919075216,
+  "objective": {
+    "normalization": "training-month-mean-no-flexibility-ramp-totals-v2",
+    "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_original",
+    "peak_reference": 3.6534966323034266,
+    "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
+    "peak_weight": 0.5,
+    "ramp_metric": "monthly_sum_of_regional_incremental_squared_ramp_impacts",
+    "ramp_reference": 6.101869762465885,
+    "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
+    "ramp_weight": 0.5,
+    "version": "joint-net-load-peak-impact-ramp-impact-v3"
+  },
+  "paired_policy_minus_status_quo": {
+    "common_language_effect": {
+      "definition": "share of optimizer seeds with lower policy score than status quo, with ties counted as one half",
+      "value": 1.0
+    },
+    "difference_definition": "policy minus status-quo monthly joint J; negative favors policy because lower is better",
+    "hodges_lehmann_paired_shift": -0.01797034859088664,
+    "mean_paired_difference": -0.017910923083260855,
+    "median_paired_difference": -0.01828604761258011,
+    "paired_bootstrap_95": {
+      "draws": 10000,
+      "hodges_lehmann_paired_shift": {
+        "estimate": -0.01797034859088664,
+        "lower_95": -0.018777822498037264,
+        "upper_95": -0.017227072949066044
+      },
+      "mean_difference": {
+        "estimate": -0.017910923083260855,
+        "lower_95": -0.018583756950080837,
+        "upper_95": -0.017192745469387333
+      },
+      "method": "seed-level paired percentile bootstrap",
+      "seed": 20260811
+    },
+    "rank_biserial_correlation": {
+      "definition": "(negative-difference rank sum minus positive-difference rank sum) / total nonzero rank sum; positive favors policy",
+      "value": 1.0
+    },
+    "seed_count": 10,
+    "seed_loss_count": 0,
+    "seed_tie_count": 0,
+    "seed_win_count": 10,
+    "wilcoxon_signed_rank": {
+      "method": "exact two-sided Wilcoxon signed-rank",
+      "negative_rank_sum": 55.0,
+      "nonzero_pair_count": 10,
+      "p_value": 0.001953125,
+      "positive_rank_sum": 0.0
+    }
+  },
+  "per_market": {
+    "CAISO": {
+      "mean_joint_improvement": 0.009715071611917994,
+      "mean_peak_reduction_mw": 101.84543303336905,
+      "mean_policy_joint_J": -0.009105822449172114,
+      "mean_policy_minus_status_quo_incremental_ramp_impact": -0.00015258722797575997,
+      "mean_policy_monthly_ramp_impact": -0.12086306870165452,
+      "mean_policy_native_relative_incremental_ramp_impact": -0.00016245036115813778,
+      "mean_policy_peak_mw": 30177.96303898454,
+      "mean_status_quo_joint_J": 0.0006092491627458809,
+      "mean_status_quo_monthly_ramp_impact": -0.00733817108768909,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -9.863133182377809e-06,
+      "mean_status_quo_peak_mw": 30279.80847201791,
+      "policy_seed_win_count": 10
+    },
+    "ISONE": {
+      "mean_joint_improvement": 0.007676679862282062,
+      "mean_peak_reduction_mw": 122.16196851364585,
+      "mean_policy_joint_J": -0.0045715004286325835,
+      "mean_policy_minus_status_quo_incremental_ramp_impact": -0.00011058919657628493,
+      "mean_policy_monthly_ramp_impact": -0.08403300914426604,
+      "mean_policy_native_relative_incremental_ramp_impact": -0.00011294759293584145,
+      "mean_policy_peak_mw": 17808.50249651316,
+      "mean_status_quo_joint_J": 0.003105179433649479,
+      "mean_status_quo_monthly_ramp_impact": -0.0017546468915100404,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -2.358396359556506e-06,
+      "mean_status_quo_peak_mw": 17930.664465026806,
+      "policy_seed_win_count": 10
+    },
+    "MISO": {
+      "mean_joint_improvement": -5.050286405920713e-05,
+      "mean_peak_reduction_mw": -12.192470289452467,
+      "mean_policy_joint_J": 0.0007399346266616699,
+      "mean_policy_minus_status_quo_incremental_ramp_impact": 5.561108359283608e-07,
+      "mean_policy_monthly_ramp_impact": 0.0006487081449928218,
+      "mean_policy_native_relative_incremental_ramp_impact": 8.719195497215346e-07,
+      "mean_policy_peak_mw": 86593.44082887704,
+      "mean_status_quo_joint_J": 0.0006894317626024627,
+      "mean_status_quo_monthly_ramp_impact": 0.00023496168306212133,
+      "mean_status_quo_native_relative_incremental_ramp_impact": 3.1580871379317384e-07,
+      "mean_status_quo_peak_mw": 86581.24835858759,
+      "policy_seed_win_count": 4
+    },
+    "SPP": {
+      "mean_joint_improvement": 0.0005696744731199997,
+      "mean_peak_reduction_mw": 20.70054879030213,
+      "mean_policy_joint_J": 0.0004127889633915453,
+      "mean_policy_minus_status_quo_incremental_ramp_impact": -8.331378263503438e-06,
+      "mean_policy_monthly_ramp_impact": -0.00725352948982441,
+      "mean_policy_native_relative_incremental_ramp_impact": -9.749367593850014e-06,
+      "mean_policy_peak_mw": 34536.616694248674,
+      "mean_status_quo_joint_J": 0.000982463436511545,
+      "mean_status_quo_monthly_ramp_impact": -0.0010549840617778516,
+      "mean_status_quo_native_relative_incremental_ramp_impact": -1.4179893303465748e-06,
+      "mean_status_quo_peak_mw": 34557.317243038975,
+      "policy_seed_win_count": 10
+    }
+  },
+  "requested_interactions_per_seed": 1000000,
+  "safety_totals": {
+    "batch_expired": 0.0,
+    "batch_unfinished": 0.0,
+    "certificate_violations": 0.0,
+    "service_unserved": 0.0,
+    "terminal_work": 0.0
+  },
+  "sample_standard_deviation_incremental_ramp_impact": 2.003404762984563e-05,
+  "sample_standard_deviation_joint_J": 0.001183986979198374,
+  "seed_count": 10,
+  "seeds": [
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.009961018590643946,
+          "metric": "peak_impact_sum",
+          "policy": 0.03533212969954613,
+          "relative_improvement": 0.219923298924252,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0013632171578551319
+        },
+        "ramp": {
+          "improvement": 0.20639318204371243,
+          "metric": "ramp_impact_sum",
+          "policy": -0.2163060224016273,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.01691229000930896
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.018275507167164095,
+      "policy_joint_J": -0.012889183371654726,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.0002774101909189683,
+      "policy_native_relative_incremental_ramp_impact": -0.00029073390107745603,
+      "resumed_from_interactions": 0,
+      "seed": 4101,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3184.344495899997
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.010651666295674829,
+          "metric": "peak_impact_sum",
+          "policy": 0.03464148199451525,
+          "relative_improvement": 0.2351716914759455,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0014577358853290162
+        },
+        "ramp": {
+          "improvement": 0.20670705142325776,
+          "metric": "ramp_impact_sum",
+          "policy": -0.21661989178117264,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.016938009124249434
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.01839574500957845,
+      "policy_joint_J": -0.013009421214069084,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.0002778320583645938,
+      "policy_native_relative_incremental_ramp_impact": -0.0002911557685230815,
+      "resumed_from_interactions": 0,
+      "seed": 4102,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3176.5835823000016
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.01029672680736416,
+          "metric": "peak_impact_sum",
+          "policy": 0.03499642148282592,
+          "relative_improvement": 0.22733519739881497,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0014091605718645982
+        },
+        "ramp": {
+          "improvement": 0.21809275150096696,
+          "metric": "ramp_impact_sum",
+          "policy": -0.22800559185888183,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.017870977257045832
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.019280137828910433,
+      "policy_joint_J": -0.013893814033401064,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.0002931354186840954,
+      "policy_native_relative_incremental_ramp_impact": -0.0003064591288425831,
+      "resumed_from_interactions": 0,
+      "seed": 4103,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3173.4518468000024
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.00952769837470363,
+          "metric": "peak_impact_sum",
+          "policy": 0.03576544991548645,
+          "relative_improvement": 0.2103562842145643,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.001303915034498976
+        },
+        "ramp": {
+          "improvement": 0.20339281393173725,
+          "metric": "ramp_impact_sum",
+          "policy": -0.21330565428965212,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.01666643355638766
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.01797034859088664,
+      "policy_joint_J": -0.01258402479537727,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.00027337743808029204,
+      "policy_native_relative_incremental_ramp_impact": -0.00028670114823877975,
+      "resumed_from_interactions": 0,
+      "seed": 4104,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3177.8532741000017
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.008830426542886294,
+          "metric": "peak_impact_sum",
+          "policy": 0.036462721747303785,
+          "relative_improvement": 0.19496164157789075,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0012084897608512313
+        },
+        "ramp": {
+          "improvement": 0.18705631867895953,
+          "metric": "ramp_impact_sum",
+          "policy": -0.1969691590368744,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.015327786888339487
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.016536276649190718,
+      "policy_joint_J": -0.011149952853681349,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.00025141978317064456,
+      "policy_native_relative_incremental_ramp_impact": -0.0002647434933291323,
+      "resumed_from_interactions": 0,
+      "seed": 4105,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3181.8779614000014
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.009223878636998396,
+          "metric": "peak_impact_sum",
+          "policy": 0.03606926965319168,
+          "relative_improvement": 0.20364843216244632,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0012623357245553283
+        },
+        "ramp": {
+          "improvement": 0.18591435407526155,
+          "metric": "ramp_impact_sum",
+          "policy": -0.19582719443317642,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.015234211914753317
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.016496547639308645,
+      "policy_joint_J": -0.011110223843799278,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.00024988488450976016,
+      "policy_native_relative_incremental_ramp_impact": -0.0002632085946682479,
+      "resumed_from_interactions": 0,
+      "seed": 4106,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3123.688272700001
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.01111565367782718,
+          "metric": "peak_impact_sum",
+          "policy": 0.0341774946123629,
+          "relative_improvement": 0.24541578798210167,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.001521234969747197
+        },
+        "ramp": {
+          "improvement": 0.2070266550520897,
+          "metric": "ramp_impact_sum",
+          "policy": -0.21693949541000457,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.016964198115597455
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.018485433085344654,
+      "policy_joint_J": -0.013099109289835285,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.00027826163313452915,
+      "policy_native_relative_incremental_ramp_impact": -0.00029158534329301686,
+      "resumed_from_interactions": 0,
+      "seed": 4107,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3129.9140476
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.012881714653432602,
+          "metric": "peak_impact_sum",
+          "policy": 0.032411433636757477,
+          "relative_improvement": 0.2844075790647262,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0017629295918237982
+        },
+        "ramp": {
+          "improvement": 0.17336367817628645,
+          "metric": "ramp_impact_sum",
+          "policy": -0.18327651853420132,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.014205783220963634
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.015968712812787434,
+      "policy_joint_J": -0.010582389017278065,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.00023301569647350332,
+      "policy_native_relative_incremental_ramp_impact": -0.00024633940663199103,
+      "resumed_from_interactions": 0,
+      "seed": 4108,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3130.5986011000023
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.00976683573957153,
+          "metric": "peak_impact_sum",
+          "policy": 0.03552631255061855,
+          "relative_improvement": 0.21563605331641084,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0013366422255894918
+        },
+        "ramp": {
+          "improvement": 0.22048852263140023,
+          "metric": "ramp_impact_sum",
+          "policy": -0.2304013629893151,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.018067291765851826
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.01940393399144132,
+      "policy_joint_J": -0.014017610195931951,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.0002963555411712369,
+      "policy_native_relative_incremental_ramp_impact": -0.0003096792513297246,
+      "resumed_from_interactions": 0,
+      "seed": 4109,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3131.351307000001
+    },
+    {
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.009485123989682404,
+          "metric": "peak_impact_sum",
+          "policy": 0.035808024300507675,
+          "relative_improvement": 0.2094163101428028,
+          "relative_improvement_basis": "positive_baseline_peak_impact",
+          "status_quo": 0.04529314829019008,
+          "training_reference": 3.6534966323034266,
+          "weight": 0.5,
+          "weighted_improvement": 0.0012980885086655055
+        },
+        "ramp": {
+          "improvement": 0.2074452608147009,
+          "metric": "ramp_impact_sum",
+          "policy": -0.21735810117261578,
+          "relative_improvement": null,
+          "relative_improvement_basis": "not_applicable_to_signed_or_nonpositive_metric",
+          "status_quo": -0.00991284035791486,
+          "training_reference": 6.101869762465885,
+          "weight": 0.5,
+          "weighted_improvement": 0.016998499549330616
+        }
+      },
+      "effective_interactions": 1024000,
+      "improvement": 0.018296588057996124,
+      "policy_joint_J": -0.012910264262486756,
+      "policy_minus_status_quo_incremental_ramp_impact": -0.0002788242752885765,
+      "policy_native_relative_incremental_ramp_impact": -0.0002921479854470642,
+      "resumed_from_interactions": 0,
+      "seed": 4110,
+      "status_quo_joint_J": 0.005386323795509368,
+      "status_quo_native_relative_incremental_ramp_impact": -1.3323710158487716e-05,
+      "training_elapsed_seconds": 3129.0150065999987
+    }
+  ],
+  "statistical_unit": "optimizer seed",
+  "test_days_per_seed": 32,
+  "test_month_ids": [
+    "2026-05"
+  ]
+}

@@ -225,7 +225,8 @@ class FourMarketV2DesignTests(unittest.TestCase):
                 self.assertEqual(objective.peak_reference, self.factory["objective_calibration"]["peak_reference"])
                 observation, _ = env.reset(seed=4101)
                 self.assertEqual(observation.shape, (82,))
-                self.assertEqual(float(observation[-1]), 1.0)
+                # The raw observation counts the hours left in the month.
+                self.assertEqual(float(observation[-1]), float(env._current.action_steps))
             finally:
                 env.close()
 

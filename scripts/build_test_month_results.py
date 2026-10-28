@@ -15,11 +15,13 @@ scores; nothing here is chosen from the test month. Results go to
 from __future__ import annotations
 
 import json
+import pickle
 import sys
 from functools import partial
 from pathlib import Path
 from statistics import fmean
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -29,6 +31,7 @@ from stable_baselines3 import PPO  # noqa: E402
 
 from energy_model_v3.four_market_v2 import ARTIFACT_NAMESPACE, MARKETS, factory_root, make_four_market_env  # noqa: E402
 from energy_model_v3.splits import FINAL_SPEC, TEST_MONTHS  # noqa: E402
+from ramp_rl.contract import EnvRequest  # noqa: E402
 from ramp_rl.evaluation import _run_episode  # noqa: E402
 from scripts.build_ppo_cv_figures import (  # noqa: E402
     MonthInputs, behavior_metrics, month_arrays, no_flex_month, percentage_reductions,
@@ -39,6 +42,48 @@ MODELS = ROOT / "models" / ARTIFACT_NAMESPACE / "campaign" / "ppo"
 OUT = ROOT / "docs" / "figures" / "ppo_test" / "test_month.json"
 SEEDS = tuple(range(4101, 4111))
 MONTH = TEST_MONTHS[0]
+
+
+def peaks_mw() -> dict[str, dict[str, float]]:
+    """Mean monthly peak of each market: original grid, no flexibility, and the policies."""
+    rows = [
+        json.loads((CAMPAIGN / f"seed-{seed}" / "summary.json").read_text(encoding="utf-8"))
+        ["test"]["status_quo_comparison"]["per_market"]
+        for seed in SEEDS
+    ]
+    return {
+        market: {
+            key: fmean(row[market][key] for row in rows)
+            for key in ("native_peak_mw", "status_quo_peak_mw", "policy_peak_mw")
+        }
+        for market in MARKETS
+    }
+
+
+def arrival_range(split: str, month: str) -> dict[str, float]:
+    """How far the sites' service and batch arrivals lie from the training averages.
+
+    The arrivals are rescaled with the statistics that final policy 1 learned in
+    training. Arrivals do not depend on the schedule, so this compares the test
+    fleet's inputs with a training month's on equal terms.
+    """
+    with (MODELS / f"seed-{SEEDS[0]}" / "vecnormalize.pkl").open("rb") as handle:
+        stats = pickle.load(handle).obs_rms
+    env = make_four_market_env(EnvRequest(split=split, seed=0, window_id=month), spec=FINAL_SPEC)
+    try:
+        observation, _ = env.reset(seed=0)
+        rows = [observation]
+        while True:
+            observation, _, done, _, _ = env.step(env.evaluation_action("status_quo"))
+            if done:
+                break
+            rows.append(observation)
+        schema = env._current.observation_schema
+    finally:
+        env.close()
+    index = [i for i, name in enumerate(schema) if name.startswith("site-") and "arrival" in name]
+    z = (np.asarray(rows)[:, index] - stats.mean[index]) / np.sqrt(stats.var[index] + 1e-8)
+    return {"mean_abs_z": float(np.abs(z).mean()), "share_beyond_3": float((np.abs(z) > 3).mean())}
 
 
 def main() -> None:
@@ -119,6 +164,15 @@ def main() -> None:
         "percentage_reductions_mean": {
             field: fmean(v["behavior"]["no_flexibility_percentage_reductions"][field] for v in values)
             for field in values[0]["behavior"]["no_flexibility_percentage_reductions"]
+        },
+        "peak_rises_count": {
+            market: sum(v["behavior"]["per_market"][market]["peak_change_mw"] > 0 for v in values)
+            for market in MARKETS
+        },
+        "peaks_mw": peaks_mw(),
+        "site_arrival_range": {
+            "test": arrival_range("test", MONTH),
+            "training_month_2025_05": arrival_range("train", "2025-05"),
         },
         "seeds": seeds,
     }

@@ -191,7 +191,7 @@ matched-pairs rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw
 seed-bootstrap intervals, per-UTC-day tables, safety totals, and learning-curve
 slopes.
 
-**Test-month result (May 2026, ten seeds):** mean improvement 0.0179 (0.0160-0.0194)
+**Test-month result (May 2026, ten seeds):** mean improvement 0.0147 (0.0125-0.0171)
 over no flexibility, every seed positive; per-seed summaries and
 `aggregation.json` are under `output/four_market_joint_v3/campaign/`, and
 `scripts/build_test_month_results.py` writes the thesis numbers to
@@ -238,7 +238,7 @@ python -m pytest -q tests
 Run the four-fold cross-validation (three seeds, six workers):
 
 ```powershell
-python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-trace-clock-1m --workers 6
+python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-raw-obs-1m --workers 6
 ```
 
 The default ramp weight is 0.5 from the protocol. Use `--ramp-weight 0` for

@@ -74,8 +74,13 @@ class RampAwareEnv(gym.Env):
         protocol: RampProtocol | None = None,
         *,
         episode_context: Mapping[str, Any] | None = None,
+        raw_observation: bool = False,
     ):
         super().__init__()
+        # Raw observations keep every entry in the simulator's own units (MW,
+        # work units, hours) and leave all scaling to the learner; the calendar
+        # entries stay as sine and cosine pairs either way.
+        self.raw_observation = bool(raw_observation)
         self.panel = panel
         self.sites = tuple(sites)
         self.workload = workload
@@ -326,10 +331,15 @@ class RampAwareEnv(gym.Env):
         panel_index = self.history_hours + self._step
         latest_index = panel_index - GRID_OBSERVATION_LAG_HOURS
         latest = self.panel.observation_rows(latest_index)
+        raw = self.raw_observation
         values: list[float] = []
         for market in self.panel.markets:
             row = latest.loc[market]
-            scale = self.stats.gross_q95_mw[market]
+            scale = 1.0 if raw else self.stats.gross_q95_mw[market]
+
+            def level(value: float, mean_map: Mapping[str, float], std_map: Mapping[str, float]) -> float:
+                return value if raw else (value - mean_map[market]) / std_map[market]
+
             for quantity, mean_map, std_map in (
                 (
                     "gross_demand_mw",
@@ -345,11 +355,7 @@ class RampAwareEnv(gym.Env):
                 for lag in range(1, self.history_hours + 1):
                     history_row = self.panel.observation_rows(panel_index - lag)
                     values.append(
-                        (
-                            float(history_row.loc[market, quantity])
-                            - mean_map[market]
-                        )
-                        / std_map[market]
+                        level(float(history_row.loc[market, quantity]), mean_map, std_map)
                     )
             for quantity, mean_map, std_map, current_name in (
                 (
@@ -370,8 +376,7 @@ class RampAwareEnv(gym.Env):
                     for hour in FORECAST_HOURS
                 ]
                 values.extend(
-                    (forecast - mean_map[market]) / std_map[market]
-                    for forecast in forecasts
+                    level(forecast, mean_map, std_map) for forecast in forecasts
                 )
                 path = [float(row[current_name]), *forecasts]
                 # Horizons are unevenly spaced, so each leg is divided by the
@@ -392,7 +397,8 @@ class RampAwareEnv(gym.Env):
         queued_by_origin = self.queue.by_origin(self.n_sites)
         previous_power = self._site_power_history[-1]
         for index, site in enumerate(self.sites):
-            capacity = site.compute_capacity
+            capacity = 1.0 if raw else site.compute_capacity
+            rated = 1.0 if raw else site.rated_power_mw
             values.extend(
                 [
                     float(self.workload.service_arrivals[self._step, index])
@@ -400,10 +406,10 @@ class RampAwareEnv(gym.Env):
                     float(self.workload.batch_arrivals[self._step, index])
                     / capacity,
                     float(queued_by_origin[index]) / capacity,
-                    float(previous_power[index]) / site.rated_power_mw,
+                    float(previous_power[index]) / rated,
                 ]
             )
-        total_capacity = float(self._capacity.sum())
+        total_capacity = 1.0 if raw else float(self._capacity.sum())
         values.extend(
             self.queue.due_by(self._step + edge) / total_capacity
             for edge in self.protocol.deadline_bucket_hours
@@ -419,7 +425,8 @@ class RampAwareEnv(gym.Env):
                 math.cos(day_angle),
             ]
         )
-        values.append((self.action_steps - self._step) / self.action_steps)
+        remaining = self.action_steps - self._step
+        values.append(float(remaining) if raw else remaining / self.action_steps)
         observation = np.asarray(values, dtype=np.float32)
         if observation.shape != self.observation_space.shape:
             raise RuntimeError(
