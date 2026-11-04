@@ -139,172 +139,68 @@ and end with the gap this thesis fills.
 CHAPTER 3: DATA SOURCES AND PREPARATION
 ===========================================================================
 Where every input comes from and how it becomes the hourly series the
-model uses. The order follows the data: workload first, then power, then
-grid data, then the forecasts built from the grid data, and finally the
-checks that apply to all of it.
+model uses. The order follows Dr. Wang's organization: workload, then
+power, then grid data.
 
-3.1 Overview of the Data Pipeline                              [new]
-    One figure and one table: the three public sources (ClusterData2019,
-    PowerData2019, EIA), what is taken from each, and the hourly outputs
-    they become.
+3.1 Overview of the Data Pipeline
+    One figure: the three public sources and the outputs they become.
 
-3.2 Workload Data: Google ClusterData2019                      [drafted]
-    The Borg trace, the fixed reference capacity of each cell, and
-    five-minute CPU utilization. Includes the 300-second usage filter and
-    its measured effect (6.5% of CPU work removed). Subsections 3.2.1
-    Dataset, 3.2.2 Fixed Reference Capacity, 3.2.3 Five-Minute Executed
-    CPU.
+3.2 Data Center Workload Data: Google ClusterData2019
+    3.2.1 Dataset; 3.2.2 Fixed Reference Capacity; 3.2.3 Five-Minute
+    Executed CPU; 3.2.4 Service and Batch Classification.
 
-3.3 Service and Batch Classification                           [drafted]
-    Splitting work by priority: the no-SLO tiers (priority 115 or below)
-    are batch and may wait; everything else is service and must run
-    immediately.
+3.3 Data Center Power Data: Google PowerData2019
+    3.3.1 Data Fit (complete hours, domains weighted by CPU capacity);
+    3.3.2 Fitted Coefficients and Power Range (500 MW hyperscale assumption).
 
-3.4 Power Model: Google PowerData2019                          [drafted]
-    A straight-line fit from CPU utilization to measured power for each
-    cell, scaled to 500 MW per site, with each site's idle power and
-    full-load swing. Floor cooling is already inside the measured power.
-
-3.5 Grid Data: EIA Demand, Wind, and Solar                     [drafted]
-    Hourly demand, wind, and solar for four balancing authorities in
-    2025, and net load (demand minus wind and solar). The regions are
-    named by their balancing authorities (CAISO, MISO, SPP, ISO-NE), since
-    the data cover each whole balancing authority.
-
-3.6 Training and Validation Calendar, and Regional Scale       [drafted]
-    Eleven months of 2025 for training and May for validation. The fixed
-    regional scale S_m (the 95th percentile of training-month demand)
-    lets regions of very different size be compared.
-
-3.7 Demand and Net-Load Forecasts                              [drafted]
-    The 32 ridge-regression forecasts (4 regions x 2 quantities x 4 lead
-    times): the model, its 28 inputs, fitting and penalty selection, the
-    output columns, and accuracy against persistence (24-78% lower error
-    in May). Subsections 3.7.1 Model, 3.7.2 Inputs, 3.7.3 Fitting,
-    3.7.4 Output, 3.7.5 Accuracy.
-
-3.8 Data Quality Checks                                        [new]
-    Missing hours and how gaps are filled, the hour-ending to
-    hour-beginning timestamp shift, and the causality checks on the
-    forecast inputs.
-    Open item: gap filling interpolates in both directions, so a filled
-    hour can use later data. This section should report how many hours
-    that affects.
+3.4 Power Grid Data: EIA Demand, Wind, and Solar
+    3.4.1 Four Markets (includes data checks); 3.4.2 Net Load; 3.4.3 Market
+    Demand Scale; 3.4.4 Demand and Net-Load Forecasts; 3.4.5 Forecast Fitting;
+    3.4.6 Forecast Accuracy. The retained CAISO value is a limitation in 7.3.
 
 
 ===========================================================================
-CHAPTER 4: SYNTHETIC FLEET AND PROBLEM FORMULATION
+CHAPTER 4: PROBLEM FORMULATION
 ===========================================================================
-How the prepared data become a four-site fleet, and the exact
-optimization problem the scheduler must solve. Nothing in this chapter
-depends on the learning method, so any scheduler could be scored against
-it.
+The fleets and the exact optimization problem. Nothing in this chapter
+depends on the learning method.
 
-4.1 The Four-Site Fleet                                        [drafted]
-    Each Google cell is placed in one region. All sites have the same
-    compute capacity and a 500 MW reference power. One work unit is one
-    site at full use for one hour.
+4.1 Data Center Fleets
+    4.1.1 The Four-Site Fleet; 4.1.2 Monthly Simulation and Hourly
+    Workloads; 4.1.3 Fleet Size Relative to Net-Load Ramps.
 
-4.2 Monthly Simulation and Hourly Arrivals                     [drafted]
-    One calendar month is one continuous simulation. The May 2019
-    workload repeats each month, and its five-minute use becomes hourly
-    service and batch arrivals. One warm-up hour starts the month, and
-    queues start and end empty.
+4.2 Inputs
+    4.2.1 Sets and Model Inputs (table of inputs); 4.2.2 Information
+    Available to the Scheduler.
 
-4.3 Fleet Size Relative to Regional Ramps                      [drafted]
-    How large the fleet's power swing is next to each region's typical
-    hourly ramps: large in ISO-NE, small in MISO. This sets expectations
-    for the regional results in 6.3.
+4.3 Control Decisions
+    Executed service work, total batch release, executed batch work.
 
-4.4 Decisions and Constraints                                  [drafted]
-    The three hourly decisions (where service runs, how much batch runs,
-    and where it runs) and the rules they must follow: service runs in
-    its arrival hour, batch finishes within 24 hours and by month-end,
-    and no site exceeds its capacity. Routing has no latency or cost,
-    which makes geographic flexibility optimistic. Subsections 4.4.1
-    Sets, Inputs, and Units; 4.4.2 Scheduler Controls; 4.4.3 Immediate
-    Service; 4.4.4 Batch Queue and Deadlines; 4.4.5 Capacity and Site
-    Power.
+4.4 Constraints
+    4.4.1 Immediate Service; 4.4.2 Batch Queue and Deadlines; 4.4.3 Capacity
+    and Site Power.
 
-4.5 Net-Load Ramps and Peaks with the Fleet                    [drafted]
-    Adjusted net load (grid plus fleet), the one-hour ramp impact, and
-    the monthly peak impact, each measured against the grid without the
-    fleet.
-
-4.6 Joint Objective                                            [drafted]
-    The two fixed reference scales C_R and C_Q, the equally weighted
-    score J, and what equal weights mean in practice (ramp gains
-    dominate).
-
-4.7 Information Available to the Scheduler                     [drafted]
-    What the scheduler knows when it decides (last hour's grid data,
-    forecasts, current arrivals, queues, running peaks) and what it
-    cannot know (this hour's net load).
-
-4.8 Baseline and Formal Problem Statement                      [drafted]
-    The no-flexibility baseline, the improvement measure
-    J(baseline) - J(policy), and the one-paragraph problem statement.
-
-4.9 Worked Example: Joint Ramp and Peak Reduction              [drafted]
-    One July hour in which moving ISO-NE service to CAISO lowers the
-    ISO-NE ramp and monthly peak, carried through to the change in J.
+4.5 Objectives
+    4.5.1 Net-Load Ramps and Peaks with the Fleet; 4.5.2 Joint Objective;
+    4.5.3 Improvement and Formal Problem Statement.
 
 
 ===========================================================================
 CHAPTER 5: SCHEDULING METHOD: PROXIMAL POLICY OPTIMIZATION
 ===========================================================================
-How the problem of Chapter 4 becomes a reinforcement-learning task, how
-it is trained with PPO, and how the trained policies are evaluated.
+How the problem of Chapter 4 becomes a reinforcement learning task, how it
+is trained with PPO, and how the trained policies are evaluated.
 
-5.1 Reinforcement Learning in Brief                            [new]
-    Agent, observation, action, reward, episode, and policy in plain
-    terms, using the monthly simulation as the example. Needed because
-    the committee may not know reinforcement learning.
-
-5.2 Observation                                                [in PPO]
-    The 82 numbers the policy sees each hour, grouped by region, site,
-    queue, and calendar.
-    Now: PPO 2.1.
-
-5.3 Actions and the Feasibility Decoder                        [in PPO]
-    Nine preferences in [-6, 6] turned into a feasible schedule: softmax
-    routing, the capacity projection, earliest-deadline-first batch
-    release, and forced release when deadlines require it. Constraints
-    are enforced here rather than penalized in the reward.
-    Now: PPO 2.2.
-
-5.4 Reward                                                     [in PPO]
-    The hourly reward, whose monthly sum equals -J exactly, so that
-    raising the return lowers the objective.
-    Now: PPO 2.3.
-
-5.5 The PPO Algorithm                                          [in PPO]
-    Actor and critic networks, generalized advantage estimation, the
-    clipped update, and observation and reward normalization, including
-    where training (discounted) differs from evaluation (undiscounted).
-    Full update equations go in Appendix C.
-    Now: PPO 3.1, 3.2.
-
-5.6 Training Setup                                             [in PPO]
-    Network size, hyperparameters (not tuned), the eleven training months
-    in shuffled order, 1,024,000 interactions per seed, and what a seed
-    controls.
-    Now: PPO 3.3.
-
-5.7 Evaluation Protocol                                        [in PPO]
-    The deterministic policy runs on May; the baseline runs on the same
-    inputs. Reported measures: joint improvement, its ramp and peak
-    parts, and regional MW. J is recomputed from the raw data and checked
-    against the return. May is a validation month, not an untouched test.
-    Now: PPO Chapter 4.
-
-5.8 Comparison Runs                                            [planned]
-    What else is run, and why: a ten-seed campaign (seeds 4101-4110);
-    ramp-only and peak-only policies, to test whether the peak term is
-    what causes the peak cuts; and, if chosen, a forecast-aware rule-based
-    scheduler and a local-service variant (service stays at its own site
-    and only batch moves).
-    Now: PPO Chapter 6 (listed as next steps).
+5.1 Reinforcement Learning Overview
+5.2 Observation (5.2.1 Scaling the Observation)
+5.3 Actions and the Feasibility Decoder (5.3.1 One Hour as an Example)
+5.4 Reward
+5.5 The PPO Algorithm
+    5.5.1 How Training Changes the Outputs; 5.5.2 Normalization and
+    Discounting. Policy updates and library calls are in the appendices.
+5.6 Training, Validation, and Test Months
+5.7 Training Setup
+5.8 Evaluation Protocol
 
 
 ===========================================================================
@@ -334,11 +230,6 @@ replaced by the ten-seed campaign.
     often the decoder corrects the schedule, and a close-up of the ISO-NE
     peak window.
     Now: PPO 5.4.
-
-6.5 Ablations and Comparisons (RQ2)                            [planned]
-    Results of the runs in 5.8: joint versus ramp-only, the local-service
-    variant, and any rule-based scheduler.
-
 
 ===========================================================================
 CHAPTER 7: DISCUSSION AND CONCLUSIONS
@@ -384,25 +275,30 @@ Schulman et al. papers; Stable-Baselines3).
 APPENDICES
 ===========================================================================
 
-APPENDIX A: DATA SCHEMAS                                      [drafted]
+APPENDIX A: WORKED EXAMPLE                                    [drafted]
+  The hour that sets ISO-NE's July peak: its service runs at MISO and its batch
+  waits for the lowest net load of the window, carried through to the change
+  in J, with all four sites shown. Moved from Chapter 4 on 2026-11-03.
+
+APPENDIX B: DATA SCHEMAS                                      [drafted]
   Columns and example rows of the five-minute workload curves and the
   hourly grid panels.
 
-APPENDIX B: IMPLEMENTATION NOTES                              [drafted]
+APPENDIX C: IMPLEMENTATION NOTES                              [drafted]
   A file-by-file map from each chapter to the code that implements it.
   The PPO appendix sections on the environment, training, and evaluation
   (PPO A.1, A.3, A.4) still have to be merged here.
 
-APPENDIX C: PPO UPDATE EQUATIONS                              [in PPO]
+APPENDIX D: PPO POLICY UPDATES                              [in PPO]
   The full equations behind Section 5.5.
   Now: PPO A.2.
 
-APPENDIX D: REPRODUCTION COMMANDS                             [in PPO]
+APPENDIX E: REPRODUCTION COMMANDS                             [in PPO]
   The commands that rebuild the data, retrain the policies, and redo the
   evaluation and figures.
   Now: PPO A.5.
 
-APPENDIX E: SUPPLEMENTARY RESULTS                             [optional]
+APPENDIX F: SUPPLEMENTARY RESULTS                             [optional]
   Per-seed and per-checkpoint tables and figures that would crowd
   Chapter 6.
 
@@ -433,8 +329,18 @@ Done (2026-10-21):
    thesis_problemstatement.tex was renamed thesis_draft.tex.
    ppo_solution.tex is deleted.
 
+Done (2026-11-01):
+6. After Dr. Wang's review of Chapter 3: Section 3.6 moved to 5.6 and
+   rewritten, the market scale became 3.5.3, Section 3.8 merged into 3.5, and
+   forecasts became 3.6.
+
+Done (2026-11-03):
+7. Chapters 3 and 4 follow Dr. Wang's organization. Policy updates and the
+   library calls moved to the appendices, the worked example to Appendix A,
+   and the empty comparison sections were removed.
+
 Still to do:
-6. Write the new sections listed in item 3 that are still "Planned:"
+8. Write the new sections listed in item 3 that are still "Planned:"
    (5.1 in part, 6.5, the Chapter 6 opening with the test month, and
    Chapter 7 apart from 7.3).
 

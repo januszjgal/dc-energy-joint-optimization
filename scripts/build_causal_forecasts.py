@@ -296,7 +296,8 @@ def predict(
 def score(
     series: pd.DataFrame, predictions: pd.DataFrame, issue_months: tuple[str, ...],
 ) -> pd.DataFrame:
-    """MAE, RMSE, and MAPE of every model and of persistence on ``issue_months``.
+    """MAE, MAE as a percentage of the mean absolute realized value, RMSE, and
+    MAPE of every model and of persistence on ``issue_months``.
 
     Issue hours in those months are scored against the realized value at the
     target hour, which may fall just after the month.
@@ -314,13 +315,14 @@ def score(
                 selected = issue & actual.notna().to_numpy()
                 truth = actual[selected].to_numpy(dtype=float)
                 row = {"market": market, "quantity": quantity, "horizon": horizon,
-                       "hours": int(selected.sum())}
+                       "hours": int(selected.sum()), "mean_abs_realized": float(np.mean(np.abs(truth)))}
                 for name, forecast in (
                     ("ls", group[f"forecast_{quantity}_h{horizon}_mw"]),
                     ("persistence", realized),
                 ):
                     error = forecast[selected].to_numpy(dtype=float) - truth
                     row[f"{name}_mae"] = float(np.mean(np.abs(error)))
+                    row[f"{name}_mae_pct"] = 100.0 * row[f"{name}_mae"] / row["mean_abs_realized"]
                     row[f"{name}_rmse"] = float(np.sqrt(np.mean(error**2)))
                     row[f"{name}_mape"] = float(100.0 * np.mean(np.abs(error / truth)))
                 rows.append(row)

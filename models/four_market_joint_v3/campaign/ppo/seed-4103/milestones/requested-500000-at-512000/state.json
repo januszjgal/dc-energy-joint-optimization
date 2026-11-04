@@ -4,15 +4,15 @@
     "action_shape": [
       9
     ],
-    "factory_id": "4f1194b040b0846974e2f29445b20e92c42a9f431b23f08b4dd175e0ddfe561f+raw-observation",
+    "factory_id": "9e9f240837cd372fbd10d255a2829e3a3b696824a5b67c6ee3a710ce90097eb0+raw-observation",
     "objective": {
       "normalization": "training-month-mean-no-flexibility-ramp-totals-v2",
       "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_original",
-      "peak_reference": 3.6534966323034266,
+      "peak_reference": 3.653738230091554,
       "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
       "peak_weight": 0.5,
       "ramp_metric": "monthly_sum_of_regional_incremental_squared_ramp_impacts",
-      "ramp_reference": 6.101869762465885,
+      "ramp_reference": 6.102257730896831,
       "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
       "ramp_weight": 0.5,
       "version": "joint-net-load-peak-impact-ramp-impact-v3"

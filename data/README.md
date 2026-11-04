@@ -15,7 +15,9 @@ credentials. It defaults to project `aeee-thesis` and all eight cells; set
 curves, power coefficients, cell capacities, and the a-d fitting scatter to
 `build/clusterdata2019/data/`, then packages only that run's outputs in a zip.
 Review those files before copying them into `data/` and rebuilding the factories.
-The committed e-h files were extracted on 2026-06-12 with the same queries.
+The committed curves come from `scripts/bigquery/all_usage_windows.sql`, which counts
+every top-level usage row in proportion to its window's share of five minutes; its result
+is `scripts/bigquery/results/usage_all_windows.csv`.
 
 `cells/cell_a_tiers.csv` through `cells/cell_h_tiers.csv` provide the raw measured
 five-minute normalized CPU, service, and batch curves from ClusterData2019.
@@ -30,6 +32,10 @@ including the arrival slot: batch may run immediately or in the following
 releases follow global earliest-deadline-first order, with ties broken by origin
 index and then arrival order. The decoder enforces service, capacity, and
 deadlines as hard constraints, retaining the conservative deadline safety guard.
+
+`power_domain_hours.csv` holds each power domain's hourly power with its machine
+count and CPU capacity, from the power-domain cell of `extract_cells.ipynb`.
+`scripts/check_power_domain_weights.py` uses it to test the coefficients below.
 
 `power_model_params.json` contains the committed affine CPU-to-power coefficients
 for all eight cells. CPU utilization is the sole predictor of measured
@@ -105,7 +111,7 @@ normalized peaks. Both are whole-grid totals with the fleet, not signed impacts
 or hourly averages, so dividing the objective's impact terms by them expresses
 each change as a fraction of a grid total. Both positive scales stay frozen for
 the split's training and evaluation. For the final policies,
-$C_R\approx6.10907155$ and $C_Q\approx3.65083499$; they also score the test month.
+$C_R\approx6.10225773$ and $C_Q\approx3.65373823$; they also score the test month.
 
 The default objective is
 $J_e=0.5\sum_{t,m}I_{m,t}/C_R+0.5\sum_m\Phi_{m,e}/C_Q$, where

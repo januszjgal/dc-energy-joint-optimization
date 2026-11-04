@@ -1,5 +1,5 @@
--- Audit of the >= 300 s instance_usage filter used by extract_cells.ipynb,
--- cells a-d. Paste into the BigQuery console and run each query separately.
+-- Audit of the >= 300 s instance_usage filter of Google's example query, which
+-- extract_cells.ipynb used until 2026-11-03, cells a-d. Paste into the BigQuery console and run each query separately.
 -- Saved results: results/query1_filter_volume.csv (Query 1) and
 -- results/query2_hourly_shape.csv (Query 2), next to this file.
 -- Check the console's byte estimate first; both scan the same columns as the

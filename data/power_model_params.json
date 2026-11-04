@@ -18,60 +18,62 @@
   },
   "per_cell_cpu_model": {
     "a": {
-      "idle_power": 0.5280156091206172,
-      "slope": 0.3397277846039694,
-      "peak_power": 0.8677433937245866,
-      "r_squared": 0.7885010565892737,
-      "n": 745
+      "idle_power": 0.46972133319421994,
+      "slope": 0.4207631088914115,
+      "peak_power": 0.8904844420856315,
+      "r_squared": 0.9245550243308127,
+      "n": 743
     },
     "b": {
-      "idle_power": 0.5481899557638172,
-      "slope": 0.3757613138380374,
-      "peak_power": 0.9239512696018546,
-      "r_squared": 0.7478556087006227,
-      "n": 745
+      "idle_power": 0.5083900088757282,
+      "slope": 0.4329806533030581,
+      "peak_power": 0.9413706621787863,
+      "r_squared": 0.9217258545726668,
+      "n": 743
     },
     "c": {
-      "idle_power": 0.4396038457059293,
-      "slope": 0.5257398388801392,
-      "peak_power": 0.9653436845860686,
-      "r_squared": 0.7642127153399898,
-      "n": 745
+      "idle_power": 0.37879122707169494,
+      "slope": 0.5998653135508708,
+      "peak_power": 0.9786565406225658,
+      "r_squared": 0.9279714260669282,
+      "n": 743
     },
     "d": {
-      "idle_power": 0.3820385383043128,
-      "slope": 0.5703704468908332,
-      "peak_power": 0.9524089851951459,
-      "r_squared": 0.8005326068723064,
-      "n": 745
+      "idle_power": 0.35874273408095386,
+      "slope": 0.5748676530552053,
+      "peak_power": 0.9336103871361592,
+      "r_squared": 0.9220078059111282,
+      "n": 743
     },
     "e": {
-      "idle_power": 0.38804514085204467,
-      "slope": 0.6011158680727895,
-      "peak_power": 0.9891610089248342,
-      "r_squared": 0.9061810554029496,
-      "n": 745
+      "idle_power": 0.35573707182501774,
+      "slope": 0.6334099026325407,
+      "peak_power": 0.9891469744575585,
+      "r_squared": 0.9467289197730869,
+      "n": 743
     },
     "f": {
-      "idle_power": 0.4272302334568904,
-      "slope": 0.44073910609363603,
-      "peak_power": 0.8679693395505264,
-      "r_squared": 0.6471641941529709,
-      "n": 745
+      "idle_power": 0.38588900371679075,
+      "slope": 0.5122220390860454,
+      "peak_power": 0.898111042802836,
+      "r_squared": 0.807301624470451,
+      "n": 743
     },
     "g": {
-      "idle_power": 0.4562184643266739,
-      "slope": 0.49229645521647775,
-      "peak_power": 0.9485149195431517,
-      "r_squared": 0.7937978251813782,
-      "n": 745
+      "idle_power": 0.40380845643790614,
+      "slope": 0.550985277869301,
+      "peak_power": 0.954793734307207,
+      "r_squared": 0.893390350967703,
+      "n": 743
     },
     "h": {
-      "idle_power": 0.38382746978513954,
-      "slope": 0.39282089097337736,
-      "peak_power": 0.7766483607585168,
-      "r_squared": 0.9432250887030755,
-      "n": 745
+      "idle_power": 0.3810205440834492,
+      "slope": 0.40016937104992384,
+      "peak_power": 0.781189915133373,
+      "r_squared": 0.9593877939277833,
+      "n": 743
     }
-  }
+  },
+  "per_cell_cpu_model_method": "all usage windows, weighted by window length; complete hours only (twelve five-minute windows), with each cell's power domains weighted by their machines' CPU capacity; from scripts/check_power_domain_weights.py",
+  "pooled_diagnostics_note": "The pooled fields come from an earlier all-hours, unweighted extraction and are not used."
 }

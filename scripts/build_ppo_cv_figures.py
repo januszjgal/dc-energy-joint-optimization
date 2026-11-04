@@ -13,7 +13,7 @@ Colors are the first three categorical slots of the reference data-viz palette,
 validated all-pairs for colorblind separation. The aqua slot is below 3:1 contrast
 on the surface, so every figure carries a legend and the chapter tabulates values.
 
-    python scripts/build_ppo_cv_figures.py --tag cv-raw-obs-1m
+    python scripts/build_ppo_cv_figures.py --tag cv-all-windows-1m
 """
 
 from __future__ import annotations
@@ -224,7 +224,7 @@ def figure_learning_curves(curves: dict[tuple[str, int], pd.DataFrame], baseline
             ax.plot(done["interaction_count"] / 1e6, smooth, color=SEED_COLORS[seed], label=RUN_LABELS[seed])
         ax.axhline(baselines[fold], color=MUTED, linewidth=1.0)
         held = ", ".join(MONTH_LABELS[int(m[-2:]) - 1] for m in CV_FOLDS[fold])
-        ax.set_title(f"Fold {fold[-1]}\nheld out: {held}")
+        ax.set_title(f"Iteration {fold[-1]}\nheld out: {held}")
         ax.set_xlim(0, 1.05)
         ax.set_xlabel("Interactions (millions)")
     axes[0].set_ylabel("Month return, $-J_e$")
@@ -245,7 +245,7 @@ def figure_months(final: dict[tuple[str, int], dict[str, Any]], month_fold: dict
         ax.bar(positions + (offset - 1) * width, values, width=width * 0.9,
                color=SEED_COLORS[seed], label=RUN_LABELS[seed], linewidth=0)
     ax.axhline(0.0, color=AXIS, linewidth=0.8)
-    ax.set_xticks(positions, [f"{MONTH_LABELS[int(m[-2:]) - 1]}\nfold {month_fold[m][-1]}" for m in months])
+    ax.set_xticks(positions, [f"{MONTH_LABELS[int(m[-2:]) - 1]}\niter. {month_fold[m][-1]}" for m in months])
     ax.tick_params(axis="x", length=0)
     ax.set_ylabel(r"$J_e(\mu_{\mathrm{NF}})-J_e(\mu)$")
     ax.set_ylim(0, 0.026)
@@ -321,7 +321,7 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
         2, 1, figsize=(PAGE_WIDTH_IN, 3.2), sharex=True, gridspec_kw={"height_ratios": [1, 1.1]},
     )
     top.plot(hours, inputs.net[1:, index][start:stop], color=INK_2)
-    top.set_ylabel("Original net load (MW)")
+    top.set_ylabel("Baseline net load (MW)")
     top.set_title(f"ISO-NE around its {pd.Timestamp(month).strftime('%B %Y')} monthly peak hour")
     bottom.plot(hours, baseline["power"][start:stop, index], color=MUTED, label="No flexibility")
     bottom.plot(hours, run["power"][start:stop, index], color=SEED_COLORS[seed], label=f"PPO, {RUN_LABELS[seed].lower()}")
@@ -349,7 +349,7 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", default="cv-raw-obs-1m")
+    parser.add_argument("--tag", default="cv-all-windows-1m")
     parser.add_argument("--figures-only", action="store_true",
                         help="redraw the summary figures from an existing figure_data.json, without replays")
     args = parser.parse_args()

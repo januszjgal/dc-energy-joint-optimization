@@ -27,8 +27,8 @@ class MonthlyRampImpactTests(unittest.TestCase):
         cls.objective = objective_from_factory(cls.factory)
 
     def test_references_match_positive_training_month_totals(self) -> None:
-        self.assertAlmostEqual(self.objective.ramp_reference, 6.101869762465885, places=11)
-        self.assertAlmostEqual(self.objective.peak_reference, 3.6534966323034266, places=11)
+        self.assertAlmostEqual(self.objective.ramp_reference, 6.102257730896831, places=11)
+        self.assertAlmostEqual(self.objective.peak_reference, 3.653738230091554, places=11)
         calibration = self.factory["objective_calibration"]
         self.assertEqual(calibration["fit_months"], list(DEVELOPMENT_MONTHS))
         scores = calibration["reference_scores_by_month"]
@@ -39,7 +39,7 @@ class MonthlyRampImpactTests(unittest.TestCase):
             places=12,
         )
 
-    def test_july_routing_matches_the_paper_and_includes_the_rebound(self) -> None:
+    def test_july_example_matches_the_paper_and_includes_the_rebound(self) -> None:
         panel = CanonicalMarketPanel.from_csv(
             ROOT / "data" / "four_market_2025" / "months" / "2025-07" / "canonical_panel.csv"
         )
@@ -48,12 +48,16 @@ class MonthlyRampImpactTests(unittest.TestCase):
         work = service + batch
         routed = work.copy()
         index = int(panel.timestamps.get_loc(pd.Timestamp("2025-07-29T22:00:00Z")))
-        isone, caiso = MARKETS.index("ISONE"), MARKETS.index("CAISO")
-        amount = service[index, isone]
-        routed[index, isone] -= amount
-        routed[index, caiso] += amount
-        np.testing.assert_allclose(work.sum(axis=1), routed.sum(axis=1))
-        self.assertTrue(np.all(routed >= 0.0))
+        later = int(panel.timestamps.get_loc(pd.Timestamp("2025-07-30T08:00:00Z")))
+        isone, miso = MARKETS.index("ISONE"), MARKETS.index("MISO")
+        # ISO-NE's service runs at MISO in the same hour; its batch waits for the
+        # window's lowest net load and runs at ISO-NE.
+        routed[index, isone] -= service[index, isone] + batch[index, isone]
+        routed[index, miso] += service[index, isone]
+        routed[later, isone] += batch[index, isone]
+        np.testing.assert_allclose(work.sum(), routed.sum())
+        self.assertLessEqual(later - index, 23)
+        self.assertTrue(np.all(routed >= -1e-12))
         self.assertTrue(np.all(routed <= np.asarray([site.compute_capacity for site in sites]) + 1e-12))
         np.testing.assert_array_equal(routed[index + 1], work[index + 1])
 
@@ -98,11 +102,11 @@ class MonthlyRampImpactTests(unittest.TestCase):
             results.append((score, peaks, impact_sum))
 
         baseline, shifted = results
-        self.assertAlmostEqual(baseline[0], 0.005094428909126689, places=10)
-        self.assertAlmostEqual(shifted[0], 0.004319668150878245, places=10)
-        self.assertAlmostEqual(baseline[0] - shifted[0], 0.0007747607582484434, places=10)
-        self.assertAlmostEqual(baseline[1][isone], 24374.340305456783, places=6)
-        self.assertAlmostEqual(shifted[1][isone], 24279.719203396475, places=6)
+        self.assertAlmostEqual(baseline[0], 0.005250295216387319, places=10)
+        self.assertAlmostEqual(shifted[0], 0.004080832347074407, places=10)
+        self.assertAlmostEqual(baseline[0] - shifted[0], 0.001169462869312912, places=10)
+        self.assertAlmostEqual(baseline[1][isone], 24376.949089328282, places=6)
+        self.assertAlmostEqual(shifted[1][isone], 24233.80698883537, places=6)
         other_regions = [index for index in range(len(MARKETS)) if index != isone]
         np.testing.assert_allclose(baseline[1][other_regions], shifted[1][other_regions])
         self.assertLess(shifted[2], baseline[2])
