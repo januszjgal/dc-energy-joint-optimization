@@ -35,9 +35,9 @@ Main question:
   using temporal deferral and geographic routing while satisfying
   immediate-service, batch-window, and site-capacity constraints?
 
-  RQ1  How large is the joint ramp-and-peak improvement over the
+  RQ1  How large is the joint ramp-and-peak gain over the
        no-flexibility baseline in the May validation month?
-  RQ2  Which lever produces that improvement: routing service between
+  RQ2  Which lever produces that gain: routing service between
        sites, or delaying and moving batch work?
   RQ3  Which regions benefit, and how does that depend on the fleet's
        size relative to each region's hourly ramps?
@@ -182,7 +182,8 @@ depends on the learning method.
 
 4.5 Objectives
     4.5.1 Net-Load Ramps and Peaks with the Fleet; 4.5.2 Joint Objective;
-    4.5.3 Improvement and Formal Problem Statement.
+    4.5.3 Evaluation and Formal Problem Statement. Ramp and peak impacts are
+    measured from the no-flexibility baseline, so it scores zero.
 
 
 ===========================================================================
@@ -192,44 +193,33 @@ How the problem of Chapter 4 becomes a reinforcement learning task, how it
 is trained with PPO, and how the trained policies are evaluated.
 
 5.1 Reinforcement Learning Overview
-5.2 Observation (5.2.1 Scaling the Observation)
-5.3 Actions and the Feasibility Decoder (5.3.1 One Hour as an Example)
-5.4 Reward
-5.5 The PPO Algorithm
-    5.5.1 How Training Changes the Outputs; 5.5.2 Normalization and
-    Discounting. Policy updates and library calls are in the appendices.
-5.6 Training, Validation, and Test Months
-5.7 Training Setup
-5.8 Evaluation Protocol
+5.2 Reinforcement Learning Formulation
+    5.2.1 Observation; 5.2.2 Actions and the Feasibility Decoder; 5.2.3 Reward.
+5.3 Training with PPO
+    5.3.1 Algorithm; 5.3.2 Normalization and Discounting; 5.3.3 Settings.
+    Policy updates, library calls, and library names are in the appendices.
+5.4 Evaluation
+    5.4.1 Training, Validation, and Test Months; 5.4.2 Evaluation Protocol.
 
 
 ===========================================================================
 CHAPTER 6: RESULTS
 ===========================================================================
-What the trained scheduler achieved in May, in the order of the research
-questions. Current numbers are from the three-seed pilot and will be
-replaced by the ten-seed campaign.
+What the trained scheduler achieved in cross-validation and in the test
+month. The two sections have matching subsections.
 
-6.1 Training Behavior                                          [in PPO]
-    Learning curves: how quickly each seed passes the baseline and where
-    it levels off.
-    Now: PPO 5.1.
+6.1 Training Behavior
+    Learning curves: how quickly each run passes the no-flexibility baseline,
+    where it levels off, and the exploration noise.
 
-6.2 May Improvement over the Baseline (RQ1)                    [in PPO]
-    Joint improvement by checkpoint, its split into ramp and peak parts,
-    and the percentage cuts in total squared ramps and in peaks.
-    Now: PPO 5.2.
+6.2 Cross-Validation
+    6.2.1 Joint Score (by month and checkpoint, ramp and peak parts, percentage
+    reductions); 6.2.2 Results by Market; 6.2.3 Policy Behavior (the share of
+    service moved, batch waits, decoder adjustments, the ISO-NE peak window).
 
-6.3 Regional Results (RQ3)                                     [in PPO]
-    Ramp cuts and peak changes in MW for each region, and why ISO-NE
-    gains most and MISO least, tied back to Section 4.3.
-    Now: PPO 5.3.
-
-6.4 How the Policy Achieves the Improvement (RQ2)              [in PPO]
-    The share of service moved between sites, batch waiting times, how
-    often the decoder corrects the schedule, and a close-up of the ISO-NE
-    peak window.
-    Now: PPO 5.4.
+6.3 Test Month
+    6.3.1 Joint Score; 6.3.2 Results by Market; 6.3.3 Policy Behavior;
+    6.3.4 Site Inputs (the test fleet's inputs lie outside the training range).
 
 ===========================================================================
 CHAPTER 7: DISCUSSION AND CONCLUSIONS
@@ -237,29 +227,19 @@ CHAPTER 7: DISCUSSION AND CONCLUSIONS
 What the results mean, where they stop applying, and what should come
 next.
 
-7.1 Summary of Findings                                        [new]
-    Answers to RQ1-RQ3 in plain numbers.
+7.1 Discussion
+    The answer to the research question, ramps against peaks, what the policies
+    do, which markets benefit, the peak results in MW, and why the gains are not
+    reported as cost or reliability savings.
 
-7.2 Interpretation for Fleet and Grid Operators                [new]
-    What a ramp cut of about 3% and a peak cut of about 100 MW mean in
-    each region, and why the gains are reported as changes in the modeled
-    score rather than as cost or reliability savings.
+7.2 Limitations
+    In prose, grouped by the data, the model, and the method and its evaluation.
 
-7.3 Limitations                                                [revise]
-    One month of workload from one company, reused every month; modeling
-    assumptions (service/batch split, 24-hour window, 500 MW scale,
-    cell-to-region mapping); free and instant routing; a deterministic
-    power fit; forecasts fitted here rather than the operator's own; one
-    validation month; whole-balancing-authority grid data.
-    The problem-statement list is in place; PPO Chapter 6 still has to be
-    merged into it.
+7.3 Future Work
+    In prose: extensions that examine the method, then extensions that relax the
+    assumptions of the model.
 
-7.4 Future Work                                                [new]
-    Cooling control and on-site generation, price or carbon signals
-    alongside ramps, routing costs and latency, more test months or
-    years, and other learning algorithms.
-
-7.5 Conclusions                                                [new]
+7.4 Conclusions
     A short closing statement.
 
 
@@ -285,18 +265,16 @@ APPENDIX B: DATA SCHEMAS                                      [drafted]
   hourly grid panels.
 
 APPENDIX C: IMPLEMENTATION NOTES                              [drafted]
-  A file-by-file map from each chapter to the code that implements it.
-  The PPO appendix sections on the environment, training, and evaluation
-  (PPO A.1, A.3, A.4) still have to be merged here.
+  A file-by-file map from each chapter to the code that implements it. Also
+  the library calls, the library names of the PPO settings, the observation
+  normalization example, and why the action bound is 6.
 
-APPENDIX D: PPO POLICY UPDATES                              [in PPO]
-  The full equations behind Section 5.5.
-  Now: PPO A.2.
+APPENDIX D: PPO POLICY UPDATES                                [drafted]
+  The full equations behind Section 5.3.
 
-APPENDIX E: REPRODUCTION COMMANDS                             [in PPO]
+APPENDIX E: REPRODUCTION COMMANDS                             [drafted]
   The commands that rebuild the data, retrain the policies, and redo the
   evaluation and figures.
-  Now: PPO A.5.
 
 APPENDIX F: SUPPLEMENTARY RESULTS                             [optional]
   Per-seed and per-checkpoint tables and figures that would crowd
@@ -339,10 +317,15 @@ Done (2026-11-03):
    library calls moved to the appendices, the worked example to Appendix A,
    and the empty comparison sections were removed.
 
+Done (2026-11-05):
+8. Chapters 5-7 reorganized on the pattern of Chapters 3 and 4, with pointers
+   to later sections removed from Chapters 1-7. Normalization is explained once,
+   in 5.3.2; library names, the action bound, and the normalization example moved
+   to Appendix C.
+
 Still to do:
-8. Write the new sections listed in item 3 that are still "Planned:"
-   (5.1 in part, 6.5, the Chapter 6 opening with the test month, and
-   Chapter 7 apart from 7.3).
+9. Write the new sections listed in item 3 that are still "Planned:"
+   (the abstract, 1.1, and Chapter 2).
 
 
 ===========================================================================

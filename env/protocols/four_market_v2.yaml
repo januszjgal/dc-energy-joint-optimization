@@ -1,5 +1,5 @@
 protocol:
-  id: four-market-joint-net-load-peak-impact-ramp-impact-v3
+  id: four-market-joint-net-load-peak-and-ramp-from-no-flexibility-v4
 data:
   interval_minutes: 60
   markets: [CAISO, MISO, SPP, ISONE]
@@ -38,12 +38,12 @@ workload:
   deadline_semantics: inclusive execution-window length H; an arrival in slot t may run in slots t .. t+H-1, so the longest delay is H-1 hours. Uniform across sites.
   source: raw_measured_service_and_batch
 objective:
-  version: joint-net-load-peak-impact-ramp-impact-v3
+  version: joint-net-load-peak-and-ramp-from-no-flexibility-v4
   component_weights: {ramp: 0.5, net_load_peak: 0.5}
   normalization: training-month-mean-no-flexibility-ramp-totals-v2
-  ramp_quantity: incremental_squared_impact
+  ramp_quantity: squared_ramp_minus_no_flexibility_squared_ramp
   ramp_time_aggregation: sum_over_month
-  peak_quantity: adjusted_maximum_minus_original_maximum
+  peak_quantity: adjusted_maximum_minus_no_flexibility_maximum
   peak_time_aggregation: maximum_per_region_over_decision_month
   ramp_horizons_hours: [1]
   ramp_weights: {1: 1.0}

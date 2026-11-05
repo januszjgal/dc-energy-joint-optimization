@@ -78,25 +78,24 @@ Adjusted regional net load is $A_{m,t}=N_{m,t}+P_{m,t}$. Each fixed regional
 scale $S_m$ is the training gross-demand 95th percentile. Every interval is one
 hour, so $\Delta^{\mathrm{adj}}_{m,t}=(A_{m,t}-A_{m,t-1})/S_m$ is a fraction of the
 market scale per hour.
-The incremental impact subtracts the original grid's squared ramp. Each region
-also has its own monthly peak:
+The incremental impact subtracts the squared ramp under no flexibility, the same
+fleet running every arrival in place. Each region also has its own monthly peak:
 
 $$
 \begin{aligned}
 I_{m,t}(\mu)&=\left(\Delta^{\mathrm{adj}}_{m,t}(\mu)\right)^2
-  -\left(\Delta^{\mathrm{original}}_{m,t}\right)^2,\\
-Q^{\mathrm{adj}}_{m,e}(\mu)&=\max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m},
-\qquad
-Q^{\mathrm{original}}_{m,e}=\max_{t\in\mathcal T_e}\frac{N_{m,t}}{S_m},\\
-\Phi_{m,e}(\mu)&=Q^{\mathrm{adj}}_{m,e}(\mu)-Q^{\mathrm{original}}_{m,e}.
+  -\left(\Delta^{\mathrm{adj}}_{m,t}(\mathrm{NF})\right)^2,\\
+Q^{\mathrm{adj}}_{m,e}(\mu)&=\max_{t\in\mathcal T_e}\frac{A_{m,t}(\mu)}{S_m},\\
+\Phi_{m,e}(\mu)&=Q^{\mathrm{adj}}_{m,e}(\mu)-Q^{\mathrm{adj}}_{m,e}(\mathrm{NF}).
 \end{aligned}
 $$
 
 The objective sums $I_{m,t}$ over the month; negative impacts are valid.
-Like $I_{m,t}$, the peak impact $\Phi_{m,e}$ subtracts the original grid. That
-shifts every schedule's $J_e$ by the same constant, leaving the best schedule and
-every improvement unchanged, and keeps the grid's own peak records out of the
-reward. It sums the separate regional peak impacts, not the maximum of the combined regions,
+Like $I_{m,t}$, the peak impact $\Phi_{m,e}$ subtracts the no-flexibility schedule.
+That shifts every schedule's $J_e$ by the same constant, leaving the best schedule
+unchanged, makes $J_e$ zero under no flexibility and negative for a schedule that beats
+it, and keeps the grid's own peak records out of the reward. It sums the separate
+regional peak impacts, not the maximum of the combined regions,
 data-center power peaks, or hourly squared loads. The warm hour participates
 in the first ramp only. The fixed positive references are arithmetic means
 over a split's training months (nine per fold, twelve for the final policies):
@@ -113,8 +112,8 @@ squared adjusted ramp and summed regional adjusted peaks. Dividing the impact
 terms by them expresses each change as a fraction of a grid total, so equal
 weights value equal fractional reductions. The fleet can move total ramps
 proportionally more than total peaks, so ramp gains usually dominate. For the
-final policies, $C_R\approx6.10907155$ and $C_Q\approx3.65083499$; the folds give
-$C_R$ from 5.86 to 6.62 and $C_Q$ from 3.57 to 3.74. Each stays frozen for its
+final policies, $C_R\approx6.10225773$ and $C_Q\approx3.65373823$; the folds give
+$C_R$ from 5.85 to 6.61 and $C_Q$ from 3.58 to 3.74. Each stays frozen for its
 split's training and evaluation, and the final values also score the test month.
 The objective is
 
@@ -133,13 +132,15 @@ The raw step reward is
 
 $$
 r_t=-\frac{\lambda_r}{C_R}\sum_m I_{m,t}
-    -\frac{\lambda_p}{C_Q}\sum_m\left[(M_{m,t}-M_{m,t-1})-(O_{m,t}-O_{m,t-1})\right],
+    -\frac{\lambda_p}{C_Q}\sum_m\left[(M_{m,t}-M_{m,t-1})-(M^{\mathrm{NF}}_{m,t}-M^{\mathrm{NF}}_{m,t-1})\right],
 $$
 
-where $M_{m,t}$ and $O_{m,t}$ are the running normalized adjusted and original
-peaks over decision hours. Set $M_{m,-1}=O_{m,-1}=0$; the first peak increment is
-therefore $P_{m,0}/S_m$, and later updates take running maxima. Original-grid
-records cancel, so they never enter the reward. No warm-hour peak is included.
+where $M_{m,t}$ and $M^{\mathrm{NF}}_{m,t}$ are the running normalized adjusted and
+no-flexibility peaks over decision hours. Set $M_{m,-1}=M^{\mathrm{NF}}_{m,-1}=0$; the
+first peak increment is therefore the first hour's power difference divided by $S_m$,
+and later updates take running maxima. The grid's own records cancel, so they never
+enter the reward, and no flexibility earns zero reward in every hour. No warm-hour
+peak is included.
 There is no episode-length divisor. Negative ramp impacts earn positive ramp
 rewards. The raw, undiscounted monthly sum is exactly $-J_e$. PPO uses gamma 0.99 and
 reward normalization, so it is an approximate solution method, not an exact
@@ -151,19 +152,17 @@ Exactly one comparison policy is implemented, called `status_quo` in the code
 and the no-flexibility baseline in the thesis: every service and batch arrival
 executes at its origin site in its arrival hour, with no deferral and no
 routing, on the same arrivals, power models, grid trajectory, forecasts, and
-evaluation window as PPO. The reported improvement is
-
-    improvement = J(status quo) - J(PPO)
-
-so a positive value means PPO improved the joint score. Report the monthly
+evaluation window as PPO. Its joint score is zero by construction, so J(PPO) is
+itself the comparison: a negative value means PPO beats no flexibility. The code's
+`improvement_J` field holds J(status quo) - J(PPO), which is -J(PPO). Report the monthly
 sum of ramp impacts, summed regional peak impacts, and regional adjusted peaks
 in MW separately. Hourly mean impacts and absolute squared ramps remain
 diagnostics, not inputs to $J_e$. Ramp percentages are not reported because
 this component is signed; use raw or training-reference-scaled differences.
 
-The native grid without the fleet supplies the reference in $I_{m,t}$, not a
-second scheduling baseline. With nonnegative
-added site power, peak reduction means relative to the same fleet without
+The native grid without the fleet is not a scheduling baseline; it is kept only for
+reported measures, such as the ramp cut by market and the peak the fleet adds. With
+nonnegative added site power, peak reduction means relative to the same fleet without
 flexibility, never a peak below the native grid without the fleet.
 
 ## Cross-validation
@@ -173,7 +172,7 @@ policy per (fold, seed) on the fold's nine training months and evaluates every
 saved milestone on each of its three held-out months, one continuous episode per
 month, against the status quo on the same hours. Results go to
 `output/four_market_joint_v3/cv/<tag>/<fold>/seed-<seed>/`, and `cv.json` collects
-the final improvement of every (month, seed) and its averages. The test month is
+the final `improvement_J` (that is, -J) of every (month, seed) and its averages. The test month is
 never touched here.
 
 ## Ten-seed final campaign and test
@@ -191,8 +190,10 @@ matched-pairs rank-biserial correlation, Hodges-Lehmann shift, 10,000-draw
 seed-bootstrap intervals, per-UTC-day tables, safety totals, and learning-curve
 slopes.
 
-**Test-month result (May 2026, ten seeds):** mean improvement 0.0155 (0.0134-0.0181)
-over no flexibility, every seed positive; per-seed summaries and
+**Test-month result (May 2026, ten seeds):** mean J -0.0168 (policies -0.0191 to -0.0142),
+every policy below the no-flexibility baseline's zero, with the ramp part 92% of the score.
+The cross-validation estimate over 2025 (tag `cv-nf-reference-1m`) is -0.0188 (runs -0.0190
+to -0.0187). Per-seed summaries and
 `aggregation.json` are under `output/four_market_joint_v3/campaign/`, and
 `scripts/build_test_month_results.py` writes the thesis numbers to
 `docs/figures/ppo_test/test_month.json`. Earlier ramp-only artifacts under
@@ -238,7 +239,7 @@ python -m pytest -q tests
 Run the four-fold cross-validation (three seeds, six workers):
 
 ```powershell
-python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-all-windows-1m --workers 6
+python scripts\run_four_market_cv.py --seeds 4101 4102 4103 --timesteps 1000000 --tag cv-nf-reference-1m --workers 6
 ```
 
 The default ramp weight is 0.5 from the protocol. Use `--ramp-weight 0` for
@@ -246,9 +247,8 @@ peak-only, `0.5` for joint, or `1` for ramp-only comparisons, with distinct tags
 These are three objective variants, not three additional scheduling baselines.
 
 The thesis's July routing example is a regression test against the final
-factory: baseline $J=0.0051421164$, routed $J=0.0044403453$, improvement
-$0.0007017711$. This includes every July hour and the following hour's rebound
-ramp.
+factory: no flexibility scores $J=0$ and the routed schedule $J=-0.0011694629$. This
+includes every July hour and the following hour's rebound ramp.
 
 **Earlier pilots:** `output/four_market_joint_v3/pilot/` holds two three-seed
 pilots under the old 11-month/May split: `impact-50-50-1m` (equal-size fleet,
@@ -295,7 +295,7 @@ use `four_market_joint_v3` to keep them separate from historical runs.
 | `ramp_rl/` | Trainer boundary, PPO runner, evaluation, and campaign statistics |
 | `output/four_market_joint_v3/<spec>/` | Generated fold data and per-split factories with fixed objective calibration (not tracked) |
 | `output/four_market_joint_v3/cv/<tag>/` | Cross-validation summaries and learning curves |
-| `output/four_market_joint_v3/campaign/` | Final ten-seed test summaries, statistics, and learning curves (pending) |
+| `output/four_market_joint_v3/campaign/` | Final ten-seed test summaries, statistics, and learning curves |
 | `output/four_market_joint_v3/pilot/<tag>/` | Superseded pilots under the old split |
 | `models/four_market_joint_v3/` | Cross-validation, campaign, and pilot checkpoints |
 | `output/four_market_v2/`, `models/four_market_v2/` | Historical ramp-only artifacts |

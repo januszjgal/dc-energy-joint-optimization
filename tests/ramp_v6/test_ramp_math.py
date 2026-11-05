@@ -16,25 +16,28 @@ from env.ramp_v6.reward import closed_window_terms
 
 
 class RampMathTests(unittest.TestCase):
-    def test_constant_power_has_zero_incremental_impact(self) -> None:
-        terms = closed_window_terms(110.0, 100.0, 25.0, 25.0, 200.0, 1)
+    def test_following_no_flexibility_has_zero_incremental_impact(self) -> None:
+        terms = closed_window_terms(110.0, 100.0, 40.0, 25.0, 40.0, 25.0, 200.0, 1)
         self.assertAlmostEqual(terms.incremental_squared_impact, 0.0)
+        self.assertAlmostEqual(terms.native_fraction_s_per_hour, 10.0 / 200.0)
+        self.assertAlmostEqual(terms.no_flexibility_fraction_s_per_hour, 25.0 / 200.0)
         self.assertEqual(
             tuple(terms.__dict__),
             (
                 "native_fraction_s_per_hour",
+                "no_flexibility_fraction_s_per_hour",
                 "adjusted_fraction_s_per_hour",
                 "incremental_squared_impact",
             ),
         )
 
-    def test_lowering_power_on_upward_native_ramp_earns_credit(self) -> None:
-        terms = closed_window_terms(110.0, 100.0, 10.0, 15.0, 200.0, 1)
+    def test_lowering_power_on_upward_ramp_earns_credit(self) -> None:
+        terms = closed_window_terms(110.0, 100.0, 10.0, 15.0, 15.0, 15.0, 200.0, 1)
         self.assertLess(terms.incremental_squared_impact, 0.0)
 
     def test_overshoot_and_symmetric_square_are_penalized(self) -> None:
-        upward = closed_window_terms(110.0, 100.0, 40.0, 10.0, 200.0, 1)
-        downward = closed_window_terms(90.0, 100.0, 10.0, 40.0, 200.0, 1)
+        upward = closed_window_terms(110.0, 100.0, 40.0, 10.0, 25.0, 25.0, 200.0, 1)
+        downward = closed_window_terms(90.0, 100.0, 10.0, 40.0, 25.0, 25.0, 200.0, 1)
         self.assertGreater(upward.incremental_squared_impact, 0.0)
         self.assertGreater(downward.incremental_squared_impact, 0.0)
         self.assertAlmostEqual(

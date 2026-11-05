@@ -1,9 +1,11 @@
 """Fixed-scale monthly incremental ramp impact and regional net-load peak impact.
 
-Both components subtract the original grid: ramps as squared-ramp increments,
-peaks as the adjusted monthly maximum minus the original monthly maximum. The
-original grid does not depend on the schedule, so the subtraction shifts J by a
-constant and keeps the grid's own records out of the hourly reward.
+Both components subtract the no-flexibility schedule: ramps as squared-ramp
+increments, peaks as the adjusted monthly maximum minus the no-flexibility
+monthly maximum. The no-flexibility schedule does not depend on the policy, so
+the subtraction shifts J by a constant. J is zero under no flexibility and
+negative for a schedule that beats it, and the grid's own records stay out of
+the hourly reward.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from typing import Any, Mapping
 import numpy as np
 
 
-OBJECTIVE_VERSION = "joint-net-load-peak-impact-ramp-impact-v3"
+OBJECTIVE_VERSION = "joint-net-load-peak-and-ramp-from-no-flexibility-v4"
 NORMALIZATION_METHOD = "training-month-mean-no-flexibility-ramp-totals-v2"
 
 
@@ -62,9 +64,9 @@ class JointObjective:
             "peak_weight": self.peak_weight,
             "ramp_reference": self.ramp_reference,
             "peak_reference": self.peak_reference,
-            "ramp_metric": "monthly_sum_of_regional_incremental_squared_ramp_impacts",
+            "ramp_metric": "monthly_sum_of_regional_squared_ramp_impacts_from_no_flexibility",
             "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
-            "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_original",
+            "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_no_flexibility",
             "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
         }
 

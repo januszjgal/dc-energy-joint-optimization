@@ -162,8 +162,10 @@ class RampAwareEnv(gym.Env):
         self._arrivals_loaded = False
         self._site_power_history: list[np.ndarray] = []
         self._market_power_history: dict[str, list[float]] = {}
+        self._no_flex_market_power: dict[str, np.ndarray] = {}
         self._adjusted_peaks_mw: dict[str, float | None] = {}
         self._native_peaks_mw: dict[str, float | None] = {}
+        self._no_flex_peaks_mw: dict[str, float | None] = {}
         self._episode_history: list[dict[str, Any]] = []
         self._episode_context = dict(episode_context or {})
         self._reset_count = 0
@@ -262,8 +264,10 @@ class RampAwareEnv(gym.Env):
             for market, site_indices in self._market_site_indices.items()
         }
         self._episode_history = []
+        self._no_flex_market_power = self._no_flexibility_market_power()
         self._adjusted_peaks_mw = {market: None for market in self.panel.markets}
         self._native_peaks_mw = {market: None for market in self.panel.markets}
+        self._no_flex_peaks_mw = {market: None for market in self.panel.markets}
         self._load_current_arrivals()
         context = dict(self._episode_context)
         split = requested.get("split", context.get("split", "fixture"))
@@ -314,6 +318,27 @@ class RampAwareEnv(gym.Env):
                 self._bounded_preference_scores(queue.by_origin(self.n_sites)),
             ]
         )
+
+    def _no_flexibility_market_power(self) -> dict[str, np.ndarray]:
+        """Market power per panel row when every arrival runs in place.
+
+        The first rows are the warm history. This schedule does not depend on
+        the policy, and the objective measures every schedule from it.
+        """
+        work = self.workload.service_arrivals + self.workload.batch_arrivals
+        site_power = np.vstack(
+            [
+                self.workload.warm_power_mw,
+                [
+                    [site.power_mw(float(row[index])) for index, site in enumerate(self.sites)]
+                    for row in work
+                ],
+            ]
+        )
+        return {
+            market: site_power[:, site_indices].sum(axis=1)
+            for market, site_indices in self._market_site_indices.items()
+        }
 
     def _load_current_arrivals(self) -> None:
         if self._arrivals_loaded:
@@ -560,6 +585,12 @@ class RampAwareEnv(gym.Env):
                     power_then_mw=self._market_power_history[market][
                         -(horizon + 1)
                     ],
+                    no_flex_power_now_mw=float(
+                        self._no_flex_market_power[market][panel_index]
+                    ),
+                    no_flex_power_then_mw=float(
+                        self._no_flex_market_power[market][panel_index - horizon]
+                    ),
                     gross_q95_scale_mw=scale,
                     horizon_hours=horizon,
                 )
@@ -638,20 +669,27 @@ class RampAwareEnv(gym.Env):
                 self._adjusted_peaks_mw[market],
                 float(row["net_load_mw"]) + market_power[market],
             )
-            native_peak, native_increase = update_peak(
+            native_peak, _ = update_peak(
                 self._native_peaks_mw[market], float(row["net_load_mw"])
+            )
+            no_flex_peak, no_flex_increase = update_peak(
+                self._no_flex_peaks_mw[market],
+                float(row["net_load_mw"])
+                + float(self._no_flex_market_power[market][panel_index]),
             )
             self._adjusted_peaks_mw[market] = adjusted_peak
             self._native_peaks_mw[market] = native_peak
+            self._no_flex_peaks_mw[market] = no_flex_peak
             peak_normalized_increment += peak_increase / scale
-            # Like I_{m,t}, the peak term subtracts the original grid, whose
-            # running-maximum records no schedule can change.
-            market_peak_impact = (peak_increase - native_increase) / scale
+            # Like I_{m,t}, the peak term subtracts the no-flexibility schedule,
+            # whose running-maximum records no policy can change.
+            market_peak_impact = (peak_increase - no_flex_increase) / scale
             peak_impact_increment += market_peak_impact
             per_market[market].update({
                 "adjusted_net_load_mw": float(row["net_load_mw"]) + market_power[market],
                 "running_adjusted_peak_mw": adjusted_peak,
                 "running_native_peak_mw": native_peak,
+                "running_no_flexibility_peak_mw": no_flex_peak,
                 "peak_normalized_increment": peak_increase / scale,
                 "peak_impact_increment": market_peak_impact,
             })
@@ -695,7 +733,7 @@ class RampAwareEnv(gym.Env):
                 for market, row in per_market.items()
             ),
             "running_peak_impact_normalized_sum": sum(
-                (row["running_adjusted_peak_mw"] - row["running_native_peak_mw"])
+                (row["running_adjusted_peak_mw"] - row["running_no_flexibility_peak_mw"])
                 / self.stats.gross_q95_mw[market]
                 for market, row in per_market.items()
             ),

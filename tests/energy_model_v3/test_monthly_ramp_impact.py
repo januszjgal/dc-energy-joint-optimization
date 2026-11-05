@@ -66,7 +66,13 @@ class MonthlyRampImpactTests(unittest.TestCase):
         ).loc[panel.timestamps, list(MARKETS)].to_numpy()
         stats = json.loads((ROOT / "data" / "four_market_2025" / "frozen_stats.json").read_text())
         scales = np.asarray([stats["gross_q95_mw"][market] for market in MARKETS])
-        native_ramps = np.diff(net, axis=0) / scales
+        no_flex_power = np.asarray([
+            [site.power_mw(float(value)) for site, value in zip(sites, row)]
+            for row in work
+        ])
+        no_flex = net + no_flex_power
+        no_flex_ramps = np.diff(no_flex, axis=0) / scales
+        no_flex_peaks = no_flex[1:].max(axis=0)
         results = []
         for executed in (work, routed):
             power = np.asarray([
@@ -75,14 +81,13 @@ class MonthlyRampImpactTests(unittest.TestCase):
             ])
             adjusted = net + power
             adjusted_ramps = np.diff(adjusted, axis=0) / scales
-            impacts = adjusted_ramps**2 - native_ramps**2
+            impacts = adjusted_ramps**2 - no_flex_ramps**2
             impact_sum = float(impacts.sum())
             peaks = adjusted[1:].max(axis=0)
-            original_peaks = net[1:].max(axis=0)
-            peak_impact = float(((peaks - original_peaks) / scales).sum())
+            peak_impact = float(((peaks - no_flex_peaks) / scales).sum())
             score = self.objective.score(impact_sum, peak_impact)
             previous = [None] * len(MARKETS)
-            previous_original = [None] * len(MARKETS)
+            previous_no_flex = [None] * len(MARKETS)
             raw_return = 0.0
             for slot in range(1, len(adjusted)):
                 peak_increment = 0.0
@@ -90,10 +95,10 @@ class MonthlyRampImpactTests(unittest.TestCase):
                     previous[market], increase = update_peak(
                         previous[market], float(adjusted[slot, market] / scales[market])
                     )
-                    previous_original[market], original_increase = update_peak(
-                        previous_original[market], float(net[slot, market] / scales[market])
+                    previous_no_flex[market], no_flex_increase = update_peak(
+                        previous_no_flex[market], float(no_flex[slot, market] / scales[market])
                     )
-                    peak_increment += increase - original_increase
+                    peak_increment += increase - no_flex_increase
                 raw_return += sum(self.objective.reward_components(
                     float(impacts[slot - 1].sum()), peak_increment
                 ))
@@ -102,9 +107,8 @@ class MonthlyRampImpactTests(unittest.TestCase):
             results.append((score, peaks, impact_sum))
 
         baseline, shifted = results
-        self.assertAlmostEqual(baseline[0], 0.005250295216387319, places=10)
-        self.assertAlmostEqual(shifted[0], 0.004080832347074407, places=10)
-        self.assertAlmostEqual(baseline[0] - shifted[0], 0.001169462869312912, places=10)
+        self.assertEqual(baseline[0], 0.0)
+        self.assertAlmostEqual(shifted[0], -0.001169462869312912, places=10)
         self.assertAlmostEqual(baseline[1][isone], 24376.949089328282, places=6)
         self.assertAlmostEqual(shifted[1][isone], 24233.80698883537, places=6)
         other_regions = [index for index in range(len(MARKETS)) if index != isone]

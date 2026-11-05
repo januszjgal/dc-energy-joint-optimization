@@ -174,15 +174,13 @@ reinforcement learning, workload scheduling
   \addlinespace
   \multicolumn{4}{@{}l}{\emph{Ramps, peaks, and the objective (Chapter~\ref{chap:problem})}} \\
   \(A_{m,t}\) & adjusted net load & MW & Eq.~\eqref{eq:adjusted-net-load} \\
-  \(\Delta^{\mathrm{baseline}}_{m,t}\) & baseline grid power ramp & fraction of \(S_m\) per hour & Eq.~\eqref{eq:native-ramp} \\
   \(\Delta^{\mathrm{adjusted}}_{m,t}\) & fleet-adjusted grid power ramp & fraction of \(S_m\) per hour & Eq.~\eqref{eq:adjusted-ramp} \\
-  \(\Delta^{\mathrm{NF}}_{m,t}\) & no-flexibility ramp & fraction of \(S_m\) per hour & Eq.~\eqref{eq:nf-ramp} \\
   \(I_{m,t}\) & ramp impact & squared fraction of \(S_m\) per hour & Eq.~\eqref{eq:incremental-impact} \\
   \(\mu\) & scheduling policy & --- & Sec.~\ref{subsec:problem-objective} \\
 % [peaks 2026-10-10] removed row:
 %  \(Q^{\mathrm{adjusted}}_{m,e}\), \(Q^{\mathrm{original}}_{m,e}\) & adjusted peak; original peak & fraction of \(S_m\) & Eqs.~\eqref{eq:monthly-peak}--\eqref{eq:monthly-original-peak} \\
   \(\Phi_{m,e}\) & peak impact & fraction of \(S_m\) & Eq.~\eqref{eq:peak-impact} \\
-  \(\mu_{\mathrm{NF}}\) & no-flexibility baseline & --- & Sec.~\ref{subsec:problem-normalization} \\
+  \(\mu_{\mathrm{NF}}\) & no-flexibility baseline & --- & Sec.~\ref{subsec:problem-objective} \\
   \(\mathcal E_{\mathrm{train}}\) & training set (months used for training) & --- & Sec.~\ref{subsec:problem-normalization} \\
   \(C_R\) & ramp reference & squared fraction of \(S_m\) per hour & Eq.~\eqref{eq:ramp-reference} \\
   \(C_Q\) & peak reference & fraction of \(S_m\) & Eq.~\eqref{eq:peak-reference} \\
@@ -190,17 +188,19 @@ reinforcement learning, workload scheduling
   \(\mathfrak M\) & feasible policy set & --- & Eq.~\eqref{eq:objective} \\
 % [symbols 2026-10-09] removed row:
 %  \(\mathcal I_t\) & information set & --- & Sec.~\ref{subsec:problem-causality} \\
-  Improvement & joint-score improvement over the no-flexibility baseline & --- & Eq.~\eqref{eq:improvement} \\
   \addlinespace
   \multicolumn{4}{@{}l}{\emph{Scheduling method (Chapter~\ref{chap:method} and Appendix~\ref{subsec:ppo-details})}} \\
-  \(a\) & release preference & \(-6\) to 6 & Sec.~\ref{subsec:action-example} \\
+  \(a^{\mathrm{svc}}_{j,t}\), \(a^{\mathrm{rel}}_t\), \(a^{\mathrm{bat}}_{j,t}\) & service preference; release preference; destination preference & \(-6\) to 6 & Sec.~\ref{sec:method-actions} \\
+  \(\hat x^{\mathrm{svc}}_{j,t}\), \(\hat z_t\), \(\hat x^{\mathrm{bat}}_{j,t}\) & requested service work; requested batch release; requested batch work & work units & Eqs.~\eqref{eq:service-request}--\eqref{eq:destination-request} \\
   \(r_t\) & hourly reward & --- & Eq.~\eqref{eq:reward} \\
-  \(M_{m,t}\), \(O_{m,t}\) & running adjusted peak; running baseline peak & fraction of \(S_m\) & Eq.~\eqref{eq:reward} \\
-  \(\gamma\) & discount per hour & --- & Sec.~\ref{subsec:method-normalization} \\
-  \(\pi_\theta\), \(V_\phi\) & policy and value networks, with weights \(\theta\) and \(\phi\) & --- & App.~\ref{subsec:ppo-details} \\
-  \(o_t\), \(\widetilde r_t\) & normalized observation; normalized training reward & --- & App.~\ref{subsec:ppo-details} \\
+  \(M_{m,t}\), \(M^{\mathrm{NF}}_{m,t}\) & running adjusted peak; running no-flexibility peak & fraction of \(S_m\) & Eq.~\eqref{eq:reward} \\
+  \(v\), \(\bar v\), \(\sigma_v\) & observation entry; its running mean and standard deviation & unit of the entry & Eq.~\eqref{eq:observation-normalization} \\
+  \(o\), \(o_t\) & normalized entry; normalized observation & --- & Eq.~\eqref{eq:observation-normalization} \\
+  \(G_t\), \(\gamma\) & discounted return; discount factor & --- & Eq.~\eqref{eq:discounted-return} \\
+  \(\widetilde r_t\), \(\sigma_r\) & normalized reward; running standard deviation of a discounted sum of the rewards & --- & Eq.~\eqref{eq:reward-normalization} \\
+  \(\pi_\theta\), \(V_\phi\) & policy and critic networks, with parameters \(\theta\) and \(\phi\) & --- & App.~\ref{subsec:ppo-details} \\
   \(\delta_t\) & temporal-difference error & --- & Eq.~\eqref{eq:td-error} \\
-  \(\hat A_t\), \(K_t\), \(\lambda\) & advantage estimate; hours to the end of the training cycle or month; blending in the advantage estimate & --- & Eq.~\eqref{eq:gae} \\
+  \(\hat A_t\), \(K_t\), \(\lambda\) & advantage estimate; time steps to the end of the rollout or month; generalized advantage estimation parameter & --- & Eq.~\eqref{eq:gae} \\
   \(\rho_t\), \(\epsilon\) & probability ratio; clip range & --- & Eq.~\eqref{eq:ppo-clip} \\
   \bottomrule
 \end{longtable}
@@ -286,8 +286,7 @@ cell \(c\), the largest training cell, has a rated power of 500~MW, representing
 modern hyperscale data center, and every other site, in both fleets, is scaled by its
 measured CPU capacity relative to cell \(c\). Second, each Google cell is mapped to one
 electricity market. Third, batch work must be completed within 24 hours. Each
-assumption is stated where it is introduced, and Section~\ref{sec:limitations} lists
-the resulting limitations.
+assumption is stated where it is introduced.
 
 % [review 2026-10-21] from the Chapter 5 opening, for a Contributions section
 % (outline 1.5):
@@ -385,9 +384,8 @@ the processing pipeline for each source.
        forecasts per market};
 
     \node[box, fill=black!7, text width=132mm, below=6mm of o2] (sim)
-      {Chapter~\ref{chap:problem}: synthetic four-site fleet and monthly
-       simulation, which turn these into hourly workloads, site power,
-       and market net load};
+      {Synthetic four-site fleet and monthly simulation, which turn these into
+       hourly workloads, site power, and market net load};
 
     \foreach \i in {1,2,3} {
       \draw[arr] (h\i) -- (r\i);
@@ -737,8 +735,7 @@ For each market, hourly time series of gross electricity demand, wind power
 generation, and solar power generation are used. Because the EIA indexes data by
 interval-ending hours, timestamps are shifted back by one hour to align with the
 beginning-of-hour convention used in Google traces. Records for each month of
-EIA data are compiled into a \emph{panel} table (detailed in
-Appendix~\ref{app:data-schemas}). For the training and validation months, the
+EIA data are compiled into a \emph{panel} table. For the training and validation months, the
 data are retrieved for all of 2025, from 06:00 UTC on January 1, 2025 to 06:00 UTC
 on January 1, 2026. No earlier data are retrieved, so the first week of January
 has no look-back history and its forecasts use the latest observed value. For the
@@ -855,7 +852,7 @@ net load \(N_m\) for a given market, \(\tau\) the \emph{issue hour}, and
 \(h\in\{1,3,6,12\}\) the forecast \emph{lead time} in hours. The \emph{forecast}
 of \(Y\) for the \emph{target hour} \(\tau+h\)
 is expressed as a constant \(b_0\) plus each \emph{input feature}
-(\(x_1,\dots,x_9\)) multiplied by its corresponding regression weight
+(\(x_1,\dots,x_9\)) multiplied by its corresponding regression coefficient
 (\(b_1,\dots,b_9\)):
 % [forecast-eq 2026-10-10] was the three-line form:
 %   b_0
@@ -968,12 +965,14 @@ observations available up to its issue hour.
 % month and the week of rows after each held-out month, whose week-ago input
 % would otherwise read the held-out month; without this purge, a held-out
 % month would shape the weights through the lagged inputs.
-Fitting a model means choosing the coefficients that bring its forecasts closest to
-the values that actually occurred in the training months. Each issue hour in those
-months provides one row of fitting data: its nine inputs and the value that occurred
-\(h\) hours later. A row is used only if all of its hours, inputs and target, fall in
-training months. With all of 2025 as training months, each model is fitted on 8,592
-rows. 
+Each issue hour in the hourly EIA data supplies one data point for the regression:
+the nine input features at that hour and the value of \(Y\) realized at the target
+hour. A data point is used only if all of its hours, from the oldest input
+(\(x_5\)) to the target, fall in training months. This rule keeps a month held out
+for evaluation unseen by the regression. Otherwise, its
+values would enter through the inputs of the hours after it and the targets of the
+hours before it. With all of 2025 as training months, 8,592 of the 8,760 data points
+are used for each model, and the May 2026 test month supplies none.
 
 \subsection{Forecast Accuracy}
 % [mae-only 2026-10-10] was: "Three measures of forecast error are reported." with MAE,
@@ -993,7 +992,7 @@ expressed in MW.
 MAE values were evaluated across two evaluation sets and compared against the
 persistence baseline model. The cross-validation set comprises all hourly
 instances in 2025, where predictions were generated out-of-fold using models
-trained without the target month (Section~\ref{sec:method-cv}). The test set
+trained without the target month. The test set
 comprises the 744 issue hours of May 2026, evaluated using the models fitted on
 all of 2025. Table~\ref{tab:forecast-accuracy}
 reports the MAE performance of both evaluation sets.
@@ -1338,7 +1337,7 @@ sites.
     \(C^{\mathrm{ref}}_m\) & CPU capacity of the site & Eq.~\eqref{eq:reference-capacity} \\
     \(\overline P_m\) & rated power of the site & Sec.~\ref{subsec:transform-mapping} \\
     \(\alpha_m\), \(\beta_m\) & power model coefficients & Table~\ref{tab:powerdata-coefficients} \\
-    \(H\) & completion window & Sec.~\ref{subsec:problem-batch} \\
+    \(H\) & completion window & assumption, 24 hourly slots \\
     \(N_{m,t}\) & net load at decision hour \(t\) & Eq.~\eqref{eq:energy-net-load} \\
     \(S_m\) & market demand scale & Eq.~\eqref{eq:market-scale} \\
     \bottomrule
@@ -1370,9 +1369,8 @@ At decision hour \(t\), the scheduler has access only to the following:
     \item the \emph{urgency} of the queued batch work: how much of it must execute
         within the next 1, 3, 6, 12, and 24 hours;
   \item modeled site power from hour \(t-1\);
-    \item each market's running adjusted and baseline net-load peaks
-        (Section~\ref{subsec:problem-objective}) over completed decision hours (zero before
-        the first decision); and
+    \item each market's highest net load of the month so far, with and without the site's
+        power, over completed decision hours (zero before the first decision); and
   \item UTC hour, UTC day of week, and the number of hours left in the
         month.
 \end{itemize}
@@ -1481,11 +1479,7 @@ batch release \(z_t\) is dispatched from the head of the queue, prioritizing wor
 the earliest deadline regardless of its origin. Ties in deadline slots are broken
 first by origin site index in ascending order, and then by entry order.
 
-The release cannot be too small, because each later hour has limited capacity, and
-work that waits until its deadline may no longer fit. The release is therefore raised
-when necessary. For example, if 10,000 work units are due within three hours, counting
-the current hour, and the fleet has room for only 3,000 work units of batch in each of
-the next two hours, at least 4,000 must be released now. For each site, cumulative
+For each site, cumulative
 execution of batch work through hour \(t\) must meet
 or exceed all batch work due by that hour:
 % [symbols 2026-10-09] was: summed over the hours \(\rho\) up to \(t\),
@@ -1506,7 +1500,9 @@ with \(H=24\), batch work entering in hour 7 may execute during any of hours 7 t
 % (eq:terminal-queue); it follows from the equation above at t = T_e - 1.
 Furthermore, because all deadlines are capped at the final hour of the month,
 evaluating Eq.~\eqref{eq:deadline-feasibility} at \(t=T_e-1\) ensures that every site
-backlog is completely empty by month-end.
+backlog is completely empty by month-end. Without this cap, the batch work of the final
+day could be deferred past the last evaluated hour, reducing the fleet's power demand
+without ever being executed.
 
 \subsection{Capacity and Site Power}
 \label{subsec:problem-feasibility}
@@ -1563,88 +1559,69 @@ baseline net load augmented by the site power:
   N_{m,t}+P_{m,t}.
   \label{eq:adjusted-net-load}
 \end{equation}
-For the first objective, changes in net load between consecutive hours are evaluated
-both before and after accounting for fleet power. This one-hour interval aligns with
-the temporal resolution of the EIA power grid data and the scheduling decisions.
-Normalizing by \(S_m\) expresses each one-hour change as a fraction of the market's
-nominal hourly demand scale, yielding the \emph{baseline grid power ramp}
-\(\Delta^{\mathrm{baseline}}_{m,t}\) and the \emph{fleet-adjusted grid power ramp}
-\(\Delta^{\mathrm{adjusted}}_{m,t}\):
-\begin{align}
-  \Delta^{\mathrm{baseline}}_{m,t}
-  &=
-  \frac{N_{m,t}-N_{m,t-1}}{S_m},
-  \label{eq:native-ramp}\\
-  \Delta^{\mathrm{adjusted}}_{m,t}
-  &=
-  \frac{A_{m,t}-A_{m,t-1}}{S_m}.
-  \label{eq:adjusted-ramp}
-\end{align}
-The fleet's impact on net load ramp, the \emph{ramp impact} \(I_{m,t}\), is calculated
-as:
+% [nf-reference 2026-11-05] Both impacts are now measured from the no-flexibility
+% baseline instead of the grid without the fleet, after Dr. Wang's comment on the
+% ramp equations: "it would make more sense if the data center power is included
+% in N". J_e(mu_NF) is therefore zero, and the separate improvement equation is gone.
+A \emph{scheduling policy} \(\mu\) dictates the control decisions for each hour, so the
+adjusted net load depends on \(\mu\). Both objectives are measured from the
+\emph{no-flexibility baseline} \(\mu_{\mathrm{NF}}\), the policy that executes all work
+immediately at its original site. Because the fleet is present under both policies, the
+comparison isolates the effect of flexibility from that of the fleet itself.
+
+For the first objective, the change in adjusted net load between consecutive hours is
+evaluated. This one-hour interval aligns with the temporal resolution of the EIA power
+grid data and the scheduling decisions. Normalizing by \(S_m\) expresses each one-hour
+change as a fraction of the market's nominal hourly demand scale, yielding the
+\emph{fleet-adjusted grid power ramp} \(\Delta^{\mathrm{adjusted}}_{m,t}\):
 \begin{equation}
-  I_{m,t}
+  \Delta^{\mathrm{adjusted}}_{m,t}(\mu)
   =
-  \left(\Delta^{\mathrm{adjusted}}_{m,t}\right)^2
+  \frac{A_{m,t}(\mu)-A_{m,t-1}(\mu)}{S_m}.
+  \label{eq:adjusted-ramp}
+\end{equation}
+The policy's impact on net load ramp, the \emph{ramp impact} \(I_{m,t}\), is calculated as:
+\begin{equation}
+  I_{m,t}(\mu)
+  =
+  \left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu)\right)^2
   -
-  \left(\Delta^{\mathrm{baseline}}_{m,t}\right)^2.
+  \left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu_{\mathrm{NF}})\right)^2.
   \label{eq:incremental-impact}
 \end{equation}
 In Eq.~\eqref{eq:incremental-impact}, the power ramps are squared to penalize large
 fluctuations and treat upward and downward ramps equally. A negative value of
-\(I_{m,t}\) indicates that the scheduled fleet reduces the power ramp relative to the
-baseline grid, whereas a positive value indicates an increase.
+\(I_{m,t}\) indicates that the policy reduces the power ramp relative to the
+no-flexibility baseline, whereas a positive value indicates an increase.
 
 % [peaks 2026-10-10] was: separate equations for the adjusted peak
 % Q^adjusted_{m,e}(mu) = max_t A_{m,t}(mu)/S_m (eq:monthly-peak) and the original
 % peak Q^original_{m,e} = max_t N_{m,t}/S_m (eq:monthly-original-peak), then
 % Phi = Q^adjusted - Q^original.
-The second objective is to reduce each market's monthly peak net load. A
-\emph{scheduling policy} \(\mu\) dictates the control decisions for each hour. As with
-ramps, the fleet's impact is evaluated relative to the baseline grid. The fleet's
-impact on peak power, the \emph{peak impact} \(\Phi_{m,e}(\mu)\), in month \(e\) under
-policy \(\mu\) is defined as the difference between the monthly peak adjusted net load
-(the \emph{adjusted peak}) and the monthly peak baseline net load (the \emph{baseline
-peak}), divided by \(S_m\):
+The second objective is to reduce each market's monthly peak net load. As with ramps,
+the policy's impact is evaluated relative to the no-flexibility baseline. The policy's
+impact on peak power, the \emph{peak impact} \(\Phi_{m,e}(\mu)\), in month \(e\) is
+defined as the difference between the monthly peak adjusted net load under \(\mu\) (the
+\emph{adjusted peak}) and under \(\mu_{\mathrm{NF}}\) (the \emph{no-flexibility peak}),
+divided by \(S_m\):
 \begin{equation}
   \Phi_{m,e}(\mu)
   =
   \frac{\displaystyle\max_{t\in\mathcal T_e} A_{m,t}(\mu)
-        -\max_{t\in\mathcal T_e} N_{m,t}}{S_m}.
+        -\max_{t\in\mathcal T_e} A_{m,t}(\mu_{\mathrm{NF}})}{S_m}.
   \label{eq:peak-impact}
 \end{equation}
-Because site power consumption is positive, the fleet peak impact is lower-bounded by
-zero, \(\Phi_{m,e}(\mu)>0\).
-
-% [wwm 2026-11-03] added after Dr. Wang's comment on the ramp equations: "it would
-% make more sense if the data center power is included in N". Scores are unchanged.
-Both impacts are measured from the grid without the fleet, so running all work at its
-original site in its recorded hour, the no-flexibility policy \(\mu_{\mathrm{NF}}\),
-has a positive score of its own. The \emph{no-flexibility ramp}
-\(\Delta^{\mathrm{NF}}_{m,t}=\Delta^{\mathrm{adjusted}}_{m,t}(\mu_{\mathrm{NF}})\) is
-the ramp of the grid with data center power included. Because
-\(\Delta^{\mathrm{baseline}}_{m,t}\) is the same under every policy, it cancels when a
-policy is compared with no flexibility:
-\begin{equation}
-  I_{m,t}(\mu_{\mathrm{NF}})-I_{m,t}(\mu)
-  =
-  \left(\Delta^{\mathrm{NF}}_{m,t}\right)^2
-  -
-  \left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu)\right)^2.
-  \label{eq:nf-ramp}
-\end{equation}
-The baseline peak cancels in the same way, so a comparison with no flexibility is
-measured against the grid with data center power included.
+A negative value of \(\Phi_{m,e}\) indicates that the policy lowers the monthly peak
+relative to the no-flexibility baseline.
 
 \subsection{Joint Objective}
 \label{subsec:problem-normalization}
 
 Because the impacts on power ramp and monthly peak have different numerical scales,
 combining them into a single objective function requires normalizing each metric by a
-fixed positive reference value. Based on the \emph{no-flexibility baseline} policy,
-\(\mu_{\mathrm{NF}}\), which executes all work immediately at its original site, the
-reference values for the net load ramp impact \(C_R\) and monthly peak power impact
-\(C_Q\) are defined as:
+fixed positive reference value. Based on the no-flexibility baseline, the reference
+values for the net load ramp impact \(C_R\) and monthly peak power impact \(C_Q\) are
+defined as:
 \begin{align}
   C_R
   &=
@@ -1696,26 +1673,20 @@ problem is formulated as:
 subject to the constraints in
 Equations~\eqref{eq:service-conservation}--\eqref{eq:site-capacity}.
 The 0.5 weights apply after dividing each term by its reference scale.
-A lower joint score need not improve both components.
+A lower joint score need not improve both components. Because both impacts are measured
+from \(\mu_{\mathrm{NF}}\), \(J_e(\mu_{\mathrm{NF}})=0\): a negative joint score indicates
+that the policy outperforms the no-flexibility baseline, and a positive score indicates
+that it performs worse.
 
-\subsection{Improvement and Formal Problem Statement}
+\subsection{Evaluation and Formal Problem Statement}
 \label{subsec:problem-evaluation}
 
-The scheduler is compared with \(\mu_{\mathrm{NF}}\) using
-the same workloads, power models, grid data, forecasts, and month. Improvement
-is reported as
-\begin{equation}
-  \text{Improvement}
-  =
-  J_e(\mu_{\mathrm{NF}})-J_e(\mu),
-  \label{eq:improvement}
-\end{equation}
-which is positive when the scheduler \(\mu\) improves on the no-flexibility baseline.
-
-The ramp-impact and peak components are reported separately, along with
-each market's adjusted peak in MW and its reduction from
-the no-flexibility fleet. Because site power is nonnegative, a peak reduction indicates an
-improvement over the no-flexibility fleet rather than a peak below the baseline grid.
+The scheduler and \(\mu_{\mathrm{NF}}\) are evaluated using the same workloads, power
+models, grid data, forecasts, and month. The ramp-impact and peak components of the joint
+score are reported separately, along with each market's adjusted peak in MW and its
+reduction from the no-flexibility peak. Because site power is nonnegative, a peak below
+the no-flexibility peak can still lie above the \emph{baseline peak}, the monthly peak of
+the baseline net load without the fleet.
 
 The full problem can now be stated.
 \label{subsec:problem-formal-statement}
@@ -1725,8 +1696,7 @@ Choose a causal policy for hourly service destinations, batch release
 volumes, and batch destinations to minimize the joint monthly ramp-impact and
 net-load peak score in Equation~\eqref{eq:objective}. Use only the
 information available at each decision and meet the service, deadline, and
-capacity constraints above. Report improvement over the no-flexibility
-baseline using Equation~\eqref{eq:improvement}.
+capacity constraints above.
 \end{quote}
 
 
@@ -1736,10 +1706,9 @@ baseline using Equation~\eqref{eq:improvement}.
 \chapter{SCHEDULING METHOD: PROXIMAL POLICY OPTIMIZATION}
 \label{chap:method}
 
-% [review 2026-10-21] was three paragraphs: the research question and the
-% three controls again; related work (Carbon-Aware Computing, DeepEE,
-% SustainDC), parked in Chapter 2; and the three evaluation stages, which
-% Section 3.6 already gives (their two new sentences moved to Section 5.7).
+% [ch567 2026-11-05] Chapters 5-7 reorganized on the pattern of Dr. Wang's Chapters 3-4
+% (few sections, each with subsections; no pointers to later sections). The earlier
+% text is in git. This chapter now runs formulate, train, evaluate.
 This chapter formulates the problem of Chapter~\ref{chap:problem} as a reinforcement
 learning task, and then describes how PPO trains the scheduler and how the trained
 policies are evaluated.
@@ -1747,26 +1716,16 @@ policies are evaluated.
 \section{Reinforcement Learning Overview}
 \label{sec:method-rl}
 
-% [rl-overview 2026-10-22] replaced the planned note; was: "One interaction is
-% one decision hour. The scheduler observes the available grid information and
-% workload, chooses an action, and receives a reward once the hour's realized
-% net load is known. One episode is one simulated month (Section 4.2)."
-% [rl-overview 2026-10-22, later] user cut the opening definition, the
-% forecast comparison, the Vazquez-Canteli/Kahil sentence, and the
-% state-versus-observation paragraph; the discounting sentence was dropped.
-Sutton and
-Barto, in \emph{Reinforcement Learning: An Introduction}, describe \emph{reinforcement learning} as learning how to map
-situations to actions so as to maximize a numerical reward, where the learner is not
-told which action is correct and must discover it through trial
-\cite[Sec.~1.1]{sutton2018reinforcement}. In this study, reinforcement learning is
-used to identify a scheduling policy for the problem of Chapter~\ref{chap:problem}: a
-policy that acts each hour using only the information available at that hour
-(Section~\ref{subsec:problem-causality}), as a real-time scheduler must. 
-
-Sutton and Barto identify two defining features of reinforcement learning:
-trial-and-error learning and delayed reward, because an action affects not only the
-immediate reward but also subsequent situations and rewards
-\cite[Sec.~1.1]{sutton2018reinforcement}. 
+Sutton and Barto, in \emph{Reinforcement Learning: An Introduction}, describe
+\emph{reinforcement learning} as learning how to map situations to actions so as to
+maximize a numerical reward. The learner is not told which action is correct and must
+discover it through trial \cite[Sec.~1.1]{sutton2018reinforcement}. They identify two
+defining features: trial-and-error learning and delayed reward, because an action
+affects not only the immediate reward but also subsequent situations and rewards
+\cite[Sec.~1.1]{sutton2018reinforcement}. In this study, reinforcement learning is used
+to identify a scheduling policy for the problem of Chapter~\ref{chap:problem}. As a
+real-time scheduler must, the policy acts each hour using only the information available
+at that hour (Section~\ref{subsec:problem-causality}).
 
 Reinforcement learning involves an \emph{agent}, the learner and decision maker, that
 interacts with an \emph{environment}, everything outside the agent, over a sequence of
@@ -1774,10 +1733,11 @@ time steps. At each step, the agent selects an \emph{action}, and the environmen
 responds with a new situation and a numerical \emph{reward}
 \cite[Sec.~3.1]{sutton2018reinforcement}. Table~\ref{tab:rl-terms} lists the meaning of
 each term in this study. Anything the agent cannot change arbitrarily belongs to the
-environment. Accordingly, the decoder that enforces the constraints and the reward
-calculation are both part of the environment
-\cite[Sec.~3.1]{sutton2018reinforcement}.
+environment. Accordingly, the rules that enforce the constraints and the reward
+calculation are both part of the environment \cite[Sec.~3.1]{sutton2018reinforcement}.
 
+% [ch567 2026-11-05] dropped the "Section" column, which pointed ahead to six later
+% sections, and the word "decoder", which is not yet defined here.
 \begin{table}[htbp]
   \centering
   \footnotesize
@@ -1785,30 +1745,28 @@ calculation are both part of the environment
   learning terms \cite[Secs.~3.1--3.5]{sutton2018reinforcement} and their meaning in
   this study.}
   \label{tab:rl-terms}
-  \begin{tabular}{@{}L{0.13\textwidth}L{0.30\textwidth}L{0.36\textwidth}L{0.11\textwidth}@{}}
+  \begin{tabular}{@{}L{0.15\textwidth}L{0.33\textwidth}L{0.46\textwidth}@{}}
     \toprule
-    Term & General meaning & In this study & Section \\
+    Term & General meaning & In this study \\
     \midrule
-    Agent & the learner and decision maker & the scheduler
-      & \ref{sec:method-ppo} \\
+    Agent & the learner and decision maker & the scheduler \\
     Environment & everything outside the agent
-      & the monthly simulation of the fleet and the four markets, including
-        the decoder & Ch.~\ref{chap:problem} \\
-    Time step & one decision & one hour & \ref{subsec:transform-pairing} \\
+      & the monthly simulation of the fleet and the four markets, including the
+        constraints and the reward calculation \\
+    Time step & one decision & one hour \\
     Observation & what the agent sees before it acts
       & 82 numbers built from the information of
-        Section~\ref{subsec:problem-causality} & \ref{sec:method-observation} \\
+        Section~\ref{subsec:problem-causality} \\
     Action & the agent's choice
-      & nine preferences, which the decoder turns into a feasible schedule
-      & \ref{sec:method-actions} \\
+      & nine numbers, converted into a schedule that satisfies every constraint \\
     Reward & a number returned after each action
-      & the hour's share of \(-J_e\) & \ref{sec:method-reward} \\
+      & the hour's share of \(-J_e\) \\
     Episode & the steps from a start to an end
-      & one month, 672 to 744 hours & \ref{subsec:transform-pairing} \\
+      & one month, 672 to 744 hours \\
     Return & the sum of an episode's rewards
-      & \(-J_e\) of the month & \ref{sec:method-reward} \\
+      & \(-J_e\) of the month \\
     Policy & the rule that chooses actions
-      & a small neural network, trained by PPO & \ref{sec:method-ppo} \\
+      & a small neural network, trained by PPO \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -1816,34 +1774,29 @@ calculation are both part of the environment
 One hour of a simulated month illustrates how these terms fit together. The
 scheduler, as the agent, reads the observation: the grid data of the previous hour,
 the forecasts issued at that hour, the current workloads and queues, and other
-entries. It then selects an action. The environment converts the action into a
-schedule that satisfies every constraint, calculates each site's power, reveals the
+entries. The scheduler then selects an action. The environment converts the action into
+a schedule that satisfies every constraint, calculates each site's power, reveals the
 hour's net load, and returns the hourly reward. The next hour begins from the
 resulting queues and site power. After the final hour of the month, the episode ends
 with every queue empty, and the hourly rewards sum to the month's \emph{return}, the
 joint score with its sign reversed, \(-J_e\). Therefore, a schedule with a lower joint
 score earns a higher return.
 
-A \emph{policy} is a mapping from what the agent observes to the probabilities of
+A \emph{policy} is defined as a mapping from what the agent observes to the probabilities of
 selecting each action, and a reinforcement learning method specifies how the policy
-changes with experience \cite[Sec.~3.5]{sutton2018reinforcement}. In this study, the
-policy is a small neural network, and PPO is the method that updates it. The policy
+changes with experience \cite[Sec.~3.5]{sutton2018reinforcement}. In this study, a small
+neural network represents the policy, and PPO updates it. The policy
 changes only during training on the training months. Once training ends, the policy is
 held constant and evaluated on months not used for training.
 
-\section{Observation}
+\section{Reinforcement Learning Formulation}
+\label{sec:method-formulation}
+
+\subsection{Observation}
 \label{sec:method-observation}
 
-% [review 2026-10-21] was a paragraph repeating the list of
-% Section 4.7, and "Current arrivals are known when scheduling; realized grid
-% measurements are available only through t-1."
-% [obs-table 2026-10-22] the bullet list became Table 5.2, the scaling of each
-% entry moved here from Section 5.5.3, and the climb paragraph was reworded;
-% was: "The steepest forecast climb is the largest per-hour rise, as a share of
-% S_m, along the path from the last observed value through the four forecasts;
-% it is the only entry that Section 4.7 does not list."
-The observation is the information of Section~\ref{subsec:problem-causality},
-expressed as the 82 numbers of Table~\ref{tab:observation}, each in its own unit.
+The observation represents the information of Section~\ref{subsec:problem-causality} as
+the 82 numbers of Table~\ref{tab:observation}, each in its own unit.
 
 \begin{table}[htbp]
   \centering
@@ -1881,173 +1834,111 @@ expressed as the 82 numbers of Table~\ref{tab:observation}, each in its own unit
   \end{tabular}
 \end{table}
 
-One entry for each quantity, the \emph{steepest forecast climb}, is not listed in
-Section~\ref{subsec:problem-causality} but is derived from five entries that are. The
+Only the \emph{steepest forecast climb} is not listed in
+Section~\ref{subsec:problem-causality}, although it is derived from entries that are. The
 value observed for hour \(t-1\) and the four forecasts trace a path from hour \(t-1\) to
-hour \(t+11\), and the climb is the steepest rise along that path. It is added to
-simplify learning: the ramp term of the objective depends on how quickly net load is
-about to rise, and the climb provides this forecasted rate directly. 
+hour \(t+11\), and the climb is defined as the steepest rise along that path. This entry
+is included to simplify learning: because the ramp term of the objective depends on how
+quickly net load is about to rise, the climb provides that forecasted rate directly.
 
-The policy observes each site's total queued work and the urgency totals rather than
-the complete queue maintained by the simulator.
+The hour of day and the day of week are encoded as sine and cosine pairs, so that 23:00
+and 00:00, one hour apart, receive nearby values. The policy observes each site's total
+queued work and the urgency totals rather than the complete queue maintained by the
+simulator.
 
-\subsection{Scaling the Observation}
-\label{subsec:observation-scaling}
-
-% [raw-obs 2026-10-27] the environment no longer scales the observation; the
-% library's VecNormalize does all of it. The example table uses the statistics
-% that run 1 of fold 3 learned (July 2025 is one of fold 3's held-out months).
-The 82 numbers have very different units. Before the policy observes them, the PPO
-library rescales all 82 numbers to comparable magnitudes.
-
-The first step in a neural network policy is to multiply each input by a weight and
-add the results. Before training, the weights are small random numbers of similar
-magnitude. If the inputs retained their original units, each sum would be dominated by
-inputs in the tens of thousands, such as net load in MW, and the network would largely
-ignore inputs below one, such as the sine of the hour. Because training updates each
-weight in small steps, many steps would pass before the small inputs could contribute.
-Accordingly, the guide to the PPO library used here states that agent inputs should
-always be normalized \cite{sb3tips}.
-
-The rescaling is performed by the library's \texttt{VecNormalize}. 
-%For each of the 82 entries it keeps a
-%running average and spread over all the hours seen so far in training, and it
-%\emph{standardizes} the entry: it subtracts the average and divides by the
-%spread, the standard deviation. Any result beyond \(\pm10\) is cut back to
-%\(\pm10\). A standardized value says how far an entry is from its usual
-%level, measured in its usual variation. ISO-NE's 23,204 MW becomes 4.06,
-%because its net load was about four standard deviations above its usual
-%level. Each entry has its own average and spread, so MISO's 104,260 MW, more
-%than four times ISO-NE's, becomes a similar 3.41: both markets were well above
-%their usual level in that hour. The averages and spreads come only from the
-%hours of the training months, and they are frozen when training ends, so a
-%policy is always scored with the statistics it was trained with.
-Table~\ref{tab:observation-example} illustrates the result for several entries. The
-hour of day and the day of week are represented as sine and cosine pairs, analogous to
-the position of a clock hand, so that 23:00 and 00:00, one hour apart, also have nearby
-values.
-
-\begin{table}[htbp]
-  \centering
-  \footnotesize
-  \caption[Observation entries before and after rescaling]{Observation entries
-  for the ISO-NE site, and one for MISO, at 22:00 UTC on 29 July 2025, the
-    hour of the worked example in Appendix~\ref{subsec:problem-worked-joint}, before and after the
-  library's rescaling, with the averages and spreads that run 1 of iteration 3
-  learned from its nine training months.}
-  \label{tab:observation-example}
-  \begin{tabular}{@{}L{0.30\textwidth}L{0.19\textwidth}rL{0.30\textwidth}@{}}
-    \toprule
-    Entry & Value & Rescaled & (Value \(-\) average)/spread \\
-    \midrule
-    Net load, hour \(t-1\) & 23,204 MW & 4.06 & \((23{,}204-12{,}311)/2{,}681\) \\
-    MISO net load, hour \(t-1\) & 104,260 MW & 3.41 & \((104{,}260-61{,}259)/12{,}611\) \\
-    Net-load forecast for hour \(t\) & 23,928 MW & 4.36 & \((23{,}928-12{,}311)/2{,}666\) \\
-    Steepest net-load climb & 724 MW per hour & 0.56 & \((724-511)/377\) \\
-    Running adjusted peak & 23,714 MW & 2.26 & \((23{,}714-17{,}064)/2{,}943\) \\
-    Service workload & 2,635 work units & \(-0.09\) & \((2{,}635-2{,}662)/315\) \\
-    Site power, hour \(t-1\) & 286 MW & \(-0.26\) & \((286.3-308.9)/85.8\) \\
-    Sine of the hour of day & \(-0.50\) & \(-0.71\) & \((-0.50-0.00)/0.71\) \\
-    Hours left in the month & 57 hours & \(-1.46\) & \((57-365)/211\) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\section{Actions and the Feasibility Decoder}
+\subsection{Actions and the Feasibility Decoder}
 \label{sec:method-actions}
 
-% [actions-plain 2026-10-22] rewrote the opening in plain words; was: "PPO
-% outputs nine preferences in [-6,6]: four for service destinations, one for
-% batch release, and four for batch destinations. A decoder turns these
-% preferences into the executed schedule:" then bullets on the softmax and
-% projection, the release fraction, and the EDF queue, and "PPO learns only
-% preferences; the decoder enforces the service, deadline, and capacity
-% constraints, so the reward needs no constraint penalties."
+% [ch567 2026-11-05] the softmax and release fraction are now equations, with the
+% decoder's request symbols; the 2.718 explanation and the repeat of Section 5.1 are
+% gone, the example uses the real workloads of Section 4.4.1, and the paragraph on the
+% bound of +-6 moved to Appendix C.
 The policy does not select amounts of work directly. Instead, it outputs nine
 \emph{preferences}, each a number between \(-6\) and 6, and a fixed set of rules, the
 \emph{decoder}, converts any nine preferences into a schedule that satisfies every
-constraint. The decoder is not learned. It is identical for every policy, and the
-no-flexibility baseline also passes through it. The nine preferences serve three
-roles:
+constraint. The decoder is not learned and is identical for every policy. The nine
+preferences serve three roles:
 \begin{itemize}
-  \item Four \emph{service preferences}, one per site, indicate where the hour's
-        service should execute. A higher value requests a larger share of the fleet's
-        service. If a site's share would exceed its capacity, the decoder reallocates
-        the excess to sites with available capacity.
-  \item One \emph{release preference} indicates how much of the queued batch work to
-        execute this hour, from none of it to all of it. The decoder increases this
-        amount when work would otherwise miss its deadline, and reduces it when no
-        capacity remains after service.
-  \item Four \emph{destination preferences}, one per site, indicate where the released
-        batch work should execute, again within the capacity remaining after service.
-        The released work is always the work with the earliest deadline, regardless of
-        its origin (Section~\ref{subsec:problem-batch}).
+  \item Four \emph{service preferences} \(a^{\mathrm{svc}}_{j,t}\), one per site, request
+        where the hour's service executes.
+  \item One \emph{release preference} \(a^{\mathrm{rel}}_t\) requests how much of the
+        queued batch work executes in the hour.
+  \item Four \emph{destination preferences} \(a^{\mathrm{bat}}_{j,t}\), one per site,
+        request where the released batch work executes.
 \end{itemize}
+
+The service preferences determine the \emph{requested service work}
+\(\hat x^{\mathrm{svc}}_{j,t}\) at each site through a softmax
+\cite[Sec.~13.1]{sutton2018reinforcement}, which divides the fleet's total service
+workload among the sites:
+\begin{equation}
+  \hat x^{\mathrm{svc}}_{j,t}
+  =
+  \frac{\exp\bigl(a^{\mathrm{svc}}_{j,t}\bigr)}
+       {\sum_{j'\in\mathcal M}\exp\bigl(a^{\mathrm{svc}}_{j',t}\bigr)}
+  \sum_{m\in\mathcal M}s_{m,t}.
+  \label{eq:service-request}
+\end{equation}
+Consequently, only the differences between the four preferences matter. Equal values
+yield equal shares, a preference 1 higher than another requests approximately 2.7 times
+its share, and a preference six or more below the others requests almost nothing.
+
+The release preference determines the \emph{requested batch release} \(\hat z_t\) as a
+fraction of the queued batch work:
+\begin{equation}
+  \hat z_t
+  =
+  \frac{a^{\mathrm{rel}}_t+6}{12}
+  \sum_{i\in\mathcal M}\bigl(B_{i,t}+q_{i,t}\bigr).
+  \label{eq:release-request}
+\end{equation}
+A preference of \(-6\) requests nothing, 0 requests half of the queue, and \(+6\) requests
+the entire queue. The decoder obtains the total batch release \(z_t\) from this request,
+raising it when queued work would otherwise miss its deadline and reducing it when the
+capacity remaining after service is insufficient. The destination preferences then
+determine the \emph{requested batch work} \(\hat x^{\mathrm{bat}}_{j,t}\) at each site
+through a second softmax:
+\begin{equation}
+  \hat x^{\mathrm{bat}}_{j,t}
+  =
+  \frac{\exp\bigl(a^{\mathrm{bat}}_{j,t}\bigr)}
+       {\sum_{j'\in\mathcal M}\exp\bigl(a^{\mathrm{bat}}_{j',t}\bigr)}
+  \,z_t.
+  \label{eq:destination-request}
+\end{equation}
+If a request exceeds the capacity available at a site, the decoder caps that site and
+reallocates the excess to sites with available capacity, which yields the executed work
+\(x^{\mathrm{svc}}_{j,t}\) and \(x^{\mathrm{bat}}_{j,t}\). The released work is always the
+work with the earliest deadline, regardless of its origin
+(Section~\ref{subsec:problem-batch}).
+
 Because every set of preferences yields a schedule that satisfies the constraints, the
 policy can explore any action during training without violating one, and the reward
-requires no penalties. The policy therefore learns which of these schedules achieve
-better scores. 
+requires no penalties. The decoder never considers net load, the forecasts, or the
+objective. Consequently, the decoder only enforces feasibility, and the choice among
+feasible schedules originates from the policy.
 
-% [decoder-rl 2026-10-22] added: how a fixed decoder is used in reinforcement
-% learning, and why it does not overrule the policy.
-The decoder is part of the environment (Section~\ref{sec:method-rl}), so it does not
-overrule the policy; the policy is trained on the outcomes its preferences actually
-produce. When the policy requests more service at a site than the site can accommodate,
-the decoder fills the site and distributes the remainder across sites with available
-capacity, and the resulting schedule earns its reward like any other. During training,
-the policy learns which preferences lead to which schedules, including that a very high
-preference for one site is a simple way to operate that site at full power. The decoder
-itself never considers net load, the forecasts, or the objective. Consequently, every
-decision about which site to fill or empty, and when batch work executes, originates
-from the policy. 
-
-\subsection{One Hour as an Example}
-\label{subsec:action-example}
-
-The four service preferences are converted into shares of the fleet's total service
-through a softmax \cite[Sec.~13.1]{sutton2018reinforcement}: \(e\), approximately 2.718,
-is raised to the power of each site's preference, and each result is divided by the
-total of the four. A site whose preference is 1 higher than another's therefore
-receives approximately 2.7 times its share, so only the differences between the four
-values matter. Equal values yield equal shares, and a site six or more below the others
-receives almost nothing. The release preference \(a\) is converted to the fraction
-\((a+6)/12\) of the queued batch work. Thus, \(-6\) releases nothing beyond what deadlines
-require, 0 releases half, and \(+6\) releases the entire queue. The four destination
-preferences divide the released batch work through a second softmax.
-
-Suppose that in one hour the policy outputs
+For example, suppose that at 22:00 UTC on 29 July 2025, the hour whose service workloads
+are given in Section~\ref{subsec:problem-service}, the policy outputs
 \[
   (0.5,\;0,\;0,\;-6 \;\mid\; 3 \;\mid\; 0,\;0,\;0,\;0)
 \]
-for CAISO, MISO, SPP, and ISO-NE. The service shares are approximately 45\%, 27\%, 27\%,
-and 0.07\%, so nearly all of ISO-NE's service moves to the other three sites. The release
-fraction is \((3+6)/12=0.75\): three quarters of the queued batch work is requested,
-increased if more is due and reduced if less can be accommodated. The equal destination
-preferences divide that work evenly across the sites, within the capacity remaining after
-service. If a requested share exceeds this capacity, the decoder caps that site and
-passes the excess to the others.
+for CAISO, MISO, SPP, and ISO-NE, in that order. Equation~\eqref{eq:service-request} then
+requests 6,120, 3,712, 3,712, and 9 of the 13,553 work units of service, and nearly all of
+ISO-NE's service therefore moves to the other three sites.
+Equation~\eqref{eq:release-request} requests \((3+6)/12=0.75\) of the queued batch work, and
+the equal destination preferences divide the released work evenly across the sites, within
+the capacity remaining after service.
 
 The no-flexibility baseline can be expressed as one of these actions. Its service
-preferences are the logarithms of each site's share of the hour's service workload, so
-the softmax returns exactly those shares and each site executes its own service. Its
-release preference is \(+6\), so all queued batch work executes immediately, and its
+preferences are the logarithms of each site's share of the hour's service workload, and
+Equation~\eqref{eq:service-request} therefore returns exactly those shares. Its release
+preference is \(+6\), which executes all queued batch work immediately, and its
 destination preferences return each site's batch work to its origin.
 
-The bound of \(\pm6\) is a fixed convention rather than a tuned value. It provides exact
-endpoints of 0 and 1 for the release fraction and is wide enough for routing: a
-difference of 12 between two preferences gives one site approximately
-\(e^{12}\approx160{,}000\) times the other's share, so wider bounds would not change any
-schedule. This range departs from the guide to the PPO library, which recommends rescaling
-continuous actions to \([-1,1]\) \cite{sb3tips}; its cost is narrower early exploration.
-
-\section{Reward}
+\subsection{Reward}
 \label{sec:method-reward}
 
-% [rl-plain 2026-10-23] reworded; was: "The raw hourly reward follows the form
-% of the joint objective ... running normalized adjusted and original peaks ...
-% The peak increments sum to the month's peak impact, so the raw, undiscounted
-% episode return is sum r_t = -J_e. ... Negative ramp impacts and positive hourly
-% rewards are valid."
 In each hour, the environment returns a reward: the hour's share of the joint score of
 Equation~\eqref{eq:objective}, with its sign reversed so that a lower score earns a
 higher reward:
@@ -2057,132 +1948,167 @@ higher reward:
     ={}&-\frac{0.5}{C_R}\sum_m I_{m,t}\\
     &-\frac{0.5}{C_Q}\sum_m\left[
       \left(M_{m,t}-M_{m,t-1}\right)
-      -\left(O_{m,t}-O_{m,t-1}\right)
+      -\left(M^{\mathrm{NF}}_{m,t}-M^{\mathrm{NF}}_{m,t-1}\right)
     \right],
   \end{aligned}
   \label{eq:reward}
 \end{equation}
-where the \emph{hourly reward} \(r_t\) is the reward of hour \(t\),
-\(I_{m,t}\) is the ramp impact of Section~\ref{subsec:problem-objective}, and
-the \emph{running adjusted peak} \(M_{m,t}\) and \emph{running baseline peak}
-\(O_{m,t}\) are the highest adjusted and baseline net loads of the month so
-far, divided by \(S_m\). The first line penalizes the hour for its ramp. The second line
-penalizes it only when it sets a new monthly peak: if hour \(t\) raises the adjusted peak,
-the increase counts against it, less any increase in the baseline grid during the same
-hour. Each running peak begins in the first decision hour of the month, with its first
-increase measured from zero.
+where the \emph{hourly reward} \(r_t\) denotes the reward of hour \(t\) and
+\(I_{m,t}\) denotes the ramp impact of Equation~\eqref{eq:incremental-impact}. The
+\emph{running adjusted peak} \(M_{m,t}\) and \emph{running no-flexibility peak}
+\(M^{\mathrm{NF}}_{m,t}\) represent the highest adjusted net loads of the month so far under
+\(\mu\) and under \(\mu_{\mathrm{NF}}\), respectively, divided by \(S_m\). The first line
+penalizes the ramp of the hour. The second line applies only when the hour sets a new
+monthly peak: any increase in the running adjusted peak counts against the hour, less any
+increase in the running no-flexibility peak during the same hour. Each running peak begins
+in the first decision hour of the month, with its first increase measured from zero.
 
-Summing a month's rewards yields exactly \(-J_e\). The ramp terms sum to the month's ramp
-impact, and the increases in a running peak sum to its final value, so the peak terms sum
-to the month's peak impact. Therefore, a schedule with a lower joint score earns a higher
-total reward. An hourly reward can be positive when the fleet makes a ramp smaller than
-that of the baseline grid.
+The rewards of a month sum exactly to \(-J_e\). The ramp terms sum to the month's ramp
+impact. Because the increases in a running peak sum to its final value, the peak terms
+sum to the month's peak impact. The no-flexibility baseline earns zero reward in every
+hour. Therefore, a positive hourly reward indicates that the policy outperformed the
+baseline in that hour.
 
-\section{The PPO Algorithm}
+\section{Training with PPO}
 \label{sec:method-ppo}
 
-% [rl-plain 2026-10-23] was: "PPO handles the decoder's continuous preference
-% actions. Its Stable-Baselines3 implementation is used, with an actor-critic
-% network: the policy chooses actions, while a separate value function estimates
-% discounted training returns."
+\subsection{Algorithm}
+\label{subsec:method-algorithm}
+
+% [ch567 2026-11-05] dropped the four-step list (its library steps are now described
+% with the library calls in Appendix C) and moved the paragraph on trained behavior and
+% the noise standard deviations to Section 6.1, since those are results.
 The policy is trained using proximal policy optimization (PPO), a standard reinforcement
 learning method for continuous actions such as the nine preferences
 \cite{schulman2017ppo}. This study uses the implementation in the Stable-Baselines3 library
-\cite{raffin2021sb3}, referred to as \emph{the library} hereafter. PPO trains two networks
-simultaneously: the policy, which selects actions, and the \emph{critic}, which estimates
-the future reward that each situation typically yields. The critic is used only during
-training, to assess whether each action performed better or worse than expected
-\cite[Sec.~13.5]{sutton2018reinforcement}.
+\cite{raffin2021sb3}. PPO trains two neural networks simultaneously: the policy, which
+selects actions, and the \emph{critic}, which estimates the future reward that each
+situation typically yields. The critic is used only during training, to assess whether each
+action performed better or worse than expected \cite[Sec.~13.5]{sutton2018reinforcement}.
 
-\subsection{How Training Changes the Outputs}
-\label{sec:training-intuition}
+In each hour, the policy network receives the observation and outputs a mean for each of
+the nine preferences. During training, PPO adds Gaussian \emph{exploration noise} to each
+mean, so that the policy tries different actions and can identify those that perform
+better; any result outside \([-6,6]\) is clipped to the nearest bound. The standard deviation
+of the noise is learned separately for each preference, starting at 1. During evaluation,
+the noise is switched off. Because the outputs of an untrained network are close to zero,
+an untrained policy distributes service evenly across the four sites and requests
+approximately half of the queued batch work each hour, regardless of grid conditions.
 
-% [training-steps 2026-10-23] rewrote in plain words with the library steps;
-% was: "outputs the mean of each of the nine preferences. During training, PPO
-% adds random Gaussian noise around each mean, with a separate learned standard
-% deviation for each preference ..." and a paragraph on the 500 training cycles.
-The policy is a small neural network. In each hour, it takes the 82 numbers of the
-observation as inputs and outputs nine numbers, one for each preference. During training,
-the policy does not always produce the same output for the same situation. The library adds
-a small random amount to each of the nine numbers, so that the policy explores slightly
-different actions and can identify those that perform better; any result outside \([-6,6]\)
-is clipped to the nearest bound. The standard deviation of these random amounts is also
-learned for each preference: it starts at 1 and decreases as training converges on effective
-actions. When the policies are evaluated, the random amounts are switched off.
-
-At the start of training, the network's outputs are close to zero. The untrained policy
-therefore distributes service evenly across the four sites and releases approximately half of
-the queued batch work each hour, regardless of grid conditions, with random variation.
-
-Each policy is trained with the library in four steps, whose library calls are listed in
-Appendix~\ref{app:implementation}:
-\begin{enumerate}
-  \item Four copies of the monthly simulation are wrapped so that the library runs them
-        together and rescales their observations and rewards.
-  \item A PPO model is created with the settings of Table~\ref{tab:hyperparameters}. The
-        library's standard network is used, with two layers of 64 units each for the policy
-        and the critic, and each run passes its own seed.
-  \item The model is trained for 1,024,000 simulated hours. Within this call, the library
-        repeats one cycle 500 times. It runs the policy for 2,048 simulated hours, 512 in each
-        copy, with its random amounts. The critic's estimates are used to assess each hour's
-        action as better or worse than expected. The policy is then adjusted slightly, so that
-        actions that performed better than expected become more likely in similar situations
-        and those that performed worse become less likely. PPO limits the size of each
-        adjustment, as detailed in Appendix~\ref{subsec:ppo-details}.
-  \item The trained policy and its rescaling statistics are saved, and the policy is evaluated
-        on unseen validation months with the random amounts switched off.
-\end{enumerate}
-
-Over the 1,024,000 training hours, the nine outputs come to depend on the situation. For
-example, the trained policies move work away from ISO-NE before its evening peak and operate
-the site near full power while net load is low. The random amounts also decrease: their
-standard deviation falls from 1 to approximately 0.2 for the service preferences and to
-approximately 0.4 to 0.6 for the batch preferences.
+Training proceeds in \emph{rollouts}. In each rollout, the policy acts for 2,048 time steps
+with exploration noise. The critic's estimates are then used to assess each action as better
+or worse than expected. The policy is updated so that actions that performed better become
+more likely in similar situations and those that performed worse become less likely. PPO
+limits how far each rollout can change the policy, and
+Appendix~\ref{subsec:ppo-details} gives the update equations. A run of 1,024,000 time steps
+comprises 500 rollouts.
 
 \subsection{Normalization and Discounting}
 \label{subsec:method-normalization}
 
-% [review 2026-10-21] merged two statements that training uses normalized
-% rewards and reporting uses raw ones, and added the fixed standardization.
-% [rl-plain 2026-10-23] reworded; was: "During training, each entry is
-% standardized again, using running means and variances, and clipped to +-10
-% ... Rewards are divided by a running standard deviation of discounted returns
-% and clipped to +-10. PPO uses gamma=0.99, so training favors earlier rewards.
-% It is an approximate method for the monthly problem ..."
-Step 1 of Section~\ref{sec:training-intuition} wraps the simulation in the library's
-\texttt{VecNormalize}, which rescales the observation as described in
-Section~\ref{subsec:observation-scaling}, as the library's guide recommends for PPO on a new
-problem \cite{sb3tips}. It also divides each reward by a running measure of reward magnitude,
-again clipped at \(\pm10\), so that rewards remain in a convenient range for training. During
-evaluation, these running statistics are frozen at their end-of-training values, and every
-reported score uses the original, unscaled rewards.
+% [ch567 2026-11-05] merged with Section 5.2.1, so normalization is explained once; the
+% neural-network paragraph became one sentence, the example table moved to Appendix C,
+% and 0.99^168 is 0.18 (was misprinted 0.19).
+The 82 entries of the observation differ by several orders of magnitude: net load reaches
+tens of thousands of MW, whereas the sine of the hour remains below one. Because a neural
+network updates its parameters in small steps, large inputs would initially dominate its
+outputs, and many updates would pass before small inputs could contribute. Accordingly, the
+guide to the library states that agent inputs should always be normalized \cite{sb3tips}.
+Each entry is therefore standardized with running statistics and clipped:
+\begin{equation}
+  o=\mathrm{clip}\!\left(\frac{v-\bar v}{\sigma_v},\,-10,\,10\right),
+  \label{eq:observation-normalization}
+\end{equation}
+where \(v\) denotes an entry of the observation in its own unit, \(\bar v\) and \(\sigma_v\)
+denote the running mean and standard deviation of that entry over the training hours so far,
+and \(o\) denotes the \emph{normalized entry} that the policy receives.
 
-PPO, like most reinforcement learning methods, also \emph{discounts} future rewards: a reward
-\(k\) hours ahead counts \(0.99^k\) as much as an immediate reward (\texttt{gamma=0.99})
-\cite[Sec.~3.3]{sutton2018reinforcement}. A reward one day ahead counts 0.79 as much, one week
-ahead 0.19, and one at the end of a month almost nothing. In contrast, the joint score weights
-every hour of the month equally. Training on discounted, rescaled rewards is therefore an
-approximation of the monthly problem, and every score in this study uses the full, undiscounted
-joint score.
+PPO, like most reinforcement learning methods, also discounts future rewards. Training
+maximizes the \emph{discounted return} \(G_t\) rather than the total reward of the month:
+\begin{equation}
+  G_t=\sum_{l=0}^{T_e-1-t}\gamma^{l}\,r_{t+l},
+  \label{eq:discounted-return}
+\end{equation}
+where the \emph{discount factor} \(\gamma\) equals 0.99
+\cite[Sec.~3.3]{sutton2018reinforcement}. Consequently, a reward one day ahead counts 0.79
+as much as an immediate reward, one week ahead 0.18, and one at the end of a month almost
+nothing. In contrast, the joint score weights every hour of the month equally.
 
-\section{Training, Validation, and Test Months}
+Each reward is normalized as well, so that its magnitude remains in a range suited to
+training:
+\begin{equation}
+  \widetilde r_t=\mathrm{clip}\!\left(\frac{r_t}{\sigma_r},\,-10,\,10\right),
+  \label{eq:reward-normalization}
+\end{equation}
+where \(\widetilde r_t\) denotes the \emph{normalized reward} and \(\sigma_r\) denotes the running
+standard deviation of a discounted sum of the rewards. Training on discounted, normalized
+rewards is therefore an approximation of the monthly problem. During evaluation, the running
+statistics are frozen at their end-of-training values, and every reported result uses the
+original rewards and the undiscounted joint score.
+
+\subsection{Settings}
+\label{sec:method-training}
+
+% [ch567 2026-11-05] standard names replace the descriptive ones, the library names moved
+% to Appendix C, and the run counts and seeds moved to Section 5.4.1.
+Table~\ref{tab:hyperparameters} lists the settings. They are the default values of the
+Stable-Baselines3 library \cite{sb3ppodocs}, with two exceptions. Each rollout of 2,048 time
+steps is collected as 512 time steps from each of four parallel environments rather than
+2,048 time steps from one, and each minibatch contains 256 time steps rather than 64. The
+policy and critic networks have 19,603 trainable parameters in total. Each parallel
+environment cycles through a shuffled order of the training months before repeating them. A
+\emph{checkpoint}, which saves the policy and its normalization statistics, is recorded after
+153,600, 512,000, and 1,024,000 time steps.
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{PPO settings used in every training run.}
+  \label{tab:hyperparameters}
+  \begin{tabular}{@{}L{0.62\textwidth}r@{}}
+    \toprule
+    Setting & Value \\
+    \midrule
+    Parallel environments & 4 \\
+    Time steps per environment in each rollout & 512 \\
+    Time steps per rollout & 2,048 \\
+    Epochs per rollout & 10 \\
+    Minibatch size & 256 \\
+    Learning rate (Adam optimizer) & \(3\times10^{-4}\) \\
+    Discount factor, \(\gamma\) & 0.99 \\
+    Generalized advantage estimation parameter, \(\lambda\) & 0.95 \\
+    Clip range, \(\epsilon\) & 0.2 \\
+    Value function coefficient & 0.5 \\
+    Entropy coefficient & 0 \\
+    Maximum gradient norm & 0.5 \\
+    Hidden layers, policy and critic & 64, 64 \\
+    Initial standard deviation of the exploration noise & 1 \\
+    Total time steps per run & 1,024,000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Evaluation}
+\label{sec:method-evaluation}
+
+\subsection{Training, Validation, and Test Months}
 \label{sec:method-cv}
 
 % [wwm 2026-11-01] moved from Chapter 3 (was Section 3.6, "Cross-Validation and
 % Test Data") and rewritten, at Dr. Wang's request. A fold is a group of three
 % months; an iteration is one pass that holds out one fold.
-A policy must be evaluated on months not used for training, because a high score on its
-training months could simply indicate that it has memorized them. The data
-is organized by month because each month forms a continuous simulation
+A policy must be evaluated on months not used for training, because strong performance on
+its training months could simply indicate that it has memorized them. The data are organized
+by month because each month forms a continuous simulation
 (Section~\ref{subsec:transform-pairing}), where queued batch work carries from
 hour to hour and each electrical power ramp connects adjacent hours. Two groups
 of months are used:
 \begin{itemize}
-  \item The \emph{training and validation data} is the twelve months of 2025,
+  \item The \emph{training and validation data} are the twelve months of 2025,
         processed using the training fleet (cells \(a\)--\(d\)). All design
         choices, such as the forecast inputs, and all values computed from the
         data, such as the market demand scales, come from these months.
-  \item The \emph{test month} is May 2026, served by the test fleet (cells
+  \item The \emph{test month} is May 2026, processed using the test fleet (cells
         \(e\)--\(h\), Section~\ref{subsec:transform-mapping}). This month is
         used because it aligns with the calendar month of the Google trace and
         lies one year past the 2025 data. It is evaluated only after every
@@ -2192,14 +2118,14 @@ of months are used:
 \emph{Cross-validation} is applied to the 2025 months for two purposes. It
 estimates how well a trained policy performs on months it was not trained on,
 and it allows design choices, such as the forecast inputs, to be compared
-without using the test month. It is not used to search over the PPO settings,
-which the next section lists.
+without using the test month. It is not used to search over the PPO settings of
+Table~\ref{tab:hyperparameters}.
 
-In \(k\)-fold cross-validation, the data is divided into \(k\) equal parts, or
+In \(k\)-fold cross-validation, the data are divided into \(k\) equal parts, or
 folds. A model is trained on \(k-1\) folds and evaluated on the remaining fold.
 This process is repeated until every fold has served as the validation set once,
 and the \(k\) resulting scores are averaged. Each pass through this process is
-one \emph{iteration}. Every observation is used for validation exactly once, so
+one \emph{iteration}. Every month is used for validation exactly once; therefore,
 the performance estimate does not depend on a single validation split.
 
 Here \(k=4\), with each fold comprising three whole months. Folds are
@@ -2211,9 +2137,9 @@ Table~\ref{tab:data-splits} lists the four iterations.
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Training and evaluated months of the four cross-validation iterations
-  and of the final policies. The 2025 months are served by the fleet from cells
-  \(a\)--\(d\) and the test month by the fleet from cells \(e\)--\(h\).}
+  \caption[Training and evaluated months]{Training and evaluated months of the four cross-validation iterations
+  and of the final policies. The 2025 months use the training fleet (cells
+  \(a\)--\(d\)), and the test month uses the test fleet (cells \(e\)--\(h\)).}
   \label{tab:data-splits}
   \begin{tabular}{@{}lll@{}}
     \toprule
@@ -2233,314 +2159,241 @@ Each iteration uses only its nine training months for anything computed from the
 data: the forecast coefficients (Section~\ref{subsec:energy-forecasts}), the
 market demand scales \(S_m\) (Section~\ref{subsec:energy-market-scale}), and the
 objective references \(C_R\) and \(C_Q\)
-(Section~\ref{subsec:problem-normalization}). The market demand scales of the four
-iterations lie within 4\% of the values in Table~\ref{tab:frozen-stats}. The
-scheduler is then trained on these nine months and evaluated on the three unseen
-validation months. Three runs are used for training in each iteration, which
-leads to three distinct evaluations per month in 2025, each by a policy that was
-not trained on that month. The cross-validation estimate is the average over the
-twelve months.
+(Section~\ref{subsec:problem-normalization}). The scheduler is then trained on these
+nine months and evaluated on the three validation months. The \emph{cross-validation
+estimate} is the mean joint score over the twelve months.
 
-The validation months sit between training months. For example, iteration 1
-validates on May but trains on June. June can still look back into May: its
-warm-up hour is the last hour of May, and its forecasts in the first week use
-May's values as the yesterday and last week inputs. June cannot learn from May,
-however. No May hour is evaluated during training, and no May hour is used to fit
-the forecast model. A row of the forecast fit
-(Section~\ref{subsec:forecast-fitting}) is used only if all of its hours fall in
-training months; because one input looks back a week, this removes the validation
-months and the first week after each of them. Forecasts are still made for those
-hours. If their rows were kept, a validation month would shape the forecast model
-through the inputs that look back into it, and the estimate would no longer
-describe unseen months.
+Three runs are trained in each iteration, which yields twelve policies and three
+evaluations of every 2025 month, each by a policy not trained on that month. The runs
+differ only in their \emph{seed}, the starting number of the random-number generator,
+which determines the initial network parameters, the exploration noise, the order of the
+minibatches, and the order of the training months. Because data, constraints, and settings
+remain constant within an iteration, differences between runs reflect training randomness.
+\emph{Run 1} denotes the first run of every iteration: four policies, one per iteration,
+that together evaluate all twelve months. Runs 2 and 3 are defined in the same way.
 
-Each training run produces one policy, and the policies of the cross-validation
-serve only to produce the estimate above. Once every choice has been finalized,
-ten new policies are trained on all twelve months of 2025, and these \emph{final
-policies} are evaluated on the test month. No choice in the method is made using
-the test month, so it stays a held-out test.
+% [ch567 2026-11-05] the May/June passage repeated the rule of Section 3.4.5; only the
+% look-back that the rule does not cover stays.
+Because the validation months sit between training months, a training month can still read
+values from a validation month. For example, iteration 1 validates on May and trains on
+June, and June's warm-up hour and first-week forecast inputs use May's values. These values
+serve only as inputs: no May hour is evaluated during training, and no May hour is used to
+fit the forecast regression (Section~\ref{subsec:forecast-fitting}).
 
-The test month differs from the 2025 months in three ways: its grid
-data is a year later, its workload comes from cells \(e\)--\(h\) rather than
-\(a\)--\(d\), and its fleet is larger, 2,398 MW against 1,869 MW
-(Section~\ref{subsec:transform-mapping}). Every 2025 month replays the
-same 744-hour workload of cells \(a\)--\(d\), so cross-validation evaluates new grid months
-with a familiar workload, while the test month also introduces an unseen workload and an unseen
-fleet.
+Once every choice has been finalized, ten new policies are trained on all twelve months of
+2025, and these
+\emph{final policies} are evaluated on the test month. No choice in the method is made using
+the test month; therefore, it remains out of sample.
 
-\section{Training Setup}
-\label{sec:method-training}
+The test month differs from the 2025 months in three ways: its grid data are a year later,
+its workload comes from cells \(e\)--\(h\) rather than \(a\)--\(d\), and its fleet is larger,
+2,398 MW against 1,869 MW (Section~\ref{subsec:transform-mapping}). Because every 2025 month
+replays the same 744-hour workload of cells \(a\)--\(d\), cross-validation evaluates new grid
+months with a familiar workload, whereas the test month also introduces an unseen workload
+and an unseen fleet.
 
-The settings in Table~\ref{tab:hyperparameters} are the Stable-Baselines3 default values for
-PPO, as listed in the library's documentation \cite{sb3ppodocs}, with two exceptions: the 2,048
-hours of each training cycle are collected as 512 hours from each of four copies of the
-simulation rather than 2,048 hours from one, and each adjustment uses a group of 256 hours rather
-than 64. The networks are the library's default: a policy network and a critic network, each with
-two layers of 64 units, totaling 19,603 adjustable weights. Table~\ref{tab:hyperparameters} lists
-each setting with a descriptive name and its library name. 
+\subsection{Evaluation Protocol}
+\label{subsec:method-protocol}
 
-\begin{table}[htbp]
-  \centering
-  \footnotesize
-  \caption{PPO settings used in every training run, with the name each has
-  in the library.}
-  \label{tab:hyperparameters}
-  \begin{tabular}{@{}L{0.50\textwidth}L{0.24\textwidth}r@{}}
-    \toprule
-    Setting & Library name & Value \\
-    \midrule
-    Copies of the simulation run together & \texttt{DummyVecEnv} & 4 \\
-    Hours from each copy per training cycle & \texttt{n\_steps} & 512 \\
-    Hours per training cycle & --- & 2,048 \\
-    Passes over each cycle's hours & \texttt{n\_epochs} & 10 \\
-    Hours in each adjustment group & \texttt{batch\_size} & 256 \\
-    Size of each adjustment step (Adam method) & \texttt{learning\_rate} & \(3\times10^{-4}\) \\
-    Discount per hour, \(\gamma\) & \texttt{gamma} & 0.99 \\
-    Blending in the advantage estimate, \(\lambda\) & \texttt{gae\_lambda} & 0.95 \\
-    Limit on change per cycle, \(\epsilon\) & \texttt{clip\_range} & 0.2 \\
-    Weight of the critic's error & \texttt{vf\_coef} & 0.5 \\
-    Extra reward for random variation & \texttt{ent\_coef} & 0 \\
-    Largest size of a single adjustment & \texttt{max\_grad\_norm} & 0.5 \\
-    Network layers, policy and critic & \texttt{net\_arch} & 64, 64 \\
-    Starting standard deviation of the random amounts & \texttt{log\_std\_init=0}, its log & 1 \\
-    Training hours per run & \texttt{total\_timesteps} & 1,024,000 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% [ch567 2026-11-05] the violations sentence moved to Section 6.2.1; cut the orphan
+% "The forecast lead times were set earlier in development." and the pointer to Chapter 6.
+Each checkpoint is evaluated on each of its iteration's three validation months, one
+continuous episode per month of 672 to 744 hours, with the exploration noise switched off and
+the normalization statistics frozen. The final policies are evaluated in the same way on the
+test month.
 
-In each iteration, each run trains a new policy on the iteration's nine training months. Each environment cycles through a shuffled order of these months
-before repeating them. 
+The joint score of Equation~\eqref{eq:objective} is reported for every evaluated month and
+run, together with its weighted ramp and peak parts. Two measures are reported for each
+market. The first is the change in the total squared one-hour ramp relative to the
+\emph{baseline grid}, the grid without the fleet. The second is the change in the monthly
+peak, in MW, relative to the no-flexibility baseline. Negative values of both measures
+denote reductions.
 
-% [runs 2026-10-23] named runs instead of seed numbers; was: "Every fold uses
-% seeds 4101--4103, so the cross-validation trains twelve policies; the final
-% campaign trains ten more, with seeds 4101--4110, on all twelve months. A seed
-% controls network initialization, action sampling, minibatch order, and the
-% order of training months."
-Each iteration trains three runs, so the cross-validation trains twelve policies;
-the final campaign trains ten more on all twelve months. The runs differ only in their
-\emph{seed}, the starting number of the random-number generator. The seed determines the
-network's initial weights, the random trial actions, the order of the adjustment groups, and the
-order of training months, and recording it allows a run to be repeated. Run 1 of the
-cross-validation denotes the first run of every iteration: four policies, one per iteration, that
-together evaluate all twelve months. Data, constraints, and settings remain constant within an
-iteration, so differences between runs reflect training randomness, and differences between
-iterations additionally reflect which months were held out.
-Appendix~\ref{app:implementation} lists the seed of each run.
+Percentage reductions relative to the no-flexibility baseline are also reported for three
+quantities: total squared normalized ramps, the sum of the markets' normalized peaks, and the
+\emph{fleet-added peak}. The fleet-added peak is defined as the amount by which the fleet
+raises each market's adjusted peak above its baseline peak, divided by \(S_m\) and summed over
+the markets. Each percentage divides the reduction by the value under the no-flexibility
+baseline.
 
-\section{Evaluation Protocol}
-\label{sec:method-evaluation}
-
-Each saved policy is evaluated on each of its iteration's three validation months, one
-continuous episode per month of 672 to 744 hours, with the random amounts
-switched off (Section~\ref{sec:training-intuition}) and the rescaling of
-Section~\ref{subsec:method-normalization} frozen.
-
-The improvement of Equation~\eqref{eq:improvement} is reported for every
-held-out month and run. The cross-validation estimate for a run is its
-mean improvement over the twelve held-out months, one per 2025 month; the spread of these
-means across runs reflects training randomness. Market-level results report squared-ramp
-reductions relative to the baseline grid and peak changes in MW relative to the no-flexibility
-fleet. These references
-are labeled separately in the figures and tables.
-
-Percentage reductions relative to no flexibility are also reported for total squared normalized
-ramps, the sum of the markets' normalized peaks, and the fleet's added peak impact. Each percentage
-divides the reduction by the corresponding no-flexibility value. Because the joint score can be
-negative, its improvement is reported as a difference rather than a percentage.
-
-All 36 evaluations were completed with no service, deadline, or capacity violation.
-
-The forecast lead times were set earlier in development.
-Chapter~\ref{chap:results} reports the cross-validation and then the test month.
-The test score is the final measure of the scheduler; because it covers only one month, the twelve
-validation months indicate how much the result varies from month to month.
+The test score represents the final measure of the scheduler. Because it covers only one month, the
+twelve validation months indicate how much the result varies from month to month.
 
 \chapter{RESULTS}
 \label{chap:results}
 
-Sections~\ref{sec:results-training}--\ref{sec:results-behavior} report the
-cross-validation over the twelve months of 2025, and
-Section~\ref{sec:results-test} reports the test month.
+% [ch567 2026-11-05] cross-validation and the test month now have matching subsections.
+% The opening no longer lists section numbers.
+This chapter reports the training behavior of the policies, their cross-validation over the
+twelve months of 2025, and their evaluation on the test month.
 
 \section{Training Behavior}
 \label{sec:results-training}
 
 Figure~\ref{fig:learning} illustrates the return of each completed training month for every
-iteration and run. All twelve runs exceed their iteration's average no-flexibility return within
-approximately 39,000 interactions, reach 0.0098 to 0.0116 by 400,000,
-and end between 0.0134 and 0.0149. Iteration 4, which holds out April, August,
-and December, ends slightly lower than the others. Within an iteration, the three runs are nearly indistinguishable.
+iteration and run. All twelve runs exceed the no-flexibility baseline's return of zero within
+approximately 37,000 time steps, reach 0.0156 to 0.0173 by 400,000 time steps, and end between
+0.0190 and 0.0203. Within an
+iteration, the three runs are nearly indistinguishable. The ten final policies, trained on all
+twelve months, end between 0.0182 and 0.0199, close to the cross-validation
+runs. As training converges, the standard deviation of the exploration noise falls from 1 to
+approximately 0.2 for the service preferences and to approximately 0.3 to 0.7 for the batch
+preferences.
 
-\begin{figure}[!t]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{../docs/figures/ppo_cv/learning_curves.pdf}
-  \caption{Return of each completed training month (\(-J_e\), higher is
-  better) for each iteration, averaged over the last 10 training cycles. The gray line is the
-  no-flexibility baseline's return averaged over the iteration's nine training
-  months, \(-0.00502\) to \(-0.00492\).}
+  \caption[Return of each completed training month]{Return of each completed training month (\(-J_e\), higher is
+  better) for each iteration, averaged over the last 10 rollouts. The gray line is the
+  no-flexibility baseline's return, zero.}
   \label{fig:learning}
 \end{figure}
 
-\section{Improvement over the No-Flexibility Baseline}
-\label{sec:results-may}
+\section{Cross-Validation}
+\label{sec:results-cv}
 
-Every policy outperforms the no-flexibility baseline in every held-out month
-(Figure~\ref{fig:months} and Table~\ref{tab:months}). The cross-validation estimate, the mean
-across the twelve months, is 0.0182 (0.0181 to 0.0185
+\subsection{Joint Score}
+\label{subsec:results-cv-score}
+
+% [ch567 2026-11-05] dropped the month figure (docs/figures/ppo_cv/cv_months.pdf), which
+% plots the rows of the table below.
+Every policy outperforms the no-flexibility baseline in every validation month
+(Table~\ref{tab:months}), and none of the 36 evaluations has a service, deadline, or capacity
+violation. The cross-validation estimate is \(-0.0188\) (\(-0.0190\) to \(-0.0187\)
 across runs).
-% [review 2026-10-21] cut three sentences read off Table 6.1: baseline J_e
-% 0.0047-0.0053 and policies -0.0163 to -0.0075; largest in March and October
-% (about 0.020), smallest in December (0.0133); seeds within 0.0020.
-
-\begin{figure}[!t]
-  \centering
-  \includegraphics[width=\textwidth]{../docs/figures/ppo_cv/cv_months.pdf}
-  \caption{Improvement \(J_e(\mu_{\mathrm{NF}})-J_e(\mu)\) in each 2025 month,
-  evaluated by the policies of the iteration that held it out, at the end of
-  training.}
-  \label{fig:months}
-\end{figure}
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{No-flexibility baseline score and improvement in each held-out month, for the
-  policies of the iteration that held it out, at the end of training. The range
-  spans the three runs.}
+  \caption[Joint score in each validation month]{Joint score in each validation month at the end of training. The range spans the
+  three runs of the iteration that validates on that month. The joint score of the
+  no-flexibility baseline is zero in every month.}
   \label{tab:months}
-  \begin{tabular}{@{}lcrrr@{}}
+  \begin{tabular}{@{}lcrr@{}}
     \toprule
-    Month (2025) & Iteration & \(J_e(\mu_{\mathrm{NF}})\) & Mean improvement & Range over runs \\
+    Month (2025) & Iteration & Mean \(J_e(\mu)\) & Range over runs \\
     \midrule
-    January   & 1 & 0.00485 & 0.0178 & 0.0177--0.0179 \\
-    February  & 2 & 0.00505 & 0.0168 & 0.0166--0.0169 \\
-    March     & 3 & 0.00475 & 0.0223 & 0.0220--0.0226 \\
-    April     & 4 & 0.00481 & 0.0195 & 0.0192--0.0198 \\
-    May       & 1 & 0.00507 & 0.0174 & 0.0168--0.0177 \\
-    June      & 2 & 0.00539 & 0.0176 & 0.0172--0.0179 \\
-    July      & 3 & 0.00523 & 0.0184 & 0.0182--0.0185 \\
-    August    & 4 & 0.00486 & 0.0163 & 0.0155--0.0171 \\
-    September & 1 & 0.00480 & 0.0196 & 0.0183--0.0204 \\
-    October   & 2 & 0.00468 & 0.0227 & 0.0226--0.0228 \\
-    November  & 3 & 0.00496 & 0.0158 & 0.0154--0.0164 \\
-    December  & 4 & 0.00511 & 0.0144 & 0.0142--0.0147 \\
+    January   & 1 & \(-0.0182\) & \(-0.0186\) to \(-0.0179\) \\
+    February  & 2 & \(-0.0167\) & \(-0.0172\) to \(-0.0162\) \\
+    March     & 3 & \(-0.0237\) & \(-0.0240\) to \(-0.0233\) \\
+    April     & 4 & \(-0.0205\) & \(-0.0208\) to \(-0.0200\) \\
+    May       & 1 & \(-0.0181\) & \(-0.0186\) to \(-0.0174\) \\
+    June      & 2 & \(-0.0182\) & \(-0.0185\) to \(-0.0178\) \\
+    July      & 3 & \(-0.0185\) & \(-0.0195\) to \(-0.0178\) \\
+    August    & 4 & \(-0.0177\) & \(-0.0181\) to \(-0.0169\) \\
+    September & 1 & \(-0.0196\) & \(-0.0205\) to \(-0.0189\) \\
+    October   & 2 & \(-0.0234\) & \(-0.0237\) to \(-0.0231\) \\
+    November  & 3 & \(-0.0168\) & \(-0.0172\) to \(-0.0162\) \\
+    December  & 4 & \(-0.0147\) & \(-0.0157\) to \(-0.0141\) \\
     \midrule
-    All twelve &   &         & 0.0182 & 0.0181--0.0185 \\
+    All twelve &   & \(-0.0188\) & \(-0.0190\) to \(-0.0187\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The ramp part accounts for 92\% of the improvement. The peak part is positive in
-all 36 month--run pairs. Table~\ref{tab:checkpoints} indicates that approximately three quarters of both parts are already
-achieved at the first checkpoint, 153,600 interactions.
+The ramp part accounts for 92\% of the joint score, and the peak part is negative in
+all 36 month--run pairs. Table~\ref{tab:checkpoints} indicates that approximately
+78\% of the final joint score is already achieved at the first checkpoint, 153,600 time steps.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Mean improvement over the twelve held-out months by checkpoint,
-  and the split of the final improvement into its weighted ramp and peak
-  parts.}
+  \caption[Mean joint score at each checkpoint]{Mean joint score over the twelve validation months at each checkpoint, and the
+  split of the final score into its weighted ramp and peak parts.}
   \label{tab:checkpoints}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
     & Run 1 & Run 2 & Run 3 \\
     \midrule
-    153,600 interactions   & 0.0137 & 0.0141 & 0.0137 \\
-    512,000 interactions   & 0.0175 & 0.0173 & 0.0167 \\
-    1,024,000 interactions & 0.0185 & 0.0181 & 0.0181 \\
+    153,600 time steps   & \(-0.0143\) & \(-0.0151\) & \(-0.0144\) \\
+    512,000 time steps   & \(-0.0180\) & \(-0.0177\) & \(-0.0175\) \\
+    1,024,000 time steps & \(-0.0189\) & \(-0.0190\) & \(-0.0187\) \\
     \midrule
-    Ramp part              & 0.0170 & 0.0167 & 0.0165 \\
-    Peak part              & 0.0015 & 0.0014 & 0.0015 \\
+    Ramp part            & \(-0.0174\) & \(-0.0175\) & \(-0.0171\) \\
+    Peak part            & \(-0.0015\) & \(-0.0015\) & \(-0.0015\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-% [review 2026-10-21] dropped the checkpoint figure
-% (docs/figures/ppo_cv/checkpoint_improvement.pdf), which plots the first
-% three rows of Table 6.2.
-
-Relative to no flexibility, the policies reduce total squared normalized ramps
-by 3.4\% on average (2.4\% to 4.4\% across months) and the sum of the
-markets' normalized peaks by 0.30\% (Table~\ref{tab:nf-percentages}). The peak reduction removes
-approximately 29\% of the fleet's added peak impact,
-\(\sum_m\Phi_{m,e}\).
+Relative to the no-flexibility baseline, the policies reduce total squared normalized ramps by
+3.6\% on average (2.5\% to 4.4\% across months) and the sum of the
+markets' normalized peaks by 0.30\% (Table~\ref{tab:nf-percentages}). The peak reduction
+removes approximately 29\% of the fleet-added peak.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Mean reductions from no flexibility over the twelve held-out
-  months (\%), for the policies at the end of training. Each peak is normalized by its
-  market's scale before summing.}
+  \caption[Mean reductions relative to the no-flexibility baseline]{Mean reductions relative to the no-flexibility baseline over the twelve validation
+  months (\%), at the end of training. Each peak is normalized by its market demand scale
+  before summing.}
   \label{tab:nf-percentages}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
     Quantity & Run 1 & Run 2 & Run 3 \\
     \midrule
-    Total squared ramps & 3.49 & 3.42 & 3.39 \\
-    Total market peaks & 0.30 & 0.29 & 0.31 \\
-    Fleet-added peak impact & 28.8 & 28.1 & 30.2 \\
+    Total squared ramps & 3.56 & 3.60 & 3.51 \\
+    Total market peaks & 0.30 & 0.30 & 0.31 \\
+    Fleet-added peak & 29.0 & 28.5 & 30.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\section{Results by Market}
-\label{sec:results-regions}
+\subsection{Results by Market}
+\label{subsec:results-cv-markets}
 
-Table~\ref{tab:regions} lists each market's mean across the twelve months.
-ISO-NE, where the site's idle-to-peak power range is largest relative to the median hourly ramp
-(Table~\ref{tab:native-ramp-scale}), gains the most: its squared-ramp total falls 7\% to
-12\% below the baseline grid's, and its monthly peak falls approximately 115 MW below
-the no-flexibility baseline on average. CAISO reduces its ramps by 1.7\% to 3.5\% and its peak in
-every month. SPP achieves smaller ramp reductions but reduces its peak by approximately 90 MW on
-average. MISO, where the site's power range is smallest relative to the median hourly ramp, changes
-little: its squared ramps move by less than 0.8\%, and its peak rises in 19
-of the 36 month--run pairs.
+Table~\ref{tab:regions} lists each market's mean across the twelve months. ISO-NE, where the
+site's idle-to-peak power range is largest relative to the median hourly ramp
+(Table~\ref{tab:native-ramp-scale}), benefits the most. The total squared ramp falls
+8\% to 12\% below that of the baseline grid, and the monthly peak falls
+approximately 113 MW below the no-flexibility baseline on average. CAISO's ramps fall by
+1.9\% to 3.5\%, and its peak falls in every month. SPP's ramp
+reductions are smaller, 0.7\% to 2.0\%, but its peak falls by approximately 91 MW on average. In
+contrast, MISO, where the site's power range is smallest relative to the median hourly ramp,
+changes little: its squared ramps move by less than 0.5\%, and its peak rises in
+17 of the 36 month--run pairs.
 
-% [review 2026-10-21] dropped the results-by-market figure
-% (docs/figures/ppo_cv/regional_results.pdf), which shows the numbers of the
-% table below.
+% [ch567 2026-11-05] "Ramp cut" became "Ramp change", so that negative means a reduction
+% in every column; fill these columns with negative numbers where ramps fall.
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Results by market for the policies at the end of training, averaged over the twelve
-  held-out months: the cut in the squared one-hour ramp relative to the
-  baseline grid, and the change in the monthly peak relative to the
-  no-flexibility baseline; negative is a reduction.}
+  \caption[Cross-validation results by market]{Results by market at the end of training, averaged over the twelve validation months:
+  the change in the total squared one-hour ramp relative to the baseline grid, and the change in
+  the monthly peak relative to the no-flexibility baseline. Negative values denote reductions.}
   \label{tab:regions}
   \begin{tabular}{@{}lrrrrrr@{}}
     \toprule
-    & \multicolumn{3}{c}{Ramp cut (\%)}
+    & \multicolumn{3}{c}{Ramp change (\%)}
     & \multicolumn{3}{c}{Peak change (MW)} \\
     \cmidrule(lr){2-4}\cmidrule(l){5-7}
     Market & Run 1 & Run 2 & Run 3 & Run 1 & Run 2 & Run 3 \\
     \midrule
-    CAISO          & 2.6 & 2.6 & 2.6 & \(-86\) & \(-90\) & \(-88\) \\
-    MISO           & \(-0.3\) & \(-0.1\) & 0.0 & \(+7\) & \(-3\) & \(+22\) \\
-    SPP            & 1.6 & 1.4 & 1.2 & \(-88\) & \(-78\) & \(-99\) \\
-    ISO-NE         & 10.3 & 9.7 & 9.8 & \(-115\) & \(-110\) & \(-121\) \\
+    CAISO          & \(-2.7\) & \(-2.8\) & \(-2.7\) & \(-93\) & \(-89\) & \(-92\) \\
+    MISO           & \(+0.3\) & \(+0.1\) & 0.0 & \(+29\) & \(+8\) & 0 \\
+    SPP            & \(-1.8\) & \(-1.4\) & \(-1.1\) & \(-96\) & \(-87\) & \(-91\) \\
+    ISO-NE         & \(-10.3\) & \(-10.3\) & \(-10.0\) & \(-113\) & \(-111\) & \(-116\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\section{How the Policy Achieves the Improvement}
-\label{sec:results-behavior}
+\subsection{Policy Behavior}
+\label{subsec:results-cv-behavior}
 
-The policies primarily route service across sites: 27\% to 31\% of each month's service work
-changes sites. Batch work waits 0.9 to 1.4 hours on average within its 24-hour window, and the
-decoder adjusts the requested schedule in 69\% to 89\% of hours to satisfy capacity and deadline
-requirements.
+The policies primarily route service across sites: 28\% to 32\% of each
+month's service work changes sites. Batch work waits 0.8 to 1.4 hours on
+average within its 24-hour window, and the decoder adjusts the requested schedule in
+70\% to 85\% of hours to satisfy capacity and deadline requirements.
 
 Figure~\ref{fig:isone} illustrates ISO-NE over three days around its May peak hour, under the
 iteration-1 policy of run 2. Under the no-flexibility baseline, site power remains between 267 and
-306 MW. The policy operates the site near full power, approximately 395 MW, while net load is low
-and reduces it as net load ramps up to its evening peak. At the peak hour,
-it draws 156 MW, 140 MW less than the
-no-flexibility baseline.
+306 MW. In contrast, the policy operates the site near full power, approximately 395 MW,
+while net load is low and reduces it as net load ramps up to its evening peak. Consequently, at the
+peak hour, the site draws 157 MW, 139 MW less than under the no-flexibility baseline.
 
-\begin{figure}[!t]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{../docs/figures/ppo_cv/isone_peak_window.pdf}
-  \caption{ISO-NE from 15 to 18 May 2025. Top: baseline net load. Bottom:
+  \caption[ISO-NE around its May 2025 peak hour]{ISO-NE from 15 to 18 May 2025. Top: baseline net load. Bottom:
   site power under the no-flexibility baseline and the iteration-1 policy of run
   2. The vertical line marks the no-flexibility baseline's monthly peak hour, 16 May
   23:00 UTC.}
@@ -2550,248 +2403,234 @@ no-flexibility baseline.
 \section{Test Month}
 \label{sec:results-test}
 
+\subsection{Joint Score}
+\label{subsec:results-test-score}
+
 % [test 2026-10-21] new section: the ten-seed final campaign on May 2026,
 % numbers from docs/figures/ppo_test/test_month.json.
-The ten final policies, trained on all twelve months of 2025, were evaluated on May 2026, the test
-month, using the test fleet of cells \(e\)--\(h\). Every policy outperforms the no-flexibility
-baseline (Table~\ref{tab:test-seeds}). The mean improvement is 0.0155, ranging from 0.0134 to 0.0181
-across policies, compared with a no-flexibility baseline score of \(J_e=0.0054\). The cross-validation
-estimate was 0.0182, and May 2025 scored 0.0174. The test month has different grid data, a different
-workload, and a larger fleet, and the larger fleet places the policies' site inputs outside their
-training range, as shown below.
+The ten final policies were evaluated on May 2026 using the test fleet of cells \(e\)--\(h\). Every
+policy outperforms the no-flexibility baseline (Table~\ref{tab:test-seeds}), with no service,
+deadline, or capacity violation. The mean joint score is \(-0.0168\), ranging from \(-0.0191\)
+to \(-0.0142\) across policies. The cross-validation estimate was \(-0.0188\), and the mean
+joint score of May 2025 was \(-0.0181\).
 
-As in cross-validation, the ramp part accounts for most of the improvement, 91\%, and the peak part
-is positive for every policy. Relative to no flexibility, the policies reduce total squared normalized
-ramps by 3.0\% and the sum of the markets' normalized peaks by 0.28\%, which removes approximately
-22\% of the fleet's added peak impact. No policy left service unserved, missed a deadline,
-or exceeded a site's capacity.
+As in cross-validation, the ramp part accounts for most of the joint score, 92\%, and the
+peak part is negative for every policy. Relative to the no-flexibility baseline, the policies reduce
+total squared normalized ramps by 3.3\% and the sum of the markets' normalized peaks by
+0.28\%, which removes approximately 22\% of the fleet-added peak.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Test-month improvement of each final policy over no flexibility,
-  with its weighted ramp and peak parts. The no-flexibility baseline scores
-  \(J_e=0.00538\).}
+  \caption[Test-month joint score of each final policy]{Test-month joint score of each final policy, with its weighted ramp and
+  peak parts. The joint score of the no-flexibility baseline is zero.}
   \label{tab:test-seeds}
   \begin{tabular}{@{}lrrr@{}}
     \toprule
-    Policy & Improvement & Ramp part & Peak part \\
+    Policy & \(J_e(\mu)\) & Ramp part & Peak part \\
     \midrule
-    1 & 0.0151 & 0.0138 & 0.0013 \\
-    2 & 0.0134 & 0.0120 & 0.0014 \\
-    3 & 0.0181 & 0.0167 & 0.0014 \\
-    4 & 0.0154 & 0.0143 & 0.0011 \\
-    5 & 0.0141 & 0.0132 & 0.0010 \\
-    6 & 0.0159 & 0.0143 & 0.0016 \\
-    7 & 0.0141 & 0.0127 & 0.0014 \\
-    8 & 0.0164 & 0.0149 & 0.0015 \\
-    9 & 0.0162 & 0.0149 & 0.0013 \\
-    10 & 0.0165 & 0.0150 & 0.0015 \\
+    1 & \(-0.0160\) & \(-0.0143\) & \(-0.0017\) \\
+    2 & \(-0.0176\) & \(-0.0164\) & \(-0.0012\) \\
+    3 & \(-0.0169\) & \(-0.0158\) & \(-0.0012\) \\
+    4 & \(-0.0170\) & \(-0.0159\) & \(-0.0011\) \\
+    5 & \(-0.0165\) & \(-0.0151\) & \(-0.0014\) \\
+    6 & \(-0.0180\) & \(-0.0163\) & \(-0.0017\) \\
+    7 & \(-0.0160\) & \(-0.0147\) & \(-0.0013\) \\
+    8 & \(-0.0163\) & \(-0.0151\) & \(-0.0013\) \\
+    9 & \(-0.0142\) & \(-0.0132\) & \(-0.0010\) \\
+    10 & \(-0.0191\) & \(-0.0174\) & \(-0.0016\) \\
     \midrule
-    Mean & 0.0155 & 0.0142 & 0.0014 \\
+    Mean & \(-0.0168\) & \(-0.0154\) & \(-0.0014\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Table~\ref{tab:test-markets} lists each market's results. ISO-NE again gains the most: its
-squared-ramp total falls 7.7\% below the baseline grid's on
-average, and its monthly peak falls 121 MW below the no-flexibility baseline. CAISO's test
-site, built from cell \(e\), has approximately 1.6 times the idle-to-peak power range of its training site
-(Table~\ref{tab:native-ramp-scale}); it reduces CAISO's squared ramps by 3.0\% and its peak by 107 MW.
-SPP gains little: its ramps fall by 1.1\%, and its peak falls by 7 MW on average, although it rises for
-two of the ten policies. MISO again changes little: its squared ramps move by less than 0.7\%, and its peak rises for
-five of the ten policies.
+\subsection{Results by Market}
+\label{subsec:results-test-markets}
+
+Table~\ref{tab:test-markets} lists each market's results. ISO-NE again benefits the most relative to
+its market demand scale: its total squared ramp falls 8.1\% below that of the baseline grid on
+average, and its monthly peak falls 109 MW below the no-flexibility baseline. CAISO's test site, built from cell \(e\), has
+approximately 1.6 times the idle-to-peak power range of its training site
+(Table~\ref{tab:native-ramp-scale}), and CAISO's squared ramps fall by 3.3\% and its peak by
+115 MW. In contrast, SPP benefits little: its ramps fall by 1.0\%, and its peak falls by 6
+MW on average, although it rises for three of the ten policies. MISO again changes little: its
+squared ramps move by less than 0.7\%, and its peak rises for three of the ten policies.
 
 \begin{table}[htbp]
   \centering
   \footnotesize
-  \caption{Test-month results by market, averaged over the ten final
-  policies, with the range across policies: the cut in the squared one-hour ramp
-  relative to the baseline grid, and the change in the monthly peak relative
-  to the no-flexibility baseline; negative is a reduction.}
+  \caption[Test-month results by market]{Test-month results by market, averaged over the ten final policies, with the range across
+  policies: the change in the total squared one-hour ramp relative to the baseline grid, and the
+  change in the monthly peak relative to the no-flexibility baseline. Negative values denote
+  reductions.}
   \label{tab:test-markets}
   \begin{tabular}{@{}lrrrr@{}}
     \toprule
-    & \multicolumn{2}{c}{Ramp cut (\%)} & \multicolumn{2}{c}{Peak change (MW)} \\
+    & \multicolumn{2}{c}{Ramp change (\%)} & \multicolumn{2}{c}{Peak change (MW)} \\
     \cmidrule(lr){2-3}\cmidrule(l){4-5}
     Market & Mean & Range & Mean & Range \\
     \midrule
-    CAISO          & 3.0 & 2.5 to 3.5 & \(-107\) & \(-125\) to \(-67\) \\
-    MISO           & \(-0.2\) & \(-0.6\) to 0.3 & \(+17\) & \(-115\) to \(+150\) \\
-    SPP            & 1.1 & 0.1 to 1.8 & \(-7\) & \(-53\) to \(+135\) \\
-    ISO-NE         & 7.7 & 6.0 to 9.4 & \(-121\) & \(-145\) to \(-84\) \\
+    CAISO          & \(-3.3\) & \(-3.8\) to \(-2.8\) & \(-115\) & \(-123\) to \(-95\) \\
+    MISO           & \(+0.2\) & \(-0.1\) to \(+0.6\) & \(-28\) & \(-117\) to \(+73\) \\
+    SPP            & \(-1.0\) & \(-1.7\) to \(-0.3\) & \(-6\) & \(-85\) to \(+135\) \\
+    ISO-NE         & \(-8.1\) & \(-10.3\) to \(-6.2\) & \(-109\) & \(-163\) to \(-60\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
+\subsection{Policy Behavior}
+\label{subsec:results-test-behavior}
+
+The policies behave similarly to those in cross-validation, though over a wider range. In the
+test month, 25\% to 33\% of the service work changes sites, batch work waits
+0.6 to 1.2 hours on average, and the decoder adjusts the requested schedule in
+61\% to 85\% of hours.
+
+\subsection{Site Inputs}
+\label{subsec:results-test-inputs}
+
 % [raw-obs 2026-10-27] added: the test fleet's site inputs fall outside the
 % training range; numbers from site_arrival_range in test_month.json.
-One difference between the test month and cross-validation appears in the site inputs. The test
-fleet's sites are larger than the training fleet's (Table~\ref{tab:active-market-map}), and the
-observation expresses each site's workloads, queued work, and power in their own units
-(Section~\ref{sec:method-observation}). Consequently, these entries in the test month exceed any that
-the policies encountered in training. After the library's rescaling, the test sites' service and
-batch workloads lie on average 2.7 standard deviations from their training averages, compared with
-0.8 in a training month, and 38\% of them lie more than 3 standard deviations away, compared with
-almost none in training. The grid entries remain within their usual range. The policies are therefore
-acting on site inputs outside the range they learned from. Cross-validation cannot reveal this,
+The test month differs from cross-validation in its site inputs. The test fleet's sites are larger
+than the training fleet's (Table~\ref{tab:active-market-map}), and the observation expresses each
+site's workloads, queued work, and power in their own units
+(Section~\ref{sec:method-observation}). Consequently, many of these entries in the test month exceed those that
+the policies encountered in training. After normalization, the test sites' service and batch workloads
+lie on average 2.7 standard deviations from their training means, compared with 0.8
+in a training month. In addition, 38\% of them lie more than 3 standard deviations away,
+compared with almost none in training. The grid entries remain within their usual range. The policies are therefore
+acting on site inputs outside the range they learned from. Cross-validation cannot reveal this effect,
 because every 2025 month uses the same fleet.
-
-The policies behave similarly to those in cross-validation, though with a wider spread: 24\% to 33\%
-of the month's service work changes sites, batch work waits 0.5 to 1.0 hours on average, and the
-decoder adjusts the requested schedule in 47\% to 89\% of hours. Each final policy was trained for
-1,024,000 interactions in 48 to 49 minutes, and its training return, averaged over its last 10
-training cycles, ends between 0.0123 and 0.0147, close to the cross-validation
-runs' 0.0134 to 0.0149.
 
 \chapter{DISCUSSION AND CONCLUSIONS}
 \label{chap:discussion}
 
-\section{Summary of Findings}
+% [ch567 2026-11-05] the Summary and Interpretation sections merged into one Discussion,
+% in prose; limitations grouped by data, model, and method; 7.1, 7.2, and 7.5 repeated the
+% same results.
+This chapter interprets the results, states the limitations of the study, identifies future
+work, and presents the conclusions.
+
+\section{Discussion}
 \label{sec:discussion-findings}
 
-% [ch7 2026-10-21] wrote 7.1, 7.2, 7.4, and 7.5 from the cross-validation and
-% test-month results, and added the last two limitations in 7.3.
-The research question in Section~\ref{sec:intro-questions} asked how much a causal scheduler can
-smooth each market's one-hour net-load ramps and reduce its monthly peak by deferring and routing work
-within the service, deadline, and capacity limits. For the fleet modeled here, the answer is an
-improvement that appears in every evaluated month but is modest in size:
-\begin{itemize}
-  \item The trained policies outperform no flexibility in every month. The
-        cross-validation estimate over the twelve months of 2025 is 0.0182,
-        and the ten final policies score 0.0155 on the May 2026 test month, with every
-        policy between 0.0134 and 0.0181.
-  \item Ramps account for 92\% of the improvement in cross-validation and 91\% in the
-        test month. Total squared normalized ramps fall by 3.4\% in cross-validation and
-        3.0\% in the test month. The markets' summed peaks fall by approximately 0.3\%, which
-        removes approximately 29\% of the fleet's added peak impact in
-        cross-validation and 22\% in the test month.
-  \item The policies act primarily by routing service: 24\% to 33\% of each
-        month's service work changes sites, while batch work waits only 0.5 to
-        1.4 hours on average within its 24-hour window. No run separates the
-        two levers, so this describes what the policies do, not which lever
-        produces the improvement.
-  \item The largest and smallest gains correspond to the fleet's size relative to each
-        market's hourly net load ramps (Table~\ref{tab:native-ramp-scale}). ISO-NE, where a
-        site's idle-to-peak power range is approximately 60\% of the median hourly ramp,
-        gains the most: its squared ramps
-        fall by 8\% to 10\%, and its peak ends 110 to 120 MW below the
-        no-flexibility baseline. MISO, where a site's power range is 13\% to 23\% of the median
-        hourly ramp, changes little, and its peak rises approximately as often as it falls.
-        CAISO and SPP lie between. CAISO's test site has approximately 1.6 times the power
-        range of its training site, and CAISO's gains are larger in the test month:
-        a 3.0\% ramp cut against 2.6\%, and 107 MW off the peak against 88 MW.
-  \item The test month scores below the cross-validation estimate. Its sites
-        are larger than the training sites, and because the observation gives
-        site quantities in their own units, the policies see site inputs
-        outside their training range (Section~\ref{sec:results-test}).
-\end{itemize}
+Section~\ref{sec:intro-questions} asked how much a causal scheduler can smooth each market's
+one-hour net-load ramps and reduce its monthly peak by deferring and routing work within the
+service, deadline, and capacity limits. For the fleet modeled here, the gain appears in every
+evaluated month but is modest in size. The cross-validation estimate of the joint score over the
+twelve months of 2025 is \(-0.0188\). The mean joint score of the ten final policies on the May
+2026 test month is \(-0.0168\), with every policy between \(-0.0191\) and \(-0.0142\).
+This score is closer to zero than the cross-validation estimate, although it lies within the range
+of the 2025 months, \(-0.0237\) to \(-0.0147\). One possible reason is that the test sites
+are larger than the training sites: because the observation expresses site quantities in their own
+units, the policies act on site inputs outside their training range
+(Section~\ref{subsec:results-test-inputs}).
 
-\section{Interpretation for Fleet and Grid Operators}
-\label{sec:discussion-interpretation}
+Most of the gain comes from ramps, which account for approximately 92\% of the joint score in both
+cross-validation and the test month. Total squared normalized ramps fall by
+3.6\% in cross-validation and 3.3\% in the test month. The markets' summed peaks fall
+by approximately 0.3\%, which removes approximately 29\% of the fleet-added peak in
+cross-validation and 22\% in the test month. The policies act primarily by routing service:
+25\% to 33\% of each month's service work changes sites, whereas batch work
+waits only 0.6 to 1.4 hours on average within its 24-hour window. Because no run
+separates the two levers, this result describes what the policies do, not which lever produces the
+gain.
 
-The peak results are most readily interpreted in MW. In the test month, the fleet without
-flexibility raises ISO-NE's monthly net-load peak by 428 MW, from
-17,506 to 17,934 MW, and CAISO's by 297 MW. The policies remove 121 MW of the
-ISO-NE increase and 107 MW of the CAISO increase, 28\% and 36\% of what the fleet adds, respectively.
-In SPP and MISO, the peak changes little: on average, it ends 7 MW lower in SPP and 17 MW higher in
-MISO than without flexibility. The
-fleet still raises every market's peak above that of the baseline grid: flexibility reduces the data
-centers' contribution to the peak rather than lowering the peak below the baseline grid's.
+The largest and smallest ramp reductions correspond to the fleet's size relative to each market's hourly
+net-load ramps (Table~\ref{tab:native-ramp-scale}). ISO-NE, where a site's idle-to-peak power range is
+approximately 60\% of the median hourly ramp, benefits the most relative to its market demand scale. The total squared ramp falls
+8\% to 10\% below that of the baseline grid, and the peak ends 109 to
+116 MW below the no-flexibility baseline. MISO, where a site's power range is 13\% to 23\%
+of the median hourly ramp, changes little, and its peak rises in 20 of the 46 evaluations.
+CAISO and SPP lie between. CAISO's test site has approximately 1.6 times the power range of its
+training site, and CAISO's gains are larger in the test month: a 3.3\% ramp reduction against
+2.7\%, and 115 MW off the peak against 91 MW. For a fleet operator, these
+results indicate in which markets a fleet of this size can change the shape of net load, and by how
+much.
 
-The ramp results depend on where the fleet is large relative to the grid. In ISO-NE, the total
-squared one-hour ramp ends 8\% to 10\% below that of the baseline grid. In MISO, whose median hourly
-ramp is multiple times a site's idle-to-peak power range, the fleet has almost no effect. For a fleet
-operator, the results indicate in which markets a fleet of this size can change the shape of net load,
-and by how much.
+The peak results are most readily interpreted in MW. In the test month, the fleet under the
+no-flexibility baseline raises ISO-NE's monthly net-load peak by 428 MW, from 17,506 to 17,934 MW, and
+CAISO's by 297 MW. The policies remove 109 MW of the ISO-NE increase and 115 MW of the
+CAISO increase, representing 26\% and 39\% of what the fleet adds, respectively. In
+SPP and MISO, the peak changes little: on average, it ends 6 MW lower in SPP and 28
+MW lower in MISO than under the no-flexibility baseline. The fleet still raises every market's peak
+above that of the baseline grid. Flexibility therefore reduces the data centers' contribution to the
+peak rather than lowering the peak below the baseline grid's.
 
-The gains are reported as changes in the modeled score and in MW rather than as cost or reliability
-savings. Electricity prices, capacity charges, ramping products, and reserve requirements are not
-modeled (Section~\ref{sec:intro-scope}), and the value of a lower peak or a smoother ramp depends on
-each market's rules. Converting these changes into savings would require those rules.
+The gains are reported as changes in the modeled joint score and in MW rather than as cost or
+reliability savings. Electricity prices, capacity charges, ramping products, and reserve requirements
+are not modeled (Section~\ref{sec:intro-scope}), and the value of a lower peak or a smoother ramp
+depends on each market's rules. Converting these changes into savings would require those rules.
 
 \section{Limitations}
 \label{sec:limitations}
 
-The study has the following limitations:
-\begin{itemize}
-  \item The trace is replayed from its first day in every month, so its weekdays do not
-        align with those of the month: May 1, 2019 was a Wednesday, whereas February 2025,
-        for example, starts on a Saturday.
-  \item The workload comes from one company and one month in 2019, and
-        measured execution is reused as synthetic workload. Every 2025
-        month replays the same workload of cells \(a\)--\(d\), so
-        cross-validation tests new grid months but not new workload; only the
-        test month, with cells \(e\)--\(h\), tests unseen workload.
-  \item Batch work enters the queue in the hour it executed in the trace rather than the
-        hour it was submitted, so any delay already imposed by Google's scheduler remains
-        in the workload. The trace's job records include submission and scheduling events,
-        so future work could measure that wait.
-  \item One anomalous EIA value is retained as published. CAISO's demand at 2025-07-31
-        20:00 UTC is 11,819 MW, compared with 29,881 MW and 29,886 MW in the preceding and
-        subsequent hours. The resulting net load of \(-7{,}242\) MW introduces two steep
-        ramps of about 18,000 MW in July. An audit across all markets and both years found
-        no other single-hour anomaly of this kind.
-  \item The service/batch split, completion windows, the 500 MW rated power of the site
-        built from cell \(c\), the assumption that power capacity scales linearly with CPU
-        capacity, and the cell-to-market mapping are all modeling assumptions.
-  \item The forecasts are simple least-squares regressions trained on public EIA data. An
-        operator would have access to system-operator or commercial forecasts of different
-        accuracy, and the scheduler's benefit may depend on that accuracy.
-    \item Routing remains free and instantaneous, making the available
-        geographic flexibility optimistic. A task running across several hours may
-        also change sites between hours at no cost, while real running tasks can be
-        moved only at a cost, if at all.
-  \item The test is one month. In 2025, the improvement in a single month
-        ranged from 0.0144 to 0.0227 (Table~\ref{tab:months}), so the test
-        month's 0.0155 carries month-to-month variation of about that size.
-  \item The observation expresses each site's workloads, queued work, and power in their own
-        units, so a policy trained on one fleet encounters inputs outside its training range
-        when the sites are larger, as in the test fleet
-        (Section~\ref{sec:results-test}).
-  \item The PPO settings are the library's defaults and were not tuned for
-        this problem (Section~\ref{sec:method-training}), so better settings
-        may exist.
-\end{itemize}
+The data impose four limitations. First, the workload comes from one company and one month in 2019,
+and measured execution is reused as synthetic workload. Because every 2025 month replays the same
+workload of cells \(a\)--\(d\), cross-validation tests new grid months but not new workload; only the
+test month, with cells \(e\)--\(h\), tests unseen workload. Second, the trace is replayed from its
+first day in every month, and its weekdays therefore do not align with those of the month: May 1, 2019
+was a Wednesday, whereas February 2025, for example, starts on a Saturday. Third, batch work enters the
+queue in the hour it executed in the trace rather than the hour it was submitted, and any delay already
+imposed by Google's scheduler therefore remains in the workload. Fourth, one anomalous EIA value is
+retained as published. CAISO's demand at 2025-07-31 20:00 UTC is 11,819 MW, compared with 29,881 MW and
+29,886 MW in the preceding and subsequent hours. The resulting net load of \(-7{,}242\) MW introduces
+two steep ramps of about 18,000 MW in July. An audit across all markets and both years found no other
+single-hour anomaly of this kind.
+
+The model rests on several assumptions. The service and batch classification, the completion window,
+the 500 MW rated power of the site built from cell \(c\), the proportionality of power capacity to CPU
+capacity, and the cell-to-market mapping are all modeling assumptions. The forecasts are simple
+least-squares regressions trained on public EIA data. An operator would have access to system-operator
+or commercial forecasts of different accuracy, and the scheduler's benefit may depend on that accuracy.
+Routing remains free and instantaneous, which makes the available geographic flexibility optimistic. A
+task running across several hours may also change sites between hours at no cost, whereas real running
+tasks can be moved only at a cost, if at all.
+
+The method and its evaluation carry three further limitations. The test covers only one month. In 2025,
+the joint score of a single month ranged from \(-0.0237\) to \(-0.0147\)
+(Table~\ref{tab:months}); therefore, the test month's \(-0.0168\) carries month-to-month variation of
+about that size. Because the observation expresses each site's workloads, queued work, and power in
+their own units, a policy trained on one fleet encounters inputs outside its training range when the
+sites are larger, as in the test fleet (Section~\ref{subsec:results-test-inputs}). Finally, the PPO
+settings are the library's defaults and were not tuned for this problem
+(Section~\ref{sec:method-training}), and better settings may exist.
 
 \section{Future Work}
 \label{sec:discussion-future}
 
-These results suggest several extensions:
-\begin{itemize}
-  \item Ramp-only and peak-only policies would indicate
-        how much each objective drives the other's gains, and a variant in which service remains
-        at its own site and only batch work moves would indicate what deferral alone achieves.
-  \item A simple forecast-aware rule, using the same observations, workload constraints, and
-        feasibility decoder, would indicate what learning adds beyond flexible scheduling.
-  \item Routing costs, latency, and limits on workload migration would make the geographic
-        flexibility less optimistic.
-  \item Additional test months, other years, and workloads from other cells or operators would
-        test whether the gains hold beyond one month of one company's workload.
-  \item Electricity prices or carbon signals could be added to the objective alongside ramps and
-        peaks, and cooling control or on-site generation would provide the scheduler with
-        additional levers.
-  \item Expressing each site's workloads, queued work, and power as fractions of its capacity
-        would make the observation independent of site size, so that policies trained on one
-        fleet could transfer to another.
-  \item Tuned PPO settings, the action range of \([-1,1]\) recommended by the library's guide, or
-        other learning algorithms may outperform the untuned policies.
-\end{itemize}
+Several extensions would examine the method. Ramp-only and peak-only policies would indicate how much
+each objective drives the other's gains, and a variant in which service remains at its own site and only
+batch work moves would indicate what deferral alone achieves. A simple forecast-aware rule, using the
+same observations, workload constraints, and feasibility decoder, would indicate what learning adds
+beyond flexible scheduling. Expressing each site's workloads, queued work, and power as fractions of its
+capacity would make the observation independent of site size, which could allow policies trained on one
+fleet to transfer to another. Tuned PPO settings, a normalized action range, or other learning algorithms
+may also outperform the policies reported here.
+
+Other extensions would relax the assumptions of the model. Routing costs, latency, and limits on workload
+migration would make the geographic flexibility less optimistic. The trace's job records include
+submission and scheduling events, which would allow the delay already imposed by Google's scheduler to be
+measured. Additional test months, other years, and workloads from other cells or operators would test
+whether the gains hold beyond one month of one company's workload. Finally, electricity prices or carbon
+signals could be added to the objective alongside ramps and peaks, and cooling control or on-site
+generation would provide the scheduler with additional levers.
 
 \section{Conclusions}
 \label{sec:discussion-conclusions}
 
-A four-site data center fleet built from public Google and EIA data was used to test whether a
-learned scheduler can smooth grid ramps and reduce monthly net-load peaks while executing all work
-within its service, deadline, and capacity limits. A PPO policy that routes service and defers batch
-work improved the joint ramp-and-peak score relative to executing all work where and when it was
-recorded in every month tested: by 0.0182 on average over the cross-validation months of 2025, and by
-0.0155 in the held-out test month, whose larger sites place the policies' site inputs outside their
-training range. Most of the gain is in ramps, and it is largest where the fleet is large relative to
-the grid, as in ISO-NE. The fleet still adds to every market's peak, but flexibility removes
-approximately a third of that addition in the markets where it matters most. Because routing is free and
-the workload comes from one month of one company, these results indicate what such flexibility can
-achieve in an optimistic setting rather than what a real fleet would save.
+A four-site data center fleet built from public Google and EIA data was used to test whether a learned
+scheduler can smooth grid ramps and reduce monthly net-load peaks within its service, deadline, and
+capacity limits. A PPO policy that routes service and defers batch work
+outperformed the no-flexibility baseline in every month tested. The mean joint score was \(-0.0188\)
+over the cross-validation months of 2025 and \(-0.0168\) in the test month, whose larger sites place
+the policies' site inputs outside their training range. Most of the gain comes from ramps, and the gain
+is largest where the fleet is large relative to the grid, as in ISO-NE. The fleet still adds to every
+market's peak, but in the test month flexibility removes 26\% of that addition in ISO-NE and 39\% in
+CAISO. Because routing is free and the workload comes from one month of one
+company, these results indicate what such flexibility can achieve in an optimistic setting rather than
+what a real fleet would save.
 
 % References and appendices use the front-matter heading format (1-inch top
 % margin), as in the template's example thesis.
@@ -3096,18 +2935,20 @@ grows slightly, while its next ramp shrinks.
   \centering
   \footnotesize
   \caption{Ramp impacts that change under the schedule, using
-  Equation~\eqref{eq:incremental-impact}. Hour \(t\) refers to the ramp into that hour.}
+  Equation~\eqref{eq:incremental-impact}. Hour \(t\) refers to the ramp into that hour. Under
+  the no-flexibility baseline, every ramp impact is zero.}
   \label{tab:joint-example-hour}
-  \begin{tabular}{@{}lrr@{}}
+  \begin{tabular}{@{}lrrr@{}}
     \toprule
-    Ramp impact \(I_{m,t}\) & No flexibility & With the schedule \\
+    Ramp & \(\left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu_{\mathrm{NF}})\right)^2\)
+      & \(\left(\Delta^{\mathrm{adjusted}}_{m,t}(\mu)\right)^2\) & \(I_{m,t}\) \\
     \midrule
-    ISO-NE, \(t=687\) & \(+0.0000476\) & \(-0.0006816\) \\
-    ISO-NE, \(t=688\) & \(+0.0000083\) & \(-0.0000687\) \\
-    MISO, \(t=687\)   & \(-0.0000003\) & \(+0.0000064\) \\
-    MISO, \(t=688\)   & \(-0.0000019\) & \(-0.0000195\) \\
-    ISO-NE, \(t=697\) & \(-0.0000012\) & \(-0.0000153\) \\
-    ISO-NE, \(t=698\) & \(-0.0000077\) & \(-0.0000845\) \\
+    ISO-NE, \(t=687\) & 0.0024568 & 0.0017275 & \(-0.0007292\) \\
+    ISO-NE, \(t=688\) & 0.0000776 & 0.0000007 & \(-0.0000770\) \\
+    MISO, \(t=687\)   & 0.0000172 & 0.0000239 & \(+0.0000067\) \\
+    MISO, \(t=688\)   & 0.0001488 & 0.0001312 & \(-0.0000176\) \\
+    ISO-NE, \(t=697\) & 0.0000169 & 0.0000028 & \(-0.0000141\) \\
+    ISO-NE, \(t=698\) & 0.0002869 & 0.0002100 & \(-0.0000769\) \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -3132,20 +2973,20 @@ weighted mean; calculations use unrounded inputs.
   \label{tab:joint-example-month}
   \begin{tabular}{@{}lrr@{}}
     \toprule
-    Quantity & No flexibility & With the schedule \\
+    Quantity & No-flexibility baseline & With the schedule \\
     \midrule
     ISO-NE monthly peak (MW) & 24,376.9 & 24,233.8 \\
     MISO monthly peak (MW) & 107,693.1 & 107,693.1 \\
-    Scaled ramp impact & \(+0.000009\) & \(-0.000140\) \\
-    Scaled peak impact & 0.010491 & 0.008301 \\
-    Joint score \(J_e\) & 0.005250 & 0.004081 \\
+    Scaled ramp impact & 0 & \(-0.000149\) \\
+    Scaled peak impact & 0 & \(-0.002190\) \\
+    Joint score \(J_e\) & 0 & \(-0.001169\) \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The scaled peak impact is \(\sum_m\Phi_{m,e}/C_Q\), using July's baseline
-peaks, including 24,082 MW for ISO-NE, and the final references \(C_R\) and
-\(C_Q\). The joint improvement is about 0.00117, most of it from the lower
+The scaled ramp impact is \(\sum_t\sum_m I_{m,t}/C_R\) and the scaled peak impact is
+\(\sum_m\Phi_{m,e}/C_Q\), using the final references \(C_R\) and \(C_Q\). The joint score is
+about \(-0.00117\), most of it from the lower
 ISO-NE peak. The schedule executes the same work within the service, deadline, and
 capacity constraints: the service work runs in its own hour, the batch work runs before
 its deadline slot, and every site stays within its capacity.
@@ -3396,11 +3237,11 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
         quantity and lead, \codepath{assert_causal} stops the build if any
         input uses a later hour, \codepath{fit_rows} keeps only rows whose inputs and target
         all lie in training months, and \codepath{fit_least_squares} fits the
-        weights of Equation~\eqref{eq:forecast-model} with the least-squares
+        coefficients of Equation~\eqref{eq:forecast-model} with the least-squares
         solver of the numpy library. \codepath{fit_forecasts} fits all 32
         models on any set of training months and flags any that fail to beat
         persistence on their training rows. \codepath{predict}
-        applies fixed weights to any hourly series, filling rows without a
+        applies fixed coefficients to any hourly series, filling rows without a
         week of history with persistence. \codepath{--select} prints the
         cross-validation comparison of the candidate input sets,
         \codepath{--report} prints the
@@ -3446,13 +3287,13 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
         through its \codepath{spec} argument and accepts the test split only
         from the final factory.
   \item \codepath{scripts/run_four_market_cv.py} trains every (iteration, seed)
-        pair on the iteration's training months and evaluates each saved
-        milestone on each held-out month. Results are under
+        pair on the iteration's training months and evaluates each checkpoint on
+        each validation month. Results are under
         \codepath{output/four_market_joint_v3/cv/<tag>/}, with
-        \codepath{cv.json} holding the improvement of every month and seed
-        and its averages; checkpoints are under
+        \codepath{cv.json} holding \(-J_e\) of every month and seed (the field
+        \codepath{improvement_J}) and its averages; checkpoints are under
         \codepath{models/four_market_joint_v3/cv/<tag>/}. The cross-validation
-        of Chapter~\ref{chap:results} is tag \codepath{cv-all-windows-1m}.
+        of Chapter~\ref{chap:results} is tag \codepath{cv-nf-reference-1m}.
   \item \codepath{scripts/run_four_market_v2_campaign.py} trains the final
         policies on all of 2025 and evaluates each once on the test month;
         \codepath{preflight} checks only the no-flexibility baseline's feasibility in every
@@ -3463,8 +3304,8 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
         under \codepath{models/four_market_joint_v3/campaign/ppo/}.
   \item \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that
         the folds partition 2025, that each iteration's statistics and forecasts
-        come from its training months only (changing a held-out month leaves
-        every forecast weight unchanged), and that the test month exists only
+        come from its training months only (changing a validation month leaves
+        every forecast coefficient unchanged), and that the test month exists only
         in the final factory and is served by cells \(e\)--\(h\).
 \end{itemize}
 
@@ -3522,6 +3363,15 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
         Section~\ref{sec:method-actions} describes the action encoding, and
         \codepath{action_schema} in \codepath{environment.py} names its nine
         preferences.
+  \item The bound of \(\pm6\) on the preferences, set in the action space of
+        \codepath{RampAwareEnv} and in \codepath{bounded_fraction}, is a fixed
+        convention rather than a tuned value. It provides exact endpoints of 0 and 1
+        for the release fraction and is wide enough for routing: a difference of 12
+        between two preferences gives one site approximately
+        \(e^{12}\approx160{,}000\) times the other's share, and wider bounds would
+        therefore not materially change the routing. This range departs from the guide
+        to the library, which recommends rescaling continuous actions to \([-1,1]\)
+        \cite{sb3tips}; its cost is narrower early exploration.
   \item \codepath{project_capped_simplex} splits total service among
         destinations so that it is conserved and within capacity.
         \codepath{EDFQueue.drain} in \codepath{models.py} gives \(y_{i,t}\),
@@ -3548,14 +3398,16 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
   (Sections~\ref{subsec:problem-objective}--\ref{subsec:problem-normalization})}
 \begin{itemize}
   \item \codepath{closed_window_terms} in \codepath{env/ramp_v6/reward.py}
-        computes Equations~\eqref{eq:native-ramp}--\eqref{eq:incremental-impact};
+        computes Equations~\eqref{eq:adjusted-ramp}--\eqref{eq:incremental-impact};
         \codepath{_step_info} in \codepath{environment.py} applies it to each
-        market, using the previous hour's site power.
+        market, using the previous hour's site power and the in-place power
+        from \codepath{_no_flexibility_market_power}.
   \item \codepath{update_peak} in \codepath{env/ramp_v6/objective.py}
         maintains running maxima. \codepath{_step_info} tracks each market's
-        adjusted and baseline peaks and charges each hour the adjusted increase
-        minus the baseline increase. Running maxima telescope, so a month of
-        these increments sums to \(\Phi_{m,e}\).
+        adjusted and no-flexibility peaks and charges each hour the adjusted
+        increase minus the no-flexibility increase. Running maxima telescope, so
+        a month of these increments sums to \(\Phi_{m,e}\). It also tracks the
+        baseline peak, which the observation reports.
   \item \codepath{reference_trajectory_scores} scores one month under
         \(\mu_{\mathrm{NF}}\). \codepath{calibrate_objective} in the factory
         script averages those scores over the training months and stores the
@@ -3581,8 +3433,9 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
   \item \codepath{_status_quo_action} in \codepath{environment.py} encodes
         \(\mu_{\mathrm{NF}}\), and
         \codepath{tests/energy_model_v3/test_four_market_v2.py} checks that it
-        runs all work in place. \codepath{ramp_rl/evaluation.py} computes
-        Equation~\eqref{eq:improvement}.
+        runs all work in place. \codepath{ramp_rl/evaluation.py} evaluates each
+        policy and \(\mu_{\mathrm{NF}}\) on the same hours and stops if
+        \(\mu_{\mathrm{NF}}\) does not score zero.
 % [symbols 2026-10-09] was: ... \codepath{_observation} build \(\mathcal I_t\), and ...
   \item \codepath{_build_observation_schema} and \codepath{_observation} build
         the 82 entries of Section~\ref{sec:method-observation} from the
@@ -3602,9 +3455,15 @@ Chapters~\ref{chap:method} and~\ref{chap:results}.
 % action_schema and say that the policy receives queue totals.
 
 \section{Training and Checkpoints
-    (Sections~\ref{sec:method-ppo}--\ref{sec:method-training})}
-Each policy is trained with the library calls below, which correspond to the four steps of
-Section~\ref{sec:training-intuition}:
+    (Section~\ref{sec:method-ppo})}
+% [ch567 2026-11-05] the first sentences here were the four-step list of Section 5.5.1.
+Each policy is trained with the library calls below. The first line wraps four copies of the
+monthly simulation so that the library runs them together and normalizes their observations
+and rewards. The second creates a PPO model with the settings of
+Table~\ref{tab:hyperparameters} and the library's standard networks, and each run passes its
+own seed. The third trains the model, the fourth saves the trained policy and its
+normalization statistics, and the fifth selects an action during evaluation, with the
+exploration noise switched off:
 {\small
 \begin{verbatim}
 env = VecNormalize(DummyVecEnv(four_copies), gamma=0.99)
@@ -3616,7 +3475,7 @@ action, _ = model.predict(observation, deterministic=True)
 }
 \begin{itemize}
   \item Each iteration uses its own \(C_R\) and \(C_Q\), means over its nine
-        training months under no flexibility of total squared adjusted ramps
+        training months under the no-flexibility baseline of total squared adjusted ramps
         and summed normalized adjusted peaks: \(C_R\) from 5.853 to 6.613 and
         \(C_Q\) from 3.576 to 3.739. All iterations use the training fleet and
         least-squares forecasts fitted on the iteration's
@@ -3629,26 +3488,29 @@ action, _ = model.predict(observation, deterministic=True)
   \item The observation is in raw units by default
         (\codepath{raw_observation=True} in \codepath{make_four_market_env});
         \codepath{raw_observation=False} restores a fixed scaling inside the
-        environment. \codepath{VecNormalize} standardizes and clips
-        observations and scales and clips training rewards. Its statistics are saved in
-        \codepath{vecnormalize.pkl}. Evaluation freezes those statistics
-        and disables reward normalization.
-  \item Four environment copies step in turn within one training process.
-        Each rollout provides 2,048 transitions. Ten epochs with minibatches
+        environment. \codepath{VecNormalize} applies
+        Equations~\eqref{eq:observation-normalization}
+        and~\eqref{eq:reward-normalization}, and
+        Table~\ref{tab:observation-example} illustrates the first for several entries.
+        Its statistics are saved in \codepath{vecnormalize.pkl}. Evaluation freezes those
+        statistics and disables reward normalization.
+  \item The four parallel environments step in turn within one training process.
+        Each rollout provides 2,048 time steps. Ten epochs with minibatches
         of 256 give 80 gradient steps per update; a run's 1,024,000
-        interactions give 500 updates.
+        time steps give 500 updates. Table~\ref{tab:library-names} gives the library
+        name of each setting.
   \item \codepath{FourMarketV2WindowEnv._next_window_id} in
         \codepath{energy_model_v3/four_market_v2.py} draws an iteration's training
         months in shuffled cycles. The runner seeds Python, NumPy, PyTorch,
-        PPO, and the environment copies to control training randomness.
+        PPO, and the parallel environments to control training randomness.
         Runs 1, 2, and 3 of every iteration use seeds 4101, 4102, and 4103, and
         final policies 1 to 10 use seeds 4101 to 4110; each run's results are
         in a folder named \codepath{seed-<seed>}.
   \item \codepath{TrainingCallback} writes raw metrics to
         \codepath{learning_curve.csv} after each rollout.
-        \codepath{save_latest_checkpoint} saves a resumable checkpoint every
-        25 rollouts, or 51,200 interactions. Each run evaluates milestones
-        at 153,600, 512,000, and 1,024,000 interactions.
+        \codepath{save_latest_checkpoint} saves a resumable copy of the run every
+        25 rollouts, or 51,200 time steps. Each run evaluates its checkpoints
+        at 153,600, 512,000, and 1,024,000 time steps.
   \item \codepath{environment_identity} in \codepath{ramp_rl/contract.py}
         records the objective, input digest, and observation and action
         shapes. Resume checks also compare PPO settings and seed. The
@@ -3656,9 +3518,67 @@ action, _ = model.predict(observation, deterministic=True)
         identities. \codepath{tests/ramp_v6/test_campaign_instrumentation.py}
         tests these checks and checkpoint resumption.
 \end{itemize}
+
+% [ch567 2026-11-05] moved from Section 5.2.1, with average and spread now mean and
+% standard deviation. The statistics are those of run 1 of iteration 3, whose validation
+% months include July 2025.
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption[Observation entries before and after normalization]{Observation entries
+  for the ISO-NE site, and one for MISO, at 22:00 UTC on 29 July 2025, the
+  hour of the worked example in Appendix~\ref{subsec:problem-worked-joint}, before and after
+  normalization, with the means and standard deviations that run 1 of iteration 3
+  learned from its nine training months.}
+  \label{tab:observation-example}
+  \begin{tabular}{@{}L{0.30\textwidth}L{0.19\textwidth}rL{0.30\textwidth}@{}}
+    \toprule
+    Entry & Value \(v\) & Normalized \(o\) & \((v-\bar v)/\sigma_v\) \\
+    \midrule
+    Net load, hour \(t-1\) & 23,204 MW & 4.06 & \((23{,}204-12{,}311)/2{,}681\) \\
+    MISO net load, hour \(t-1\) & 104,260 MW & 3.41 & \((104{,}260-61{,}259)/12{,}611\) \\
+    Net-load forecast for hour \(t\) & 23,928 MW & 4.36 & \((23{,}928-12{,}311)/2{,}666\) \\
+    Steepest net-load climb & 724 MW per hour & 0.56 & \((724-511)/377\) \\
+    Running adjusted peak & 23,714 MW & 2.26 & \((23{,}714-17{,}062)/2{,}943\) \\
+    Service workload & 2,635 work units & \(-0.09\) & \((2{,}635-2{,}662)/315\) \\
+    Site power, hour \(t-1\) & 286 MW & \(-0.26\) & \((286-309)/87\) \\
+    Sine of the hour of day & \(-0.50\) & \(-0.71\) & \((-0.50-0.00)/0.71\) \\
+    Hours left in the month & 57 hours & \(-1.46\) & \((57-365)/211\) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% [ch567 2026-11-05] moved from the settings table of Section 5.3.3.
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{Library names of the PPO settings in Table~\ref{tab:hyperparameters}.}
+  \label{tab:library-names}
+  \begin{tabular}{@{}L{0.55\textwidth}l@{}}
+    \toprule
+    Setting & Library name \\
+    \midrule
+    Parallel environments & \codepath{DummyVecEnv} \\
+    Time steps per environment in each rollout & \codepath{n_steps} \\
+    Epochs per rollout & \codepath{n_epochs} \\
+    Minibatch size & \codepath{batch_size} \\
+    Learning rate (Adam optimizer) & \codepath{learning_rate} \\
+    Discount factor, \(\gamma\) & \codepath{gamma} \\
+    Generalized advantage estimation parameter, \(\lambda\) & \codepath{gae_lambda} \\
+    Clip range, \(\epsilon\) & \codepath{clip_range} \\
+    Value function coefficient & \codepath{vf_coef} \\
+    Entropy coefficient & \codepath{ent_coef} \\
+    Maximum gradient norm & \codepath{max_grad_norm} \\
+    Hidden layers, policy and critic & \codepath{net_arch} \\
+    Initial standard deviation of the exploration noise & \codepath{log_std_init=0}, its logarithm \\
+    Total time steps per run & \codepath{total_timesteps} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 On the eight-core laptop used here, six runs trained at a time and each took
-49 to 52 minutes; the whole cross-validation took 1.7 hours. The final
-campaign trained five runs at a time, each in 48 to 49 minutes.
+59 to 63 minutes; the whole cross-validation took 2.1 hours. The final
+campaign trained five runs at a time, each in 51 to 57 minutes.
 
 \section{Evaluation and Figures
   (Section~\ref{sec:method-evaluation} and Chapter~\ref{chap:results})}
@@ -3668,17 +3588,16 @@ campaign trained five runs at a time, each in 48 to 49 minutes.
         no-flexibility baseline. They report raw joint scores, component
         outcomes, per-market metrics, and feasibility checks.
   \item \codepath{scripts/build_ppo_cv_figures.py} replays each cross-validation
-        policy at the end of training and the no-flexibility baseline on every held-out month, recomputes \(J_e\) from the
+        policy at the end of training and the no-flexibility baseline on every validation month, recomputes \(J_e\) from the
         trajectories, draws the figures, and writes their supporting values to
         \codepath{docs/figures/ppo_cv/figure_data.json}. Squared-ramp
         percentages in Table~\ref{tab:regions} use the baseline grid's
         squared-ramp total. Table~\ref{tab:nf-percentages} instead compares
-        each of these policies with no flexibility, month by month; its values
+        each of these policies with the no-flexibility baseline, month by month; its values
         are stored under \codepath{no_flexibility_percentage_reductions}. The
         ramp denominator is the no-flexibility baseline's total squared adjusted ramps, the
         peak denominator is its sum of the markets' normalized adjusted peaks,
-        and the added-peak denominator is
-        \(\sum_m\Phi_{m,e}(\mu_{\mathrm{NF}})\).
+        and the added-peak denominator is its fleet-added peak.
   \item \codepath{scripts/build_test_month_results.py} replays each final
         policy and the no-flexibility baseline on the test month, recomputes \(J_e\), and
         writes the values of Section~\ref{sec:results-test} to
@@ -3700,12 +3619,11 @@ campaign trained five runs at a time, each in 48 to 49 minutes.
 
 \section{Policy Updates in Words}
 
-Step 3 of Section~\ref{sec:training-intuition} assesses each hour's action as better or
-worse than expected and then adjusts the policy slightly. The library performs both after
-every 2,048 hours, in two steps. Each step is explained below in words, along with the
-library setting that controls it; the equations follow.
+After each rollout of 2,048 time steps, the library assesses each action as better or worse
+than expected and then updates the policy and the critic. The two steps are as follows, each
+with the library setting that controls it.
 \begin{enumerate}
-  \item \emph{Assess each hour's action.} For each of the 2,048 hours, the library compares
+  \item \emph{Assess each action.} For each of the 2,048 time steps, the library compares
         what followed the action with what the critic expected from that situation. What
         followed is the hour's reward plus the rewards of subsequent hours, with each later
         hour weighted slightly less than the one preceding it. The difference is the action's
@@ -3713,20 +3631,20 @@ library setting that controls it; the equations follow.
         if it performed worse. The library calculates it using \emph{generalized advantage
         estimation}, a standard method of blending the critic's estimates with the rewards
         actually received \cite{schulman2016gae}, controlled by \texttt{gae\_lambda=0.95}, the
-        library's default. Looking ahead stops at the end of the 2,048 hours or at the end of
+        library's default. Looking ahead stops at the end of the rollout or at the end of
         the month, whichever comes first. If the month has not ended, the critic's estimate
         represents the remaining hours; if it has, nothing follows.
-  \item \emph{Adjust the policy and the critic.} The library then processes the 2,048 hours
-        ten times (\texttt{n\_epochs=10}), each time in random groups of 256 hours
-        (\texttt{batch\_size=256}), yielding 80 small adjustments in total. Each adjustment
-        makes actions with a positive advantage more likely in similar situations and actions
+  \item \emph{Update the policy and the critic.} The library then processes the 2,048 time
+        steps ten times (\texttt{n\_epochs=10}), each time in random minibatches of 256 time
+        steps (\texttt{batch\_size=256}), yielding 80 gradient steps in total. Each gradient
+        step makes actions with a positive advantage more likely in similar situations and actions
         with a negative advantage less likely, and moves the critic's estimates closer to the
         rewards that actually followed. PPO is distinguished by a limit on how strongly each
-        cycle can change the policy: once an action has become approximately 20\% more or less
-        likely than at the start of the cycle (\texttt{clip\_range=0.2}), further changes earn
-        nothing \cite{schulman2017ppo}. This prevents one cycle of experience from changing the
+        rollout can change the policy: once an action has become approximately 20\% more or less
+        likely than at the start of the rollout (\texttt{clip\_range=0.2}), further changes earn
+        nothing \cite{schulman2017ppo}. This prevents one rollout of experience from changing the
         policy too far. It is not a hard cap, since the policy can still move further, but
-        nothing in the cycle rewards it for doing so.
+        nothing in the rollout rewards it for doing so.
 \end{enumerate}
 
 \section{Update Equations}
@@ -3767,7 +3685,7 @@ action; the environment receives its clipped version. Clipping limits the
 incentive for large policy changes; it does not enforce a bound on the
 policy itself.
 
-The value network fits estimated returns with squared error, weighted 0.5
+The critic fits estimated returns with squared error, weighted 0.5
 in the combined loss. There is no entropy bonus, and gradients are clipped
 to norm 0.5. These settings are listed in Table~\ref{tab:hyperparameters}.
 
@@ -3780,8 +3698,8 @@ From the repository root, run the following commands in PowerShell:
 python scripts/build_four_market_v2_factory.py
 python scripts/run_four_market_cv.py `
     --seeds 4101 4102 4103 --timesteps 1000000 `
-    --tag cv-all-windows-1m --workers 6
-python scripts/build_ppo_cv_figures.py --tag cv-all-windows-1m
+    --tag cv-nf-reference-1m --workers 6
+python scripts/build_ppo_cv_figures.py --tag cv-nf-reference-1m
 python scripts/run_four_market_v2_campaign.py preflight
 python scripts/run_four_market_v2_campaign.py run --workers 5
 python scripts/aggregate_four_market_v2_campaign.py

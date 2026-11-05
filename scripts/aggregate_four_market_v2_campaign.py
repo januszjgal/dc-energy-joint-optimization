@@ -163,15 +163,15 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
             "mean_policy_peak_mw": float(mean(item["policy_peak_mw"] for item in market_rows)),
             "mean_status_quo_peak_mw": float(mean(item["status_quo_peak_mw"] for item in market_rows)),
             "mean_peak_reduction_mw": float(mean(item["peak_reduction_mw"] for item in market_rows)),
-            "mean_policy_native_relative_incremental_ramp_impact": float(
+            "mean_policy_incremental_ramp_impact": float(
                 mean(
-                    item["policy_native_relative_incremental_ramp_impact"]
+                    item["policy_incremental_ramp_impact"]
                     for item in market_rows
                 )
             ),
-            "mean_status_quo_native_relative_incremental_ramp_impact": float(
+            "mean_status_quo_incremental_ramp_impact": float(
                 mean(
-                    item["status_quo_native_relative_incremental_ramp_impact"]
+                    item["status_quo_incremental_ramp_impact"]
                     for item in market_rows
                 )
             ),
@@ -201,12 +201,12 @@ def aggregate(output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
             "policy_joint_J": float(row["test"]["status_quo_comparison"]["policy_J"]),
             "status_quo_joint_J": float(row["test"]["status_quo_comparison"]["status_quo_J"]),
             "components": row["test"]["status_quo_comparison"]["components"],
-            "policy_native_relative_incremental_ramp_impact": float(
+            "policy_incremental_ramp_impact": float(
                 row["test"]["mean_incremental_ramp_impact"]
             ),
-            "status_quo_native_relative_incremental_ramp_impact": float(
+            "status_quo_incremental_ramp_impact": float(
                 row["test"]["status_quo_comparison"][
-                    "status_quo_native_relative_mean_incremental_ramp_impact"
+                    "status_quo_mean_incremental_ramp_impact"
                 ]
             ),
             "policy_minus_status_quo_incremental_ramp_impact": float(

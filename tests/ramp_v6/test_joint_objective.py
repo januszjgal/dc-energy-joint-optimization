@@ -47,12 +47,12 @@ class JointObjectiveMathTests(unittest.TestCase):
         self.assertEqual(peak_reward, 0.0)
         self.assertEqual(objective.score(-4.0, 0.0), -1.0)
 
-    def test_native_subtraction_is_a_constant_with_the_same_reference(self) -> None:
+    def test_no_flexibility_subtraction_is_a_constant_with_the_same_reference(self) -> None:
         objective = JointObjective(ramp_reference=2.0, peak_reference=10.0)
-        native_squared_sum = 3.0
+        no_flex_squared_sum = 3.0
         for adjusted_squared_sum, peak in ((2.0, 10.0), (4.0, 8.0)):
             absolute = objective.score(adjusted_squared_sum, peak)
-            incremental = objective.score(adjusted_squared_sum - native_squared_sum, peak)
+            incremental = objective.score(adjusted_squared_sum - no_flex_squared_sum, peak)
             self.assertAlmostEqual(absolute - incremental, 0.75)
 
     def test_reward_sums_without_a_month_length_divisor(self) -> None:
@@ -109,6 +109,8 @@ class JointEnvironmentTests(unittest.TestCase):
                     observation, _ = env.reset(seed=7)
                     returns = 0.0
                     power = [float(env.workload.warm_power_mw[-1, 0])]
+                    in_place = env.workload.service_arrivals + env.workload.batch_arrivals
+                    no_flex = power + [SITE.power_mw(float(work)) for work in in_place[:, 0]]
                     for step in range(env.action_steps):
                         observation, reward, done, _, info = env.step(HOLD_BATCH)
                         returns += reward
@@ -120,30 +122,59 @@ class JointEnvironmentTests(unittest.TestCase):
                                 info["per_market"]["M"]["running_adjusted_peak_mw"] / 1200.0,
                                 places=6,
                             )
-                    native = env.panel.frame["net_load_mw"].to_numpy()
-                    adjusted = native + np.asarray(power)
+                    net = env.panel.frame["net_load_mw"].to_numpy()
+                    adjusted = net + np.asarray(power)
+                    reference = net + np.asarray(no_flex)
                     ramp = float(np.sum(
-                        (np.diff(adjusted) / 1200.0)**2 - (np.diff(native) / 1200.0)**2
+                        (np.diff(adjusted) / 1200.0)**2 - (np.diff(reference) / 1200.0)**2
                     ))
-                    peak = float((np.max(adjusted[1:]) - np.max(native[1:])) / 1200.0)
+                    peak = float((np.max(adjusted[1:]) - np.max(reference[1:])) / 1200.0)
                     expected = weight * ramp / 0.02 + (1.0 - weight) * peak / 1.2
                     self.assertAlmostEqual(returns, -expected, places=12)
                     self.assertAlmostEqual(env.queue.total, 0.0)
                 finally:
                     env.close()
 
-    def test_peak_reward_excludes_the_original_grids_own_records(self) -> None:
+    def test_peak_reward_charges_only_the_change_from_no_flexibility(self) -> None:
         env = self.make_env(weight=0.0, hours=48)
         try:
             env.reset(seed=3)
             _, reward, _, _, info = env.step(HOLD_BATCH)
             power = info["per_site"]["site-M"]["power_mw"]
-            # The first decision sets both running peaks; only fleet power is charged.
-            self.assertAlmostEqual(info["peak_impact_increment"], power / 1200.0, places=12)
-            self.assertAlmostEqual(reward, -power / 1200.0 / 1.2, places=12)
+            in_place = float(env.workload.service_arrivals[0, 0] + env.workload.batch_arrivals[0, 0])
+            change = (power - SITE.power_mw(in_place)) / 1200.0
+            # Holding batch lowers the first hour's power below no flexibility;
+            # the first decision sets both running peaks, so only that change counts.
+            self.assertLess(change, 0.0)
+            self.assertAlmostEqual(info["peak_impact_increment"], change, places=12)
+            self.assertAlmostEqual(reward, -change / 1.2, places=12)
             self.assertGreater(info["peak_normalized_increment"], info["peak_impact_increment"])
         finally:
             env.close()
+
+    def test_no_flexibility_earns_zero_reward_every_hour(self) -> None:
+        for weight in (0.0, 0.5, 1.0):
+            with self.subTest(weight=weight):
+                env = self.make_env(weight, hours=48)
+                try:
+                    env.reset(seed=5)
+                    done = False
+                    while not done:
+                        _, reward, done, _, info = env.step(env.evaluation_action("status_quo"))
+                        self.assertAlmostEqual(reward, 0.0, places=7)
+                        market = info["per_market"]["M"]
+                        self.assertAlmostEqual(
+                            market["running_adjusted_peak_mw"],
+                            market["running_no_flexibility_peak_mw"],
+                            places=4,
+                        )
+                        # The grid without the fleet stays separate, for reporting.
+                        self.assertGreater(
+                            market["running_no_flexibility_peak_mw"],
+                            market["running_native_peak_mw"],
+                        )
+                finally:
+                    env.close()
 
     def test_objective_weights_do_not_change_feasibility_projection(self) -> None:
         envs = [self.make_env(weight) for weight in (0.0, 0.5, 1.0)]
@@ -196,12 +227,13 @@ class JointEnvironmentTests(unittest.TestCase):
         self.assertEqual(comparison["improvement"], 0.0)
         self.assertEqual(comparison["components"]["net_load_peak"]["improvement"], 0.0)
         self.assertEqual(comparison["per_market"]["M"]["peak_reduction_mw"], 0.0)
-        self.assertNotEqual(episode["J"], episode["ramp_impact_J"])
+        self.assertAlmostEqual(episode["J"], 0.0, places=7)
+        self.assertAlmostEqual(episode["peak_impact_sum"], 0.0, places=7)
         self.assertAlmostEqual(
             episode["ramp_impact_sum"], sum(episode["incremental"])
         )
 
-    def test_signed_ramp_baselines_never_produce_percentage_improvements(self) -> None:
+    def test_no_flexibility_scores_zero_whatever_the_warm_power(self) -> None:
         for warm_power in (70.0, 85.0, 95.0):
             with self.subTest(warm_power=warm_power):
                 def factory(request):
@@ -213,16 +245,11 @@ class JointEnvironmentTests(unittest.TestCase):
                     factory=factory, split="validation", seed=1, window_id="test",
                     model=None, normalization_path=None,
                 )
-                if warm_power == 70.0:
-                    self.assertGreater(episode["ramp_impact_sum"], 0.0)
-                elif warm_power == 95.0:
-                    self.assertLess(episode["ramp_impact_sum"], 0.0)
-                else:
-                    self.assertAlmostEqual(episode["ramp_impact_sum"], 0.0, places=12)
+                self.assertAlmostEqual(episode["ramp_impact_sum"], 0.0, places=7)
+                self.assertAlmostEqual(episode["J"], 0.0, places=7)
                 summary = _aggregate([episode], [episode], "validation")
                 component = summary["status_quo_comparison"]["components"]["ramp"]
                 self.assertEqual(component["metric"], "ramp_impact_sum")
-                self.assertIsNone(component["relative_improvement"])
                 self.assertEqual(component["improvement"], 0.0)
 
     def test_evaluation_rejects_mismatched_objective_before_loading_model(self) -> None:

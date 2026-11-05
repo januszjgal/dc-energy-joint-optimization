@@ -78,9 +78,9 @@ def objective_from_factory(
         or configuration["ramp_weights"] != {1: 1.0}
         or configuration["market_aggregation"] != "sum"
         or configuration["ramp_time_aggregation"] != "sum_over_month"
-        or configuration["ramp_quantity"] != "incremental_squared_impact"
+        or configuration["ramp_quantity"] != "squared_ramp_minus_no_flexibility_squared_ramp"
         or configuration["peak_time_aggregation"] != "maximum_per_region_over_decision_month"
-        or configuration["peak_quantity"] != "adjusted_maximum_minus_original_maximum"
+        or configuration["peak_quantity"] != "adjusted_maximum_minus_no_flexibility_maximum"
     ):
         raise ValueError("protocol objective is incompatible with the factory")
     weights = configuration["component_weights"]
@@ -199,7 +199,7 @@ class FourMarketV2WindowEnv(gym.Env):
             workload,
             stats,
             RampProtocol(
-                protocol_id="four-market-joint-net-load-peak-impact-ramp-impact-v3",
+                protocol_id="four-market-joint-net-load-peak-and-ramp-from-no-flexibility-v4",
                 objective=self.objective,
             ),
             episode_context={

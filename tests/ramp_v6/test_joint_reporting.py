@@ -83,8 +83,8 @@ class JointReportingTests(unittest.TestCase):
                 "policy_peak_mw": 400.0 * (1.0 - peak_gain),
                 "status_quo_peak_mw": 400.0,
                 "peak_reduction_mw": 400.0 * peak_gain,
-                "policy_native_relative_incremental_ramp_impact": 0.5 - ramp_gain,
-                "status_quo_native_relative_incremental_ramp_impact": 0.5,
+                "policy_incremental_ramp_impact": 0.5 - ramp_gain,
+                "status_quo_incremental_ramp_impact": 0.5,
                 "policy_minus_status_quo_incremental_ramp_impact": -ramp_gain,
                 "policy_outperforms_status_quo": True,
             }
@@ -104,7 +104,7 @@ class JointReportingTests(unittest.TestCase):
                     "status_quo_J": 1.0,
                     "policy_minus_status_quo_joint_J": -improvement,
                     "improvement": improvement,
-                    "status_quo_native_relative_mean_incremental_ramp_impact": 0.5,
+                    "status_quo_mean_incremental_ramp_impact": 0.5,
                     "policy_minus_status_quo_mean_incremental_ramp_impact": -ramp_gain,
                     "components": {
                         "ramp": {"improvement": ramp_gain},

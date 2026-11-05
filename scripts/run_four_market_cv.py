@@ -37,7 +37,7 @@ from ramp_rl.evaluation import evaluate_checkpoint  # noqa: E402
 from ramp_rl.runner import configure_single_thread_runtime, run_training  # noqa: E402
 
 PROTOCOL_PATH = ROOT / "env" / "protocols" / "four_market_v2.yaml"
-DEFAULT_TAG = "cv-all-windows-1m"
+DEFAULT_TAG = "cv-nf-reference-1m"
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

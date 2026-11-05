@@ -228,10 +228,10 @@ def _load_completed_seed_summary(
     metric_paths = (
         ("mean_joint_J",),
         ("mean_monthly_ramp_impact",),
-        ("mean_policy_native_relative_incremental_ramp_impact",),
+        ("mean_policy_incremental_ramp_impact",),
         ("mean_incremental_ramp_impact",),
-        ("status_quo_comparison", "policy_native_relative_mean_incremental_ramp_impact"),
-        ("status_quo_comparison", "status_quo_native_relative_mean_incremental_ramp_impact"),
+        ("status_quo_comparison", "policy_mean_incremental_ramp_impact"),
+        ("status_quo_comparison", "status_quo_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "policy_minus_status_quo_mean_incremental_ramp_impact"),
         ("status_quo_comparison", "improvement"),
         ("status_quo_comparison", "policy_J"),

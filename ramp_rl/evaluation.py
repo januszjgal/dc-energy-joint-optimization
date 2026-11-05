@@ -29,11 +29,16 @@ from ramp_rl.contract import (
 
 
 IMPROVEMENT_DEFINITION = (
-    "Mean monthly J(status quo) - J(policy). J combines summed regional "
-    "incremental squared ramp impacts and regional monthly net-load peaks using fixed positive "
-    "training references and the declared weights. Positive favors the policy; "
-    "neither component is guaranteed to improve individually."
+    "Mean monthly J(status quo) - J(policy). J combines summed regional squared-ramp "
+    "impacts and regional monthly net-load peak impacts, both measured from the "
+    "no-flexibility schedule, using fixed positive training references and the declared "
+    "weights. J(status quo) is zero up to rounding, so this is -J(policy). Positive favors "
+    "the policy; neither component is guaranteed to improve individually."
 )
+
+# The status-quo action passes through single precision, so its schedule matches
+# the no-flexibility schedule only to rounding.
+STATUS_QUO_J_TOLERANCE = 1e-6
 
 
 def _bootstrap_interval(
@@ -176,9 +181,10 @@ def _episode(
         market: {
             "adjusted_peak_mw": float(row["running_adjusted_peak_mw"]),
             "native_peak_mw": float(row["running_native_peak_mw"]),
+            "no_flexibility_peak_mw": float(row["running_no_flexibility_peak_mw"]),
             "normalized_peak": float(row["running_adjusted_peak_mw"]) / float(row["market_scale_mw"]),
             "peak_impact": (
-                float(row["running_adjusted_peak_mw"]) - float(row["running_native_peak_mw"])
+                float(row["running_adjusted_peak_mw"]) - float(row["running_no_flexibility_peak_mw"])
             ) / float(row["market_scale_mw"]),
         }
         for market, row in infos[-1]["per_market"].items()
@@ -189,6 +195,8 @@ def _episode(
     raw_return = float(sum(info["scalar_reward"] for info in infos))
     if not np.isclose(raw_return, -joint_J, rtol=1e-9, atol=1e-12):
         raise RuntimeError("raw monthly return does not equal the negative joint objective")
+    if model is None and abs(joint_J) > STATUS_QUO_J_TOLERANCE:
+        raise RuntimeError("the status-quo schedule must score zero against no flexibility")
     return {
         "window_id": window_id,
         "evaluation_seed": seed,
@@ -307,8 +315,8 @@ def _aggregate(
     }
     per_market_status_quo_comparison = {
         market: {
-            "policy_native_relative_incremental_ramp_impact": policy_market_macro[market],
-            "status_quo_native_relative_incremental_ramp_impact": status_quo_market_macro[market],
+            "policy_incremental_ramp_impact": policy_market_macro[market],
+            "status_quo_incremental_ramp_impact": status_quo_market_macro[market],
             "policy_minus_status_quo_incremental_ramp_impact": (
                 policy_market_macro[market] - status_quo_market_macro[market]
             ),
@@ -376,15 +384,6 @@ def _aggregate(
             "policy": policy_value,
             "status_quo": baseline_value,
             "improvement": baseline_value - policy_value,
-            "relative_improvement": (
-                (baseline_value - policy_value) / baseline_value
-                if name == "net_load_peak" and baseline_value > 0.0 else None
-            ),
-            "relative_improvement_basis": (
-                "positive_baseline_peak_impact"
-                if name == "net_load_peak" and baseline_value > 0.0
-                else "not_applicable_to_signed_or_nonpositive_metric"
-            ),
             "training_reference": reference,
             "weight": weight,
             "weighted_improvement": weight * (baseline_value - policy_value) / reference,
@@ -406,8 +405,8 @@ def _aggregate(
         "batch_expired": sum(episode["batch_expired"] for episode in policy),
         "certificate_violations": sum(episode["certificate_violations"] for episode in policy),
         "terminal_work": sum(episode["terminal_work"] for episode in policy),
-        "mean_policy_native_relative_incremental_ramp_impact": policy_mean,
-        "per_market_policy_native_relative_incremental_ramp_impact": policy_market_macro,
+        "mean_policy_incremental_ramp_impact": policy_mean,
+        "per_market_policy_incremental_ramp_impact": policy_market_macro,
         "mean_incremental_ramp_impact": policy_mean,
         "per_market_macro": policy_market_macro,
         "physical_ramp_metric_contract": {
@@ -425,8 +424,8 @@ def _aggregate(
                 "status quo: every service and batch arrival executes at its "
                 "origin site in its arrival hour; no deferral, no routing"
             ),
-            "policy_native_relative_mean_incremental_ramp_impact": policy_mean,
-            "status_quo_native_relative_mean_incremental_ramp_impact": status_quo_mean,
+            "policy_mean_incremental_ramp_impact": policy_mean,
+            "status_quo_mean_incremental_ramp_impact": status_quo_mean,
             "policy_minus_status_quo_mean_incremental_ramp_impact": policy_mean - status_quo_mean,
             "ramp_impact_improvement_mean_per_hour": status_quo_mean - policy_mean,
             "ramp_impact_improvement_J": float(

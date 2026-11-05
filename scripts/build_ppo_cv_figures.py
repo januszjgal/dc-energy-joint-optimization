@@ -13,7 +13,7 @@ Colors are the first three categorical slots of the reference data-viz palette,
 validated all-pairs for colorblind separation. The aqua slot is below 3:1 contrast
 on the surface, so every figure carries a legend and the chapter tabulates values.
 
-    python scripts/build_ppo_cv_figures.py --tag cv-all-windows-1m
+    python scripts/build_ppo_cv_figures.py --tag cv-nf-reference-1m
 """
 
 from __future__ import annotations
@@ -41,6 +41,7 @@ from energy_model_v3.four_market_v2 import (  # noqa: E402
     ARTIFACT_NAMESPACE, MARKETS, factory_root, make_four_market_env, objective_from_factory,
 )
 from energy_model_v3.splits import CV_FOLDS, spec_months  # noqa: E402
+from env.ramp_v6.models import SiteConfig  # noqa: E402
 from ramp_rl.contract import EnvRequest  # noqa: E402
 from ramp_rl.evaluation import _run_episode  # noqa: E402
 
@@ -161,16 +162,21 @@ class MonthInputs:
         self.service_arrivals = np.array(fixture["workload"]["service_arrivals"])
         self.batch_arrivals = np.array(fixture["workload"]["batch_arrivals"])
         self.warm = np.array(fixture["workload"]["warm_power_mw"])
+        sites = [SiteConfig(**site) for site in fixture["sites"]]
+        self.no_flex_power = np.array([
+            [site.power_mw(float(work)) for site, work in zip(sites, row)]
+            for row in self.service_arrivals + self.batch_arrivals
+        ])
         self.scales = np.array([stats["gross_q95_mw"][m] for m in MARKETS])
         self.net = pivot[list(MARKETS)].to_numpy(dtype=float)
         self.timestamps = pd.DatetimeIndex(pd.to_datetime(pivot.index[1:], utc=True))
 
     def recomputed_J(self, power: np.ndarray) -> float:
         """J_e from the raw panel and power trajectory, independent of the rewards."""
-        full = np.vstack([self.warm, power])
-        adjusted, native = (self.net + full) / self.scales, self.net / self.scales
-        ramp = float((np.diff(adjusted, axis=0) ** 2 - np.diff(native, axis=0) ** 2).sum())
-        peak = float((adjusted[1:].max(axis=0) - native[1:].max(axis=0)).sum())
+        adjusted = (self.net + np.vstack([self.warm, power])) / self.scales
+        no_flex = (self.net + np.vstack([self.warm, self.no_flex_power])) / self.scales
+        ramp = float((np.diff(adjusted, axis=0) ** 2 - np.diff(no_flex, axis=0) ** 2).sum())
+        peak = float((adjusted[1:].max(axis=0) - no_flex[1:].max(axis=0)).sum())
         return self.objective.score(ramp, peak)
 
 
@@ -206,11 +212,13 @@ def percentage_reductions(row: dict[str, Any], scales: dict[str, float]) -> dict
 
     ramp = {p: hours * sum(r[f"{p}_ramp_mean_squared"] for r in regions.values()) for p in ("status_quo", "policy")}
     peaks = {p: sum(r[f"{p}_peak_mw"] / scales[m] for m, r in regions.items()) for p in ("status_quo", "policy")}
-    impact = row["components"]["net_load_peak"]
+    # The peak the fleet adds is measured from the grid without the fleet.
+    added = {p: sum((r[f"{p}_peak_mw"] - r["native_peak_mw"]) / scales[m] for m, r in regions.items())
+             for p in ("status_quo", "policy")}
     return {
         "total_squared_adjusted_ramps_pct": reduction(ramp["status_quo"], ramp["policy"]),
         "summed_normalized_adjusted_regional_peaks_pct": reduction(peaks["status_quo"], peaks["policy"]),
-        "summed_normalized_fleet_added_peak_impact_pct": reduction(impact["status_quo"], impact["policy"]),
+        "summed_normalized_fleet_added_peak_impact_pct": reduction(added["status_quo"], added["policy"]),
     }
 
 
@@ -223,12 +231,12 @@ def figure_learning_curves(curves: dict[tuple[str, int], pd.DataFrame], baseline
             smooth = done["mean_completed_episode_return"].rolling(10, min_periods=1).mean()
             ax.plot(done["interaction_count"] / 1e6, smooth, color=SEED_COLORS[seed], label=RUN_LABELS[seed])
         ax.axhline(baselines[fold], color=MUTED, linewidth=1.0)
-        held = ", ".join(MONTH_LABELS[int(m[-2:]) - 1] for m in CV_FOLDS[fold])
-        ax.set_title(f"Iteration {fold[-1]}\nheld out: {held}")
+        validation = ", ".join(MONTH_LABELS[int(m[-2:]) - 1] for m in CV_FOLDS[fold])
+        ax.set_title(f"Iteration {fold[-1]}\nvalidation: {validation}")
         ax.set_xlim(0, 1.05)
-        ax.set_xlabel("Interactions (millions)")
+        ax.set_xlabel("Time steps (millions)")
     axes[0].set_ylabel("Month return, $-J_e$")
-    axes[0].annotate("No flexibility", xy=(1.02, baselines[FOLDS[0]]), xytext=(0, -4),
+    axes[0].annotate("No-flexibility baseline", xy=(1.02, baselines[FOLDS[0]]), xytext=(0, -4),
                      textcoords="offset points", ha="right", va="top", color=INK_2, fontsize=6.5)
     axes[-1].legend(loc="center right", handlelength=1.2)
     fig.tight_layout(w_pad=1.2)
@@ -241,16 +249,16 @@ def figure_months(final: dict[tuple[str, int], dict[str, Any]], month_fold: dict
     positions = np.arange(len(months))
     width = 0.26
     for offset, seed in enumerate(SEEDS):
-        values = [final[(month_fold[m], seed)][m]["improvement_J"] for m in months]
+        values = [final[(month_fold[m], seed)][m]["policy_J"] for m in months]
         ax.bar(positions + (offset - 1) * width, values, width=width * 0.9,
                color=SEED_COLORS[seed], label=RUN_LABELS[seed], linewidth=0)
     ax.axhline(0.0, color=AXIS, linewidth=0.8)
     ax.set_xticks(positions, [f"{MONTH_LABELS[int(m[-2:]) - 1]}\niter. {month_fold[m][-1]}" for m in months])
     ax.tick_params(axis="x", length=0)
-    ax.set_ylabel(r"$J_e(\mu_{\mathrm{NF}})-J_e(\mu)$")
-    ax.set_ylim(0, 0.026)
-    ax.set_title("Improvement over no flexibility in each held-out 2025 month")
-    ax.legend(loc="upper right", ncols=3, handlelength=1.2)
+    ax.set_ylabel(r"$J_e(\mu)$")
+    ax.set_ylim(-0.026, 0)
+    ax.set_title("Joint score in each held-out 2025 month (no flexibility scores zero)")
+    ax.legend(loc="lower right", ncols=3, handlelength=1.2)
     save(fig, "cv_months")
 
 
@@ -264,15 +272,15 @@ def figure_checkpoints(summaries: dict[tuple[str, int], dict[str, Any]]) -> dict
                 by_checkpoint.setdefault(int(count), []).extend(row["improvement_J"] for row in months.values())
         rows = sorted((count, float(np.mean(values))) for count, values in by_checkpoint.items() if len(values) == 12)
         means[str(seed)] = {str(count): value for count, value in rows}
-        ax.plot([c / 1e6 for c, _ in rows], [v for _, v in rows], color=SEED_COLORS[seed], label=RUN_LABELS[seed],
+        ax.plot([c / 1e6 for c, _ in rows], [-v for _, v in rows], color=SEED_COLORS[seed], label=RUN_LABELS[seed],
                 marker="o", markersize=4.5, markeredgecolor=SURFACE, markeredgewidth=1.0)
     ax.set_xlim(0, 1.08)
-    ax.set_ylim(bottom=0)
+    ax.set_ylim(top=0)
     ax.set_xticks([0.1536, 0.512, 1.024], ["0.15", "0.51", "1.02"])
     ax.set_xlabel("Checkpoint (millions of interactions)")
-    ax.set_ylabel("Mean improvement, 12 months")
-    ax.set_title("Cross-validated improvement by checkpoint")
-    ax.legend(loc="lower right", ncols=3, handlelength=1.2, columnspacing=1.0)
+    ax.set_ylabel("Mean joint score, 12 months")
+    ax.set_title("Cross-validated joint score by checkpoint")
+    ax.legend(loc="upper right", ncols=3, handlelength=1.2, columnspacing=1.0)
     save(fig, "checkpoint_improvement")
     return means
 
@@ -323,12 +331,12 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
     top.plot(hours, inputs.net[1:, index][start:stop], color=INK_2)
     top.set_ylabel("Baseline net load (MW)")
     top.set_title(f"ISO-NE around its {pd.Timestamp(month).strftime('%B %Y')} monthly peak hour")
-    bottom.plot(hours, baseline["power"][start:stop, index], color=MUTED, label="No flexibility")
+    bottom.plot(hours, baseline["power"][start:stop, index], color=MUTED, label="No-flexibility baseline")
     bottom.plot(hours, run["power"][start:stop, index], color=SEED_COLORS[seed], label=f"PPO, {RUN_LABELS[seed].lower()}")
     bottom.set_ylabel("Site power (MW)")
     for ax in (top, bottom):
         ax.axvline(inputs.timestamps[peak_hour], color=AXIS, linewidth=0.8)
-    top.annotate("Peak hour (no flexibility)", xy=(inputs.timestamps[peak_hour], 0.0),
+    top.annotate("Peak hour (no-flexibility baseline)", xy=(inputs.timestamps[peak_hour], 0.0),
                  xycoords=("data", "axes fraction"), xytext=(4, 3), textcoords="offset points",
                  ha="left", va="bottom", color=INK_2, fontsize=6.5)
     bottom.legend(loc="lower left", bbox_to_anchor=(0.0, 1.0), ncols=2, borderaxespad=0.1)
@@ -349,7 +357,7 @@ def figure_isone_window(inputs: MonthInputs, baseline: dict[str, np.ndarray], ru
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", default="cv-all-windows-1m")
+    parser.add_argument("--tag", default="cv-nf-reference-1m")
     parser.add_argument("--figures-only", action="store_true",
                         help="redraw the summary figures from an existing figure_data.json, without replays")
     args = parser.parse_args()
