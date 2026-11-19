@@ -1,0 +1,506 @@
+{
+  "effective_interactions": 1024000,
+  "requested_interactions": 1000000,
+  "resumed_from_interactions": 0,
+  "safe_boundary_interactions": 51200,
+  "seed": 4103,
+  "test": {
+    "abs_adjusted_ramp_h1_fraction_s_per_hour_max": 0.27320252924738325,
+    "abs_adjusted_ramp_h1_fraction_s_per_hour_p95": 0.07597567677205483,
+    "batch_expired": 0.0,
+    "batch_unfinished": 0.0,
+    "behavior_audit": {
+      "deferrable_pre_service": 457.68915324410057,
+      "policy_ramp_power": 566400.1597864382,
+      "status_quo_ramp_power": 580245.9951844728
+    },
+    "certificate_violations": 0,
+    "daily": [
+      {
+        "date": "2026-05-01",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00011856225564000387,
+        "ramp_impact_improvement_mean_per_hour": 0.00011856225718026415,
+        "status_quo_incremental_ramp_impact": 1.5402602896447025e-12
+      },
+      {
+        "date": "2026-05-02",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0001731267166590319,
+        "ramp_impact_improvement_mean_per_hour": 0.00017312671431373255,
+        "status_quo_incremental_ramp_impact": -2.3452993674643755e-12
+      },
+      {
+        "date": "2026-05-03",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00024000521792006373,
+        "ramp_impact_improvement_mean_per_hour": 0.00024000521625334385,
+        "status_quo_incremental_ramp_impact": -1.6667198892459522e-12
+      },
+      {
+        "date": "2026-05-04",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0003088509736758544,
+        "ramp_impact_improvement_mean_per_hour": 0.00030885097267411107,
+        "status_quo_incremental_ramp_impact": -1.0017433146204476e-12
+      },
+      {
+        "date": "2026-05-05",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00022083435909068847,
+        "ramp_impact_improvement_mean_per_hour": 0.00022083435919692299,
+        "status_quo_incremental_ramp_impact": 1.0623451279387256e-13
+      },
+      {
+        "date": "2026-05-06",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00018515348806277866,
+        "ramp_impact_improvement_mean_per_hour": 0.0001851534862333326,
+        "status_quo_incremental_ramp_impact": -1.8294460655221336e-12
+      },
+      {
+        "date": "2026-05-07",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00037375976424200186,
+        "ramp_impact_improvement_mean_per_hour": 0.0003737597638883776,
+        "status_quo_incremental_ramp_impact": -3.536242259476349e-13
+      },
+      {
+        "date": "2026-05-08",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00029614709808243174,
+        "ramp_impact_improvement_mean_per_hour": 0.0002961471001910481,
+        "status_quo_incremental_ramp_impact": 2.1086163549824746e-12
+      },
+      {
+        "date": "2026-05-09",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00028090111124957966,
+        "ramp_impact_improvement_mean_per_hour": 0.000280901110156944,
+        "status_quo_incremental_ramp_impact": -1.0926356181576163e-12
+      },
+      {
+        "date": "2026-05-10",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00023925020597964156,
+        "ramp_impact_improvement_mean_per_hour": 0.00023925020481052584,
+        "status_quo_incremental_ramp_impact": -1.1691157338381687e-12
+      },
+      {
+        "date": "2026-05-11",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002656471683704754,
+        "ramp_impact_improvement_mean_per_hour": 0.00026564716440790416,
+        "status_quo_incremental_ramp_impact": -3.9625712784696685e-12
+      },
+      {
+        "date": "2026-05-12",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.000373673147955072,
+        "ramp_impact_improvement_mean_per_hour": 0.0003736731452416273,
+        "status_quo_incremental_ramp_impact": -2.7134447224410026e-12
+      },
+      {
+        "date": "2026-05-13",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0003096444875794269,
+        "ramp_impact_improvement_mean_per_hour": 0.00030964448833023544,
+        "status_quo_incremental_ramp_impact": 7.508085328161461e-13
+      },
+      {
+        "date": "2026-05-14",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00027120985153079646,
+        "ramp_impact_improvement_mean_per_hour": 0.0002712098527097127,
+        "status_quo_incremental_ramp_impact": 1.1789162374607132e-12
+      },
+      {
+        "date": "2026-05-15",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00031618117075767565,
+        "ramp_impact_improvement_mean_per_hour": 0.00031618117014266804,
+        "status_quo_incremental_ramp_impact": -6.150075883219529e-13
+      },
+      {
+        "date": "2026-05-16",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0003447578713858362,
+        "ramp_impact_improvement_mean_per_hour": 0.0003447578690621615,
+        "status_quo_incremental_ramp_impact": -2.3236747513685136e-12
+      },
+      {
+        "date": "2026-05-17",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002732471727131548,
+        "ramp_impact_improvement_mean_per_hour": 0.0002732471725816422,
+        "status_quo_incremental_ramp_impact": -1.315126510722465e-13
+      },
+      {
+        "date": "2026-05-18",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002624577144508275,
+        "ramp_impact_improvement_mean_per_hour": 0.00026245771352151066,
+        "status_quo_incremental_ramp_impact": -9.29316817760679e-13
+      },
+      {
+        "date": "2026-05-19",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002730657323686498,
+        "ramp_impact_improvement_mean_per_hour": 0.00027306573647275514,
+        "status_quo_incremental_ramp_impact": 4.104105361105681e-12
+      },
+      {
+        "date": "2026-05-20",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00020976024925005682,
+        "ramp_impact_improvement_mean_per_hour": 0.0002097602503407303,
+        "status_quo_incremental_ramp_impact": 1.0906734868256253e-12
+      },
+      {
+        "date": "2026-05-21",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002714320534907706,
+        "ramp_impact_improvement_mean_per_hour": 0.0002714320536709594,
+        "status_quo_incremental_ramp_impact": 1.8018875743380143e-13
+      },
+      {
+        "date": "2026-05-22",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0003081831597917317,
+        "ramp_impact_improvement_mean_per_hour": 0.00030818315882424164,
+        "status_quo_incremental_ramp_impact": -9.674900625296507e-13
+      },
+      {
+        "date": "2026-05-23",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.000275928528020946,
+        "ramp_impact_improvement_mean_per_hour": 0.0002759285278246857,
+        "status_quo_incremental_ramp_impact": -1.9626031947901733e-13
+      },
+      {
+        "date": "2026-05-24",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00018899911850696463,
+        "ramp_impact_improvement_mean_per_hour": 0.0001889991205640399,
+        "status_quo_incremental_ramp_impact": 2.0570752544490863e-12
+      },
+      {
+        "date": "2026-05-25",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002535674682122428,
+        "ramp_impact_improvement_mean_per_hour": 0.00025356747053652436,
+        "status_quo_incremental_ramp_impact": 2.324281556651571e-12
+      },
+      {
+        "date": "2026-05-26",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0003018252646114098,
+        "ramp_impact_improvement_mean_per_hour": 0.00030182526741760583,
+        "status_quo_incremental_ramp_impact": 2.8061960282846466e-12
+      },
+      {
+        "date": "2026-05-27",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002360038488155599,
+        "ramp_impact_improvement_mean_per_hour": 0.0002360038501595141,
+        "status_quo_incremental_ramp_impact": 1.3439541843051937e-12
+      },
+      {
+        "date": "2026-05-28",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.0002206556293319948,
+        "ramp_impact_improvement_mean_per_hour": 0.00022065562913856624,
+        "status_quo_incremental_ramp_impact": -1.9342854299299222e-13
+      },
+      {
+        "date": "2026-05-29",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00019684553374143502,
+        "ramp_impact_improvement_mean_per_hour": 0.00019684553396218064,
+        "status_quo_incremental_ramp_impact": 2.20745611184869e-13
+      },
+      {
+        "date": "2026-05-30",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00016824401189598884,
+        "ramp_impact_improvement_mean_per_hour": 0.00016824401139204503,
+        "status_quo_incremental_ramp_impact": -5.039438177314071e-13
+      },
+      {
+        "date": "2026-05-31",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00019887669211426982,
+        "ramp_impact_improvement_mean_per_hour": 0.0001988766935633065,
+        "status_quo_incremental_ramp_impact": 1.4490366509517651e-12
+      },
+      {
+        "date": "2026-06-01",
+        "metric": "mean_hourly_sum_of_regional_incremental_ramp_impacts",
+        "policy_incremental_ramp_impact": -0.00029900630850165927,
+        "ramp_impact_improvement_mean_per_hour": 0.0002990063151336567,
+        "status_quo_incremental_ramp_impact": 6.631997401615173e-12
+      }
+    ],
+    "day_count": 32,
+    "emergency_feasibility_rate": 0.0,
+    "episode_count": 1,
+    "evaluation_seed_interval": {
+      "maximum": -0.016926840714388863,
+      "mean": -0.016926840714388863,
+      "metric": "monthly_joint_J",
+      "minimum": -0.016926840714388863,
+      "seed_count": 1
+    },
+    "future_leakage_detected": false,
+    "mean_incremental_ramp_impact": -0.00025836859938436596,
+    "mean_joint_J": -0.016926840714388863,
+    "mean_monthly_ramp_impact": -0.19222623794196828,
+    "mean_normalized_net_load_peak": 3.5050355090448186,
+    "mean_peak_impact": -0.008596670556248817,
+    "mean_policy_incremental_ramp_impact": -0.00025836859938436596,
+    "mean_ramp_squared": 0.007424807144647886,
+    "objective": {
+      "normalization": "training-month-mean-no-flexibility-ramp-totals",
+      "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_no_flexibility",
+      "peak_reference": 3.653738230091554,
+      "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
+      "peak_weight": 0.5,
+      "ramp_metric": "monthly_sum_of_regional_squared_ramp_impacts_from_no_flexibility",
+      "ramp_reference": 6.102257730896831,
+      "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
+      "ramp_weight": 0.5,
+      "version": "joint-net-load-peak-and-ramp-from-no-flexibility"
+    },
+    "per_market_macro": {
+      "CAISO": -0.00016955937992909094,
+      "ISONE": -7.985170209505129e-05,
+      "MISO": -1.1715307877728143e-06,
+      "SPP": -7.785986572450905e-06
+    },
+    "per_market_policy_incremental_ramp_impact": {
+      "CAISO": -0.00016955937992909094,
+      "ISONE": -7.985170209505129e-05,
+      "MISO": -1.1715307877728143e-06,
+      "SPP": -7.785986572450905e-06
+    },
+    "physical_ramp_metric_contract": {
+      "cross_market_signed_averaging": false,
+      "input": "absolute adjusted ramp magnitude",
+      "pooling": "all market-timestep values with equal weight",
+      "units": "fraction_of_market_training_q95_gross_demand_per_hour"
+    },
+    "ramp_h1_adjusted_max": 0.27320252924738325,
+    "ramp_h1_adjusted_p95": 0.07597567677205483,
+    "ramp_impact_bootstrap_by_day": {
+      "estimable": true,
+      "group_count": 32,
+      "lower_95": -0.00027784783657161326,
+      "mean": -0.00025836859938436596,
+      "unit": "day",
+      "upper_95": -0.00024082447601056186
+    },
+    "ramp_impact_bootstrap_by_month": {
+      "estimable": false,
+      "group_count": 1,
+      "mean": -0.00025836859938436596,
+      "reason": "at least two independent groups are required",
+      "unit": "month"
+    },
+    "semantic_adjustment": {
+      "adjustment_rate": 0.6263440860215054,
+      "coordinate_id": "decoded-work-allocation-service-batch-total-destination-2n-plus-1",
+      "decision_count": 744,
+      "emergency_fallback_rate": 0.0,
+      "max_l2": 1.6067271424391678,
+      "mean_l2": 0.36348831233475215,
+      "p50_l2": 0.15512670335788514,
+      "p95_l2": 1.2671086916908618,
+      "positive_adjustment_count": 466,
+      "sum_l2": 270.4353043770556,
+      "units": "compute_work_units_per_hourly_decision"
+    },
+    "semantic_adjustment_l2": 270.4353043770556,
+    "service_unserved": 0.0,
+    "split": "test",
+    "status_quo_comparison": {
+      "baseline_definition": "status quo: every service and batch arrival executes at its origin site in its arrival hour; no deferral, no routing",
+      "components": {
+        "net_load_peak": {
+          "improvement": 0.008596670488412745,
+          "metric": "peak_impact_sum",
+          "policy": -0.008596670556248817,
+          "status_quo": -6.783607210608155e-11,
+          "training_reference": 3.653738230091554,
+          "weight": 0.5,
+          "weighted_improvement": 0.0011764212358745434
+        },
+        "ramp": {
+          "improvement": 0.19222623795999103,
+          "metric": "ramp_impact_sum",
+          "policy": -0.19222623794196828,
+          "status_quo": 1.8022753030033822e-11,
+          "training_reference": 6.102257730896831,
+          "weight": 0.5,
+          "weighted_improvement": 0.015750419470707943
+        }
+      },
+      "every_market_outperforms_status_quo": false,
+      "improvement": 0.016926840706582486,
+      "improvement_J": 0.016926840706582486,
+      "improvement_definition": "Mean monthly J(status quo) - J(policy). J combines summed regional squared-ramp impacts and regional monthly net-load peak impacts, both measured from the no-flexibility schedule, using fixed positive training references and the declared weights. J(status quo) is zero up to rounding, so this is -J(policy). Positive favors the policy; neither component is guaranteed to improve individually.",
+      "market_count": 4,
+      "markets_better_count": 3,
+      "markets_better_share": 0.75,
+      "per_market": {
+        "CAISO": {
+          "improvement": 0.010806622592657364,
+          "native_peak_mw": 29981.0,
+          "peak_reduction_mw": 116.04675306127683,
+          "policy_incremental_ramp_impact": -0.00016955937992909094,
+          "policy_joint_J": -0.010806622605680867,
+          "policy_minus_status_quo_incremental_ramp_impact": -0.00016955937988772128,
+          "policy_outperforms_status_quo": true,
+          "policy_peak_impact": -0.003435287371927641,
+          "policy_peak_mw": 30161.602838461375,
+          "policy_ramp_impact_sum": -0.12615217866724365,
+          "policy_ramp_mean_squared": 0.004840752993939664,
+          "ramp_impact_improvement_mean_per_hour": 0.00016955937988772128,
+          "ramp_impact_improvement_sum": 0.1261521786364646,
+          "ramp_mean_squared_improvement": 0.00016955937988772166,
+          "status_quo_incremental_ramp_impact": -4.136967085616147e-14,
+          "status_quo_joint_J": -1.302350271998174e-11,
+          "status_quo_peak_impact": -7.673993470972224e-11,
+          "status_quo_peak_mw": 30277.64959152265,
+          "status_quo_ramp_impact_sum": -3.0779035116984136e-11,
+          "status_quo_ramp_mean_squared": 0.005010312373827386
+        },
+        "ISONE": {
+          "improvement": 0.005694396507306111,
+          "native_peak_mw": 17506.0,
+          "peak_reduction_mw": 108.04417212787666,
+          "policy_incremental_ramp_impact": -7.985170209505129e-05,
+          "policy_joint_J": -0.005694396509755767,
+          "policy_minus_status_quo_incremental_ramp_impact": -7.98517021088667e-05,
+          "policy_outperforms_status_quo": true,
+          "policy_peak_impact": -0.006040019597338827,
+          "policy_peak_mw": 17825.949895819725,
+          "policy_ramp_impact_sum": -0.05940966635871816,
+          "policy_ramp_mean_squared": 0.001080395326393333,
+          "ramp_impact_improvement_mean_per_hour": 7.98517021088667e-05,
+          "ramp_impact_improvement_sum": 0.05940966636899682,
+          "ramp_mean_squared_improvement": 7.985170210886663e-05,
+          "status_quo_incremental_ramp_impact": 1.3815406524245048e-14,
+          "status_quo_joint_J": -2.449656115870406e-12,
+          "status_quo_peak_impact": -2.4055172771923594e-11,
+          "status_quo_peak_mw": 17933.994067947602,
+          "status_quo_ramp_impact_sum": 1.0278662454038316e-11,
+          "status_quo_ramp_mean_squared": 0.0011602470285021996
+        },
+        "MISO": {
+          "improvement": -2.753296730791464e-05,
+          "native_peak_mw": 86089.0,
+          "peak_reduction_mw": -72.68443121225573,
+          "policy_incremental_ramp_impact": -1.1715307877728143e-06,
+          "policy_joint_J": 2.7532966098413054e-05,
+          "policy_minus_status_quo_incremental_ramp_impact": -1.1715307811897859e-06,
+          "policy_outperforms_status_quo": false,
+          "policy_peak_impact": 0.0007230799519560746,
+          "policy_peak_mw": 86659.2421182247,
+          "policy_ramp_impact_sum": -0.0008716189061029739,
+          "policy_ramp_mean_squared": 0.0006445961144340023,
+          "ramp_impact_improvement_mean_per_hour": 1.1715307811897859e-06,
+          "ramp_impact_improvement_sum": 0.0008716189012052006,
+          "ramp_mean_squared_improvement": 1.1715307811897314e-06,
+          "status_quo_incremental_ramp_impact": -6.583028566178042e-15,
+          "status_quo_joint_J": -1.2095015848229464e-12,
+          "status_quo_peak_impact": -5.905853463433904e-12,
+          "status_quo_peak_mw": 86586.55768701245,
+          "status_quo_ramp_impact_sum": -4.897773253236463e-12,
+          "status_quo_ramp_mean_squared": 0.000645767645215192
+        },
+        "SPP": {
+          "improvement": 0.0004533545739269235,
+          "native_peak_mw": 34199.0,
+          "peak_reduction_mw": -7.136337535979692,
+          "policy_incremental_ramp_impact": -7.785986572450905e-06,
+          "policy_joint_J": -0.00045335456505063996,
+          "policy_minus_status_quo_incremental_ramp_impact": -7.785986630812329e-06,
+          "policy_outperforms_status_quo": true,
+          "policy_peak_impact": 0.00015555646106157677,
+          "policy_peak_mw": 34569.574615322184,
+          "policy_ramp_impact_sum": -0.0057927740099034735,
+          "policy_ramp_mean_squared": 0.0008590627098808857,
+          "ramp_impact_improvement_mean_per_hour": 7.785986630812329e-06,
+          "ramp_impact_improvement_sum": 0.005792774053324372,
+          "ramp_mean_squared_improvement": 7.785986630812376e-06,
+          "status_quo_incremental_ramp_impact": 5.836142331480659e-14,
+          "status_quo_joint_J": 8.876283577690095e-12,
+          "status_quo_peak_impact": 3.88648888389982e-11,
+          "status_quo_peak_mw": 34562.438277786205,
+          "status_quo_ramp_impact_sum": 4.342089894621611e-11,
+          "status_quo_ramp_mean_squared": 0.0008668486965116981
+        }
+      },
+      "policy_J": -0.016926840714388863,
+      "policy_mean_incremental_ramp_impact": -0.00025836859938436596,
+      "policy_minus_status_quo_joint_J": -0.016926840706582486,
+      "policy_minus_status_quo_mean_incremental_ramp_impact": -0.00025836859940859007,
+      "ramp_impact_improvement_J": 0.19222623795999103,
+      "ramp_impact_improvement_mean_per_hour": 0.00025836859940859007,
+      "status_quo_J": -7.806376842984999e-12,
+      "status_quo_mean_incremental_ramp_impact": 2.4224130416712127e-14
+    },
+    "step_count": 744,
+    "terminal_work": 0.0,
+    "window_ids": [
+      "2026-05"
+    ]
+  },
+  "test_window_ids": [
+    "2026-05"
+  ],
+  "training_elapsed_seconds": 3068.5402233000495,
+  "training_identity": {
+    "effective_interactions": 1024000,
+    "environment_identity": {
+      "action_shape": [
+        9
+      ],
+      "factory_id": "6f04f6361f583b8eedc96f0dad24674aefb780a1b4ee387507a54eb25ba1e87e",
+      "objective": {
+        "normalization": "training-month-mean-no-flexibility-ramp-totals",
+        "peak_metric": "sum_of_regional_normalized_monthly_peak_impacts_adjusted_minus_no_flexibility",
+        "peak_reference": 3.653738230091554,
+        "peak_reference_metric": "mean_training_month_sum_of_normalized_adjusted_peaks",
+        "peak_weight": 0.5,
+        "ramp_metric": "monthly_sum_of_regional_squared_ramp_impacts_from_no_flexibility",
+        "ramp_reference": 6.102257730896831,
+        "ramp_reference_metric": "mean_training_month_total_squared_adjusted_ramps",
+        "ramp_weight": 0.5,
+        "version": "joint-net-load-peak-and-ramp-from-no-flexibility"
+      },
+      "observation_shape": [
+        82
+      ],
+      "version": "joint-peak-impact-ramp-impact"
+    },
+    "n_envs": 4,
+    "ppo_config": {
+      "batch_size": 256,
+      "gae_lambda": 0.95,
+      "gamma": 0.99,
+      "learning_rate": 0.0003,
+      "n_epochs": 10,
+      "n_steps": 512,
+      "net_arch": [
+        64,
+        64
+      ]
+    },
+    "requested_interactions": 1000000,
+    "safe_quantum": 51200,
+    "seed": 4103
+  },
+  "training_interactions_per_second": 333.70916640575865,
+  "update_count": 5000
+}

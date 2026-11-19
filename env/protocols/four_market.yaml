@@ -1,0 +1,62 @@
+protocol:
+  id: four-market-joint-net-load-peak-and-ramp-from-no-flexibility
+data:
+  interval_minutes: 60
+  markets: [CAISO, MISO, SPP, ISONE]
+  workload_mapping: [a, b, c, d]
+  test_workload_mapping: [e, f, g, h]
+  month_clock: months follow the Google trace's clock, a fixed UTC-7; each month starts at 07:00 UTC on its first day
+  episode_unit: one continuous month on the trace clock; queues and power history reset only at the month boundary
+  history_hours: 1
+  split:
+    # Mirrors energy_model/splits.py; a test keeps the two in sync.
+    development: {months: [2025-01, 2025-02, 2025-03, 2025-04, 2025-05, 2025-06, 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12]}
+    cross_validation:
+      method: grouped four-fold over whole months; each fold trains on nine months and validates on three interleaved months
+      folds: {k1: [2025-01, 2025-05, 2025-09], k2: [2025-02, 2025-06, 2025-10], k3: [2025-03, 2025-07, 2025-11], k4: [2025-04, 2025-08, 2025-12]}
+    final: {train_months: all development months}
+    test: {months: [2026-05], workload_cells: [e, f, g, h], scored: "once, with the final policies only"}
+  forecast:
+    model_id: causal-least-squares
+    decision_hour_reads_grid_rows_through: t-1
+    realized_future_features_prohibited: true
+fleet:
+  site_count: 4
+  sizing: compute capacity = cell CPU capacity / cell c CPU capacity (data/cell_capacity.json); rated power = 500 MW x compute capacity
+  reference_power_mw_largest_site: 500.0
+  compute_capacity: {CAISO: 0.897102, MISO: 0.995048, SPP: 1.0, ISONE: 0.846328}
+  rated_power_mw: {CAISO: 448.551, MISO: 497.524, SPP: 500.0, ISONE: 423.164}
+  total_rated_power_mw: 1869.239
+test_fleet:
+  site_count: 4
+  sizing: same rule as the training fleet, relative to training cell c; sites may exceed 500 MW
+  compute_capacity: {CAISO: 0.953698, MISO: 1.442849, SPP: 1.045064, ISONE: 1.353984}
+  rated_power_mw: {CAISO: 476.849, MISO: 721.425, SPP: 522.532, ISONE: 676.992}
+  total_rated_power_mw: 2397.798
+workload:
+  deadline_hours: [24, 24, 24, 24]
+  deadline_semantics: inclusive execution-window length H; an arrival in slot t may run in slots t .. t+H-1, so the longest delay is H-1 hours. Uniform across sites.
+  source: raw_measured_service_and_batch
+objective:
+  version: joint-net-load-peak-and-ramp-from-no-flexibility
+  component_weights: {ramp: 0.5, net_load_peak: 0.5}
+  normalization: training-month-mean-no-flexibility-ramp-totals
+  ramp_quantity: squared_ramp_minus_no_flexibility_squared_ramp
+  ramp_time_aggregation: sum_over_month
+  peak_quantity: adjusted_maximum_minus_no_flexibility_maximum
+  peak_time_aggregation: maximum_per_region_over_decision_month
+  ramp_horizons_hours: [1]
+  ramp_weights: {1: 1.0}
+  market_aggregation: sum
+  scored_slots: every decision slot of the month
+training:
+  vectorized_environments: 4
+  checkpoint_rollouts: 25
+  ppo:
+    net_arch: [64, 64]
+    gamma: 0.99
+    gae_lambda: 0.95
+    n_steps: 512
+    batch_size: 256
+    n_epochs: 10
+    learning_rate: 0.0003

@@ -1,0 +1,61 @@
+{
+  "per_cell_cpu_model": {
+    "a": {
+      "idle_power": 0.46972133319421994,
+      "slope": 0.4207631088914115,
+      "peak_power": 0.8904844420856315,
+      "r_squared": 0.9245550243308127,
+      "n": 743
+    },
+    "b": {
+      "idle_power": 0.5083900088757282,
+      "slope": 0.4329806533030581,
+      "peak_power": 0.9413706621787863,
+      "r_squared": 0.9217258545726668,
+      "n": 743
+    },
+    "c": {
+      "idle_power": 0.37879122707169494,
+      "slope": 0.5998653135508708,
+      "peak_power": 0.9786565406225658,
+      "r_squared": 0.9279714260669282,
+      "n": 743
+    },
+    "d": {
+      "idle_power": 0.35874273408095386,
+      "slope": 0.5748676530552053,
+      "peak_power": 0.9336103871361592,
+      "r_squared": 0.9220078059111282,
+      "n": 743
+    },
+    "e": {
+      "idle_power": 0.35573707182501774,
+      "slope": 0.6334099026325407,
+      "peak_power": 0.9891469744575585,
+      "r_squared": 0.9467289197730869,
+      "n": 743
+    },
+    "f": {
+      "idle_power": 0.38588900371679075,
+      "slope": 0.5122220390860454,
+      "peak_power": 0.898111042802836,
+      "r_squared": 0.807301624470451,
+      "n": 743
+    },
+    "g": {
+      "idle_power": 0.40380845643790614,
+      "slope": 0.550985277869301,
+      "peak_power": 0.954793734307207,
+      "r_squared": 0.893390350967703,
+      "n": 743
+    },
+    "h": {
+      "idle_power": 0.3810205440834492,
+      "slope": 0.40016937104992384,
+      "peak_power": 0.781189915133373,
+      "r_squared": 0.9593877939277833,
+      "n": 743
+    }
+  },
+  "per_cell_cpu_model_method": "all usage windows, weighted by window length; complete hours only (twelve five-minute windows), with each cell's power domains weighted by their machines' CPU capacity; from scripts/check_power_domain_weights.py"
+}

@@ -1,0 +1,38 @@
+# Virtual environments
+.venv/
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node.js
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Reference PDFs (too large for git, not source code)
+references/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (API keys etc.)
+.env
+*.secret
+
+# PPO model containers remain local; manifests and evaluation evidence are tracked.
+models/four_market/**/model.zip
+models/four_market/**/vecnormalize.pkl
+# Generated per-split data and factories (cross-validation folds and final).
+output/four_market/cv-k*/
+output/four_market/final/
